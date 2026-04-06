@@ -79,7 +79,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     .join(", ");
   const contactNumber = college.contactPhone?.trim() || college.alternatePhone?.trim() || "";
 
-  const formatMoney = (value?: string | number) => {
+  const formatMoney = (value?: unknown) => {
+    if (typeof value !== "string" && typeof value !== "number") {
+      return "Not available";
+    }
+
     const raw = String(value ?? "").replace(/[₹,\s]/g, "").trim();
     const numeric = Number(raw);
     if (raw && Number.isFinite(numeric)) {
