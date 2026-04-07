@@ -13,20 +13,24 @@ export function BrandLogo({
   variant = "full",
   textColor = "dark",
 }: BrandLogoProps) {
-  const sizeClass = variant === "tab" ? "text-[16px] sm:text-[17px]" : "text-[16px]";
-  const iconClass = variant === "tab" ? "size-[1.15rem] sm:size-5" : "size-5";
+  const sizeClass = variant === "tab" ? "text-[14px]" : "text-[16px]";
+  const iconClass = variant === "tab" ? "size-4" : "size-5";
   const collegeTextColor = textColor === "light" ? "text-white" : "text-slate-900";
 
   return (
     <div
       role="img"
       aria-label={alt}
-      className={`inline-flex items-center gap-1 whitespace-nowrap font-extrabold leading-none tracking-[0.01em] ${sizeClass} ${className}`}
+      className={`inline-flex items-center gap-1 font-extrabold leading-none tracking-[0.01em] ${sizeClass} ${className}`}
     >
       <GraduationCap className={`${iconClass} text-[#f4ae35]`} strokeWidth={2.2} />
-      <span className="whitespace-nowrap">
-        <span className={collegeTextColor}>College</span>
-        <span className="text-[#f4ae35]">EdwiseR</span>
+      <span>
+        <span className={collegeTextColor}>
+          College{" "}
+        </span>
+        <span className="text-[#f4ae35]">
+          EdwiseR
+        </span>
       </span>
     </div>
   );

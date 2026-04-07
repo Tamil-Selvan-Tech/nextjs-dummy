@@ -1,15 +1,22 @@
-const LOCAL_API_BASE_URL = "http://localhost:5000";
-const REMOTE_FALLBACK_BASE_URL = "https://college-edwiser-backend-nz7v.onrender.com";
+export const LOCAL_API_BASE_URL = "http://localhost:5000";
+export const REMOTE_FALLBACK_BASE_URL = "https://college-edwiser-backend-nz7v.onrender.com";
 
 const configuredApiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL || process.env.VITE_API_BASE_URL || "";
+
+const isLocalApiBaseUrl = (value: string) =>
+  value.includes("localhost:5000") || value.includes("127.0.0.1:5000");
 
 const isLocalBrowser =
   typeof window !== "undefined" &&
   ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
+const shouldUseConfiguredApiBaseUrl =
+  Boolean(configuredApiBaseUrl) &&
+  (process.env.NODE_ENV !== "production" || isLocalBrowser || !isLocalApiBaseUrl(configuredApiBaseUrl));
+
 const DEFAULT_API_BASE_URL =
-  configuredApiBaseUrl ||
+  (shouldUseConfiguredApiBaseUrl ? configuredApiBaseUrl : "") ||
   (isLocalBrowser || process.env.NODE_ENV !== "production"
     ? LOCAL_API_BASE_URL
     : REMOTE_FALLBACK_BASE_URL);
@@ -18,8 +25,7 @@ export const API_BASE_URL = (
   DEFAULT_API_BASE_URL
 ).replace(/\/$/, "");
 
-const shouldTryRemoteFallback =
-  API_BASE_URL.includes("localhost:5000") || API_BASE_URL.includes("127.0.0.1:5000");
+const shouldTryRemoteFallback = isLocalApiBaseUrl(API_BASE_URL);
 
 const toUrl = (path: string, baseUrl = API_BASE_URL) => `${baseUrl}${path}`;
 

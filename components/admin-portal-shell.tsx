@@ -28,6 +28,7 @@ type AdminPortalShellProps = {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -39,6 +40,7 @@ export function AdminPortalShell({
   title,
   subtitle,
   actions,
+  headerActions,
   children,
 }: AdminPortalShellProps) {
   const router = useRouter();
@@ -49,15 +51,15 @@ export function AdminPortalShell({
   };
 
   return (
-    <section className="section-shell h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_20%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),linear-gradient(180deg,#fffdf8_0%,#f8fbff_54%,#f3f8ff_100%)] text-[color:var(--text-dark)]">
+    <section className="section-shell min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_20%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),linear-gradient(180deg,#fffdf8_0%,#f8fbff_54%,#f3f8ff_100%)] text-[color:var(--text-dark)]">
       <div className="mesh-bg opacity-20" />
       <div className="hero-grid absolute inset-0 opacity-[0.05]" />
       <div className="absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(251,191,36,0.12)] blur-3xl" />
       <div className="absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
 
-      <div className="page-container relative z-10 h-full max-w-none px-0 py-3 sm:px-0 sm:py-4">
-        <div className="grid h-full min-h-0 gap-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
-          <aside className="reveal-up h-full overflow-hidden rounded-[1.55rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,248,239,0.96))] p-3 text-[color:var(--text-dark)] shadow-[0_24px_50px_rgba(148,163,184,0.18)] backdrop-blur-sm">
+      <div className="page-container relative z-10 max-w-none px-0 py-3 sm:px-0 sm:py-4">
+        <div className="grid min-h-0 gap-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
+          <aside className="reveal-up overflow-hidden rounded-[1.55rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,248,239,0.96))] p-3 text-[color:var(--text-dark)] shadow-[0_24px_50px_rgba(148,163,184,0.18)] backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
             <div className="space-y-1.5">
               <BrandLogo className="h-10" />
               <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(251,191,36,0.2)] bg-[linear-gradient(135deg,rgba(255,251,235,0.98),rgba(255,255,255,0.95))] px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#9a6700] shadow-[0_8px_20px_rgba(251,191,36,0.14)]">
@@ -113,11 +115,12 @@ export function AdminPortalShell({
 
           </aside>
 
-          <div className="h-full min-h-0 overflow-y-auto pr-1">
+          <div className="min-h-0 overflow-visible pr-1 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
             <div className="space-y-3 pb-4">
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-white/60 bg-white/70 px-3.5 py-3 shadow-[0_16px_32px_rgba(148,163,184,0.12)] backdrop-blur-sm">
                 <PageBackButton />
                 <div className="flex flex-wrap items-center gap-2">
+                  {headerActions}
                   <Link
                     href="/"
                     className="inline-flex items-center justify-center gap-2 rounded-[1rem] border border-[rgba(56,189,248,0.18)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(56,189,248,0.28)] hover:bg-sky-50 sm:text-sm"

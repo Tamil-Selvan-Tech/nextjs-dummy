@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, FileStack, Home, LayoutDashboard, LogOut, Mail, MailOpen, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { FileStack, Home, LayoutDashboard, LogOut, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
@@ -42,7 +42,7 @@ export function CollegePortalShell({
 
       <div className="page-container relative z-10 py-3 sm:py-5">
         <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] max-w-[1240px] gap-3 lg:grid-cols-[232px_1fr] xl:grid-cols-[244px_1fr]">
-          <aside className="glass-panel reveal-up rounded-[1.35rem] border border-white/35 bg-[linear-gradient(180deg,rgba(15,76,129,0.94),rgba(18,54,112,0.97))] p-3.5 text-white shadow-[0_22px_48px_rgba(6,18,38,0.2)] sm:p-4">
+          <aside className="glass-panel reveal-up rounded-[1.35rem] border border-white/35 bg-[linear-gradient(180deg,rgba(15,76,129,0.94),rgba(18,54,112,0.97))] p-3.5 text-white shadow-[0_22px_48px_rgba(6,18,38,0.2)] sm:p-4 lg:sticky lg:top-5 lg:self-start">
             <div className="flex items-center justify-between gap-3">
               <BrandLogo className="h-10" />
               <span className="inline-flex items-center rounded-full border border-white/25 bg-white p-1.5 text-slate-900">
@@ -134,7 +134,7 @@ export function CollegePortalShell({
                     {subtitle}
                   </p>
                 </div>
-                {actions ? <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">{actions}</div> : null}
+                {actions ? <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end lg:max-w-[48%]">{actions}</div> : null}
               </div>
             </header>
 

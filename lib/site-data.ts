@@ -21,6 +21,7 @@ export type College = {
   hasHostel: boolean;
   facilities: string[];
   quotas: string[];
+  courseTags?: string[];
   streams: string[];
   reviews?: string;
   admissionProcess?: string;

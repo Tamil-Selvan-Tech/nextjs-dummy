@@ -17,10 +17,11 @@ import {
   Stethoscope,
   TrendingUp,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { colleges, courses } from "@/lib/site-data";
+import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
 
 const SEARCH_FLOW_ITEMS = [
   "Search for college",
@@ -28,7 +29,12 @@ const SEARCH_FLOW_ITEMS = [
   "Search for course",
 ];
 
-export function HomePage() {
+type HomePageProps = {
+  collegesData?: College[];
+  coursesData?: Course[];
+};
+
+export function HomePage({ collegesData = fallbackColleges, coursesData = fallbackCourses }: HomePageProps) {
   const router = useRouter();
   const [heroSearchInput, setHeroSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
@@ -42,9 +48,9 @@ export function HomePage() {
   const [showRightArrowColleges, setShowRightArrowColleges] = useState(true);
 
   const exploreCourseCards = useMemo(() => {
-    const grouped = new Map<string, typeof courses>();
+    const grouped = new Map<string, Course[]>();
 
-    courses.forEach((item) => {
+    coursesData.forEach((item) => {
       const courseName = item.course.trim();
       const existing = grouped.get(courseName) || [];
       grouped.set(courseName, [...existing, item]);
@@ -71,15 +77,15 @@ export function HomePage() {
         isTopCourse: rows.some((row) => row.isTopCourse),
       };
     });
-  }, []);
+  }, [coursesData]);
 
   const topCourseChips = useMemo(
     () =>
-      courses
+      coursesData
         .filter((course) => course.isTopCourse)
         .filter((course, index, arr) => arr.findIndex((item) => item.course === course.course) === index)
         .map((course) => ({ id: course.id, course: course.course })),
-    [],
+    [coursesData],
   );
   const trendingCourseCards = useMemo(() => {
     const iconMap = {
@@ -190,10 +196,10 @@ export function HomePage() {
     { label: "Career Pathways", value: "300+", icon: TrendingUp },
   ];
   const spotlightColleges = useMemo(() => {
-    const bestColleges = colleges.filter((college) => college.isBestCollege);
-    const additionalColleges = colleges.filter((college) => !college.isBestCollege).slice(0, 4);
+    const bestColleges = collegesData.filter((college) => college.isBestCollege);
+    const additionalColleges = collegesData.filter((college) => !college.isBestCollege).slice(0, 4);
     return [...bestColleges, ...additionalColleges].slice(0, 8);
-  }, []);
+  }, [collegesData]);
   const activeCollege = spotlightColleges[activeAction] ?? spotlightColleges[0];
 
   const syncScrollIndicators = (
@@ -287,18 +293,20 @@ export function HomePage() {
           <div className="page-container pb-20 pt-8 md:pb-24 md:pt-10">
             <div className="grid items-start gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-9">
               <div className="max-w-5xl">
-                <div className="editorial-kicker reveal-up">
-                  <Sparkles className="size-3.5" />
-                  Future-ready College Discovery
+                <div className="reveal-up">
+                  <div className="relative max-w-[38rem] overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.14)] bg-white/90 shadow-[0_22px_50px_rgba(22,50,79,0.12)]">
+                    <div className="relative aspect-[16/9] w-full">
+                      <Image
+                        src="/college-hero-v2.jpg"
+                        alt="College campus building"
+                        fill
+                        priority
+                        sizes="(max-width: 1024px) 100vw, 560px"
+                        className="object-cover object-top"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <h1 className="display-title reveal-up delay-1 mt-4 max-w-[38rem] text-balance text-[color:var(--text-dark)]">
-                  Find the right college, course, and exam path with a cleaner student flow.
-                </h1>
-                <p className="reveal-up delay-2 mt-3 max-w-2xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
-                  College EdwiseR brings together college discovery, course intelligence,
-                  funding guidance, and career-focused support in one elevated platform built
-                  for confident decisions.
-                </p>
 
                 <div className="reveal-up delay-3 mt-6 max-w-[42rem] rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,247,255,0.98))] p-4 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -601,7 +609,7 @@ export function HomePage() {
               }
               className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
             >
-              {colleges
+              {collegesData
                 .filter((college) => college.isBestCollege)
                 .slice(0, 10)
                 .map((college) => (

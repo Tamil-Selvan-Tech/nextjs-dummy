@@ -11,6 +11,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 type CollegeEnquiry = {
   _id: string;
@@ -30,6 +31,7 @@ export default function CollegeEnquiriesPage() {
   const [enquiries, setEnquiries] = useState<CollegeEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{ type: "error"; text: string } | null>(null);
+  useStatusToast(status);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -87,12 +89,6 @@ export default function CollegeEnquiriesPage() {
       subtitle="Review incoming leads from prospective students in a clean, readable feed that works smoothly across mobile, tablet, and desktop."
       currentUser={currentUser}
     >
-      {status ? (
-        <div className="rounded-[1.4rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {status.text}
-        </div>
-      ) : null}
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "Total", value: counts.total },

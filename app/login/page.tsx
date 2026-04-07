@@ -21,6 +21,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 const accountModes = {
   student: {
@@ -92,6 +93,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  useStatusToast(status);
 
   const mode = accountModes[accountType];
   const Illustration = accountType === "college" ? CollegeIllustration : StudentIllustration;
@@ -253,12 +255,6 @@ export default function LoginPage() {
                 <h1 className="text-3xl font-bold text-[color:var(--text-dark)]">{mode.title}</h1>
                 <p className="mt-2 text-sm text-[color:var(--text-muted)]">{mode.subtitle}</p>
               </div>
-
-              {status ? (
-                <div className="mb-5 rounded-[1.2rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                  {status.text}
-                </div>
-              ) : null}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>

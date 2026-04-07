@@ -12,6 +12,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 type AccessRequest = {
   _id?: string;
@@ -38,6 +39,7 @@ export default function CollegeRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<null | "college" | "course">(null);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  useStatusToast(status);
   const [collegeForm, setCollegeForm] = useState({
     actionType: "create",
     entityName: "",
@@ -261,18 +263,6 @@ export default function CollegeRequestsPage() {
       subtitle="Track your access approval and send college or course update requests without leaving the portal."
       currentUser={currentUser}
     >
-      {status ? (
-        <div
-          className={`rounded-[1.4rem] border px-4 py-3 text-sm font-medium ${
-            status.type === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          {status.text}
-        </div>
-      ) : null}
-
       <div className="grid gap-4 xl:grid-cols-2">
         <section>
           <article className="luxe-card p-4">

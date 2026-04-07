@@ -21,6 +21,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 
 type Enquiry = {
   _id: string;
@@ -66,7 +67,6 @@ export default function AccountPage() {
   const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(null);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -108,10 +108,9 @@ export default function AccountPage() {
         }
 
         setEnquiries((enquiryData.enquiries || []).slice(0, 8));
-        setError("");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unable to load account data";
-        setError(message);
+        showToast(message, "error");
         if (message.toLowerCase().includes("not authorized")) {
           clearAuth();
           router.replace("/login?redirect=/account");
@@ -222,7 +221,7 @@ export default function AccountPage() {
               <h2 className="text-base font-bold text-[color:var(--text-dark)]">Profile Details</h2>
               <div className="mt-3.5 space-y-2">
                 <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-2">
-                  <div className="grid grid-cols-[1.15rem_4.2rem_1fr] items-start gap-2.5 text-[13px]">
+                  <div className="grid grid-cols-[1.15rem_minmax(3.4rem,4.2rem)_minmax(0,1fr)] items-start gap-2.5 text-[13px]">
                     <UserRound className="mt-0.5 size-4 text-slate-500" />
                     <span className="font-semibold text-slate-500">Name</span>
                     <span className="break-words font-semibold text-[color:var(--text-dark)]">
@@ -231,7 +230,7 @@ export default function AccountPage() {
                   </div>
                 </div>
                 <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-2">
-                  <div className="grid grid-cols-[1.15rem_4.2rem_1fr] items-start gap-2.5 text-[13px]">
+                  <div className="grid grid-cols-[1.15rem_minmax(3.4rem,4.2rem)_minmax(0,1fr)] items-start gap-2.5 text-[13px]">
                     <Mail className="mt-0.5 size-4 text-slate-500" />
                     <span className="font-semibold text-slate-500">Email</span>
                     <span className="break-all text-[color:var(--text-dark)]">
@@ -240,7 +239,7 @@ export default function AccountPage() {
                   </div>
                 </div>
                 <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-2">
-                  <div className="grid grid-cols-[1.15rem_4.2rem_1fr] items-start gap-2.5 text-[13px]">
+                  <div className="grid grid-cols-[1.15rem_minmax(3.4rem,4.2rem)_minmax(0,1fr)] items-start gap-2.5 text-[13px]">
                     <Phone className="mt-0.5 size-4 text-slate-500" />
                     <span className="font-semibold text-slate-500">Mobile</span>
                     <span className="break-words text-[color:var(--text-dark)]">
@@ -250,7 +249,7 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              <div className="mt-auto pt-4 space-y-2">
+              <div className="mt-auto space-y-2 pt-4">
                 <button
                   type="button"
                   onClick={() => router.push("/explore")}
@@ -272,12 +271,6 @@ export default function AccountPage() {
 
             <section className="luxe-card flex h-full min-h-[20.5rem] flex-col p-3.5 sm:p-4">
               <h2 className="text-base font-bold text-[color:var(--text-dark)]">My Enquiry Activity</h2>
-
-              {error ? (
-                <div className="mt-3.5 rounded-[0.95rem] border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {error}
-                </div>
-              ) : null}
 
               {loading ? (
                 <div className="mt-3.5 flex-1">

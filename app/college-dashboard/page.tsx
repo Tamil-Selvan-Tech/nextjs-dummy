@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CollegeDashboardAddCollegeForm } from "@/components/college-dashboard-add-college-form";
+import { CollegeDashboardAddCourseForm } from "@/components/college-dashboard-add-course-form";
 import { CollegePortalShell } from "@/components/college-portal-shell";
 import {
   clearAuth,
@@ -20,6 +22,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 type AccessRequest = {
   _id?: string;
@@ -36,14 +39,48 @@ type CollegeProfile = {
   university?: string;
   state?: string;
   district?: string;
+  country?: string;
+  description?: string;
+  overview?: string;
+  infrastructure?: string;
+  faculty?: string;
+  admissionProcess?: string;
+  scholarships?: string;
+  industryPartnerships?: string;
+  reviews?: string;
+  courseTags?: string[] | string;
+  contactPhone?: string;
+  website?: string;
+  locationLink?: string;
+  accreditation?: string;
+  ranking?: string | number;
+  hasHostel?: boolean;
+  facilities?: string[] | string;
+  quotas?: string[] | string;
+};
+
+type CollegeRequestItem = {
+  _id: string;
+  status?: "pending" | "approved" | "rejected";
+  actionType?: "create" | "update" | "delete";
+  updatedAt?: string;
+  payload?: Record<string, unknown> | null;
+};
+
+type CourseRequestItem = {
+  _id: string;
+  status?: "pending" | "approved" | "rejected";
+  actionType?: "create" | "update" | "delete";
+  updatedAt?: string;
+  payload?: Record<string, unknown> | null;
 };
 
 type PortalState = {
   request: AccessRequest | null;
   college: CollegeProfile | null;
   enquiries: Array<{ _id: string }>;
-  collegeRequests: Array<{ _id: string }>;
-  courseRequests: Array<{ _id: string }>;
+  collegeRequests: CollegeRequestItem[];
+  courseRequests: CourseRequestItem[];
 };
 
 const getWordCount = (value = "") =>
@@ -66,6 +103,7 @@ export default function CollegeDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  useStatusToast(status);
   const [requestForm, setRequestForm] = useState({
     email: "",
     phone: "",
@@ -73,6 +111,41 @@ export default function CollegeDashboardPage() {
   });
   const wordCount = getWordCount(requestForm.message);
   const canSubmitRequest = Boolean(requestForm.message.trim()) && wordCount <= 50;
+
+  const loadDashboard = useCallback(
+    async (authToken: string) => {
+      try {
+        setLoading(true);
+        const headers = withAuth(authToken);
+        const [requestData, collegeData, enquiryData, collegeRequestData, courseRequestData] =
+          await Promise.all([
+            request("/api/users/college-access-request", headers).catch(() => ({ request: null })),
+            request("/api/users/my-college", headers).catch(() => ({ college: null })),
+            request("/api/users/college-enquiries", headers).catch(() => ({ enquiries: [] })),
+            request("/api/users/college-add-requests", headers).catch(() => ({ requests: [] })),
+            request("/api/users/course-add-requests", headers).catch(() => ({ requests: [] })),
+          ]);
+
+        setPortalState({
+          request: (requestData.request as AccessRequest | null) || null,
+          college: (collegeData.college as CollegeProfile | null) || null,
+          enquiries: (enquiryData.enquiries as Array<{ _id: string }>) || [],
+          collegeRequests: (collegeRequestData.requests as CollegeRequestItem[]) || [],
+          courseRequests: (courseRequestData.requests as CourseRequestItem[]) || [],
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to load dashboard";
+        setStatus({ type: "error", text: message });
+        if (message.toLowerCase().includes("not authorized")) {
+          clearAuth();
+          router.replace("/login?type=college");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -96,41 +169,8 @@ export default function CollegeDashboardPage() {
       message: "",
     });
 
-    const loadDashboard = async () => {
-      try {
-        setLoading(true);
-        const headers = withAuth(storedToken);
-        const [requestData, collegeData, enquiryData, collegeRequestData, courseRequestData] =
-          await Promise.all([
-            request("/api/users/college-access-request", headers).catch(() => ({ request: null })),
-            request("/api/users/my-college", headers).catch(() => ({ college: null })),
-            request("/api/users/college-enquiries", headers).catch(() => ({ enquiries: [] })),
-            request("/api/users/college-add-requests", headers).catch(() => ({ requests: [] })),
-            request("/api/users/course-add-requests", headers).catch(() => ({ requests: [] })),
-          ]);
-
-        setPortalState({
-          request: (requestData.request as AccessRequest | null) || null,
-          college: (collegeData.college as CollegeProfile | null) || null,
-          enquiries: (enquiryData.enquiries as Array<{ _id: string }>) || [],
-          collegeRequests: (collegeRequestData.requests as Array<{ _id: string }>) || [],
-          courseRequests: (courseRequestData.requests as Array<{ _id: string }>) || [],
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to load dashboard";
-        setStatus({ type: "error", text: message });
-        if (message.toLowerCase().includes("not authorized")) {
-          clearAuth();
-          router.replace("/login?type=college");
-          return;
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboard();
-  }, [router]);
+    void loadDashboard(storedToken);
+  }, [loadDashboard, router]);
 
   const statCards = useMemo(
     () => [
@@ -204,6 +244,8 @@ export default function CollegeDashboardPage() {
       : portalState.request?.status === "declined"
         ? "border-rose-200 bg-rose-50 text-rose-700"
         : "border-amber-200 bg-amber-50 text-amber-700";
+  const approvedCollegeRequest = portalState.collegeRequests.find((item) => item.status === "approved");
+  const approvedCourseRequest = portalState.courseRequests.find((item) => item.status === "approved");
 
   return (
     <CollegePortalShell
@@ -215,15 +257,51 @@ export default function CollegeDashboardPage() {
         </>
       }
     >
-      {status ? (
-        <div
-          className={`reveal-up delay-2 rounded-[1.1rem] border px-3.5 py-2.5 text-[13px] font-medium ${
-            status.type === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          {status.text}
+      {approvedCollegeRequest || approvedCourseRequest ? (
+        <div className="grid gap-3 xl:grid-cols-2">
+          {approvedCollegeRequest ? (
+            <article className="reveal-up delay-2 rounded-[1.2rem] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_100%)] p-4 shadow-[0_16px_28px_rgba(16,185,129,0.12)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                College Request Approved
+              </p>
+              <h2 className="mt-1.5 text-lg font-bold text-emerald-950">
+                Add College form ready
+              </h2>
+              <p className="mt-1.5 text-[13px] leading-5 text-emerald-800">
+                Admin approval is complete. You can now fill and save the college details.
+              </p>
+              <button
+                type="button"
+                onClick={() => document.getElementById("approved-college-form")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Open College Form
+                <ArrowRight className="size-4" />
+              </button>
+            </article>
+          ) : null}
+
+          {approvedCourseRequest ? (
+            <article className="reveal-up delay-3 rounded-[1.2rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff_0%,#f0f9ff_100%)] p-4 shadow-[0_16px_28px_rgba(56,189,248,0.12)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+                Course Request Approved
+              </p>
+              <h2 className="mt-1.5 text-lg font-bold text-sky-950">
+                Add Course form ready
+              </h2>
+              <p className="mt-1.5 text-[13px] leading-5 text-sky-800">
+                Course request approval is complete. You can now fill and save the course details.
+              </p>
+              <button
+                type="button"
+                onClick={() => document.getElementById("approved-course-form")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+              >
+                Open Course Form
+                <ArrowRight className="size-4" />
+              </button>
+            </article>
+          ) : null}
         </div>
       ) : null}
 
@@ -304,19 +382,81 @@ export default function CollegeDashboardPage() {
             )}
           </div>
 
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-            <Link
-              href="/college/requests"
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              <Link
+                href="/college/requests"
               className="flex items-center justify-between rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-[rgba(15,76,129,0.04)]"
             >
               Open Request Center
               <ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </section>
+              </Link>
+              <Link
+                href="/college/manage"
+                className="flex items-center justify-between rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-[rgba(15,76,129,0.04)]"
+              >
+                Open College Workspace
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </section>
 
-        <section className="space-y-3" />
+        <section className="space-y-3">
+          <article className="luxe-card reveal-up delay-3 rounded-[1.2rem] p-3.5 sm:p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-support)]">
+              Approval Queue
+            </p>
+            <h2 className="mt-1.5 text-lg font-bold text-slate-900 sm:text-xl">
+              Request Unlock Status
+            </h2>
+            <div className="mt-3 space-y-3">
+              <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Add College Request</p>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${approvedCollegeRequest ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                    {approvedCollegeRequest ? "approved" : "waiting"}
+                  </span>
+                </div>
+                <p className="mt-2 text-[13px] leading-5 text-slate-600">
+                  Once the admin approves the request, the Add College form unlocks below.
+                </p>
+              </div>
+              <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Add Course Request</p>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${approvedCourseRequest ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                    {approvedCourseRequest ? "approved" : "waiting"}
+                  </span>
+                </div>
+                <p className="mt-2 text-[13px] leading-5 text-slate-600">
+                  Once the course request is approved, the course form unlocks below and saves only to your college.
+                </p>
+              </div>
+            </div>
+          </article>
+        </section>
       </div>
+
+      {approvedCollegeRequest ? (
+        <div id="approved-college-form">
+          <CollegeDashboardAddCollegeForm
+            token={token}
+            currentUser={currentUser}
+            college={portalState.college}
+            onSaved={() => loadDashboard(token)}
+          />
+        </div>
+      ) : null}
+
+      {approvedCourseRequest && portalState.college?._id ? (
+        <div id="approved-course-form">
+          <CollegeDashboardAddCourseForm
+            token={token}
+            currentUser={currentUser}
+            college={portalState.college}
+            onSaved={() => loadDashboard(token)}
+          />
+        </div>
+      ) : null}
 
       {requestModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm">

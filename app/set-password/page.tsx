@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function SetPasswordPage() {
   const [isValidInvite, setIsValidInvite] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  useStatusToast(status);
 
   useEffect(() => {
     let isMounted = true;
@@ -167,18 +169,6 @@ export default function SetPasswordPage() {
               {isChecking ? (
                 <div className="rounded-[1.2rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-4 text-center text-sm font-medium text-[color:var(--text-muted)]">
                   Validating invite link...
-                </div>
-              ) : null}
-
-              {status ? (
-                <div
-                  className={`mb-5 rounded-[1.2rem] border px-4 py-3 text-sm font-medium ${
-                    status.type === "error"
-                      ? "border-red-200 bg-red-50 text-red-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  {status.text}
                 </div>
               ) : null}
 

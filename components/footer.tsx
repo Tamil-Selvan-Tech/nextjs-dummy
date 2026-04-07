@@ -5,7 +5,6 @@ import {
   Mail,
   MapPin,
   Phone,
-  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +25,22 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 
 export function Footer() {
   const pathname = usePathname();
+  const hiddenFooterRoutes = [
+    "/search",
+    "/search-results",
+    "/login",
+    "/login-otp",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/set-password",
+    "/verify-email",
+    "/college-dashboard",
+  ];
+  const shouldHideFooter =
+    hiddenFooterRoutes.includes(pathname) ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/college/");
   const socialLinks = [
     { href: "https://www.facebook.com/collegeEdwiser/", label: "Facebook", icon: FacebookIcon },
     { href: "https://www.collegeedwiser.com", label: "Website", icon: BadgeCheck },
@@ -33,7 +48,7 @@ export function Footer() {
     { href: "https://www.instagram.com/collegeedwiser/", label: "Instagram", icon: InstagramIcon },
   ];
 
-  if (pathname === "/search" || pathname === "/search-results" || pathname.startsWith("/admin")) {
+  if (shouldHideFooter) {
     return null;
   }
 
@@ -41,7 +56,7 @@ export function Footer() {
     <footer className="border-t border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#f7fbff_0%,#edf5fb_100%)] text-[color:var(--text-dark)]">
       <div className="page-container py-10 md:py-12">
         <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(245,250,255,0.92))] p-5 shadow-[0_18px_44px_rgba(22,50,79,0.08)] md:p-8">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.9fr] md:items-start">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.9fr] xl:items-start">
           <div className="max-w-sm">
             <BrandLogo variant="tab" textColor="dark" className="h-9" />
             <p className="mt-3 text-sm text-[color:var(--text-muted)]">
@@ -111,7 +126,7 @@ export function Footer() {
             <div>
               <h4 className="mb-3 text-sm font-bold text-[color:var(--text-dark)]">Get in Touch</h4>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+                <div className="flex items-start gap-2 text-sm text-[color:var(--text-muted)]">
                   <MapPin className="size-4 text-[color:var(--brand-primary-soft)]" />
                   <a
                     href="https://maps.app.goo.gl/XxGvX3eegjh5ekmN7"
@@ -139,7 +154,7 @@ export function Footer() {
 
             <div>
               <h4 className="mb-3 text-sm font-bold text-[color:var(--text-dark)]">Follow Us</h4>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 {socialLinks.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -161,7 +176,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-[rgba(15,76,129,0.08)] pt-6 text-sm text-[color:var(--text-muted)] md:flex-row">
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-[rgba(15,76,129,0.08)] pt-6 text-center text-sm text-[color:var(--text-muted)] md:flex-row md:text-left">
           <p>&copy; 2026 College EdwiseR. All Rights Reserved.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/privacy-policy" className="transition hover:text-[color:var(--brand-primary)]">Privacy Policy</Link>

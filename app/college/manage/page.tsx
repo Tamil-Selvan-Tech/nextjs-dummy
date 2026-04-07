@@ -17,6 +17,7 @@ import {
   normalizeRankingRangeInput,
   parseRankingRange,
 } from "@/lib/ranking-utils";
+import { useStatusToast } from "@/lib/toast";
 
 type AccessRequest = {
   status?: "pending" | "accepted" | "declined";
@@ -94,6 +95,7 @@ export default function CollegeManagePage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
+  useStatusToast(status);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -229,18 +231,6 @@ export default function CollegeManagePage() {
         </>
       }
     >
-      {status ? (
-        <div
-          className={`rounded-[1.4rem] border px-4 py-3 text-sm font-medium ${
-            status.type === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          {status.text}
-        </div>
-      ) : null}
-
       {blocked ? (
         <article className="luxe-card p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

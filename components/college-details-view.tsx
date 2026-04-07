@@ -78,6 +78,34 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     .filter(Boolean)
     .join(", ");
   const contactNumber = college.contactPhone?.trim() || college.alternatePhone?.trim() || "";
+  const rankingDisplay = String(college.ranking || "")
+    .split(/\s*[-–—]+\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(" - ") || "Not available";
+
+  const normalizedRankingDisplay = String(college.ranking || "")
+    .replace(/[\u2013\u2014]/g, "-")
+    .split(/\s*-\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(" - ") || "Not available";
+  const rankingCardParts = (() => {
+    const normalized = String(college.ranking || "").replace(/[\u2013\u2014]/g, "-");
+    const parts = normalized.split("-").map((item) => item.trim());
+
+    return {
+      start: parts[0] || "",
+      end: parts[1] || "",
+    };
+  })();
+  const fixedRankingDisplay = (() => {
+    if (rankingCardParts.start && rankingCardParts.end) {
+      return `${rankingCardParts.start} - ${rankingCardParts.end}`;
+    }
+
+    return rankingCardParts.start || rankingCardParts.end || "Not available";
+  })();
 
   const formatMoney = (value?: unknown) => {
     if (typeof value !== "string" && typeof value !== "number") {
@@ -161,6 +189,66 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
         `Special consideration may be available for quota-based and need-based applicants.`,
         `Fee planning support is useful when comparing ${feesRange.toLowerCase()} across courses.`,
       ];
+  const courseTags = (college.courseTags || []).filter(Boolean);
+  const hostelDetails = (college.hostelDetails as Record<string, unknown> | undefined) || {};
+  const hostelInternet =
+    (hostelDetails.internet as Record<string, unknown> | undefined) || {};
+  const hostelFees =
+    (hostelDetails.hostelFees as Record<string, unknown> | undefined) || {};
+  const hostelFacilityOptions = Array.isArray(hostelDetails.facilityOptions)
+    ? hostelDetails.facilityOptions
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    : [];
+  const overviewDetailItems = [
+    { label: "Ownership Type", value: college.ownershipType?.trim() || "Not available" },
+    { label: "University / Affiliation", value: college.university?.trim() || "Not available" },
+    { label: "Country", value: college.country?.trim() || "Not available" },
+    { label: "State", value: college.state?.trim() || "Not available" },
+    { label: "City", value: college.city?.trim() || "Not available" },
+    { label: "District", value: college.district?.trim() || "Not available" },
+    { label: "Address", value: college.address?.trim() || "Not available" },
+    { label: "Pincode", value: college.pincode?.trim() || "Not available" },
+    { label: "Website", value: college.website?.trim() || "Not available" },
+    { label: "Map Link", value: college.locationLink?.trim() || college.mapUrl?.trim() || "Not available" },
+  ];
+  const contactDetailItems = [
+    { label: "Official Email", value: college.contactEmail?.trim() || "Not available" },
+    { label: "Primary Phone", value: college.contactPhone?.trim() || "Not available" },
+    { label: "Alternate Phone", value: college.alternatePhone?.trim() || "Not available" },
+    { label: "Application Mode", value: college.applicationMode?.trim() || "Not available" },
+  ];
+  const admissionMetaItems = [
+    { label: "Application Mode", value: college.applicationMode?.trim() || "Not available" },
+    { label: "Quota Options", value: college.quotas.length ? college.quotas.join(", ") : "Not available" },
+    { label: "Official Website", value: college.website?.trim() || "Not available" },
+    { label: "Brochure", value: brochureUrl || "Not available" },
+  ];
+  const careerMetaItems = [
+    { label: "Placement Rate", value: `${college.placementRate || 0}%` },
+    { label: "Highest Package", value: formatMoney((college.placements as Record<string, unknown> | undefined)?.highestPackage) },
+    { label: "Average Package", value: formatMoney((college.placements as Record<string, unknown> | undefined)?.averagePackage) },
+    { label: "Companies Visited", value: String((college.placements as Record<string, unknown> | undefined)?.companiesVisited || "").trim() || "Not available" },
+  ];
+  const hostelMetaItems = [
+    { label: "Availability", value: String(hostelDetails.availability || (college.hasHostel ? "available" : "not_available")).replace(/_/g, " ") },
+    { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available" },
+    { label: "Hostel Fee Min", value: formatMoney(hostelFees.minAmount) },
+    { label: "Hostel Fee Max", value: formatMoney(hostelFees.maxAmount) },
+    { label: "CCTV Available", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available" },
+    { label: "Boys Rooms Count", value: String(hostelDetails.boysRoomsCount || "").trim() || "Not available" },
+    { label: "Girls Rooms Count", value: String(hostelDetails.girlsRoomsCount || "").trim() || "Not available" },
+    { label: "Water Availability", value: String(hostelDetails.waterAvailability || "").trim() || "Not available" },
+    { label: "Power Backup", value: String(hostelDetails.powerBackup || "").trim() || "Not available" },
+    { label: "WiFi Available", value: String(hostelInternet.wifiAvailable || "").trim() || "Not available" },
+    { label: "WiFi Speed", value: String(hostelInternet.speed || "").trim() || "Not available" },
+    { label: "WiFi Pricing", value: String(hostelInternet.pricing || "").trim() || "Not available" },
+    { label: "Food Availability", value: String(hostelDetails.foodAvailability || "").trim() || "Not available" },
+    { label: "Food Timings", value: String(hostelDetails.foodTimings || "").trim() || "Not available" },
+    { label: "Laundry Service", value: String(hostelDetails.laundryService || "").trim() || "Not available" },
+    { label: "Room Cleaning", value: String(hostelDetails.roomCleaningFrequency || "").trim() || "Not available" },
+    { label: "Hostel Rules", value: String(hostelDetails.rules || "").trim() || "Not available" },
+  ];
 
   const downloadBrochure = () => {
     if (brochureUrl) {
@@ -173,7 +261,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       college.university,
       `Location: ${college.district}, ${college.state}`,
       `Accreditation: ${college.accreditation}`,
-      `Ranking: ${college.ranking}`,
+      `Ranking: ${fixedRankingDisplay}`,
       `Placement Rate: ${college.placementRate}%`,
       `Hostel: ${college.hasHostel ? "Available" : "Not available"}`,
       `Facilities: ${college.facilities.join(", ")}`,
@@ -196,7 +284,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   };
 
   const topInfoCards = [
-    { label: "Ranking", value: college.ranking, icon: Trophy },
+    { label: "Ranking", value: fixedRankingDisplay, icon: Trophy },
     { label: "Placement", value: `${college.placementRate}%`, icon: BadgeCheck },
     { label: "Courses", value: String(courseCount), icon: BookOpen },
     { label: "Application Mode", value: college.applicationMode?.trim() || "Not available", icon: BadgeCheck },
@@ -417,20 +505,20 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="mt-4 grid grid-cols-3 gap-2.5 md:gap-3">
                     {topInfoCards.map((item) => {
                       const Icon = item.icon;
                       return (
                         <article
                           key={item.label}
-                          className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white/95 p-4 shadow-[0_12px_24px_rgba(22,50,79,0.05)]"
+                          className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/95 p-2.5 shadow-[0_12px_24px_rgba(22,50,79,0.05)] sm:rounded-[1.15rem] sm:p-4"
                         >
-                          <div className="flex flex-col items-center gap-3 text-center">
-                            <div className="rounded-[1rem] bg-[rgba(15,76,129,0.08)] p-2.5 text-[color:var(--brand-primary)]">
-                              <Icon className="size-[15px]" />
+                          <div className="flex flex-col items-center gap-2 text-center sm:gap-3">
+                            <div className="rounded-[0.9rem] bg-[rgba(15,76,129,0.08)] p-2 text-[color:var(--brand-primary)] sm:rounded-[1rem] sm:p-2.5">
+                              <Icon className="size-[13px] sm:size-[15px]" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                              <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)] sm:text-[9px] sm:tracking-[0.16em]">
                                 {item.label}
                               </p>
                               {Array.isArray(item.value) ? (
@@ -440,7 +528,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                                   ))}
                                 </div>
                               ) : (
-                                <p className="mt-1 whitespace-nowrap text-[13px] font-bold leading-5 text-[color:var(--text-dark)] md:text-[14px]">
+                                <p className="mt-1 break-words text-[11px] font-bold leading-4 text-[color:var(--text-dark)] sm:text-[13px] sm:leading-5 md:text-[14px]">
                                   {item.value}
                                 </p>
                               )}
@@ -615,24 +703,51 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               </div>
 
               {activeTab === "overview" ? (
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <div className="flex items-center gap-2"><GraduationCap className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Facilities</h3></div>
-                    <div className="mt-4 flex flex-wrap gap-2">{college.facilities.map((facility) => <span key={facility} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">{facility}</span>)}</div>
-                  </article>
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <div className="flex items-center gap-2"><BadgeCheck className="size-4 text-[color:var(--brand-accent-deep)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Quotas</h3></div>
-                    <div className="mt-4 flex flex-wrap gap-2">{college.quotas.map((quota) => <span key={quota} className="rounded-full bg-[rgba(255,138,61,0.1)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">{quota}</span>)}</div>
-                  </article>
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <div className="flex items-center gap-2"><BookOpen className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Streams</h3></div>
-                    <div className="mt-4 flex flex-wrap gap-2">{college.streams.map((stream) => <span key={stream} className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--text-dark)]">{stream}</span>)}</div>
-                  </article>
+                <div className="mt-6 space-y-4">
+                  <div className="grid gap-4 lg:grid-cols-1">
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Contact & Media</h3>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {contactDetailItems.map((item) => (
+                          <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
+                            <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {courseTags.length ? (
+                        <div className="mt-4">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Course Tags</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {courseTags.map((tag) => (
+                              <span key={tag} className="rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </article>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <div className="flex items-center gap-2"><GraduationCap className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Facilities</h3></div>
+                      <div className="mt-4 flex flex-wrap gap-2">{college.facilities.map((facility) => <span key={facility} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">{facility}</span>)}</div>
+                    </article>
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <div className="flex items-center gap-2"><BookOpen className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Streams</h3></div>
+                      <div className="mt-4 flex flex-wrap gap-2">{college.streams.map((stream) => <span key={stream} className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--text-dark)]">{stream}</span>)}</div>
+                    </article>
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <div className="flex items-center gap-2"><BadgeCheck className="size-4 text-[color:var(--brand-accent-deep)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Quotas</h3></div>
+                      <div className="mt-4 flex flex-wrap gap-2">{college.quotas.map((quota) => <span key={quota} className="rounded-full bg-[rgba(255,138,61,0.1)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">{quota}</span>)}</div>
+                    </article>
+                  </div>
                 </div>
               ) : null}
 
               {activeTab === "courses" ? (
-                <div className="mt-6">
+                <div className="mt-6 space-y-4">
                   <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <h2 className="text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Courses Offered</h2>
@@ -640,6 +755,10 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   </div>
                   <div className="overflow-hidden rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_16px_34px_rgba(22,50,79,0.06)]">
+                    <div className="border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
+                      Scroll horizontally to compare course details.
+                    </div>
+                    <div className="responsive-data-table">
                     <div className="grid grid-cols-12 gap-0 border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                       <div className="col-span-6">Course</div>
                       <div className="col-span-3">Total Fees</div>
@@ -678,6 +797,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -701,6 +821,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       </a>
                     </article>
                   ) : null}
+                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Career Snapshot</h3>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {careerMetaItems.map((item) => (
+                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
+                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
                 </div>
               ) : null}
 
@@ -712,30 +843,85 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       <p className="mt-2 text-lg font-bold text-[color:var(--brand-accent-deep)]">{adminFeeRange}</p>
                     </div>
                   ) : null}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Fee Summary</h3>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">General Fee Range</p>
+                          <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{adminFeeRange || feesRange}</p>
+                        </div>
+                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Hostel Fee Range</p>
+                          <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{`${formatMoney(hostelFees.minAmount)} - ${formatMoney(hostelFees.maxAmount)}`}</p>
+                        </div>
+                      </div>
+                    </article>
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Downloads</h3>
+                      <div className="mt-4 grid gap-3">
+                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Brochure URL</p>
+                          <p className="mt-1 break-all text-sm font-semibold text-[color:var(--text-dark)]">{brochureUrl || "Not available"}</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
                 </div>
               ) : null}
 
               {activeTab === "admission" ? (
-                <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                  {admissionSteps.map((step, index) => (
-                    <article key={step} className="flex gap-4 rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-primary)] text-sm font-bold text-white">
-                        {index + 1}
-                      </div>
-                      <p className="pt-1 text-sm leading-6 text-[color:var(--text-muted)]">{step}</p>
-                    </article>
-                  ))}
+                <div className="mt-6 space-y-4">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {admissionSteps.map((step, index) => (
+                      <article key={step} className="flex gap-4 rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-primary)] text-sm font-bold text-white">
+                          {index + 1}
+                        </div>
+                        <p className="pt-1 text-sm leading-6 text-[color:var(--text-muted)]">{step}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Details</h3>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {admissionMetaItems.map((item) => (
+                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
+                          <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
                 </div>
               ) : null}
 
               {activeTab === "scholarships" ? (
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {scholarshipItems.map((item, index) => (
-                    <article key={`${item}-${index}`} className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">Support Track {index + 1}</p>
-                      <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{item}</p>
-                    </article>
-                  ))}
+                <div className="mt-6 space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {scholarshipItems.map((item, index) => (
+                      <article key={`${item}-${index}`} className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">Support Track {index + 1}</p>
+                        <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{item}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Recognition Snapshot</h3>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {[
+                        { label: "Ranking", value: fixedRankingDisplay },
+                        { label: "Accreditation", value: college.accreditation || "Not available" },
+                        { label: "Awards", value: college.awardsRecognitions?.trim() || "Not available" },
+                        { label: "Reviews", value: college.reviews?.trim() || "Not available" },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
+                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
                 </div>
               ) : null}
 
@@ -746,16 +932,34 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     <span className={`rounded-full px-4 py-2 text-sm font-semibold ${college.hasHostel ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{college.hasHostel ? "Hostel Available" : "Hostel Not Available"}</span>
                   </div>
                   {college.hasHostel ? (
-                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        { label: "Hostel Type", value: "Campus Residential", icon: Building2 },
-                        { label: "Connectivity", value: "WiFi & Study Zones", icon: Wifi },
-                        { label: "Safety", value: "Monitored Campus", icon: ShieldCheck },
-                        { label: "Student Access", value: "Easy College Reach", icon: MapPin },
-                      ].map((item) => {
-                        const Icon = item.icon;
-                        return <article key={item.label} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4"><div className="flex items-center gap-3"><div className="rounded-xl bg-[rgba(15,76,129,0.08)] p-2.5 text-[color:var(--brand-primary)]"><Icon className="size-4" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">{item.label}</p><p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{item.value}</p></div></div></article>;
-                      })}
+                    <div className="mt-6 space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {[
+                          { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available", icon: Building2 },
+                          { label: "Connectivity", value: String(hostelInternet.wifiAvailable || "").trim() || "Not available", icon: Wifi },
+                          { label: "Safety", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available", icon: ShieldCheck },
+                          { label: "Student Access", value: String(hostelDetails.availability || "").trim() || "Not available", icon: MapPin },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return <article key={item.label} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4"><div className="flex items-center gap-3"><div className="rounded-xl bg-[rgba(15,76,129,0.08)] p-2.5 text-[color:var(--brand-primary)]"><Icon className="size-4" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">{item.label}</p><p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{item.value}</p></div></div></article>;
+                        })}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {hostelMetaItems.map((item) => (
+                          <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
+                            <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Hostel Facilities</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {hostelFacilityOptions.length ? hostelFacilityOptions.map((item) => (
+                            <span key={item} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">{item}</span>
+                          )) : <span className="text-sm text-[color:var(--text-muted)]">Not available</span>}
+                        </div>
+                      </div>
                     </div>
                   ) : <p className="mt-5 text-sm text-[color:var(--text-muted)]">Hostel details are not available for this college.</p>}
                 </div>
@@ -827,8 +1031,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <X className="size-4" />
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto px-5 py-4">
+            <div className="max-h-[70vh] overflow-auto px-4 py-4 sm:px-5">
               <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.02)]">
+                <div className="border-b border-[rgba(15,76,129,0.08)] px-3 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
+                  Scroll horizontally to view all course columns.
+                </div>
+                <div className="responsive-data-table">
                 <div className="grid grid-cols-12 gap-3 border-b border-[rgba(15,76,129,0.08)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                   <div className="col-span-3">Course</div>
                   <div className="col-span-1">Mode</div>
@@ -888,6 +1096,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   ))}
                 </div>
+                </div>
               </div>
             </div>
           </div>
@@ -910,8 +1119,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <X className="size-4" />
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto px-5 py-4">
+            <div className="max-h-[70vh] overflow-auto px-4 py-4 sm:px-5">
               <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.02)]">
+                <div className="border-b border-[rgba(15,76,129,0.08)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
+                  Scroll horizontally to view all fee columns.
+                </div>
+                <div className="responsive-data-table">
                 <div className="grid grid-cols-12 gap-3 border-b border-[rgba(15,76,129,0.08)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                   <div className="col-span-6">Course</div>
                   <div className="col-span-2">Semester</div>
@@ -927,6 +1140,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       <div className="col-span-2 text-right text-xs text-[color:var(--text-muted)]">{course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}</div>
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
             </div>

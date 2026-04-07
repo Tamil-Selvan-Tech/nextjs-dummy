@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
+  Bell,
   Building2,
   ExternalLink,
   FileClock,
@@ -29,6 +30,7 @@ import {
   INDIA_STATE_DISTRICT_MAP,
   INDIA_STATES,
 } from "@/lib/india-location-data";
+import { showToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
@@ -200,10 +202,8 @@ const buildFeeRange = (min: string, max: string) => ({
 });
 
 const parseRankingRange = (value: string) => {
-  const parts = String(value || "")
-    .split("-")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const normalized = String(value || "").replace(/[\u2013\u2014]/g, "-");
+  const parts = normalized.split("-").map((item) => item.trim());
 
   return {
     start: parts[0] || "",
@@ -234,7 +234,7 @@ const collegeSteps = [
   "Courses",
 ];
 
-const facilityQuickOptions = ["Hostel", "Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
+const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -245,6 +245,7 @@ export default function AdminPage() {
   const [adminState, setAdminState] = useState<AdminState>(emptyState);
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [statusText, setStatusText] = useState("");
+  const [lastToastMessage, setLastToastMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCollegeForm, setShowCollegeForm] = useState(false);
   const [editCollegeId, setEditCollegeId] = useState("");
@@ -267,9 +268,16 @@ export default function AdminPage() {
   const [showSubAdminForm, setShowSubAdminForm] = useState(false);
   const [editSubAdminId, setEditSubAdminId] = useState("");
   const [subAdminForm, setSubAdminForm] = useState<SubAdminForm>(emptySubAdminForm);
+  useEffect(() => {
+    if (!statusText || statusText === lastToastMessage) return;
+    showToast(statusText, "info");
+    setLastToastMessage(statusText);
+  }, [lastToastMessage, statusText]);
+  const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [accessRequestId, setAccessRequestId] = useState("");
   const [accessGrantEmail, setAccessGrantEmail] = useState("");
   const [accessGrantCollegeIds, setAccessGrantCollegeIds] = useState<string[]>([]);
+  const [showRequestNotifications, setShowRequestNotifications] = useState(false);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
   const logoPreviewUrl = useMemo(
@@ -290,8 +298,8 @@ export default function AdminPage() {
     [collegeForm.facilities],
   );
   const hasHostelFacility = useMemo(
-    () => selectedFacilities.some((item) => item.toLowerCase() === "hostel"),
-    [selectedFacilities],
+    () => collegeForm.hostelAvailability === "available",
+    [collegeForm.hostelAvailability],
   );
   const collegeImagePreviews = useMemo(
     () =>
@@ -340,10 +348,19 @@ export default function AdminPage() {
     () => [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
       ...(canAccess("colleges")
-        ? [{ id: "colleges", label: "Colleges", icon: Building2 }]
+        ? [
+            { id: "colleges", label: "Colleges", icon: Building2 },
+            { id: "college-requests", label: "College Requests", icon: FileClock },
+          ]
+        : []),
+      ...(canAccess("courses")
+        ? [{ id: "course-requests", label: "Course Requests", icon: FileClock }]
         : []),
       ...(canAccess("users")
-        ? [{ id: "users", label: "Users", icon: UserRound }]
+        ? [
+            { id: "users", label: "Users", icon: UserRound },
+            { id: "access-requests", label: "Access Requests", icon: KeyRound },
+          ]
         : []),
       ...(canAccess("enquiries")
         ? [{ id: "enquiries", label: "Enquiries", icon: MailOpen }]
@@ -462,7 +479,7 @@ export default function AdminPage() {
   }, [availableDistricts, collegeForm.district, collegeForm.state]);
 
   useEffect(() => {
-    if (hasHostelFacility) return;
+    if (collegeForm.hostelAvailability === "available") return;
 
     setCollegeForm((prev) => ({
       ...prev,
@@ -481,7 +498,7 @@ export default function AdminPage() {
       delete next.cctvAvailable;
       return next;
     });
-  }, [hasHostelFacility]);
+  }, [collegeForm.hostelAvailability]);
 
   useEffect(() => {
     return () => {
@@ -677,6 +694,21 @@ export default function AdminPage() {
       ...prev,
       facilities: [...selectedFacilities, value].join(", "),
     }));
+  };
+
+  const addCustomFacility = () => {
+    const nextValue = customFacilityInput.trim();
+    if (!nextValue) return;
+    if (selectedFacilities.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomFacilityInput("");
+      return;
+    }
+
+    setCollegeForm((prev) => ({
+      ...prev,
+      facilities: [...selectedFacilities, nextValue].join(", "),
+    }));
+    setCustomFacilityInput("");
   };
 
   const clearCollegeFieldError = (field: string) => {
@@ -1040,20 +1072,6 @@ export default function AdminPage() {
       const savedCollegeId = String(data?.college?._id || editCollegeId || "");
       if (savedCollegeId && embeddedCourses.length > 0) {
         for (const draft of embeddedCourses) {
-          const existingCourse = draft.id
-            ? adminState.courses.find((item) => item._id === draft.id)
-            : null;
-
-          const preservedDetails = (existingCourse?.collegeDetails || []).filter((item) => {
-            const collegeId =
-              typeof item.college === "string" ? item.college : String(item.college?._id || "");
-            return collegeId && collegeId !== savedCollegeId;
-          });
-          const preservedCollegeIds = (existingCourse?.colleges || [])
-            .map((item) => String(item._id || ""))
-            .filter(Boolean)
-            .filter((item) => item !== savedCollegeId);
-
           const payload = {
             course: `${draft.courseType} - ${draft.stream} - ${draft.specialization}`,
             courseType: draft.courseType,
@@ -1071,7 +1089,7 @@ export default function AdminPage() {
             admissionProcess: draft.admissionProcess,
             description: draft.description,
             entranceExams: draft.entranceExams,
-            colleges: [...new Set([...preservedCollegeIds, savedCollegeId])],
+            colleges: [savedCollegeId],
             college: savedCollegeId,
             semesterFees: Number(draft.semesterFees || 0),
             totalFees: Number(draft.totalFees || 0),
@@ -1080,7 +1098,6 @@ export default function AdminPage() {
             intake: Number(draft.intake || 0),
             applicationFee: Number(draft.applicationFee || 0),
             collegeDetails: [
-              ...preservedDetails,
               {
                 college: savedCollegeId,
                 semesterFees: Number(draft.semesterFees || 0),
@@ -1139,6 +1156,26 @@ export default function AdminPage() {
     { label: "Pending Reviews", value: adminState.collegeRequests.length + adminState.courseRequests.length, icon: FileClock },
     { label: "Users", value: adminState.users.length, icon: UserRound },
   ];
+  const pendingRequestNotifications = [
+    ...adminState.collegeRequests
+      .filter((item) => (item.status || "pending") === "pending")
+      .map((item) => ({
+        id: `college-${item._id}`,
+        kind: "College Request",
+        name: item.payload?.name || item.requesterName || "College request",
+        email: item.requesterEmail || "-",
+        tab: "college-requests",
+      })),
+    ...adminState.courseRequests
+      .filter((item) => (item.status || "pending") === "pending")
+      .map((item) => ({
+        id: `course-${item._id}`,
+        kind: "Course Request",
+        name: item.payload?.courseName || item.payload?.course || "Course request",
+        email: item.requesterEmail || "-",
+        tab: "course-requests",
+      })),
+  ];
 
   return (
     <AdminPortalShell
@@ -1146,6 +1183,67 @@ export default function AdminPage() {
       navItems={navItems}
       activeTab={activeTab}
       onChangeTab={handleTabChange}
+      headerActions={
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowRequestNotifications((prev) => !prev)}
+            className="relative inline-flex items-center justify-center rounded-[1rem] border border-[rgba(56,189,248,0.18)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(56,189,248,0.28)] hover:bg-sky-50 sm:text-sm"
+          >
+            <Bell className="size-4" />
+            <span className="ml-2">Requests</span>
+            {pendingRequestNotifications.length > 0 ? (
+              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {pendingRequestNotifications.length}
+              </span>
+            ) : null}
+          </button>
+          {showRequestNotifications ? (
+            <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[22rem] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                    Notifications
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">College & Course Requests</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRequestNotifications(false)}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto">
+                {pendingRequestNotifications.length > 0 ? (
+                  pendingRequestNotifications.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setShowRequestNotifications(false);
+                        handleTabChange(item.tab);
+                      }}
+                      className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white px-3.5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                        {item.kind}
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">{item.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.email}</p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
+                    No pending college or course requests.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      }
     >
       {statusText ? (
         <div className="rounded-[1.3rem] border border-emerald-100 bg-[linear-gradient(135deg,#ecfdf5_0%,#d1fae5_100%)] px-4 py-3 text-sm font-medium text-emerald-900 shadow-[0_14px_28px_rgba(16,185,129,0.12)]">
@@ -1555,13 +1653,13 @@ export default function AdminPage() {
               <div className={formSectionClass}>
                 <label>
                   <span className={labelClass}>Ranking (NIRF / State rank)</span>
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                     <input className={`${inputClass} text-center`} placeholder="From" value={rankingRange.start} onChange={(event) => setCollegeForm((prev) => ({ ...prev, ranking: buildRankingRange(event.target.value, parseRankingRange(prev.ranking).end) }))} />
                     <span className="inline-flex min-w-8 justify-center text-lg font-semibold text-slate-500">-</span>
                     <input className={`${inputClass} text-center`} placeholder="To" value={rankingRange.end} onChange={(event) => setCollegeForm((prev) => ({ ...prev, ranking: buildRankingRange(parseRankingRange(prev.ranking).start, event.target.value) }))} />
                   </div>
                   <span className="mt-1.5 block text-center text-[11px] text-slate-400">
-                    Indha range-la irukkalam nu solla `25 - 50` madhiri enter pannunga
+                    Enter a ranking range like `25 - 50`
                   </span>
                 </label>
                 <label>
@@ -1597,6 +1695,27 @@ export default function AdminPage() {
                   );
                 })}
               </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  className={inputClass}
+                  placeholder="Type custom facility and press Enter"
+                  value={customFacilityInput}
+                  onChange={(event) => setCustomFacilityInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addCustomFacility();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomFacility}
+                  className={softButtonClass}
+                >
+                  Add
+                </button>
+              </div>
               <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Selected Facilities</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1620,6 +1739,17 @@ export default function AdminPage() {
                 <label>
                   <span className={labelClass}>Quotas</span>
                   <input className={inputClass} placeholder="Management, Govt, Sports..." value={collegeForm.quotas} onChange={(event) => setCollegeForm((prev) => ({ ...prev, quotas: event.target.value }))} />
+                </label>
+                <label>
+                  <span className={labelClass}>Fee Structure</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={inputClass} placeholder="Minimum fee" value={collegeForm.feeMin} onChange={(event) => setCollegeForm((prev) => ({ ...prev, feeMin: event.target.value }))} />
+                    <input className={inputClass} placeholder="Maximum fee" value={collegeForm.feeMax} onChange={(event) => setCollegeForm((prev) => ({ ...prev, feeMax: event.target.value }))} />
+                  </div>
+                  <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-500">
+                    <span>Min Fee</span>
+                    <span>Max Fee</span>
+                  </div>
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Admission Process<span className={requiredMarkClass}>*</span></span>
@@ -1670,9 +1800,25 @@ export default function AdminPage() {
                 <p className="text-sm font-semibold text-slate-900">I. Hostel Details</p>
                 <p className="text-xs text-slate-500">Hostel type, fee structure, CCTV, and hostel-specific facilities.</p>
               </div>
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCollegeForm((prev) => ({ ...prev, hostelAvailability: "available" }))}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${collegeForm.hostelAvailability === "available" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}
+                >
+                  Hostel Available
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCollegeForm((prev) => ({ ...prev, hostelAvailability: "not_available" }))}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${collegeForm.hostelAvailability === "not_available" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-600"}`}
+                >
+                  Hostel Not Available
+                </button>
+              </div>
               {!hasHostelFacility ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                  Select `Hostel` in the `Facilities` section to enable hostel details.
+                  Select `Hostel Available` to enter hostel details.
                 </div>
               ) : (
               <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -3214,4 +3360,3 @@ export default function AdminPage() {
     </AdminPortalShell>
   );
 }
-

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, LOCAL_API_BASE_URL, REMOTE_FALLBACK_BASE_URL } from "@/lib/api";
 import {
   colleges as fallbackColleges,
   courses as fallbackCourses,
@@ -12,8 +12,6 @@ const FALLBACK_IMAGE =
 const BROKEN_IMAGE_URLS = new Set([
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
 ]);
-const REMOTE_FALLBACK_BASE_URL = "https://college-edwiser-backend-nz7v.onrender.com";
-const LOCAL_FALLBACK_BASE_URL = "http://localhost:5000";
 const shouldTryRemoteFallback =
   API_BASE_URL.includes("localhost:5000") || API_BASE_URL.includes("127.0.0.1:5000");
 const shouldTryLocalFallback =
@@ -50,11 +48,11 @@ const fetchJson = async <T>(path: string) => {
   };
 
   try {
-    return await fetchFrom(API_BASE_URL);
+        return await fetchFrom(API_BASE_URL);
   } catch (error) {
     if (shouldTryLocalFallback) {
       try {
-        return await fetchFrom(LOCAL_FALLBACK_BASE_URL);
+        return await fetchFrom(LOCAL_API_BASE_URL);
       } catch {
         // fall through to remote fallback if configured
       }
@@ -239,6 +237,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       hasHostel: Boolean(item.hasHostel),
       facilities: toList(item.facilities),
       quotas: toList(item.quotas),
+      courseTags: toList(item.courseTags),
       streams: streams.length ? streams : ["General"],
       reviews: String(item.reviews || ""),
       admissionProcess: String(item.admissionProcess || ""),

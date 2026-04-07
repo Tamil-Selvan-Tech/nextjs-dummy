@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { readCurrentUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 const accountModes = {
   student: {
@@ -86,6 +87,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  useStatusToast(status);
 
   const mode = accountModes[accountType];
   const loginHref = useMemo(() => `/login?type=${accountType}`, [accountType]);
@@ -200,11 +202,11 @@ export default function SignupPage() {
                 <BrandLogo variant="tab" className="mx-auto mb-4" />
 
                 <div className="mb-5 flex justify-center">
-                  <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1">
+                  <div className="inline-flex w-full max-w-sm flex-col rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1 sm:w-auto sm:max-w-none sm:flex-row sm:rounded-full">
                     <button
                       type="button"
                       onClick={() => setAccountType("student")}
-                      className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                      className={`inline-flex items-center justify-center gap-2 rounded-[0.95rem] px-3.5 py-2.5 text-sm font-semibold transition sm:rounded-full sm:px-5 ${
                         accountType === "student"
                           ? "bg-[color:var(--brand-primary)] text-white"
                           : "text-[color:var(--text-muted)] hover:bg-white"
@@ -216,7 +218,7 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setAccountType("college")}
-                      className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                      className={`inline-flex items-center justify-center gap-2 rounded-[0.95rem] px-3.5 py-2.5 text-sm font-semibold transition sm:rounded-full sm:px-5 ${
                         accountType === "college"
                           ? "bg-[color:var(--brand-support)] text-white"
                           : "text-[color:var(--text-muted)] hover:bg-white"
@@ -231,18 +233,6 @@ export default function SignupPage() {
                 <h1 className="text-3xl font-bold text-[color:var(--text-dark)]">{mode.title}</h1>
                 <p className="mt-2 text-sm text-[color:var(--text-muted)]">{mode.subtitle}</p>
               </div>
-
-              {status ? (
-                <div
-                  className={`mb-5 rounded-[1.2rem] border px-4 py-3 text-sm font-medium ${
-                    status.type === "error"
-                      ? "border-red-200 bg-red-50 text-red-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  {status.text}
-                </div>
-              ) : null}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

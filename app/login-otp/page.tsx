@@ -12,6 +12,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 const OTP_LENGTH = 6;
 const OTP_DURATION_SECONDS = 5 * 60;
@@ -35,6 +36,7 @@ export default function LoginOtpPage() {
   const [isResending, setIsResending] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  useStatusToast(status);
 
   useEffect(() => {
     if (!emailParam) {
@@ -246,18 +248,6 @@ export default function LoginOtpPage() {
                     </div>
                   </div>
                 </div>
-
-                {status ? (
-                  <div
-                    className={`mt-5 rounded-[1.2rem] border px-4 py-3 text-sm font-medium ${
-                      status.type === "error"
-                        ? "border-red-200 bg-red-50 text-red-700"
-                        : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    }`}
-                  >
-                    {status.text}
-                  </div>
-                ) : null}
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-6">
                   <div>

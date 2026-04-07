@@ -224,7 +224,7 @@ export function Navbar() {
             </div>
           </button>
 
-          <div className="order-3 mt-2 w-full md:order-none md:mt-0 md:flex-1">
+          <div className="order-3 w-full md:order-none md:mt-0 md:flex-1">
             <SearchBar />
           </div>
 
@@ -325,7 +325,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <nav className="relative z-20 mt-3 flex flex-wrap items-center gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-nowrap">
+      <nav className="relative z-20 mt-3 flex flex-col gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-row md:flex-nowrap md:items-center">
         <button
           type="button"
           onClick={openCoursesPanel}
@@ -337,11 +337,11 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
-          className="peer w-full rounded-full border border-[rgba(255,138,61,0.35)] bg-white px-4 py-1.5 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(255,138,61,0.6)] hover:bg-[rgba(255,138,61,0.05)] md:w-auto"
+          className="peer w-full rounded-full border border-[rgba(255,138,61,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(255,138,61,0.6)] hover:bg-[rgba(255,138,61,0.05)] md:w-auto md:py-1.5"
         >
           All Courses
         </button>
-        <div className="relative z-20 min-w-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white/70 px-3 py-1.5 shadow-[0_10px_24px_rgba(22,50,79,0.04)] transition duration-300 md:block">
+        <div className="relative z-20 min-w-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white/70 px-3 py-2 shadow-[0_10px_24px_rgba(22,50,79,0.04)] transition duration-300 md:block md:py-1.5">
           <div className="scrollbar-hide relative z-30 flex w-full items-center gap-x-1 gap-y-1 overflow-x-auto whitespace-nowrap py-1 text-xs font-semibold md:flex-wrap md:justify-center md:py-0">
             {movingNavLinks.map((item, index) => (
               <span key={item.label} className="inline-flex items-center">
@@ -469,7 +469,7 @@ export function Navbar() {
         <div className="fixed inset-0 z-[1600] bg-black/35 backdrop-blur-[2px]">
           <div
             ref={panelRef}
-            className="fixed left-0 top-0 z-[1601] h-screen w-[78vw] max-w-[16rem] overflow-hidden border-r border-[#d9cfbf] bg-[linear-gradient(180deg,#fffdf8,#f6efe2)] text-slate-800 shadow-2xl sm:w-[19rem] sm:max-w-[19rem]"
+            className="fixed left-0 top-0 z-[1601] h-screen w-[84vw] max-w-[18rem] overflow-hidden border-r border-[#d9cfbf] bg-[linear-gradient(180deg,#fffdf8,#f6efe2)] text-slate-800 shadow-2xl sm:w-[19rem] sm:max-w-[19rem]"
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h3 className="font-[family:var(--font-display)] text-3xl font-bold text-gray-800">All Courses</h3>
@@ -501,9 +501,9 @@ export function Navbar() {
                     closeCoursesPanel();
                     goTo(`/explore?q=${encodeURIComponent(course)}`);
                   }}
-                  className="flex w-full items-center justify-between border-b border-gray-200 px-6 py-4 text-left text-lg font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left text-base font-medium text-gray-700 hover:bg-gray-50 sm:px-6 sm:text-lg"
                 >
-                  <span>{course}</span>
+                  <span className="min-w-0 flex-1 break-words">{course}</span>
                   <span className="text-xl text-gray-400">&rsaquo;</span>
                 </button>
               ))}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { College, Course } from "@/lib/site-data";
 import { readAuthToken, readCurrentUser } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 type EnquiryFormProps = {
   college: College;
@@ -23,6 +24,7 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
+  useStatusToast(status);
   const [formData, setFormData] = useState(() => ({
     name: currentUser?.name || "",
     email: currentUser?.email || "",
@@ -149,18 +151,6 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
         ) : (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 pb-4 sm:px-6 sm:py-6 sm:pb-4">
-            {status ? (
-              <div
-                className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${
-                  status.type === "error"
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                }`}
-              >
-                {status.text}
-              </div>
-            ) : null}
-
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Full Name *</span>

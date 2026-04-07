@@ -20,6 +20,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & {
   isSuperAdmin?: boolean;
@@ -164,6 +165,7 @@ export default function RequestedCollegeAdminPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  useStatusToast(status);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -294,12 +296,6 @@ export default function RequestedCollegeAdminPage() {
         </Link>
       }
     >
-      {status ? (
-        <div className={`rounded-[1.4rem] border px-4 py-3 text-sm font-medium ${status.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-          {status.text}
-        </div>
-      ) : null}
-
       {loading ? (
         <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="h-80 rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.05)]" />

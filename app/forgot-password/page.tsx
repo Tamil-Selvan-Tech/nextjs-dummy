@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  useStatusToast(status);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -81,12 +83,6 @@ export default function ForgotPasswordPage() {
                   Enter your email to receive a reset link.
                 </p>
               </div>
-
-              {status ? (
-                <div className="mb-5 rounded-[1.2rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                  {status.text}
-                </div>
-              ) : null}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>

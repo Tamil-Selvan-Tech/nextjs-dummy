@@ -1,11 +1,12 @@
 "use client";
 
-import { CheckCircle, MailX, Sparkles } from "lucide-react";
+import { CheckCircle, LoaderCircle, MailX, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -26,9 +27,12 @@ export default function VerifyEmailPage() {
           body: JSON.stringify({ email, token }),
         });
         setSuccess(true);
+        showToast("Email verified successfully.", "success");
         window.setTimeout(() => router.push("/login"), 1600);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Email verification failed.");
+        const message = err instanceof Error ? err.message : "Email verification failed.";
+        setError(message);
+        showToast(message, "error");
       } finally {
         setLoading(false);
       }
@@ -38,6 +42,7 @@ export default function VerifyEmailPage() {
       verify();
     } else {
       setError("Invalid verification link.");
+      showToast("Invalid verification link.", "error");
       setLoading(false);
     }
   }, [email, token, router]);
@@ -84,25 +89,31 @@ export default function VerifyEmailPage() {
 
               {loading ? (
                 <div className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-white px-6 py-8 shadow-[0_18px_40px_rgba(22,50,79,0.08)]">
-                  <p className="text-lg font-medium text-[color:var(--text-dark)]">
-                    Verifying your email...
+                  <LoaderCircle className="mx-auto mb-3 size-10 animate-spin text-[color:var(--brand-primary)]" />
+                  <p className="text-lg font-medium text-[color:var(--text-dark)]">Verifying your email...</p>
+                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                    A toast will appear once verification completes.
                   </p>
                 </div>
               ) : null}
 
               {!loading && success ? (
-                <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-6 py-8">
+                <div className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-white px-6 py-8 shadow-[0_18px_40px_rgba(22,50,79,0.08)]">
                   <CheckCircle className="mx-auto mb-3 size-10 text-emerald-600" />
-                  <h1 className="text-xl font-semibold text-emerald-700">Email verified successfully</h1>
-                  <p className="mt-2 text-sm text-emerald-700">Redirecting to login...</p>
+                  <h1 className="text-xl font-semibold text-[color:var(--text-dark)]">Email verified</h1>
+                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                    Redirecting to login. You will also see a confirmation toast.
+                  </p>
                 </div>
               ) : null}
 
               {!loading && error ? (
-                <div className="rounded-[1.5rem] border border-red-200 bg-red-50 px-6 py-8">
-                  <MailX className="mx-auto mb-3 size-10 text-red-600" />
-                  <h1 className="text-xl font-semibold text-red-700">Verification failed</h1>
-                  <p className="mt-2 text-sm text-red-700">{error}</p>
+                <div className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-white px-6 py-8 shadow-[0_18px_40px_rgba(22,50,79,0.08)]">
+                  <MailX className="mx-auto mb-3 size-10 text-rose-500" />
+                  <h1 className="text-xl font-semibold text-[color:var(--text-dark)]">Verification failed</h1>
+                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                    {error}
+                  </p>
                   <Link
                     href="/login"
                     className="mt-4 inline-block text-sm font-semibold text-[color:var(--brand-primary)] hover:text-[color:var(--brand-primary-soft)]"

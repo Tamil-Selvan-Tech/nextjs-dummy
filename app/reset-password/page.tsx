@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
+import { useStatusToast } from "@/lib/toast";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  useStatusToast(status);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,18 +104,6 @@ export default function ResetPasswordPage() {
                   Enter a strong password to secure your account.
                 </p>
               </div>
-
-              {status ? (
-                <div
-                  className={`mb-5 rounded-[1.2rem] border px-4 py-3 text-sm font-medium ${
-                    status.type === "error"
-                      ? "border-red-200 bg-red-50 text-red-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  {status.text}
-                </div>
-              ) : null}
 
               {!email || !token ? (
                 <div className="mb-5 rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
