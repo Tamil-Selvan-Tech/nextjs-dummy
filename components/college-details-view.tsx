@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import type { College, Course } from "@/lib/site-data";
 import { EnquiryForm } from "@/components/enquiry-form";
 
@@ -51,6 +52,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const hasTabInteractionRef = useRef(false);
   const [expandedCourseKey, setExpandedCourseKey] = useState<string | null>(null);
   const [expandedFeeKey, setExpandedFeeKey] = useState<string | null>(null);
+  const [showAllCourses, setShowAllCourses] = useState(false);
 
   const fees = relatedCourses.map((course) => course.totalFees);
   const cutoffs = relatedCourses.map((course) => course.cutoff);
@@ -99,13 +101,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       end: parts[1] || "",
     };
   })();
-  const fixedRankingDisplay = (() => {
-    if (rankingCardParts.start && rankingCardParts.end) {
-      return `${rankingCardParts.start} - ${rankingCardParts.end}`;
-    }
-
-    return rankingCardParts.start || rankingCardParts.end || "Not available";
-  })();
+  const fixedRankingDisplay = formatRankingRangeForDisplay(college.ranking);
 
   const formatMoney = (value?: unknown) => {
     if (typeof value !== "string" && typeof value !== "number") {
@@ -171,7 +167,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const admissionSteps = college.admissionProcess?.trim()
     ? college.admissionProcess
         .split(/[\n.]+/)
-        .map((item) => item.trim())
+        .map((item) => item.trim().replace(/^[•\-\u2022]+\s*/, ""))
         .filter(Boolean)
     : [
         "Check your preferred course, fees range, and cutoff before shortlisting.",
@@ -179,25 +175,28 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
         "Review quota options, required marks, and seat availability with the team.",
         "Complete the college application and document verification based on the chosen course.",
       ];
-  const scholarshipItems = college.scholarships?.trim()
-    ? college.scholarships
-        .split(/[\n.]+/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : [
-        `Merit-based support for strong academic profiles in ${courseCategories[0] || "top"} programs.`,
-        `Special consideration may be available for quota-based and need-based applicants.`,
-        `Fee planning support is useful when comparing ${feesRange.toLowerCase()} across courses.`,
-      ];
-  const courseTags = (college.courseTags || []).filter(Boolean);
   const hostelDetails = (college.hostelDetails as Record<string, unknown> | undefined) || {};
-  const hostelInternet =
-    (hostelDetails.internet as Record<string, unknown> | undefined) || {};
   const hostelFees =
     (hostelDetails.hostelFees as Record<string, unknown> | undefined) || {};
   const hostelFacilityOptions = Array.isArray(hostelDetails.facilityOptions)
     ? hostelDetails.facilityOptions
         .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    : [];
+  const hostelMetaItems = [
+    { label: "General Info", value: String(hostelDetails.rules || "").trim() || "Not available" },
+    { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available" },
+    {
+      label: "Hostel Fees Structure",
+      value: `${formatMoney(hostelFees.minAmount)} - ${formatMoney(hostelFees.maxAmount)}`,
+    },
+    { label: "CCTV Availability", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available" },
+    { label: "Facilities", value: hostelFacilityOptions.length ? hostelFacilityOptions.join(", ") : "Not available" },
+  ];
+  const scholarshipItems = college.scholarships?.trim()
+    ? college.scholarships
+        .split(/[•\n]+/)
+        .map((item) => item.trim())
         .filter(Boolean)
     : [];
   const overviewDetailItems = [
@@ -212,44 +211,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     { label: "Website", value: college.website?.trim() || "Not available" },
     { label: "Map Link", value: college.locationLink?.trim() || college.mapUrl?.trim() || "Not available" },
   ];
-  const contactDetailItems = [
-    { label: "Official Email", value: college.contactEmail?.trim() || "Not available" },
-    { label: "Primary Phone", value: college.contactPhone?.trim() || "Not available" },
-    { label: "Alternate Phone", value: college.alternatePhone?.trim() || "Not available" },
-    { label: "Application Mode", value: college.applicationMode?.trim() || "Not available" },
-  ];
-  const admissionMetaItems = [
-    { label: "Application Mode", value: college.applicationMode?.trim() || "Not available" },
-    { label: "Quota Options", value: college.quotas.length ? college.quotas.join(", ") : "Not available" },
-    { label: "Official Website", value: college.website?.trim() || "Not available" },
-    { label: "Brochure", value: brochureUrl || "Not available" },
-  ];
-  const careerMetaItems = [
-    { label: "Placement Rate", value: `${college.placementRate || 0}%` },
-    { label: "Highest Package", value: formatMoney((college.placements as Record<string, unknown> | undefined)?.highestPackage) },
-    { label: "Average Package", value: formatMoney((college.placements as Record<string, unknown> | undefined)?.averagePackage) },
-    { label: "Companies Visited", value: String((college.placements as Record<string, unknown> | undefined)?.companiesVisited || "").trim() || "Not available" },
-  ];
-  const hostelMetaItems = [
-    { label: "Availability", value: String(hostelDetails.availability || (college.hasHostel ? "available" : "not_available")).replace(/_/g, " ") },
-    { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available" },
-    { label: "Hostel Fee Min", value: formatMoney(hostelFees.minAmount) },
-    { label: "Hostel Fee Max", value: formatMoney(hostelFees.maxAmount) },
-    { label: "CCTV Available", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available" },
-    { label: "Boys Rooms Count", value: String(hostelDetails.boysRoomsCount || "").trim() || "Not available" },
-    { label: "Girls Rooms Count", value: String(hostelDetails.girlsRoomsCount || "").trim() || "Not available" },
-    { label: "Water Availability", value: String(hostelDetails.waterAvailability || "").trim() || "Not available" },
-    { label: "Power Backup", value: String(hostelDetails.powerBackup || "").trim() || "Not available" },
-    { label: "WiFi Available", value: String(hostelInternet.wifiAvailable || "").trim() || "Not available" },
-    { label: "WiFi Speed", value: String(hostelInternet.speed || "").trim() || "Not available" },
-    { label: "WiFi Pricing", value: String(hostelInternet.pricing || "").trim() || "Not available" },
-    { label: "Food Availability", value: String(hostelDetails.foodAvailability || "").trim() || "Not available" },
-    { label: "Food Timings", value: String(hostelDetails.foodTimings || "").trim() || "Not available" },
-    { label: "Laundry Service", value: String(hostelDetails.laundryService || "").trim() || "Not available" },
-    { label: "Room Cleaning", value: String(hostelDetails.roomCleaningFrequency || "").trim() || "Not available" },
-    { label: "Hostel Rules", value: String(hostelDetails.rules || "").trim() || "Not available" },
-  ];
-
   const downloadBrochure = () => {
     if (brochureUrl) {
       window.open(brochureUrl, "_blank", "noopener,noreferrer");
@@ -562,7 +523,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
             <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)] lg:items-start md:p-7">
               <div className="space-y-6">
                 <section className="rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.95))] p-5 shadow-[0_16px_34px_rgba(22,50,79,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_rgba(22,50,79,0.09)] md:p-6">
-                <h2 className="text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">About</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--brand-primary)] text-white shadow-[0_10px_20px_rgba(22,50,79,0.25)]">
+                    <BookOpen className="size-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">About</h2>
+                </div>
                 <p className="mt-4 text-sm leading-6 text-[color:var(--text-muted)] md:text-[15px]">{college.description}</p>
                 </section>
 
@@ -570,8 +536,8 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   {college.reviews?.trim() ? (
                     <div className="rounded-[1.2rem] border border-[rgba(255,138,61,0.2)] bg-[linear-gradient(180deg,rgba(255,245,236,0.92),rgba(255,255,255,0.98))] p-4 shadow-[0_12px_26px_rgba(255,138,61,0.12)]">
                       <div className="flex items-start gap-3">
-                        <div className="rounded-full bg-[rgba(255,138,61,0.18)] p-2 text-[color:var(--brand-accent-deep)]">
-                          <MessageCircle className="size-4" />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-accent-deep)] text-white shadow-[0_10px_20px_rgba(255,138,61,0.4)] ring-2 ring-white/70">
+                          <MessageCircle className="size-5" />
                         </div>
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Reviews</p>
@@ -581,18 +547,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   ) : null}
                   <div className={college.reviews?.trim() ? "mt-4 rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4" : "rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4"}>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Address</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(15,76,129,0.12)] text-[color:var(--brand-primary)]">
+                        <MapPin className="size-4" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Address</p>
+                    </div>
                     <p className="mt-2 text-sm leading-7 text-[color:var(--text-dark)]">{compactAddressLineOne || "Not available"}</p>
                     {compactAddressLineTwo ? (
                       <p className="text-sm leading-7 text-[color:var(--text-dark)]">{compactAddressLineTwo}</p>
                     ) : null}
                   </div>
-                  {college.awardsRecognitions?.trim() ? (
-                    <div className="mt-4 rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Awards & Recognitions</p>
-                      <p className="mt-1 text-sm leading-6 text-[color:var(--text-dark)]">{college.awardsRecognitions}</p>
-                    </div>
-                  ) : null}
                 </section>
               </div>
 
@@ -666,6 +631,19 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     Enquiry Now
                   </button>
                   <div className="mt-3 inline-flex items-center gap-2 text-xs text-[color:var(--text-muted)]"><Mail className="size-4 text-[color:var(--brand-primary)]" />Login required for submission</div>
+                  {college.awardsRecognitions?.trim() ? (
+                    <div className="mt-4 rounded-[1.15rem] border border-[rgba(15,76,129,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.98))] px-4 py-4 shadow-[0_12px_26px_rgba(22,50,79,0.06)]">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--brand-primary)] text-white shadow-[0_8px_18px_rgba(22,50,79,0.2)]">
+                          <Trophy className="size-4" />
+                        </div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Awards & Recognitions</p>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-[color:var(--text-dark)]">
+                        {college.awardsRecognitions}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </aside>
             </div>
@@ -705,43 +683,61 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               {activeTab === "overview" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-1">
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Contact & Media</h3>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {contactDetailItems.map((item) => (
-                          <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
-                            <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {courseTags.length ? (
-                        <div className="mt-4">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Course Tags</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {courseTags.map((tag) => (
-                              <span key={tag} className="rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="size-4 text-[color:var(--brand-primary)]" />
+                          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Facilities</h3>
                         </div>
-                      ) : null}
-                    </article>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <div className="flex items-center gap-2"><GraduationCap className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Facilities</h3></div>
-                      <div className="mt-4 flex flex-wrap gap-2">{college.facilities.map((facility) => <span key={facility} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">{facility}</span>)}</div>
-                    </article>
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <div className="flex items-center gap-2"><BookOpen className="size-4 text-[color:var(--brand-primary)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Streams</h3></div>
-                      <div className="mt-4 flex flex-wrap gap-2">{college.streams.map((stream) => <span key={stream} className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--text-dark)]">{stream}</span>)}</div>
-                    </article>
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <div className="flex items-center gap-2"><BadgeCheck className="size-4 text-[color:var(--brand-accent-deep)]" /><h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Quotas</h3></div>
-                      <div className="mt-4 flex flex-wrap gap-2">{college.quotas.map((quota) => <span key={quota} className="rounded-full bg-[rgba(255,138,61,0.1)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">{quota}</span>)}</div>
-                    </article>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {college.facilities.length ? (
+                            college.facilities.map((facility) => (
+                              <span key={facility} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">
+                                {facility}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-[color:var(--text-muted)]">Facilities not available</span>
+                          )}
+                        </div>
+                      </article>
+
+                      <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <div className="flex items-center gap-2">
+                          <BadgeCheck className="size-4 text-[color:var(--brand-accent-deep)]" />
+                          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Quotas</h3>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {college.quotas.length ? (
+                            college.quotas.map((quota) => (
+                              <span key={quota} className="rounded-full bg-[rgba(255,138,61,0.1)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
+                                {quota}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-[color:var(--text-muted)]">Admission quotas not available</span>
+                          )}
+                        </div>
+                      </article>
+
+                      <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="size-4 text-[color:var(--brand-primary)]" />
+                          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Streams</h3>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {college.streams.length ? (
+                            college.streams.map((stream) => (
+                              <span key={stream} className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--text-dark)]">
+                                {stream}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-[color:var(--text-muted)]">Streams not available</span>
+                          )}
+                        </div>
+                      </article>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -759,13 +755,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       Scroll horizontally to compare course details.
                     </div>
                     <div className="responsive-data-table">
-                    <div className="grid grid-cols-12 gap-0 border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                      <div className="col-span-6">Course</div>
-                      <div className="col-span-3">Total Fees</div>
-                      <div className="col-span-3 text-right">Details</div>
+                    <div className="grid grid-cols-[minmax(260px,2.2fr)_minmax(180px,1fr)_minmax(140px,0.6fr)] gap-0 border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                      <div>Course</div>
+                      <div className="justify-self-center text-center">Total Fees</div>
+                      <div className="text-right">Details</div>
                     </div>
 
-                    {groupedCourses.map((group) => {
+                    {(showAllCourses ? groupedCourses : groupedCourses.slice(0, 10)).map((group) => {
                       const totalFeesText =
                         group.minFees !== null
                           ? `Rs. ${group.minFees.toLocaleString()} - ${group.maxFees?.toLocaleString()}`
@@ -775,9 +771,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                           <button
                             type="button"
                             onClick={() => setExpandedCourseKey(group.key)}
-                            className="grid w-full grid-cols-12 items-center gap-3 px-4 py-4 text-left hover:bg-[rgba(15,76,129,0.03)]"
+                            className="grid w-full grid-cols-[minmax(260px,2.2fr)_minmax(180px,1fr)_minmax(140px,0.6fr)] items-center gap-0 px-4 py-4 text-left hover:bg-[rgba(15,76,129,0.03)]"
                           >
-                            <div className="col-span-6">
+                            <div>
                               <p className="text-base font-semibold text-[color:var(--text-dark)]">{group.key}</p>
                               <span
                                 className="mt-2 inline-flex rounded-full bg-[rgba(255,138,61,0.16)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]"
@@ -785,10 +781,10 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                                 {group.courses.length} Courses
                               </span>
                             </div>
-                            <div className="col-span-3 text-sm font-semibold text-[color:var(--brand-primary)]">
+                            <div className="justify-self-center text-center text-sm font-semibold text-[color:var(--brand-primary)]">
                               {totalFeesText}
                             </div>
-                            <div className="col-span-3 text-right text-sm font-semibold text-[color:var(--brand-primary)]">
+                            <div className="text-right text-sm font-semibold text-[color:var(--brand-primary)]">
                               <span className="underline underline-offset-4">
                                 Check Details
                               </span>
@@ -799,6 +795,18 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     })}
                     </div>
                   </div>
+                  {groupedCourses.length > 10 ? (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllCourses((prev) => !prev)}
+                        className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.18)] bg-[linear-gradient(135deg,rgba(15,76,129,0.12),rgba(56,189,248,0.12))] px-6 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] shadow-[0_12px_26px_rgba(22,50,79,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(22,50,79,0.18)]"
+                      >
+                        {showAllCourses ? "View Less" : "View More"}
+                        <ChevronRight className={`size-4 transition ${showAllCourses ? "rotate-[-90deg]" : "rotate-90"}`} />
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -808,30 +816,22 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Placement Rate</p><p className="mt-2 text-xl font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p></article>
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Highest Package</p><p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{formatMoney((college.placements as Record<string, unknown> | undefined)?.highestPackage)}</p></article>
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Average Package</p><p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{formatMoney((college.placements as Record<string, unknown> | undefined)?.averagePackage)}</p></article>
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Companies Visited</p><p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{String((college.placements as Record<string, unknown> | undefined)?.companiesVisited || "").trim() || "Not available"}</p></article>
-                  </div>
-                  {college.campusVideoUrl?.trim() ? (
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <div className="flex items-center gap-2">
-                        <Globe className="size-4 text-[color:var(--brand-primary)]" />
-                        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Campus Video</h3>
-                      </div>
-                      <a href={college.campusVideoUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex text-sm font-semibold text-[color:var(--brand-primary)] underline underline-offset-4">
-                        Watch campus video
-                      </a>
+                      <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Ownership Type</p>
+                      <p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{college.ownershipType?.trim() || "Not available"}</p>
                     </article>
-                  ) : null}
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Career Snapshot</h3>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {careerMetaItems.map((item) => (
-                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
-                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
+                    {college.campusVideoUrl?.trim() ? (
+                      <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                        <div className="flex items-center gap-2">
+                          <Globe className="size-4 text-[color:var(--brand-primary)]" />
+                          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Campus Video</h3>
                         </div>
-                      ))}
-                    </div>
-                  </article>
+                        <a href={college.campusVideoUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex text-sm font-semibold text-[color:var(--brand-primary)] underline underline-offset-4">
+                          Watch campus video
+                        </a>
+                      </article>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
@@ -857,15 +857,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         </div>
                       </div>
                     </article>
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Downloads</h3>
-                      <div className="mt-4 grid gap-3">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Brochure URL</p>
-                          <p className="mt-1 break-all text-sm font-semibold text-[color:var(--text-dark)]">{brochureUrl || "Not available"}</p>
-                        </div>
-                      </div>
-                    </article>
                   </div>
                 </div>
               ) : null}
@@ -882,44 +873,34 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       </article>
                     ))}
                   </div>
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Admission Details</h3>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {admissionMetaItems.map((item) => (
-                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
-                          <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
                 </div>
               ) : null}
 
               {activeTab === "scholarships" ? (
                 <div className="mt-6 space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {scholarshipItems.map((item, index) => (
-                      <article key={`${item}-${index}`} className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">Support Track {index + 1}</p>
-                        <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{item}</p>
-                      </article>
-                    ))}
-                  </div>
-                  <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Recognition Snapshot</h3>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      {[
-                        { label: "Ranking", value: fixedRankingDisplay },
-                        { label: "Accreditation", value: college.accreditation || "Not available" },
-                        { label: "Awards", value: college.awardsRecognitions?.trim() || "Not available" },
-                        { label: "Reviews", value: college.reviews?.trim() || "Not available" },
-                      ].map((item) => (
-                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
-                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
-                        </div>
-                      ))}
+                  <article className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-6 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Support Options</p>
+                        <h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Scholarships</h3>
+                      </div>
+                      <span className="rounded-full bg-[rgba(15,76,129,0.08)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                        {scholarshipItems.length ? `${scholarshipItems.length} types` : "Not available"}
+                      </span>
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {scholarshipItems.length ? (
+                        scholarshipItems.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]"
+                          >
+                            {item}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-[color:var(--text-muted)]">Not available</span>
+                      )}
                     </div>
                   </article>
                 </div>
@@ -933,32 +914,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   </div>
                   {college.hasHostel ? (
                     <div className="mt-6 space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {[
-                          { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available", icon: Building2 },
-                          { label: "Connectivity", value: String(hostelInternet.wifiAvailable || "").trim() || "Not available", icon: Wifi },
-                          { label: "Safety", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available", icon: ShieldCheck },
-                          { label: "Student Access", value: String(hostelDetails.availability || "").trim() || "Not available", icon: MapPin },
-                        ].map((item) => {
-                          const Icon = item.icon;
-                          return <article key={item.label} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4"><div className="flex items-center gap-3"><div className="rounded-xl bg-[rgba(15,76,129,0.08)] p-2.5 text-[color:var(--brand-primary)]"><Icon className="size-4" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">{item.label}</p><p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{item.value}</p></div></div></article>;
-                        })}
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
                         {hostelMetaItems.map((item) => (
-                          <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
+                          <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
                             <p className="mt-1 break-words text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{item.value}</p>
                           </div>
                         ))}
-                      </div>
-                      <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Hostel Facilities</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {hostelFacilityOptions.length ? hostelFacilityOptions.map((item) => (
-                            <span key={item} className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">{item}</span>
-                          )) : <span className="text-sm text-[color:var(--text-muted)]">Not available</span>}
-                        </div>
                       </div>
                     </div>
                   ) : <p className="mt-5 text-sm text-[color:var(--text-muted)]">Hostel details are not available for this college.</p>}
@@ -1032,45 +994,48 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               </button>
             </div>
             <div className="max-h-[70vh] overflow-auto px-4 py-4 sm:px-5">
-              <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.02)]">
-                <div className="border-b border-[rgba(15,76,129,0.08)] px-3 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
+              <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.16)] bg-[rgba(15,76,129,0.02)]">
+                <div className="border-b border-[rgba(15,76,129,0.16)] px-3 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
                   Scroll horizontally to view all course columns.
                 </div>
                 <div className="responsive-data-table">
-                <div className="grid grid-cols-12 gap-3 border-b border-[rgba(15,76,129,0.08)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                  <div className="col-span-3">Course</div>
-                  <div className="col-span-1">Mode</div>
-                  <div className="col-span-1 pr-3">Duration</div>
-                  <div className="col-span-1 pl-3">Cutoff</div>
-                  <div className="col-span-1">Intake</div>
-                  <div className="col-span-2">Min Qualification</div>
-                  <div className="col-span-1">Semester</div>
-                  <div className="col-span-1">Total Fee</div>
-                  <div className="col-span-1 text-right">App Fee</div>
+                <div className="grid grid-cols-[minmax(240px,2.4fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(170px,1.4fr)_minmax(130px,1.2fr)_minmax(130px,1.2fr)_minmax(110px,1fr)] gap-0 divide-x divide-[rgba(15,76,129,0.22)] border-b border-[rgba(15,76,129,0.22)] bg-[rgba(15,76,129,0.06)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                  <div className="px-3 py-2">Course</div>
+                  <div className="px-3 py-2 text-center whitespace-nowrap">Mode</div>
+                  <div className="px-3 py-2 text-center whitespace-nowrap">Duration</div>
+                  <div className="px-3 py-2 text-center whitespace-nowrap">Cutoff</div>
+                  <div className="px-3 py-2 text-center whitespace-nowrap">Intake</div>
+                  <div className="px-3 py-2 text-center whitespace-nowrap">Min Qualification</div>
+                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">Semester Fee</div>
+                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">Total Fee</div>
+                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">App Fee</div>
                 </div>
-                <div className="divide-y divide-[rgba(15,76,129,0.08)]">
+                <div className="divide-y divide-[rgba(15,76,129,0.2)]">
                   {(groupedCourses.find((group) => group.key === expandedCourseKey)?.courses || []).map((course) => (
-                    <div key={`modal-${course.id}`} className="grid grid-cols-12 gap-3 px-3 py-2 text-sm text-[color:var(--text-dark)]">
-                      <div className="col-span-3 font-semibold">{getCourseTitle(course)}</div>
-                      <div className="col-span-1 text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</div>
-                      <div className="col-span-1 pr-3 text-xs text-[color:var(--text-muted)]">{course.duration}</div>
-                      <div className="col-span-1 pl-3 text-xs text-[color:var(--text-muted)]">{course.cutoff || "-"}</div>
-                      <div className="col-span-1 text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</div>
-                      <div className="col-span-2 text-xs text-[color:var(--text-muted)]">
+                    <div key={`modal-${course.id}`} className="grid grid-cols-[minmax(240px,2.4fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(170px,1.4fr)_minmax(130px,1.2fr)_minmax(130px,1.2fr)_minmax(110px,1fr)] gap-0 divide-x divide-[rgba(15,76,129,0.16)] bg-white text-sm text-[color:var(--text-dark)]">
+                      <div className="px-3 py-3 font-semibold">{getCourseTitle(course)}</div>
+                      <div className="px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</div>
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</div>
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.cutoff || "-"}</div>
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</div>
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.minimumQualification || "-"}
                       </div>
-                      <div className="col-span-1 text-xs text-[color:var(--text-muted)]">
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.semesterFees ? `Rs. ${course.semesterFees.toLocaleString()}` : "-"}
                       </div>
-                      <div className="col-span-1 text-xs text-[color:var(--text-muted)]">
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.totalFees ? `Rs. ${course.totalFees.toLocaleString()}` : "-"}
                       </div>
-                      <div className="col-span-1 text-right text-xs text-[color:var(--text-muted)]">
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}
                       </div>
                       {course.description ? (
-                        <div className="col-span-12 rounded-[0.85rem] border border-[rgba(15,76,129,0.08)] bg-white px-3 py-2 text-xs text-[color:var(--text-muted)]">
-                          {course.description}
+                        <div className="col-span-full border-t border-[rgba(15,76,129,0.2)] bg-[rgba(15,76,129,0.02)] px-3 py-3 text-xs text-[color:var(--text-muted)]">
+                          <span className="inline-flex rounded-full bg-[rgba(15,76,129,0.1)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                            Course Description
+                          </span>
+                          <p className="mt-2 text-xs leading-5 text-[color:var(--text-muted)]">{course.description}</p>
                         </div>
                       ) : null}
                       {course.entranceExams?.length ? (
@@ -1125,19 +1090,19 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   Scroll horizontally to view all fee columns.
                 </div>
                 <div className="responsive-data-table">
-                <div className="grid grid-cols-12 gap-3 border-b border-[rgba(15,76,129,0.08)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                  <div className="col-span-6">Course</div>
-                  <div className="col-span-2">Semester</div>
-                  <div className="col-span-2">Total</div>
-                  <div className="col-span-2 text-right">App Fee</div>
+                <div className="grid grid-cols-12 gap-0 divide-x divide-[rgba(15,76,129,0.12)] border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                  <div className="col-span-6 px-4 py-3">Course</div>
+                  <div className="col-span-2 px-4 py-3">Semester</div>
+                  <div className="col-span-2 px-4 py-3">Total</div>
+                  <div className="col-span-2 px-4 py-3 text-right">App Fee</div>
                 </div>
-                <div className="divide-y divide-[rgba(15,76,129,0.08)]">
+                <div className="divide-y divide-[rgba(15,76,129,0.12)]">
                   {(groupedCourses.find((group) => group.key === expandedFeeKey)?.courses || []).map((course) => (
-                    <div key={`fee-modal-${course.id}`} className="grid grid-cols-12 gap-3 px-4 py-3 text-sm text-[color:var(--text-dark)]">
-                      <div className="col-span-6 font-semibold">{getCourseTitle(course)}</div>
-                      <div className="col-span-2 text-xs text-[color:var(--text-muted)]">{course.semesterFees ? `Rs. ${course.semesterFees.toLocaleString()}` : "-"}</div>
-                      <div className="col-span-2 text-xs text-[color:var(--text-muted)]">{course.totalFees ? `Rs. ${course.totalFees.toLocaleString()}` : "-"}</div>
-                      <div className="col-span-2 text-right text-xs text-[color:var(--text-muted)]">{course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}</div>
+                    <div key={`fee-modal-${course.id}`} className="grid grid-cols-12 gap-0 divide-x divide-[rgba(15,76,129,0.08)] bg-white text-sm text-[color:var(--text-dark)]">
+                      <div className="col-span-6 px-4 py-3 font-semibold">{getCourseTitle(course)}</div>
+                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{course.semesterFees ? `Rs. ${course.semesterFees.toLocaleString()}` : "-"}</div>
+                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{course.totalFees ? `Rs. ${course.totalFees.toLocaleString()}` : "-"}</div>
+                      <div className="col-span-2 px-4 py-3 text-right text-xs text-[color:var(--text-muted)]">{course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}</div>
                     </div>
                   ))}
                 </div>

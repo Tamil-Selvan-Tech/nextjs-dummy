@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeCheck,
   Bell,
@@ -30,6 +30,12 @@ import {
   INDIA_STATE_DISTRICT_MAP,
   INDIA_STATES,
 } from "@/lib/india-location-data";
+import {
+  formatRankingRangeForDisplay,
+  formatRankingRangeForSave,
+  isValidRankingRange,
+  normalizeRankingRangeInput,
+} from "@/lib/ranking-utils";
 import { showToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
@@ -201,26 +207,6 @@ const buildFeeRange = (min: string, max: string) => ({
   maxAmount: max,
 });
 
-const parseRankingRange = (value: string) => {
-  const normalized = String(value || "").replace(/[\u2013\u2014]/g, "-");
-  const parts = normalized.split("-").map((item) => item.trim());
-
-  return {
-    start: parts[0] || "",
-    end: parts[1] || "",
-  };
-};
-
-const buildRankingRange = (start: string, end: string) => {
-  const trimmedStart = start.trim();
-  const trimmedEnd = end.trim();
-
-  if (trimmedStart && trimmedEnd) return `${trimmedStart} - ${trimmedEnd}`;
-  if (trimmedStart) return trimmedStart;
-  if (trimmedEnd) return `- ${trimmedEnd}`;
-  return "";
-};
-
 const collegeSteps = [
   "Basic Info",
   "Location",
@@ -245,7 +231,7 @@ export default function AdminPage() {
   const [adminState, setAdminState] = useState<AdminState>(emptyState);
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [statusText, setStatusText] = useState("");
-  const [lastToastMessage, setLastToastMessage] = useState("");
+  const lastToastMessageRef = useRef("");
   const [loading, setLoading] = useState(true);
   const [showCollegeForm, setShowCollegeForm] = useState(false);
   const [editCollegeId, setEditCollegeId] = useState("");
@@ -269,10 +255,10 @@ export default function AdminPage() {
   const [editSubAdminId, setEditSubAdminId] = useState("");
   const [subAdminForm, setSubAdminForm] = useState<SubAdminForm>(emptySubAdminForm);
   useEffect(() => {
-    if (!statusText || statusText === lastToastMessage) return;
+    if (!statusText || statusText === lastToastMessageRef.current) return;
     showToast(statusText, "info");
-    setLastToastMessage(statusText);
-  }, [lastToastMessage, statusText]);
+    lastToastMessageRef.current = statusText;
+  }, [statusText]);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [accessRequestId, setAccessRequestId] = useState("");
   const [accessGrantEmail, setAccessGrantEmail] = useState("");
@@ -288,7 +274,6 @@ export default function AdminPage() {
     () => (coverImageFile ? URL.createObjectURL(coverImageFile) : collegeForm.coverImage || ""),
     [collegeForm.coverImage, coverImageFile],
   );
-  const rankingRange = useMemo(() => parseRankingRange(collegeForm.ranking), [collegeForm.ranking]);
   const selectedFacilities = useMemo(
     () =>
       collegeForm.facilities
@@ -728,6 +713,8 @@ export default function AdminPage() {
 
     if ("field" in validation && validation.field) {
       setCollegeFieldErrors({ [validation.field]: validation.message });
+      setStatusText("");
+      return;
     }
     setStatusText(validation.message);
   };
@@ -785,6 +772,18 @@ export default function AdminPage() {
       { valid: Boolean(nextCoverImage.trim()), step: 3, field: "coverImage", message: "Media: Cover image is required" },
       { valid: nextImages.length >= 2, step: 3, field: "images", message: "Media: At least 2 gallery images are required" },
       { valid: nextImages.length <= 7, step: 3, field: "images", message: "Media: Maximum 7 gallery images allowed" },
+      {
+        valid: !String(collegeForm.ranking || "").trim() || isValidRankingRange(collegeForm.ranking),
+        step: 4,
+        field: "ranking",
+        message: "Highlights: Use NIRF format like 101-150. Both numbers must be between 1 and 9999.",
+      },
+      {
+        valid: Boolean(collegeForm.feeMin.trim()) && Boolean(collegeForm.feeMax.trim()),
+        step: 6,
+        field: "feeMin",
+        message: "Admission: Minimum fee and maximum fee are required",
+      },
       { valid: Boolean(collegeForm.admissionProcess.trim()), step: 6, field: "admissionProcess", message: "Admission: Admission process is required" },
       { valid: Boolean(collegeForm.applicationMode.trim()), step: 6, field: "applicationMode", message: "Admission: Application mode is required" },
     ];
@@ -1005,7 +1004,7 @@ export default function AdminPage() {
             logo: nextLogo,
             images: nextImages,
             image: nextCoverImage,
-            ranking: collegeForm.ranking.trim(),
+            ranking: formatRankingRangeForSave(collegeForm.ranking),
             placementRate: collegeForm.placementRate.trim(),
             feesStructure: buildFeeRange(collegeForm.feeMin.trim(), collegeForm.feeMax.trim()),
             locationLink: collegeForm.locationLink.trim(),
@@ -1372,7 +1371,7 @@ export default function AdminPage() {
               {collegeStep === 0 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">A. Basic Information</p>
+                <p className="text-sm font-semibold text-slate-900">Basic Information</p>
                 <p className="text-xs text-slate-500">Mandatory college basics and overview details.</p>
               </div>
               <div className={formSectionClass}>
@@ -1413,7 +1412,7 @@ export default function AdminPage() {
               {collegeStep === 1 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">B. Location Details</p>
+                <p className="text-sm font-semibold text-slate-900">Location Details</p>
                 <p className="text-xs text-slate-500">Address and map details for the college campus.</p>
               </div>
               <div className={formSectionClass}>
@@ -1471,7 +1470,7 @@ export default function AdminPage() {
               {collegeStep === 2 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">C. Contact Details</p>
+                <p className="text-sm font-semibold text-slate-900">Contact Details</p>
                 <p className="text-xs text-slate-500">Primary contact details shown for this college.</p>
               </div>
               <div className={formSectionClass}>
@@ -1500,7 +1499,7 @@ export default function AdminPage() {
               {collegeStep === 3 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">D. Media Upload</p>
+                <p className="text-sm font-semibold text-slate-900">Media Upload</p>
                 <p className="text-xs text-slate-500">Upload logo, cover, gallery images, video, and brochure.</p>
               </div>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
@@ -1647,20 +1646,67 @@ export default function AdminPage() {
               {collegeStep === 4 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">E. Highlights Section</p>
+                <p className="text-sm font-semibold text-slate-900">Highlights Section</p>
                 <p className="text-xs text-slate-500">Highlight ranking, accreditation, reviews, and awards.</p>
               </div>
               <div className={formSectionClass}>
                 <label>
                   <span className={labelClass}>Ranking (NIRF / State rank)</span>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    <input className={`${inputClass} text-center`} placeholder="From" value={rankingRange.start} onChange={(event) => setCollegeForm((prev) => ({ ...prev, ranking: buildRankingRange(event.target.value, parseRankingRange(prev.ranking).end) }))} />
-                    <span className="inline-flex min-w-8 justify-center text-lg font-semibold text-slate-500">-</span>
-                    <input className={`${inputClass} text-center`} placeholder="To" value={rankingRange.end} onChange={(event) => setCollegeForm((prev) => ({ ...prev, ranking: buildRankingRange(parseRankingRange(prev.ranking).start, event.target.value) }))} />
+                  <div className="relative">
+                    <input
+                      className={`${getCollegeInputClass("ranking")} text-center`}
+                      placeholder="101-150"
+                      inputMode="numeric"
+                      maxLength={9}
+                      value={collegeForm.ranking}
+                      onChange={(event) => {
+                        clearCollegeFieldError("ranking");
+                        const rawValue = event.target.value;
+                        const cleanedValue = String(rawValue || "")
+                          .replace(/[\u2013\u2014]/g, "-")
+                          .replace(/[^\d-]/g, "");
+                        const digitsOnly = cleanedValue.replace(/-/g, "");
+                        let normalizedInput = "";
+
+                        if (cleanedValue.includes("-")) {
+                          normalizedInput = normalizeRankingRangeInput(cleanedValue);
+                        } else if (digitsOnly.length > 4) {
+                          normalizedInput = formatRankingRangeForSave(digitsOnly) || digitsOnly.slice(0, 4);
+                        } else {
+                          normalizedInput = digitsOnly ? `${digitsOnly}-` : "";
+                        }
+
+                        setCollegeForm((prev) => ({
+                          ...prev,
+                          ranking: normalizedInput,
+                        }));
+                      }}
+                      onBlur={() => {
+                        const formatted = formatRankingRangeForSave(collegeForm.ranking);
+                        setCollegeForm((prev) => ({ ...prev, ranking: formatted }));
+                        setCollegeFieldErrors((prev) => ({
+                          ...prev,
+                          ranking: isValidRankingRange(formatted)
+                            ? ""
+                            : "Use NIRF format like 101-150. Both numbers must be between 1 and 9999.",
+                        }));
+                      }}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center text-base font-semibold text-slate-400">
+                      -
+                    </span>
                   </div>
                   <span className="mt-1.5 block text-center text-[11px] text-slate-400">
                     Enter a ranking range like `25 - 50`
                   </span>
+                  {collegeFieldErrors.ranking ? (
+                    <span className={errorTextClass}>{collegeFieldErrors.ranking}</span>
+                  ) : null}
+                  {collegeForm.ranking ? (
+                    <span className="mt-1 block text-center text-[11px] font-medium text-slate-500">
+                      Saved as: {formatRankingRangeForDisplay(collegeForm.ranking)}
+                    </span>
+                  ) : null}
                 </label>
                 <label>
                   <span className={labelClass}>Accreditation</span>
@@ -1682,7 +1728,7 @@ export default function AdminPage() {
               {collegeStep === 5 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">F. Facilities</p>
+                <p className="text-sm font-semibold text-slate-900">Facilities</p>
                 <p className="text-xs text-slate-500">Select campus facilities and add extra ones if needed.</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1732,7 +1778,7 @@ export default function AdminPage() {
               {collegeStep === 6 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">G. Admission Info</p>
+                <p className="text-sm font-semibold text-slate-900">Admission Info</p>
                 <p className="text-xs text-slate-500">Admission flow, quotas, scholarships, and fee range details.</p>
               </div>
               <div className={formSectionClass}>
@@ -1741,15 +1787,20 @@ export default function AdminPage() {
                   <input className={inputClass} placeholder="Management, Govt, Sports..." value={collegeForm.quotas} onChange={(event) => setCollegeForm((prev) => ({ ...prev, quotas: event.target.value }))} />
                 </label>
                 <label>
-                  <span className={labelClass}>Fee Structure</span>
+                  <span className={labelClass}>Fee Structure<span className={requiredMarkClass}>*</span></span>
                   <div className="grid grid-cols-2 gap-2">
-                    <input className={inputClass} placeholder="Minimum fee" value={collegeForm.feeMin} onChange={(event) => setCollegeForm((prev) => ({ ...prev, feeMin: event.target.value }))} />
-                    <input className={inputClass} placeholder="Maximum fee" value={collegeForm.feeMax} onChange={(event) => setCollegeForm((prev) => ({ ...prev, feeMax: event.target.value }))} />
+                    <input className={getCollegeInputClass("feeMin")} placeholder="Minimum fee" value={collegeForm.feeMin} onChange={(event) => { clearCollegeFieldError("feeMin"); setCollegeForm((prev) => ({ ...prev, feeMin: event.target.value })); }} required />
+                    <input className={getCollegeInputClass("feeMax")} placeholder="Maximum fee" value={collegeForm.feeMax} onChange={(event) => { clearCollegeFieldError("feeMax"); setCollegeForm((prev) => ({ ...prev, feeMax: event.target.value })); }} required />
                   </div>
                   <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-500">
                     <span>Min Fee</span>
                     <span>Max Fee</span>
                   </div>
+                  {collegeFieldErrors.feeMin || collegeFieldErrors.feeMax ? (
+                    <span className={errorTextClass}>
+                      {collegeFieldErrors.feeMin || collegeFieldErrors.feeMax}
+                    </span>
+                  ) : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Admission Process<span className={requiredMarkClass}>*</span></span>
@@ -2085,7 +2136,6 @@ export default function AdminPage() {
                               setEmbeddedCourseForm((prev) => ({
                                 ...prev,
                                 entranceExamsEnabled: false,
-                                entranceExams: [emptyCourseExam()],
                               }))
                             }
                             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700"
@@ -2331,7 +2381,7 @@ export default function AdminPage() {
                           reviews: college.reviews || "",
                           admissionProcess: college.admissionProcess || "",
                           applicationMode: college.applicationMode || "",
-                          ranking: String(college.ranking || ""),
+                          ranking: formatRankingRangeForSave(String(college.ranking || "")),
                           placementRate: String(college.placementRate || ""),
                           feeMin: rangeData.min,
                           feeMax: rangeData.max,
@@ -3013,7 +3063,17 @@ export default function AdminPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <h3 className="font-bold text-slate-900">{item.payload?.name || item.requesterName || "College request"}</h3>
-                  <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">{item.status || "pending"}</span>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
+                      item.status === "approved"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : item.status === "rejected"
+                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                          : "border-amber-200 bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {item.status || "pending"}
+                  </span>
                 </div>
                 <p className="text-sm text-slate-500">{item.requesterEmail || "-"}</p>
               </div>
@@ -3022,32 +3082,40 @@ export default function AdminPage() {
                   Review
                   <ExternalLink className="size-4" />
                 </Link>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runAction(`college-request-${item._id}`, async () => {
-                      const data = await request(`/api/admin/college-add-requests/${item._id}/status`, withAuth(token, { method: "PUT", body: JSON.stringify({ status: "approved" }) }));
-                      setStatusText(data?.message || "College request approved");
-                      await loadAdminData(token, currentUser);
-                    })
-                  }
-                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runAction(`college-request-delete-${item._id}`, async () => {
-                      const data = await request(`/api/admin/college-add-requests/${item._id}`, withAuth(token, { method: "DELETE" }));
-                      setStatusText(data?.message || "College request rejected");
-                      await loadAdminData(token, currentUser);
-                    })
-                  }
-                  className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Reject
-                </button>
+                {item.status !== "approved" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void runAction(`college-request-${item._id}`, async () => {
+                          const data = await request(`/api/admin/college-add-requests/${item._id}/status`, withAuth(token, { method: "PUT", body: JSON.stringify({ status: "approved" }) }));
+                          setStatusText(data?.message || "College request approved");
+                          await loadAdminData(token, currentUser);
+                        })
+                      }
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void runAction(`college-request-delete-${item._id}`, async () => {
+                          const data = await request(`/api/admin/college-add-requests/${item._id}`, withAuth(token, { method: "DELETE" }));
+                          setStatusText(data?.message || "College request rejected");
+                          await loadAdminData(token, currentUser);
+                        })
+                      }
+                      className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Reject
+                    </button>
+                  </>
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                    Approved
+                  </span>
+                )}
               </div>
             </article>
           ))}
@@ -3311,12 +3379,23 @@ export default function AdminPage() {
                         <td className="px-3 py-3">{item.intake || "-"}</td>
                         <td className="px-3 py-3">{item.applicationFee || "-"}</td>
                         <td className="px-3 py-3">
-                          {item.entranceExamsEnabled && item.entranceExams.some((exam) => Object.values(exam).some(Boolean))
-                            ? item.entranceExams
+                          {item.entranceExams.some((exam) => Object.values(exam).some(Boolean)) ? (
+                            <div className="space-y-2">
+                              {item.entranceExams
                                 .filter((exam) => Object.values(exam).some(Boolean))
-                                .map((exam) => exam.examName || exam.cutoffScoreOrRank || "Exam")
-                                .join(", ")
-                            : "Not needed"}
+                                .map((exam, examIndex) => (
+                                  <div key={`${item.id || item.courseType}-exam-${examIndex}`} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
+                                    <p className="font-semibold text-slate-800">{exam.examName || `Exam ${examIndex + 1}`}</p>
+                                    <p>Cutoff: {exam.cutoffScoreOrRank || "-"}</p>
+                                    <p>Weightage: {exam.weightage || "-"}</p>
+                                    <p>Paper: {exam.paperOrSyllabus || "-"}</p>
+                                    <p>Notes: {exam.preparationNotes || "-"}</p>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            "Not needed"
+                          )}
                         </td>
                         <td className="px-3 py-3">{item.university || "-"}</td>
                         <td className="px-3 py-3">

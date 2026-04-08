@@ -2,10 +2,10 @@
 
 import {
   ArrowRight,
+  BadgeCheck,
   BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
-  Compass,
   Cpu,
   GraduationCap as CourseIcon,
   Mail,
@@ -15,9 +15,7 @@ import {
   Search,
   Sparkles,
   Stethoscope,
-  TrendingUp,
 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navbar } from "@/components/navbar";
@@ -38,6 +36,8 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
   const router = useRouter();
   const [heroSearchInput, setHeroSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
+  const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
+  const [expandedSpotlightId, setExpandedSpotlightId] = useState<string | null>(null);
   const [typedSearchText, setTypedSearchText] = useState("");
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -88,12 +88,40 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
     [coursesData],
   );
   const trendingCourseCards = useMemo(() => {
+    const normalizeTrendingCourse = (value: string) => {
+      const courseName = value.trim();
+      const normalized = courseName.toUpperCase();
+
+      const aliases = [
+        { key: "B.Tech", patterns: ["B.TECH", "B E", "B.E", "BE "] },
+        { key: "MBA", patterns: ["MBA"] },
+        { key: "MBBS", patterns: ["MBBS"] },
+        { key: "MCA", patterns: ["MCA"] },
+        { key: "B.Sc", patterns: ["B.SC", "BSC"] },
+        { key: "B.Com", patterns: ["B.COM", "BCOM"] },
+        { key: "BBA", patterns: ["BBA"] },
+        { key: "BCA", patterns: ["BCA"] },
+        { key: "M.Tech", patterns: ["M.TECH", "MTECH", "M E", "M.E"] },
+        { key: "Law", patterns: ["LLB", "LLM", "LAW"] },
+      ];
+
+      const matched = aliases.find(({ patterns }) =>
+        patterns.some((pattern) => normalized === pattern || normalized.startsWith(`${pattern} `) || normalized.startsWith(`${pattern}.`)),
+      );
+
+      return matched?.key || courseName;
+    };
+
     const iconMap = {
       "B.Tech": Cpu,
       MBA: BriefcaseBusiness,
       MBBS: Stethoscope,
       MCA: CourseIcon,
       "B.Sc": Sparkles,
+      "B.Com": BriefcaseBusiness,
+      BBA: BriefcaseBusiness,
+      BCA: CourseIcon,
+      "M.Tech": Cpu,
       Law: Scale,
     } as const;
 
@@ -103,18 +131,39 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
       MBBS: "Medical Studies",
       MCA: "Tech Careers",
       "B.Sc": "Science Track",
+      "B.Com": "Commerce Track",
       Law: "Legal Studies",
       BBA: "Management Track",
       "M.Tech": "Advanced Engineering",
       BCA: "Computing Basics",
     };
 
-    const items = topCourseChips.map((course) => ({
-      ...course,
-      icon: iconMap[course.course as keyof typeof iconMap] ?? CourseIcon,
-      subtitle: subtitleMap[course.course] ?? "Student Favorite",
-      href: `/explore/course/${encodeURIComponent(course.course)}`,
-    }));
+    const preferredOrder = ["B.Tech", "MBA", "MBBS", "MCA", "B.Sc", "B.Com", "BBA", "BCA", "M.Tech", "Law"];
+
+    const normalizedTopCourses = topCourseChips.reduce<Array<{ id: string; course: string; hrefCourse: string }>>((list, course) => {
+      const normalizedCourse = normalizeTrendingCourse(course.course);
+      if (list.some((item) => item.course === normalizedCourse)) return list;
+      return [...list, { id: course.id, course: normalizedCourse, hrefCourse: course.course }];
+    }, []);
+
+    const orderedTopCourses = [
+      ...preferredOrder.filter((course) => normalizedTopCourses.some((item) => item.course === course)),
+      ...normalizedTopCourses.map((item) => item.course).filter((course) => !preferredOrder.includes(course)),
+    ];
+
+    const items = orderedTopCourses
+      .map((course) => {
+        const matchedCourse = normalizedTopCourses.find((item) => item.course === course);
+        const hrefCourse = matchedCourse?.hrefCourse || course;
+
+        return {
+          id: `${course.toLowerCase().replace(/\s+/g, "-")}-trending`,
+          course: hrefCourse,
+          icon: iconMap[course as keyof typeof iconMap] ?? CourseIcon,
+          subtitle: subtitleMap[course] ?? "Student Favorite",
+          href: `/explore/course/${encodeURIComponent(hrefCourse)}`,
+        };
+      });
 
     if (!items.some((item) => item.course === "MCA")) {
       items.push({
@@ -178,6 +227,13 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
         subtitle: subtitleMap.BCA,
         href: `/explore/course/${encodeURIComponent("BCA")}`,
       },
+      {
+        id: "bcom-trending",
+        course: "B.Com",
+        icon: BriefcaseBusiness,
+        subtitle: subtitleMap["B.Com"],
+        href: `/explore/course/${encodeURIComponent("B.Com")}`,
+      },
     ];
 
     for (const fallback of fallbackCourses) {
@@ -190,11 +246,39 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
     return items.slice(0, 6);
   }, [topCourseChips]);
 
-  const stats = [
-    { label: "Verified Colleges", value: "120+", icon: Compass },
-    { label: "High-demand Courses", value: "40+", icon: CourseIcon },
-    { label: "Career Pathways", value: "300+", icon: TrendingUp },
+  const featureCards = [
+    {
+      title: "Smart Search",
+      description: "Search colleges, courses, exams, and cities from one flow.",
+      icon: Search,
+    },
+    {
+      title: "College Compare",
+      description: "Compare top colleges side by side before you shortlist.",
+      icon: Scale,
+    },
+    {
+      title: "Course Explorer",
+      description: "Browse course fees, duration, and cutoff faster.",
+      icon: CourseIcon,
+    },
+    {
+      title: "Top Colleges",
+      description: "Browse spotlight colleges with details, location, and quick access.",
+      icon: Sparkles,
+    },
+    {
+      title: "Verified Profiles",
+      description: "See approved college details, fees, facilities, and rankings in one place.",
+      icon: BadgeCheck,
+    },
+    {
+      title: "Ranking View",
+      description: "See college rankings in a clean range format directly on detail pages.",
+      icon: BadgeCheck,
+    },
   ];
+  const featureMarqueeItems = useMemo(() => [...featureCards, ...featureCards], [featureCards]);
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter((college) => college.isBestCollege);
     const additionalColleges = collegesData.filter((college) => !college.isBestCollege).slice(0, 4);
@@ -223,12 +307,15 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
   }, []);
 
   useEffect(() => {
+    if (isSpotlightPaused) return;
     const timer = window.setInterval(() => {
+      setExpandedSpotlightId(null);
       setActiveAction((current) => (current + 1) % Math.max(spotlightColleges.length, 1));
     }, 2800);
 
     return () => window.clearInterval(timer);
-  }, [spotlightColleges.length]);
+  }, [isSpotlightPaused, spotlightColleges.length]);
+
 
   useEffect(() => {
     let itemIndex = 0;
@@ -279,45 +366,33 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
 
   return (
     <>
-      <section className="relative overflow-hidden text-[color:var(--text-dark)]">
+      <section className="relative overflow-hidden bg-white text-[color:var(--text-dark)]">
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_56%,#edf5fb_100%)]" />
-          <div className="absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(60,126,182,0.12)] blur-3xl" />
-          <div className="absolute right-[4%] top-8 h-40 w-40 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
-          <div className="hero-grid absolute inset-0 opacity-[0.07]" />
+          <div className="absolute inset-0 bg-[url('/college-hero-v2.jpg')] bg-cover bg-center opacity-[0.26]" />
+          <div className="absolute inset-0 bg-white/55" />
         </div>
 
         <div className="relative z-10">
           <Navbar />
 
-          <div className="page-container pb-20 pt-8 md:pb-24 md:pt-10">
-            <div className="grid items-start gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-9">
-              <div className="max-w-5xl">
-                <div className="reveal-up">
-                  <div className="relative max-w-[38rem] overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.14)] bg-white/90 shadow-[0_22px_50px_rgba(22,50,79,0.12)]">
-                    <div className="relative aspect-[16/9] w-full">
-                      <Image
-                        src="/college-hero-v2.jpg"
-                        alt="College campus building"
-                        fill
-                        priority
-                        sizes="(max-width: 1024px) 100vw, 560px"
-                        className="object-cover object-top"
-                      />
-                    </div>
-                  </div>
-                </div>
+          <div className="page-container-full pb-20 pt-8 md:pb-24 md:pt-10">
+            <div className="space-y-4">
+              <div className="reveal-up w-full" />
 
-                <div className="reveal-up delay-3 mt-6 max-w-[42rem] rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,247,255,0.98))] p-4 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                    <div className="group relative flex-1">
-                      <div className="pointer-events-none absolute inset-y-1.5 left-1.5 flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(255,138,61,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
+              <div className="reveal-up mx-auto -mt-1 mb-3 w-full px-2">
+                <div className="relative py-6 sm:py-8">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
+                  <div className="pointer-events-none absolute -right-10 top-6 h-28 w-28 rounded-full bg-[rgba(255,138,61,0.18)] blur-3xl" />
+                  <div className="relative flex flex-col gap-4 md:flex-row md:items-center">
+                    <div className="hero-search-shell group relative w-full md:w-[75%] md:flex-none">
+                      <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.8),transparent_60%)] opacity-70" />
+                      <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-[3] flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(255,138,61,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
                         <Search className="size-4" />
                       </div>
 
                       {!heroSearchInput ? (
-                        <div className="pointer-events-none absolute inset-y-0 left-14 right-5 flex items-center overflow-hidden">
-                          <div className="text-[11px] font-medium text-[color:var(--text-muted)] sm:text-xs md:text-[13px]">
+                        <div className="pointer-events-none absolute inset-y-0 left-14 right-5 z-[2] flex items-center overflow-hidden">
+                          <div className="text-[13px] font-medium text-[color:var(--text-muted)] sm:text-sm md:text-[15px]">
                             {typedSearchText}
                             <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">|</span>
                           </div>
@@ -341,65 +416,62 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                           }
                         }}
                         placeholder=""
-                        className="h-[3.35rem] w-full rounded-full border border-[rgba(15,76,129,0.14)] bg-white pl-14 pr-5 text-[13px] text-[color:var(--text-dark)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_30px_rgba(15,76,129,0.08)] outline-none transition focus:border-[color:var(--brand-primary-soft)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_36px_rgba(15,76,129,0.12)] sm:h-14 sm:text-sm"
+                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(15,76,129,0.25)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,250,255,0.96))] pl-14 pr-5 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(15,76,129,0.18)] ring-1 ring-[rgba(255,138,61,0.18)] sm:h-[3.85rem] sm:text-sm"
                       />
                     </div>
                     <button
                       type="button"
-                      onClick={handleHeroSearch}
-                      className="shine-button w-full rounded-full bg-[color:var(--brand-primary)] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(15,76,129,0.2)] transition hover:bg-[color:var(--brand-primary-soft)] md:w-auto md:px-7"
+                      onClick={() => router.push("/find")}
+                      className="shine-button w-full rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(15,76,129,0.22)] transition hover:scale-[1.01] hover:brightness-105 md:w-auto md:px-8"
                     >
-                      Start Exploring
+                      Find Colleges
                     </button>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:text-sm">
+                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:text-sm">
                     <span className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 font-semibold text-[color:var(--brand-primary)]">
                       Live search flow
                     </span>
-                    {["Top Engineering Colleges", "MBA Programs", "Medical Admissions"].map((item) => (
+                    {[
+                      { label: "Top Engineering Colleges", href: "/search-results?q=best%20engineering%20colleges" },
+                      { label: "MBA Programs", href: "/search-results?q=MBA%20programs" },
+                      { label: "Medical Admissions", href: "/search-results?q=best%20medical%20colleges" },
+                    ].map((item) => (
                       <button
-                        key={item}
+                        key={item.label}
                         type="button"
-                        onClick={() => router.push(`/explore?q=${encodeURIComponent(item)}`)}
+                        onClick={() => router.push(item.href)}
                         className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 transition hover:border-[rgba(15,76,129,0.2)] hover:bg-[rgba(15,76,129,0.04)]"
                       >
-                        {item}
+                        {item.label}
                       </button>
                     ))}
                   </div>
-                </div>
 
-                <div className="reveal-up delay-4 mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {stats.map((stat) => {
-                    const Icon = stat.icon;
-                    return (
-                      <article
-                        key={stat.label}
-                        className="overflow-hidden rounded-[1.5rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] px-4 py-4 shadow-[0_18px_38px_rgba(22,50,79,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(22,50,79,0.12)]"
-                      >
-                        <div className="mb-3 h-1.5 w-16 rounded-full bg-[linear-gradient(90deg,var(--brand-primary),var(--brand-accent))]" />
-                        <div className="flex flex-col items-center gap-3 text-center">
-                          <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(15,76,129,0.12),rgba(255,255,255,0.92))] p-2.5 text-[color:var(--brand-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-                            <Icon className="size-4" />
+                  <div className="feature-marquee mt-5 pl-20 md:pl-28">
+                    <div className="marquee-track">
+                      {featureMarqueeItems.map((item, index) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={`${item.title}-${index}`} className="feature-pill marquee-item">
+                            <span className="feature-pill-icon">
+                              <Icon className="size-4" />
+                            </span>
+                            <div>
+                              <p className="feature-pill-title">{item.title}</p>
+                              <p className="feature-pill-desc">{item.description}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)] sm:text-[1.45rem]">
-                              {stat.value}
-                            </p>
-                            <p className="text-[11px] font-medium text-[color:var(--text-muted)] sm:text-xs">
-                              {stat.label}
-                            </p>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="reveal-up delay-3">
-                <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
+              <div className="mx-auto w-full max-w-[1260px]">
+                <div className="reveal-up delay-3 mt-8 pt-3 grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
                       Top College Flow
@@ -416,7 +488,11 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     </div>
                   </div>
                   <div className="mt-4 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(15,76,129,0.05),rgba(255,138,61,0.08))] p-4">
-                    <div className="relative mb-4 h-36 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))]">
+                    <div
+                      className="relative h-40 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-44"
+                      onMouseEnter={() => setIsSpotlightPaused(true)}
+                      onMouseLeave={() => setIsSpotlightPaused(false)}
+                    >
                       <div
                         className="flex h-full transition-transform duration-700 ease-out"
                         style={{ transform: `translateX(-${activeAction * 100}%)` }}
@@ -458,26 +534,83 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">Top College Details</p>
-                    <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">
-                      {activeCollege?.description}
-                    </p>
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] shadow-[0_10px_20px_rgba(22,50,79,0.06)]">
-                        {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : ""}
-                      </span>
-                      <span className="rounded-full bg-[rgba(255,138,61,0.12)] px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
-                        {activeCollege ? `${activeCollege.placementRate}% Placement` : ""}
-                      </span>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[color:var(--text-dark)]">
+                          {activeCollege?.name || "Top College"}
+                        </p>
+                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                          <MapPin className="size-3.5" />
+                          {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => router.push("/explore?view=colleges")}
-                        className="inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                        onClick={() =>
+                          setExpandedSpotlightId((current) =>
+                            current === activeCollege?.id ? null : (activeCollege?.id ?? null),
+                          )
+                        }
+                        className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
                       >
-                        Browse Colleges
-                        <ArrowRight className="size-3.5" />
+                        {expandedSpotlightId === activeCollege?.id ? "Show less" : "Show more"}
                       </button>
                     </div>
+                    {expandedSpotlightId === activeCollege?.id ? (
+                      <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
+                        <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+                          {activeCollege?.description || "Top college details not available."}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
+                      Trending Courses
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/explore")}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--brand-primary)]"
+                    >
+                      View all
+                      <ArrowRight className="size-3.5" />
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                    {trendingCourseCards.map((course) => {
+                      const Icon = course.icon;
+                      return (
+                        <button
+                          key={course.id}
+                          type="button"
+                          onClick={() => router.push(course.href)}
+                          className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,138,61,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
+                              <Icon className="size-[13px]" />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <p className="font-[family:var(--font-display)] text-[1.05rem] leading-none text-[color:var(--text-dark)]">
+                              {course.course}
+                            </p>
+                            <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+                              {course.subtitle}
+                            </p>
+                          </div>
+                          <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--brand-primary)]">
+                            Explore Course
+                            <ArrowRight className="size-[13px] text-[color:var(--brand-accent)] transition group-hover:translate-x-0.5" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                   </div>
                 </div>
               </div>
@@ -487,7 +620,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 max-w-[1200px]">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
@@ -513,12 +646,12 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
               onScroll={() =>
                 syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
               }
-              className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
+              className="flex gap-3 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
             >
               {exploreCourseCards.slice(0, 10).map((course) => (
                 <article
                   key={course.id}
-                  className="luxe-card min-w-[14.5rem] shrink-0 p-4 sm:min-w-[18rem] lg:min-w-[20rem]"
+                  className="luxe-card min-w-[14rem] shrink-0 p-4 sm:min-w-[17.25rem] lg:min-w-[19rem]"
                 >
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
@@ -688,56 +821,8 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
       </section>
       )}
 
-      <section className="section-shell page-section bg-[linear-gradient(180deg,#f8fbff_0%,#eef6fc_100%)] text-slate-800">
-        <div className="page-container">
-          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-            <div>
-              <p className="editorial-kicker">Trending Courses</p>
-              <h2 className="display-title mt-5 max-w-xl text-balance text-[color:var(--text-dark)]">
-                Courses students keep returning to first.
-              </h2>
-              <p className="mt-4 max-w-lg text-base leading-8 text-[color:var(--text-muted)]">
-                These programs are highlighted with stronger visual identity so each
-                stream feels easier to scan and quicker to explore.
-              </p>
-            </div>
-
-            <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-3">
-              {trendingCourseCards.map((course) => {
-                const Icon = course.icon;
-                return (
-                <button
-                  key={course.id}
-                  type="button"
-                  onClick={() => router.push(course.href)}
-                  className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,138,61,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
-                      <Icon className="size-[13px]" />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <p className="font-[family:var(--font-display)] text-[1.05rem] leading-none text-[color:var(--text-dark)]">
-                      {course.course}
-                    </p>
-                    <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
-                      {course.subtitle}
-                    </p>
-                  </div>
-                  <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--brand-primary)]">
-                    Explore Course
-                    <ArrowRight className="size-[13px] text-[color:var(--brand-accent)] transition group-hover:translate-x-0.5" />
-                  </div>
-                </button>
-              )})}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 max-w-[1300px]">
           <div className="mx-auto max-w-4xl rounded-[2rem] border border-[rgba(16,37,78,0.1)] bg-[linear-gradient(135deg,#fffdf7,#f4ecdf)] p-6 shadow-[0_18px_36px_rgba(16,37,78,0.12)] md:p-8">
             <div className="mx-auto max-w-2xl text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">

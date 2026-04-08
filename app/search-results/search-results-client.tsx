@@ -18,25 +18,24 @@ import {
   type College,
   type Course,
 } from "@/lib/site-data";
-
-const normalizeText = (value: string) => String(value || "").trim().toLowerCase();
+import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
 
 const buildCityOptions = (colleges: College[]) =>
   Array.from(
     new Map(
       colleges.flatMap((college) => [
         [
-          `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+          `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
           {
-            id: `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+            id: `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
             name: college.district,
             state: college.state,
           },
         ],
         [
-          `${college.state.toLowerCase()}-state`,
+          `${normalizeSearchText(college.state)}-state`,
           {
-            id: `${college.state.toLowerCase()}-state`,
+            id: `${normalizeSearchText(college.state)}-state`,
             name: college.state,
             state: "State",
           },
@@ -69,39 +68,28 @@ export function SearchResultsClient({
   const cityOptions = useMemo(() => buildCityOptions(colleges), [colleges]);
 
   const query = initialKeyword.trim();
-  const normalizedQuery = normalizeText(query);
+  const normalizedQuery = normalizeSearchText(query);
+  const rankedResults = useMemo(
+    () => getRankedSearchResults(query, colleges, courses, cityOptions),
+    [cityOptions, colleges, courses, query],
+  );
 
   const matchingCities = useMemo(() => {
     if (!normalizedQuery) return [];
-
-    return cityOptions
-      .filter((city) => normalizeText(`${city.name} ${city.state}`).includes(normalizedQuery))
-      .slice(0, 18);
-  }, [cityOptions, normalizedQuery]);
+    return rankedResults.cities.slice(0, 18);
+  }, [normalizedQuery, rankedResults.cities]);
 
   const matchingColleges = useMemo(() => {
     if (!normalizedQuery) return [];
-
-    return colleges
-      .filter((college) =>
-        normalizeText(
-          `${college.name} ${college.university} ${college.description} ${college.district} ${college.state}`,
-        ).includes(normalizedQuery),
-      )
-      .slice(0, 18);
-  }, [colleges, normalizedQuery]);
+    return rankedResults.colleges.slice(0, 18);
+  }, [normalizedQuery, rankedResults.colleges]);
 
   const matchingCourses = useMemo<CourseGroup[]>(() => {
     if (!normalizedQuery) return [];
 
     const grouped = new Map<string, Course[]>();
 
-    courses
-      .filter((course) =>
-        normalizeText(
-          `${course.course} ${course.college} ${course.university} ${course.specialization} ${course.courseCategory}`,
-        ).includes(normalizedQuery),
-      )
+    rankedResults.courses
       .forEach((course) => {
         const key = course.course.trim();
         const current = grouped.get(key) || [];
@@ -112,7 +100,7 @@ export function SearchResultsClient({
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([name, rows]) => ({ name, rows }))
       .slice(0, 18);
-  }, [courses, normalizedQuery]);
+  }, [normalizedQuery, rankedResults.courses]);
 
   const totalResults = matchingCities.length + matchingColleges.length + matchingCourses.length;
 
@@ -229,6 +217,19 @@ export function SearchResultsClient({
                     ? `${totalResults} matching sections found across cities, colleges, and courses.`
                     : "Type a keyword to see matching cities, colleges, and courses."}
                 </p>
+                {query ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                      Ranked By Relevance
+                    </span>
+                    <span className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                      Location Aware
+                    </span>
+                    <span className="rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                      Intent Based Search
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               <section className="rounded-[1.35rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-4 shadow-[0_18px_38px_rgba(22,50,79,0.06)] sm:p-5">

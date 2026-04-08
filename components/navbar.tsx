@@ -185,7 +185,7 @@ export function Navbar() {
   };
 
   const mobileLinks = [
-    { label: "Find Colleges", href: "/find" },
+    { label: "About Us", href: "/about-us" },
     { label: "Explore", href: "/explore" },
     { label: "Contact", href: "/contact" },
     { label: "Privacy Policy", href: "/privacy-policy" },
@@ -201,7 +201,7 @@ export function Navbar() {
   ];
 
   return (
-    <header className="page-container relative z-30 pt-4 pb-2 text-[color:var(--text-dark)] md:pt-6 md:pb-0">
+    <header className="page-container-full relative z-30 pt-4 pb-2 text-[color:var(--text-dark)] md:pt-6 md:pb-0">
       {pathname !== "/" ? <div className="mb-3"><PageBackButton /></div> : null}
       <div className="rounded-[1.75rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-3 shadow-[0_16px_40px_rgba(22,50,79,0.08)] md:px-4">
         <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
@@ -231,11 +231,11 @@ export function Navbar() {
           <div className="ml-auto hidden items-center gap-4 text-sm md:flex">
             <button
               type="button"
-              onClick={() => goTo("/find")}
+              onClick={() => goTo("/about-us")}
               className="flex items-center gap-1 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-2 font-semibold transition hover:bg-[rgba(15,76,129,0.04)]"
             >
               <CircleHelp className="size-4 text-[color:var(--brand-accent-deep)]" />
-              Find Colleges
+              About
             </button>
             <button
               type="button"

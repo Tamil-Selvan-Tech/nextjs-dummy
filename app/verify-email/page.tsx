@@ -13,6 +13,9 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
   const token = searchParams.get("token");
+  const mode = searchParams.get("mode");
+  const requestId = searchParams.get("requestId");
+  const redirect = searchParams.get("redirect") || "/login";
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -21,14 +24,28 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     const verify = async () => {
       try {
-        await request("/api/users/verify-email", {
+        const isCollegeRequestMode = mode === "college-request";
+        const endpoint = isCollegeRequestMode
+          ? "/api/users/verify-college-request"
+          : "/api/users/verify-email";
+        const body = isCollegeRequestMode
+          ? { email, token, requestId }
+          : { email, token };
+
+        const data = await request<{ message?: string }>(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, token }),
+          body: JSON.stringify(body),
         });
         setSuccess(true);
-        showToast("Email verified successfully.", "success");
-        window.setTimeout(() => router.push("/login"), 1600);
+        showToast(
+          data?.message ||
+            (isCollegeRequestMode
+              ? "Email confirmed. College dashboard form unlocked."
+              : "Email verified successfully."),
+          "success",
+        );
+        window.setTimeout(() => router.push(redirect), 1600);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Email verification failed.";
         setError(message);
@@ -38,14 +55,14 @@ export default function VerifyEmailPage() {
       }
     };
 
-    if (email && token) {
+    if (email && token && (mode !== "college-request" || requestId)) {
       verify();
     } else {
       setError("Invalid verification link.");
       showToast("Invalid verification link.", "error");
       setLoading(false);
     }
-  }, [email, token, router]);
+  }, [email, token, mode, requestId, redirect, router]);
 
   return (
     <section className="relative min-h-screen overflow-hidden text-[color:var(--text-dark)]">
@@ -102,7 +119,7 @@ export default function VerifyEmailPage() {
                   <CheckCircle className="mx-auto mb-3 size-10 text-emerald-600" />
                   <h1 className="text-xl font-semibold text-[color:var(--text-dark)]">Email verified</h1>
                   <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                    Redirecting to login. You will also see a confirmation toast.
+                    Redirecting now. You will also see a confirmation toast.
                   </p>
                 </div>
               ) : null}

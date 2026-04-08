@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Send, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CollegePortalShell } from "@/components/college-portal-shell";
 import {
@@ -14,30 +13,33 @@ import {
 import { request, withAuth } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
 
-type AccessRequest = {
-  _id?: string;
-  status?: string;
-  message?: string;
-  updatedAt?: string;
-};
-
 type UserRequest = {
   _id: string;
   actionType?: "create" | "update" | "delete";
   status?: "pending" | "approved" | "rejected";
   updatedAt?: string;
+  approvalMessage?: string;
+  verificationStatus?: "pending" | "verified" | "not_required";
+  verificationMailSentAt?: string;
   payload?: Record<string, unknown> | null;
+};
+
+type CollegeProfile = {
+  _id?: string;
+  name?: string;
+  university?: string;
+  state?: string;
+  district?: string;
 };
 
 export default function CollegeRequestsPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
   const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(null);
-  const [accessRequest, setAccessRequest] = useState<AccessRequest | null>(null);
+  const [collegeProfile, setCollegeProfile] = useState<CollegeProfile | null>(null);
   const [collegeRequests, setCollegeRequests] = useState<UserRequest[]>([]);
-  const [courseRequests, setCourseRequests] = useState<UserRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState<null | "college" | "course">(null);
+  const [submitting, setSubmitting] = useState<null | "college">(null);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   useStatusToast(status);
   const [collegeForm, setCollegeForm] = useState({
@@ -46,14 +48,6 @@ export default function CollegeRequestsPage() {
     university: "",
     state: "",
     district: "",
-    description: "",
-  });
-  const [courseForm, setCourseForm] = useState({
-    actionType: "create",
-    entityName: "",
-    collegeName: "",
-    duration: "",
-    degree: "",
     description: "",
   });
 
@@ -76,23 +70,18 @@ export default function CollegeRequestsPage() {
       ...previous,
       entityName: storedUser.name ? `${storedUser.name} College` : "College Request",
     }));
-    setCourseForm((previous) => ({
-      ...previous,
-      entityName: "Course Request",
-    }));
 
     const loadData = async () => {
       try {
         setLoading(true);
         const headers = withAuth(storedToken);
-        const [accessData, collegeData, courseData] = await Promise.all([
+        const [, myCollegeData, collegeData] = await Promise.all([
           request("/api/users/college-access-request", headers).catch(() => ({ request: null })),
+          request("/api/users/my-college", headers).catch(() => ({ college: null })),
           request("/api/users/college-add-requests", headers).catch(() => ({ requests: [] })),
-          request("/api/users/course-add-requests", headers).catch(() => ({ requests: [] })),
         ]);
-        setAccessRequest((accessData.request as AccessRequest | null) || null);
+        setCollegeProfile((myCollegeData.college as CollegeProfile | null) || null);
         setCollegeRequests((collegeData.requests as UserRequest[]) || []);
-        setCourseRequests((courseData.requests as UserRequest[]) || []);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to load requests";
         setStatus({ type: "error", text: message });
@@ -109,20 +98,36 @@ export default function CollegeRequestsPage() {
     loadData();
   }, [router]);
 
+  useEffect(() => {
+    if (!collegeProfile?._id) return;
+    setCollegeForm((previous) => ({
+      ...previous,
+      actionType: previous.actionType === "create" ? previous.actionType : "update",
+      entityName: collegeProfile.name || previous.entityName,
+      university: collegeProfile.university || previous.university,
+      state: collegeProfile.state || previous.state,
+      district: collegeProfile.district || previous.district,
+    }));
+  }, [collegeProfile]);
+
   const refreshLists = async () => {
     if (!token) return;
     const headers = withAuth(token);
-    const [collegeData, courseData] = await Promise.all([
+    const [myCollegeData, collegeData] = await Promise.all([
+      request("/api/users/my-college", headers).catch(() => ({ college: null })),
       request("/api/users/college-add-requests", headers).catch(() => ({ requests: [] })),
-      request("/api/users/course-add-requests", headers).catch(() => ({ requests: [] })),
     ]);
+    setCollegeProfile((myCollegeData.college as CollegeProfile | null) || null);
     setCollegeRequests((collegeData.requests as UserRequest[]) || []);
-    setCourseRequests((courseData.requests as UserRequest[]) || []);
   };
 
   const submitCollegeRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) return;
+    if (collegeForm.actionType === "update" && !collegeProfile?._id) {
+      setStatus({ type: "error", text: "Your college profile is not available for edit request." });
+      return;
+    }
     if (!collegeForm.entityName.trim() && collegeForm.actionType !== "delete") {
       setStatus({ type: "error", text: "College name is required." });
       return;
@@ -141,6 +146,7 @@ export default function CollegeRequestsPage() {
           body: JSON.stringify({
             actionType: collegeForm.actionType,
             entityName: collegeForm.entityName,
+            targetCollegeId: collegeForm.actionType === "update" ? collegeProfile?._id : undefined,
             payload: {
               name: collegeForm.entityName,
               university: collegeForm.university,
@@ -153,7 +159,7 @@ export default function CollegeRequestsPage() {
       );
       setStatus({ type: "success", text: data.message || "College request submitted." });
       setCollegeForm({
-        actionType: "create",
+        actionType: collegeProfile?._id ? "update" : "create",
         entityName: "",
         university: "",
         state: "",
@@ -171,64 +177,10 @@ export default function CollegeRequestsPage() {
     }
   };
 
-  const submitCourseRequest = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!token) return;
-    if (!courseForm.entityName.trim() && courseForm.actionType !== "delete") {
-      setStatus({ type: "error", text: "Course name is required." });
-      return;
-    }
-    if (!courseForm.description.trim()) {
-      setStatus({ type: "error", text: "Description is required." });
-      return;
-    }
-
-    try {
-      setSubmitting("course");
-      const data = await request(
-        "/api/users/course-add-requests",
-        withAuth(token, {
-          method: "POST",
-          body: JSON.stringify({
-            actionType: courseForm.actionType,
-            entityName: courseForm.entityName,
-            payload: {
-              course: courseForm.entityName,
-              collegeName: courseForm.collegeName,
-              duration: courseForm.duration,
-              degree: courseForm.degree,
-              description: courseForm.description,
-            },
-          }),
-        }),
-      );
-      setStatus({ type: "success", text: data.message || "Course request submitted." });
-      setCourseForm({
-        actionType: "create",
-        entityName: "",
-        collegeName: "",
-        duration: "",
-        degree: "",
-        description: "",
-      });
-      await refreshLists();
-    } catch (error) {
-      setStatus({
-        type: "error",
-        text: error instanceof Error ? error.message : "Unable to submit course request.",
-      });
-    } finally {
-      setSubmitting(null);
-    }
-  };
-
-  const deleteRequest = async (kind: "college" | "course", id: string) => {
+  const deleteRequest = async (kind: "college", id: string) => {
     if (!token) return;
     try {
-      const path =
-        kind === "college"
-          ? `/api/users/college-add-requests/${id}`
-          : `/api/users/course-add-requests/${id}`;
+      const path = `/api/users/college-add-requests/${id}`;
       const data = await request(
         path,
         withAuth(token, {
@@ -252,21 +204,74 @@ export default function CollegeRequestsPage() {
         ? "border-rose-200 bg-rose-50 text-rose-700"
         : "border-amber-200 bg-amber-50 text-amber-700";
 
-  const mergedRequests = [
-    ...collegeRequests.map((item) => ({ ...item, kind: "college" as const })),
-    ...courseRequests.map((item) => ({ ...item, kind: "course" as const })),
-  ].slice(0, 8);
+  const requestStageLabel = (item: UserRequest) => {
+    if (
+      item.status === "approved" &&
+      (item.verificationStatus === "verified" || item.verificationStatus === "not_required")
+    ) {
+      return "verified";
+    }
+    if (item.status === "approved" && item.verificationStatus === "pending") {
+      return "mail confirmation";
+    }
+    return item.status || "pending";
+  };
+
+  const mergedRequests = collegeRequests.map((item) => ({ ...item, kind: "college" as const })).slice(0, 8);
+  const canEditExistingCollege = Boolean(collegeProfile?._id);
 
   return (
     <CollegePortalShell
       title="Request Center"
-      subtitle="Track your access approval and send college or course update requests without leaving the portal."
+      subtitle="Track your access approval and send college add or edit requests without leaving the portal."
       currentUser={currentUser}
     >
       <div className="grid gap-4 xl:grid-cols-2">
         <section>
           <article className="luxe-card p-4">
             <h3 className="text-lg font-bold text-[color:var(--text-dark)]">Submit college request</h3>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setCollegeForm((previous) => ({
+                    ...previous,
+                    actionType: "create",
+                    entityName: "",
+                    university: "",
+                    state: "",
+                    district: "",
+                  }))
+                }
+                className={`rounded-[1rem] border px-4 py-3 text-left transition ${collegeForm.actionType === "create" ? "border-[color:var(--brand-primary)] bg-[rgba(15,76,129,0.06)]" : "border-[rgba(15,76,129,0.1)] bg-white"}`}
+              >
+                <p className="text-sm font-semibold text-[color:var(--text-dark)]">Add New College</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Send a fresh college creation request to admin.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCollegeForm((previous) => ({
+                    ...previous,
+                    actionType: "update",
+                    entityName: collegeProfile?.name || previous.entityName,
+                    university: collegeProfile?.university || previous.university,
+                    state: collegeProfile?.state || previous.state,
+                    district: collegeProfile?.district || previous.district,
+                  }))
+                }
+                disabled={!canEditExistingCollege}
+                className={`rounded-[1rem] border px-4 py-3 text-left transition ${collegeForm.actionType === "update" ? "border-[color:var(--brand-primary)] bg-[rgba(15,76,129,0.06)]" : "border-[rgba(15,76,129,0.1)] bg-white"} ${!canEditExistingCollege ? "cursor-not-allowed opacity-60" : ""}`}
+              >
+                <p className="text-sm font-semibold text-[color:var(--text-dark)]">Edit Our College</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Approval required before editing your existing college profile.</p>
+              </button>
+            </div>
+            {!canEditExistingCollege ? (
+              <p className="mt-2 text-xs text-amber-700">
+                `Edit Our College` becomes available only after the existing college profile is loaded. Save the college profile first and restart the backend if needed, then refresh this page.
+              </p>
+            ) : null}
             <form onSubmit={submitCollegeRequest} className="mt-3 space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -274,53 +279,41 @@ export default function CollegeRequestsPage() {
                   <input value={currentUser?.email || ""} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">College Name</label>
-                  <input value={collegeForm.entityName} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Request Type</label>
+                  <input value={collegeForm.actionType === "update" ? "Edit Our College" : "Add New College"} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
                 </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  value={collegeForm.entityName}
+                  onChange={(e) => setCollegeForm((p) => ({ ...p, entityName: e.target.value }))}
+                  placeholder={collegeForm.actionType === "update" ? "Existing college name" : "New college name"}
+                  className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
+                />
+                <input
+                  value={collegeForm.university}
+                  onChange={(e) => setCollegeForm((p) => ({ ...p, university: e.target.value }))}
+                  placeholder="University"
+                  className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
+                />
               </div>
               <textarea
                 rows={4}
                 value={collegeForm.description}
                 onChange={(e) => setCollegeForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Description or requested change"
+                placeholder={collegeForm.actionType === "update" ? "Explain what you want to edit in your college profile" : "Explain the new college you want to add"}
                 className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
               />
               <button type="submit" disabled={submitting === "college"} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)] disabled:opacity-60">
                 <Send className="size-4" />
-                {submitting === "college" ? "Submitting..." : "Submit College Request"}
+                {submitting === "college"
+                  ? "Submitting..."
+                  : collegeForm.actionType === "update"
+                    ? "Submit Edit Request"
+                    : "Submit Add Request"}
               </button>
             </form>
           </article>
-        </section>
-
-        <section>
-          <article className="luxe-card p-4">
-            <h3 className="text-lg font-bold text-[color:var(--text-dark)]">Submit course request</h3>
-            <form onSubmit={submitCourseRequest} className="mt-3 space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Email</label>
-                  <input value={currentUser?.email || ""} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">College Name</label>
-                  <input value={collegeForm.entityName} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
-                </div>
-              </div>
-              <textarea
-                rows={4}
-                value={courseForm.description}
-                onChange={(e) => setCourseForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Description or requested change"
-                className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
-              />
-              <button type="submit" disabled={submitting === "course"} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-support)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b978e] disabled:opacity-60">
-                <Send className="size-4" />
-                {submitting === "course" ? "Submitting..." : "Submit Course Request"}
-              </button>
-            </form>
-          </article>
-
         </section>
 
         <section className="xl:col-span-2">
@@ -328,7 +321,7 @@ export default function CollegeRequestsPage() {
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-[color:var(--text-dark)]">Recent requests</h3>
               <span className="rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                {loading ? "--" : collegeRequests.length + courseRequests.length} Total
+                {loading ? "--" : collegeRequests.length} Total
               </span>
             </div>
 
@@ -343,9 +336,12 @@ export default function CollegeRequestsPage() {
                       <p className="mt-1 text-sm text-slate-600">
                         {String(item.payload?.name || item.payload?.course || "No entity name")}
                       </p>
+                      {item.kind === "college" && item.approvalMessage ? (
+                        <p className="mt-2 text-xs leading-5 text-slate-500">{item.approvalMessage}</p>
+                      ) : null}
                     </div>
-                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusTone(item.status)}`}>
-                      {item.status || "pending"}
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusTone(item.status === "approved" && item.verificationStatus === "pending" ? "pending" : item.status)}`}>
+                      {requestStageLabel(item)}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -361,7 +357,7 @@ export default function CollegeRequestsPage() {
                   </div>
                 </article>
               ))}
-              {collegeRequests.length + courseRequests.length === 0 ? (
+              {collegeRequests.length === 0 ? (
                 <div className="rounded-[1.2rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-[color:var(--text-muted)]">
                   No requests submitted yet.
                 </div>
@@ -373,3 +369,4 @@ export default function CollegeRequestsPage() {
     </CollegePortalShell>
   );
 }
+

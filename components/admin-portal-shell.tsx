@@ -57,7 +57,7 @@ export function AdminPortalShell({
       <div className="absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(251,191,36,0.12)] blur-3xl" />
       <div className="absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
 
-      <div className="page-container relative z-10 max-w-none px-0 py-3 sm:px-0 sm:py-4">
+      <div className="page-container relative z-10 py-3 sm:py-4">
         <div className="grid min-h-0 gap-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
           <aside className="reveal-up overflow-hidden rounded-[1.55rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,248,239,0.96))] p-3 text-[color:var(--text-dark)] shadow-[0_24px_50px_rgba(148,163,184,0.18)] backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
             <div className="space-y-1.5">

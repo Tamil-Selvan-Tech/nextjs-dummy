@@ -54,7 +54,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#f7fbff_0%,#edf5fb_100%)] text-[color:var(--text-dark)]">
-      <div className="page-container py-10 md:py-12">
+      <div className="page-container-full py-10 md:py-12">
         <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(245,250,255,0.92))] p-5 shadow-[0_18px_44px_rgba(22,50,79,0.08)] md:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.9fr] xl:items-start">
           <div className="max-w-sm">

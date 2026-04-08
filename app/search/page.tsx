@@ -15,14 +15,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import { colleges, courses } from "@/lib/site-data";
+import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
 
 type SearchResultState = {
   courses: typeof courses;
   colleges: typeof colleges;
   cities: Array<{ id: string; name: string; state: string }>;
 };
-
-const normalizeText = (value: string) => String(value || "").trim().toLowerCase();
 
 export default function SearchPage() {
   const router = useRouter();
@@ -44,9 +43,9 @@ export default function SearchPage() {
         const mappedCities = Array.from(
           new Map(
             panelData.colleges.map((college) => [
-              `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+              `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
               {
-                id: `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+                id: `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
                 name: college.district,
                 state: college.state,
               },
@@ -62,9 +61,9 @@ export default function SearchPage() {
         const fallbackCities = Array.from(
           new Map(
             colleges.map((college) => [
-              `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+              `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
               {
-                id: `${college.district.toLowerCase()}-${college.state.toLowerCase()}`,
+                id: `${normalizeSearchText(college.district)}-${normalizeSearchText(college.state)}`,
                 name: college.district,
                 state: college.state,
               },
@@ -108,7 +107,7 @@ export default function SearchPage() {
           list.findIndex(
             (candidate) =>
               candidate.type === item.type &&
-              normalizeText(candidate.name) === normalizeText(item.name),
+              normalizeSearchText(candidate.name) === normalizeSearchText(item.name),
           ) === index,
       ),
     [searchData.cities, searchData.colleges, uniqueCourses],
@@ -119,38 +118,41 @@ export default function SearchPage() {
       return { courses: [], colleges: [], cities: [] };
     }
 
-    const query = normalizeText(keyword);
+    const ranked = getRankedSearchResults(keyword, searchData.colleges, uniqueCourses, searchData.cities);
     return {
-      courses: uniqueCourses
-        .filter((course) => normalizeText(course.course).includes(query))
-        .slice(0, 5),
-      colleges: searchData.colleges
-        .filter((college) => normalizeText(college.name).includes(query))
-        .slice(0, 5),
-      cities: searchData.cities
-        .filter((city) => normalizeText(city.name).includes(query))
-        .slice(0, 5),
+      courses: ranked.courses.slice(0, 5),
+      colleges: ranked.colleges.slice(0, 5),
+      cities: ranked.cities.slice(0, 5),
     };
   }, [keyword, searchData.colleges, searchData.cities, uniqueCourses]);
+
+  const topResultSummary = useMemo(
+    () => ({
+      college: results.colleges[0] ?? null,
+      course: results.courses[0] ?? null,
+      city: results.cities[0] ?? null,
+    }),
+    [results.cities, results.colleges, results.courses],
+  );
 
   const handleSearch = () => {
     const value = keyword.trim();
     if (!value) return;
 
-    const query = normalizeText(value);
-    const matchedCourse = uniqueCourses.find((course) => normalizeText(course.course) === query);
+    const query = normalizeSearchText(value);
+    const matchedCourse = uniqueCourses.find((course) => normalizeSearchText(course.course) === query);
     if (matchedCourse) {
       router.push(`/explore/course/${encodeURIComponent(matchedCourse.course)}`);
       return;
     }
 
-    const matchedCollege = searchData.colleges.find((college) => normalizeText(college.name) === query);
+    const matchedCollege = searchData.colleges.find((college) => normalizeSearchText(college.name) === query);
     if (matchedCollege) {
       router.push(`/college/${matchedCollege.id}`);
       return;
     }
 
-    const matchedCity = searchData.cities.find((city) => normalizeText(city.name) === query);
+    const matchedCity = searchData.cities.find((city) => normalizeSearchText(city.name) === query);
     if (matchedCity) {
       router.push(`/explore?q=${encodeURIComponent(matchedCity.name)}`);
       return;
@@ -168,7 +170,7 @@ export default function SearchPage() {
       <span
         key={`${text}-${index}`}
         className={
-          normalizeText(part) === normalizeText(keyword)
+          normalizeSearchText(part) === normalizeSearchText(keyword)
             ? "font-semibold text-[color:var(--brand-accent-deep)]"
             : ""
         }
@@ -258,6 +260,46 @@ export default function SearchPage() {
                   </button>
                 ))}
               </div>
+
+              {keyword.trim() ? (
+                <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+                  <div className="rounded-[1rem] border border-[rgba(15,76,129,0.06)] bg-white/90 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                      Top College Match
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">
+                      {topResultSummary.college?.name || "No strong college match"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                      {topResultSummary.college
+                        ? `${topResultSummary.college.district}, ${topResultSummary.college.state}`
+                        : "Try adding city or college name"}
+                    </p>
+                  </div>
+                  <div className="rounded-[1rem] border border-[rgba(15,76,129,0.06)] bg-white/90 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                      Top Course Match
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">
+                      {topResultSummary.course?.course || "No strong course match"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                      {topResultSummary.course?.college || "Try adding course keyword"}
+                    </p>
+                  </div>
+                  <div className="rounded-[1rem] border border-[rgba(15,76,129,0.06)] bg-white/90 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                      Top Location Match
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">
+                      {topResultSummary.city?.name || "No strong location match"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                      {topResultSummary.city?.state || "Try city or district name"}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-1 rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] p-3.5 shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:mt-4 sm:rounded-[1.4rem] sm:p-5">
@@ -271,7 +313,7 @@ export default function SearchPage() {
                   <div className="space-y-2.5">
                     {trendingSearchItems.map((item) => (
                       <button
-                        key={`${item.type}-${normalizeText(item.name)}`}
+                        key={`${item.type}-${normalizeSearchText(item.name)}`}
                         type="button"
                         onClick={() => setKeyword(item.name)}
                         className="group flex w-full items-start justify-between gap-3 rounded-[0.95rem] border border-[rgba(15,76,129,0.06)] bg-white px-3 py-2.5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.26)] hover:bg-[rgba(15,76,129,0.03)] sm:items-center sm:rounded-[1rem]"

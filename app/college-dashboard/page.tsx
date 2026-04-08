@@ -6,14 +6,12 @@ import {
   Building2,
   CirclePlus,
   Clock3,
-  FileStack,
   MailOpen,
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CollegeDashboardAddCollegeForm } from "@/components/college-dashboard-add-college-form";
-import { CollegeDashboardAddCourseForm } from "@/components/college-dashboard-add-course-form";
 import { CollegePortalShell } from "@/components/college-portal-shell";
 import {
   clearAuth,
@@ -64,14 +62,10 @@ type CollegeRequestItem = {
   status?: "pending" | "approved" | "rejected";
   actionType?: "create" | "update" | "delete";
   updatedAt?: string;
-  payload?: Record<string, unknown> | null;
-};
-
-type CourseRequestItem = {
-  _id: string;
-  status?: "pending" | "approved" | "rejected";
-  actionType?: "create" | "update" | "delete";
-  updatedAt?: string;
+  approvalMessage?: string;
+  verificationStatus?: "pending" | "verified" | "not_required";
+  verificationMailSentAt?: string;
+  verificationConfirmedAt?: string;
   payload?: Record<string, unknown> | null;
 };
 
@@ -80,7 +74,6 @@ type PortalState = {
   college: CollegeProfile | null;
   enquiries: Array<{ _id: string }>;
   collegeRequests: CollegeRequestItem[];
-  courseRequests: CourseRequestItem[];
 };
 
 const getWordCount = (value = "") =>
@@ -88,6 +81,33 @@ const getWordCount = (value = "") =>
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
+
+const isCollegeRequestUnlocked = (item?: CollegeRequestItem | null) =>
+  Boolean(
+    item &&
+      item.status === "approved" &&
+      (item.verificationStatus === "verified" ||
+        item.verificationStatus === "not_required" ||
+        item.verificationConfirmedAt),
+  );
+
+const isCollegeRequestWaitingForVerification = (item?: CollegeRequestItem | null) =>
+  Boolean(item && item.status === "approved" && !isCollegeRequestUnlocked(item));
+
+const getCollegeRequestStateLabel = (item?: CollegeRequestItem | null) => {
+  if (!item) return "waiting";
+  if (isCollegeRequestUnlocked(item)) return "verified";
+  if (isCollegeRequestWaitingForVerification(item)) return "mail confirmation";
+  return item.status || "waiting";
+};
+
+const getCollegeRequestTone = (item?: CollegeRequestItem | null) => {
+  if (!item) return "border-amber-200 bg-amber-50 text-amber-700";
+  if (isCollegeRequestUnlocked(item)) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (isCollegeRequestWaitingForVerification(item)) return "border-sky-200 bg-sky-50 text-sky-700";
+  if (item.status === "rejected") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-amber-200 bg-amber-50 text-amber-700";
+};
 
 export default function CollegeDashboardPage() {
   const router = useRouter();
@@ -98,11 +118,12 @@ export default function CollegeDashboardPage() {
     college: null,
     enquiries: [],
     collegeRequests: [],
-    courseRequests: [],
   });
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [showCollegeForm, setShowCollegeForm] = useState(false);
+  const [suppressCollegeFormAutoOpen, setSuppressCollegeFormAutoOpen] = useState(false);
   useStatusToast(status);
   const [requestForm, setRequestForm] = useState({
     email: "",
@@ -117,13 +138,12 @@ export default function CollegeDashboardPage() {
       try {
         setLoading(true);
         const headers = withAuth(authToken);
-        const [requestData, collegeData, enquiryData, collegeRequestData, courseRequestData] =
+        const [requestData, collegeData, enquiryData, collegeRequestData] =
           await Promise.all([
             request("/api/users/college-access-request", headers).catch(() => ({ request: null })),
             request("/api/users/my-college", headers).catch(() => ({ college: null })),
             request("/api/users/college-enquiries", headers).catch(() => ({ enquiries: [] })),
             request("/api/users/college-add-requests", headers).catch(() => ({ requests: [] })),
-            request("/api/users/course-add-requests", headers).catch(() => ({ requests: [] })),
           ]);
 
         setPortalState({
@@ -131,7 +151,6 @@ export default function CollegeDashboardPage() {
           college: (collegeData.college as CollegeProfile | null) || null,
           enquiries: (enquiryData.enquiries as Array<{ _id: string }>) || [],
           collegeRequests: (collegeRequestData.requests as CollegeRequestItem[]) || [],
-          courseRequests: (courseRequestData.requests as CourseRequestItem[]) || [],
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to load dashboard";
@@ -189,11 +208,6 @@ export default function CollegeDashboardPage() {
         value: String(portalState.collegeRequests.length),
         icon: Building2,
       },
-      {
-        label: "Course Requests",
-        value: String(portalState.courseRequests.length),
-        icon: FileStack,
-      },
     ],
     [portalState],
   );
@@ -244,8 +258,43 @@ export default function CollegeDashboardPage() {
       : portalState.request?.status === "declined"
         ? "border-rose-200 bg-rose-50 text-rose-700"
         : "border-amber-200 bg-amber-50 text-amber-700";
-  const approvedCollegeRequest = portalState.collegeRequests.find((item) => item.status === "approved");
-  const approvedCourseRequest = portalState.courseRequests.find((item) => item.status === "approved");
+  const latestCreateCollegeRequest = portalState.collegeRequests.find((item) => item.actionType === "create");
+  const latestUpdateCollegeRequest = portalState.collegeRequests.find((item) => item.actionType === "update");
+  const unlockedCollegeRequest =
+    portalState.collegeRequests.find(
+      (item) => item.actionType === "update" && isCollegeRequestUnlocked(item),
+    ) ||
+    portalState.collegeRequests.find(
+      (item) => item.actionType === "create" && isCollegeRequestUnlocked(item),
+    );
+  const pendingCollegeVerificationRequest =
+    portalState.collegeRequests.find(
+      (item) => item.actionType === "update" && isCollegeRequestWaitingForVerification(item),
+    ) ||
+    portalState.collegeRequests.find(
+      (item) => item.actionType === "create" && isCollegeRequestWaitingForVerification(item),
+    );
+  const hydratedCollege = (portalState.college ||
+    (unlockedCollegeRequest?.payload as CollegeProfile | null) ||
+    null) as CollegeProfile | null;
+  const canOpenCollegeForm = Boolean(unlockedCollegeRequest || hydratedCollege);
+  const resolvedCollegeActionType =
+    unlockedCollegeRequest?.actionType || (hydratedCollege ? "update" : "create");
+
+  useEffect(() => {
+    if (!canOpenCollegeForm) {
+      setShowCollegeForm(false);
+      return;
+    }
+    if (suppressCollegeFormAutoOpen) {
+      return;
+    }
+    if (!hydratedCollege) {
+      setShowCollegeForm(true);
+      return;
+    }
+    setShowCollegeForm(false);
+  }, [canOpenCollegeForm, hydratedCollege, suppressCollegeFormAutoOpen]);
 
   return (
     <CollegePortalShell
@@ -257,22 +306,31 @@ export default function CollegeDashboardPage() {
         </>
       }
     >
-      {approvedCollegeRequest || approvedCourseRequest ? (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {approvedCollegeRequest ? (
+      {unlockedCollegeRequest || pendingCollegeVerificationRequest ? (
+        <div className="grid gap-3">
+          {unlockedCollegeRequest ? (
             <article className="reveal-up delay-2 rounded-[1.2rem] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_100%)] p-4 shadow-[0_16px_28px_rgba(16,185,129,0.12)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                College Request Approved
+                {unlockedCollegeRequest.actionType === "update" ? "Edit Request Verified" : "Add Request Verified"}
               </p>
               <h2 className="mt-1.5 text-lg font-bold text-emerald-950">
-                Add College form ready
+                {unlockedCollegeRequest.actionType === "update" ? "Edit College form ready" : "Add College form ready"}
               </h2>
               <p className="mt-1.5 text-[13px] leading-5 text-emerald-800">
-                Admin approval is complete. You can now fill and save the college details.
+                {unlockedCollegeRequest.approvalMessage ||
+                  (unlockedCollegeRequest.actionType === "update"
+                    ? "Admin approval and email confirmation are complete. You can now edit and save the college details."
+                    : "Admin approval and email confirmation are complete. You can now add and save the college details.")}
               </p>
               <button
                 type="button"
-                onClick={() => document.getElementById("approved-college-form")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                onClick={() => {
+                  setSuppressCollegeFormAutoOpen(false);
+                  setShowCollegeForm(true);
+                  setTimeout(() => {
+                    document.getElementById("approved-college-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 50);
+                }}
                 className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
               >
                 Open College Form
@@ -281,31 +339,31 @@ export default function CollegeDashboardPage() {
             </article>
           ) : null}
 
-          {approvedCourseRequest ? (
-            <article className="reveal-up delay-3 rounded-[1.2rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff_0%,#f0f9ff_100%)] p-4 shadow-[0_16px_28px_rgba(56,189,248,0.12)]">
+          {pendingCollegeVerificationRequest ? (
+            <article className="reveal-up delay-2 rounded-[1.2rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff_0%,#f0f9ff_100%)] p-4 shadow-[0_16px_28px_rgba(56,189,248,0.12)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
-                Course Request Approved
+                Approval Mail Sent
               </p>
               <h2 className="mt-1.5 text-lg font-bold text-sky-950">
-                Add Course form ready
+                Confirm email to unlock the form
               </h2>
               <p className="mt-1.5 text-[13px] leading-5 text-sky-800">
-                Course request approval is complete. You can now fill and save the course details.
+                {pendingCollegeVerificationRequest.approvalMessage ||
+                  "Admin approved your request. Check your mail, confirm the link, and then the college form will open here."}
               </p>
-              <button
-                type="button"
-                onClick={() => document.getElementById("approved-course-form")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
-              >
-                Open Course Form
-                <ArrowRight className="size-4" />
-              </button>
+              {pendingCollegeVerificationRequest.verificationMailSentAt ? (
+                <p className="mt-3 text-[12px] font-medium text-sky-700">
+                  Verification mail sent on{" "}
+                  {new Date(pendingCollegeVerificationRequest.verificationMailSentAt).toLocaleString()}
+                </p>
+              ) : null}
             </article>
           ) : null}
+
         </div>
       ) : null}
 
-      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {statCards.map((item, index) => {
             const Icon = item.icon;
             return (
@@ -411,24 +469,24 @@ export default function CollegeDashboardPage() {
             <div className="mt-3 space-y-3">
               <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3.5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">Add College Request</p>
-                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${approvedCollegeRequest ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
-                    {approvedCollegeRequest ? "approved" : "waiting"}
+                  <p className="text-sm font-semibold text-slate-900">Add New College Request</p>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${getCollegeRequestTone(latestCreateCollegeRequest)}`}>
+                    {getCollegeRequestStateLabel(latestCreateCollegeRequest)}
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] leading-5 text-slate-600">
-                  Once the admin approves the request, the Add College form unlocks below.
+                  An admin approval email will be sent. Confirm that email to unlock the Add College form.
                 </p>
               </div>
               <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3.5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">Add Course Request</p>
-                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${approvedCourseRequest ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
-                    {approvedCourseRequest ? "approved" : "waiting"}
+                  <p className="text-sm font-semibold text-slate-900">Edit Our College Request</p>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${getCollegeRequestTone(latestUpdateCollegeRequest)}`}>
+                    {getCollegeRequestStateLabel(latestUpdateCollegeRequest)}
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] leading-5 text-slate-600">
-                  Once the course request is approved, the course form unlocks below and saves only to your college.
+                  To edit your existing college profile, a separate edit request must be approved and email-confirmed.
                 </p>
               </div>
             </div>
@@ -436,24 +494,61 @@ export default function CollegeDashboardPage() {
         </section>
       </div>
 
-      {approvedCollegeRequest ? (
+      {hydratedCollege ? (
+        <article className="luxe-card reveal-up delay-2 rounded-[1.2rem] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                College Details
+              </p>
+              <h2 className="mt-1.5 text-lg font-bold text-slate-900 sm:text-xl">
+                {hydratedCollege.name || "Your College"}
+              </h2>
+              <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                <p>University: {hydratedCollege.university || "-"}</p>
+                <p>State: {hydratedCollege.state || "-"}</p>
+                <p>District: {hydratedCollege.district || "-"}</p>
+                <p>Ranking: {String(hydratedCollege.ranking || "-")}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSuppressCollegeFormAutoOpen(false);
+                setShowCollegeForm(true);
+                setTimeout(() => {
+                  document.getElementById("approved-college-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 50);
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Edit College Details
+              <ArrowRight className="size-4" />
+            </button>
+          </div>
+        </article>
+      ) : null}
+
+      {canOpenCollegeForm && showCollegeForm ? (
         <div id="approved-college-form">
           <CollegeDashboardAddCollegeForm
             token={token}
             currentUser={currentUser}
-            college={portalState.college}
-            onSaved={() => loadDashboard(token)}
-          />
-        </div>
-      ) : null}
-
-      {approvedCourseRequest && portalState.college?._id ? (
-        <div id="approved-course-form">
-          <CollegeDashboardAddCourseForm
-            token={token}
-            currentUser={currentUser}
-            college={portalState.college}
-            onSaved={() => loadDashboard(token)}
+            college={hydratedCollege as Record<string, unknown> | null}
+            requestActionType={resolvedCollegeActionType}
+            approvalMessage={unlockedCollegeRequest?.approvalMessage}
+            onSaved={async () => {
+              await loadDashboard(token);
+              setSuppressCollegeFormAutoOpen(true);
+              setShowCollegeForm(false);
+              setStatus({
+                type: "success",
+                text:
+                  resolvedCollegeActionType === "create"
+                    ? "Your college was created successfully."
+                    : "College details were updated successfully.",
+              });
+            }}
           />
         </div>
       ) : null}
@@ -543,3 +638,4 @@ export default function CollegeDashboardPage() {
     </CollegePortalShell>
   );
 }
+

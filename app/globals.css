@@ -87,6 +87,13 @@ button,
   padding-inline: 1rem;
 }
 
+.page-container-full {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 100%;
+  padding-inline: 0.6rem;
+}
+
 .page-section {
   padding-block: var(--space-section-y);
 }
@@ -142,6 +149,52 @@ button,
 
 .marquee-item {
   white-space: nowrap;
+}
+
+.feature-marquee {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-right: 1rem;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.4rem;
+  box-shadow: none;
+}
+
+.feature-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 138, 61, 0.2);
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.18), rgba(255, 255, 255, 0.9));
+  color: var(--brand-accent-deep);
+}
+
+.feature-pill-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.feature-pill-desc {
+  margin-top: 0.1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 .card-base {
@@ -323,6 +376,54 @@ button,
   transform: translateX(220%) rotate(18deg);
 }
 
+.feature-highlight-shell {
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.92), transparent 58%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(240, 248, 255, 0.94), rgba(255, 244, 235, 0.88));
+  box-shadow: 0 10px 24px rgba(22, 50, 79, 0.05);
+}
+
+.hero-search-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  animation: searchShellFloat 6s ease-in-out infinite;
+}
+
+.hero-search-shell::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 9999px;
+  background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.7) 35%, transparent 70%);
+  transform: translateX(-140%);
+  animation: searchSweep 5.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-search-input {
+  position: relative;
+  z-index: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 28px rgba(15, 76, 129, 0.09);
+  transition:
+    border-color 0.28s ease,
+    box-shadow 0.28s ease,
+    transform 0.28s ease;
+}
+
+.hero-search-shell:focus-within .hero-search-input {
+  transform: translateY(-1px) scale(1.003);
+  border-color: rgba(60, 126, 182, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 18px 34px rgba(15, 76, 129, 0.14),
+    0 0 0 5px rgba(60, 126, 182, 0.08);
+}
+
 @keyframes floatCard {
   0%,
   100% {
@@ -341,6 +442,73 @@ button,
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes searchShellFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+@keyframes searchSweep {
+  0%,
+  18% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.7;
+  }
+  52% {
+    transform: translateX(140%);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(140%);
+    opacity: 0;
+  }
+}
+
+@keyframes featureTextDown {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -24px, 0);
+  }
+  22% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+}
+
+@keyframes featureIconDown {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  22% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
   }
 }
 
@@ -420,3 +588,6 @@ button,
     animation: none !important;
   }
 }
+  .page-container-full {
+    padding-inline: 1.25rem;
+  }

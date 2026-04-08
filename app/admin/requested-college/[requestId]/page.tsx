@@ -335,14 +335,23 @@ export default function RequestedCollegeAdminPage() {
               </div>
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <button type="button" onClick={() => void runAction("approve")} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60">
-                  <BadgeCheck className="size-4" />
-                  {busy ? "Working..." : "Approve Request"}
-                </button>
-                <button type="button" onClick={() => void runAction("reject")} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60">
-                  <Trash2 className="size-4" />
-                  {busy ? "Working..." : "Reject Request"}
-                </button>
+                {requestItem.status !== "approved" ? (
+                  <>
+                    <button type="button" onClick={() => void runAction("approve")} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60">
+                      <BadgeCheck className="size-4" />
+                      {busy ? "Working..." : "Approve Request"}
+                    </button>
+                    <button type="button" onClick={() => void runAction("reject")} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60">
+                      <Trash2 className="size-4" />
+                      {busy ? "Working..." : "Reject Request"}
+                    </button>
+                  </>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+                    <BadgeCheck className="size-4" />
+                    Approved
+                  </span>
+                )}
               </div>
             </article>
 
