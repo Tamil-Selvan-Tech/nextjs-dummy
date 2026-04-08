@@ -316,7 +316,7 @@ export default function ComparePage() {
       <div className="relative z-10">
         <Navbar />
 
-        <div className="page-container py-6 md:py-10">
+        <div className="page-container-full py-6 px-4 sm:px-6 md:py-10">
           <div className="reveal-up rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,251,255,0.96))] p-5 shadow-[0_28px_60px_rgba(22,50,79,0.1)] sm:p-6">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>

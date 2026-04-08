@@ -15,7 +15,7 @@ export default function ContactPage() {
         <div className="relative z-10">
           <Navbar />
 
-          <div className="page-container py-14 md:py-18">
+          <div className="page-container-full py-14 px-4 sm:px-6 md:py-18">
             <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
               <div>
                 <div className="editorial-kicker">

@@ -104,8 +104,8 @@ export function ExploreClient({
         </div>
         <div className="relative z-10">
           <Navbar />
-          <div className="page-container pt-5 pb-3">
-            <div className="mx-auto max-w-6xl">
+          <div className="page-container-full pt-5 pb-3">
+            <div className="mx-auto w-full px-4 sm:px-6">
             <h1 className="text-xl font-bold text-[color:var(--text-dark)] md:text-3xl">Explore Education</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--text-muted)]">
               Discover top colleges and best-fit courses for your education journey.
@@ -115,8 +115,8 @@ export function ExploreClient({
         </div>
       </div>
 
-      <div className="page-container py-5">
-        <div className="mx-auto max-w-6xl">
+      <div className="page-container-full py-5">
+        <div className="mx-auto w-full px-4 sm:px-6">
         {cityFilter ? (
           <div className="mb-5 flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.06)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">

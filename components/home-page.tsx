@@ -383,8 +383,8 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                 <div className="relative py-6 sm:py-8">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
                   <div className="pointer-events-none absolute -right-10 top-6 h-28 w-28 rounded-full bg-[rgba(255,138,61,0.18)] blur-3xl" />
-                  <div className="relative flex flex-col gap-4 md:flex-row md:items-center">
-                    <div className="hero-search-shell group relative w-full md:w-[75%] md:flex-none">
+                  <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-center">
+                    <div className="hero-search-shell group relative w-full md:w-[68%] md:flex-none">
                       <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.8),transparent_60%)] opacity-70" />
                       <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-[3] flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(255,138,61,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
                         <Search className="size-4" />
@@ -428,7 +428,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     </button>
                   </div>
 
-                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:text-sm">
+                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:w-[68%] md:flex-nowrap md:justify-center md:overflow-x-auto md:scrollbar-hide md:text-sm md:mx-auto">
                     <span className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 font-semibold text-[color:var(--brand-primary)]">
                       Live search flow
                     </span>
@@ -448,12 +448,15 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     ))}
                   </div>
 
-                  <div className="feature-marquee mt-5 pl-20 md:pl-28">
+                  <div className="feature-marquee mt-5 w-full rounded-2xl border border-[rgba(15,76,129,0.2)] bg-white/90 py-3 pl-20 pr-4 shadow-[0_18px_36px_rgba(15,76,129,0.2)] md:mx-auto md:w-[68%] md:pl-28">
                     <div className="marquee-track">
                       {featureMarqueeItems.map((item, index) => {
                         const Icon = item.icon;
                         return (
-                          <div key={`${item.title}-${index}`} className="feature-pill marquee-item">
+                          <div
+                            key={`${item.title}-${index}`}
+                            className="feature-pill marquee-item border border-[rgba(15,76,129,0.14)] bg-white/80"
+                          >
                             <span className="feature-pill-icon">
                               <Icon className="size-4" />
                             </span>
@@ -539,30 +542,43 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                         <p className="truncate text-sm font-semibold text-[color:var(--text-dark)]">
                           {activeCollege?.name || "Top College"}
                         </p>
-                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                          <MapPin className="size-3.5" />
-                          {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-muted)]">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="size-3.5" />
+                            {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/explore")}
+                            className="rounded-full bg-[color:var(--brand-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_16px_rgba(15,76,129,0.22)] transition hover:bg-[color:var(--brand-primary-soft)]"
+                          >
+                            Browse Colleges
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedSpotlightId((current) =>
-                            current === activeCollege?.id ? null : (activeCollege?.id ?? null),
-                          )
-                        }
-                        className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
-                      >
-                        {expandedSpotlightId === activeCollege?.id ? "Show less" : "Show more"}
-                      </button>
                     </div>
-                    {expandedSpotlightId === activeCollege?.id ? (
-                      <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-                        <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+                    <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
+                      <div className="flex items-start gap-3">
+                        <p
+                          className={`text-sm leading-6 text-[color:var(--text-muted)] ${
+                            expandedSpotlightId === activeCollege?.id ? "" : "line-clamp-3"
+                          }`}
+                        >
                           {activeCollege?.description || "Top college details not available."}
                         </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedSpotlightId((current) =>
+                              current === activeCollege?.id ? null : (activeCollege?.id ?? null),
+                            )
+                          }
+                          className="shrink-0 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
+                        >
+                          {expandedSpotlightId === activeCollege?.id ? "Less" : "More"}
+                        </button>
                       </div>
-                    ) : null}
+                    </div>
                   </div>
                 </div>
 
@@ -620,7 +636,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
-        <div className="page-container-full relative z-10 max-w-[1200px]">
+        <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
@@ -651,17 +667,17 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
               {exploreCourseCards.slice(0, 10).map((course) => (
                 <article
                   key={course.id}
-                  className="luxe-card min-w-[14rem] shrink-0 p-4 sm:min-w-[17.25rem] lg:min-w-[19rem]"
+                  className="luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem]"
                 >
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                       {course.isTopCourse ? "Top Course" : "Course"}
                     </span>
                   </div>
-                  <h3 className="mt-4 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
+                  <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
                     {course.course}
                   </h3>
-                  <dl className="mt-5 space-y-2.5 text-sm">
+                  <dl className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
                       <dt className="text-slate-500">Duration</dt>
                       <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
@@ -678,7 +694,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                   <button
                     type="button"
                     onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
-                    className="mt-5 inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                    className="mt-auto inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
                   >
                     Course Overview
                     <ArrowRight className="size-4" />

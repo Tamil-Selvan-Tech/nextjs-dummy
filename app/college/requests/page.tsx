@@ -17,6 +17,7 @@ type UserRequest = {
   _id: string;
   actionType?: "create" | "update" | "delete";
   status?: "pending" | "approved" | "rejected";
+  createdAt?: string;
   updatedAt?: string;
   approvalMessage?: string;
   verificationStatus?: "pending" | "verified" | "not_required";
@@ -31,6 +32,17 @@ type CollegeProfile = {
   state?: string;
   district?: string;
 };
+
+const formatRequestDateTime = (value?: string) =>
+  value
+    ? new Date(value).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "-";
 
 export default function CollegeRequestsPage() {
   const router = useRouter();
@@ -226,7 +238,7 @@ export default function CollegeRequestsPage() {
       subtitle="Track your access approval and send college add or edit requests without leaving the portal."
       currentUser={currentUser}
     >
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-1">
         <section>
           <article className="luxe-card p-4">
             <h3 className="text-lg font-bold text-[color:var(--text-dark)]">Submit college request</h3>
@@ -304,7 +316,11 @@ export default function CollegeRequestsPage() {
                 placeholder={collegeForm.actionType === "update" ? "Explain what you want to edit in your college profile" : "Explain the new college you want to add"}
                 className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
               />
-              <button type="submit" disabled={submitting === "college"} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)] disabled:opacity-60">
+              <button
+                type="submit"
+                disabled={submitting === "college"}
+                className="inline-flex w-full max-w-[320px] items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)] disabled:opacity-60 sm:max-w-[360px] sm:self-start"
+              >
                 <Send className="size-4" />
                 {submitting === "college"
                   ? "Submitting..."
@@ -346,7 +362,7 @@ export default function CollegeRequestsPage() {
                   </div>
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-slate-500">
-                      {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "-"}
+                      Submitted: {formatRequestDateTime(item.createdAt || item.updatedAt)}
                     </p>
                     {item.status === "pending" ? (
                       <button type="button" onClick={() => deleteRequest(item.kind, item._id)} className="inline-flex items-center gap-2 text-sm font-semibold text-rose-600 transition hover:text-rose-700">

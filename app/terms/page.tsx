@@ -32,13 +32,13 @@ export default function TermsPage() {
         <div className="mesh-bg" />
         <div className="relative z-10">
           <Navbar />
-          <div className="page-container pb-16 pt-10 md:pt-14">
+          <div className="page-container-full pb-16 pt-10 px-4 sm:px-6 md:pt-14">
             <div className="max-w-4xl">
               <div className="editorial-kicker">
                 <Sparkles className="size-3.5" />
                 Terms &amp; Conditions
               </div>
-              <h1 className="mt-6 max-w-3xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.35rem] md:text-[2.8rem]">
+              <h1 className="mt-6 font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.35rem] md:text-[2.8rem] md:whitespace-nowrap">
                 Please read these terms carefully before using the platform.
               </h1>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
@@ -53,7 +53,7 @@ export default function TermsPage() {
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6 md:pr-16">
           <div className="space-y-8">
             <div className="space-y-6">
               {termSections.map((section) => (

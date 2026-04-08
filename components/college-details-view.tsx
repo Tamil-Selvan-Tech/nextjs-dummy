@@ -326,8 +326,8 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
       <div className="relative z-10">
         <Navbar />
-        <div className="page-container py-7 md:py-10">
-          <div className="mx-auto max-w-[76rem] overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] shadow-[0_22px_48px_rgba(22,50,79,0.1)]">
+        <div className="page-container-full py-7 px-4 sm:px-6 md:py-10">
+          <div className="mx-auto w-full overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] shadow-[0_22px_48px_rgba(22,50,79,0.1)]">
             <div className="grid border-b border-[rgba(15,76,129,0.08)] lg:grid-cols-[1.08fr_0.92fr]">
               <div className="relative overflow-hidden bg-[linear-gradient(180deg,#d8e7f4_0%,#edf4fb_100%)] p-4 md:p-5">
                 <div className="absolute left-6 top-6 z-10 h-20 w-20 rounded-full bg-[rgba(255,255,255,0.24)] blur-2xl" />
@@ -755,9 +755,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       Scroll horizontally to compare course details.
                     </div>
                     <div className="responsive-data-table">
-                    <div className="grid grid-cols-[minmax(260px,2.2fr)_minmax(180px,1fr)_minmax(140px,0.6fr)] gap-0 border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                    <div className="grid grid-cols-[minmax(260px,2fr)_minmax(150px,0.85fr)_minmax(140px,0.6fr)] gap-0 border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                       <div>Course</div>
-                      <div className="justify-self-center text-center">Total Fees</div>
+                      <div className="w-full justify-self-center text-center">Total Fees</div>
                       <div className="text-right">Details</div>
                     </div>
 
@@ -771,7 +771,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                           <button
                             type="button"
                             onClick={() => setExpandedCourseKey(group.key)}
-                            className="grid w-full grid-cols-[minmax(260px,2.2fr)_minmax(180px,1fr)_minmax(140px,0.6fr)] items-center gap-0 px-4 py-4 text-left hover:bg-[rgba(15,76,129,0.03)]"
+                            className="grid w-full grid-cols-[minmax(260px,2fr)_minmax(150px,0.85fr)_minmax(140px,0.6fr)] items-center gap-0 px-4 py-4 text-left hover:bg-[rgba(15,76,129,0.03)]"
                           >
                             <div>
                               <p className="text-base font-semibold text-[color:var(--text-dark)]">{group.key}</p>
@@ -781,7 +781,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                                 {group.courses.length} Courses
                               </span>
                             </div>
-                            <div className="justify-self-center text-center text-sm font-semibold text-[color:var(--brand-primary)]">
+                            <div className="w-full justify-self-center text-center text-sm font-semibold text-[color:var(--brand-primary)]">
                               {totalFeesText}
                             </div>
                             <div className="text-right text-sm font-semibold text-[color:var(--brand-primary)]">

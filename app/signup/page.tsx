@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   ArrowRight,
   Building2,
   Check,
@@ -53,7 +54,7 @@ const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
 function AuthIllustration({ accountType }: { accountType: "student" | "college" }) {
   if (accountType === "student") {
     return (
-      <div className="relative h-[15rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff,#eff6ff)] shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:h-[18rem]">
+      <div className="relative h-[35rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff,#eff6ff)] shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:h-[40rem]">
         <Image
           src="/student.png"
           alt="Student Signup"
@@ -68,9 +69,20 @@ function AuthIllustration({ accountType }: { accountType: "student" | "college" 
   }
 
   return (
-    <div className="relative h-[15rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] sm:h-[18rem]">
-      <div className="absolute left-8 top-8 h-20 w-20 rounded-full bg-[rgba(255,138,61,0.14)] blur-2xl" />
-      <div className="absolute right-8 top-10 h-24 w-24 rounded-full bg-[rgba(60,126,182,0.14)] blur-2xl" />
+    <div className="relative h-[32rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] sm:h-[36rem]">
+      <div className="absolute inset-x-6 bottom-8 h-3 rounded-full bg-[rgba(15,124,116,0.12)] blur-md" />
+      <div className="absolute left-1/2 top-8 h-0 w-0 -translate-x-1/2 border-x-[7rem] border-b-[2.6rem] border-x-transparent border-b-[color:var(--brand-support)]" />
+      <div className="absolute left-1/2 top-24 h-32 w-[15rem] -translate-x-1/2 rounded-[1.4rem] bg-white shadow-[0_20px_44px_rgba(15,124,116,0.14)]" />
+      <div className="absolute left-[26%] top-[7.6rem] grid grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <span key={index} className="h-8 w-8 rounded-md bg-[rgba(15,124,116,0.16)]" />
+        ))}
+      </div>
+      <div className="absolute left-1/2 top-[12.3rem] h-16 w-12 -translate-x-1/2 rounded-t-xl bg-[color:var(--brand-support)]" />
+      <div className="absolute bottom-7 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/60 bg-white/78 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-support)] shadow-[0_14px_34px_rgba(15,124,116,0.12)]">
+        <Building2 className="size-4" />
+        College Portal
+      </div>
     </div>
   );
 }
@@ -172,13 +184,13 @@ export default function SignupPage() {
       <div className="hero-grid absolute inset-0 opacity-[0.07]" />
 
       <div className="page-container relative z-10 py-6 sm:py-10">
-        <div className="mx-auto grid min-h-[90vh] max-w-6xl overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,251,255,0.95))] shadow-[0_30px_80px_rgba(4,12,26,0.14)] lg:grid-cols-[0.95fr_1.05fr] lg:rounded-[2.2rem]">
+        <div className="mx-auto grid min-h-[90vh] max-w-6xl overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,251,255,0.95))] shadow-[0_30px_80px_rgba(4,12,26,0.14)] lg:grid-cols-[1.05fr_0.95fr] lg:rounded-[2.2rem]">
           <aside className="relative hidden overflow-hidden border-r border-[rgba(15,76,129,0.08)] p-6 lg:flex lg:flex-col lg:justify-between xl:p-8">
             <div className="absolute left-[-4rem] top-12 h-44 w-44 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
             <div className="absolute bottom-0 right-[-3rem] h-40 w-40 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
-            <div className="relative z-10">
+            <div className="relative z-10 flex items-center gap-4">
               <BrandLogo textColor="dark" className="h-10" />
-              <div className={`mt-5 inline-flex rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${mode.badgeClass}`}>
+              <div className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${mode.badgeClass}`}>
                 <Sparkles className="mr-2 size-3.5" />
                 {mode.label} Access
               </div>
@@ -198,6 +210,14 @@ export default function SignupPage() {
 
           <main className="flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
             <div className="w-full max-w-md sm:max-w-lg lg:max-w-md">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(4,12,26,0.08)] transition hover:border-[color:var(--brand-primary-soft)] hover:text-[color:var(--text-dark)]"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back
+              </button>
               <div className="mb-7 text-center">
                 <BrandLogo variant="tab" className="mx-auto mb-4" />
 

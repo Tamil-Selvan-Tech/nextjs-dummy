@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   ArrowRight,
   Building2,
   Eye,
@@ -44,7 +45,7 @@ const accountModes = {
 
 function StudentIllustration() {
   return (
-    <div className="relative h-[15rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff,#eff6ff)] shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:h-[18rem]">
+    <div className="relative h-[26rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff,#eff6ff)] shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:h-[30rem]">
       <Image
         src="/student.png"
         alt="Student Login"
@@ -64,7 +65,7 @@ function StudentIllustration() {
 
 function CollegeIllustration() {
   return (
-    <div className="relative h-[15rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] sm:h-[18rem]">
+    <div className="relative h-[26rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] sm:h-[30rem]">
       <div className="absolute inset-x-6 bottom-8 h-3 rounded-full bg-[rgba(15,124,116,0.12)] blur-md" />
       <div className="absolute left-1/2 top-8 h-0 w-0 -translate-x-1/2 border-x-[7rem] border-b-[2.6rem] border-x-transparent border-b-[color:var(--brand-support)]" />
       <div className="absolute left-1/2 top-24 h-32 w-[15rem] -translate-x-1/2 rounded-[1.4rem] bg-white shadow-[0_20px_44px_rgba(15,124,116,0.14)]" />
@@ -199,9 +200,9 @@ export default function LoginPage() {
           <aside className="relative hidden overflow-hidden border-r border-[rgba(15,76,129,0.08)] p-6 lg:flex lg:flex-col lg:justify-between xl:p-8">
             <div className="absolute left-[-4rem] top-12 h-44 w-44 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
             <div className="absolute bottom-0 right-[-3rem] h-40 w-40 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
-            <div className="relative z-10">
+            <div className="relative z-10 flex items-center gap-4">
               <BrandLogo textColor="dark" className="h-10" />
-              <div className={`mt-5 inline-flex rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${mode.badgeClass}`}>
+              <div className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${mode.badgeClass}`}>
                 {mode.label} Access
               </div>
             </div>
@@ -218,8 +219,16 @@ export default function LoginPage() {
             </div>
           </aside>
 
-          <main className="flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+          <main className="flex items-start justify-center p-4 pt-6 sm:p-6 sm:pt-8 md:p-8 md:pt-10 lg:p-10 lg:pt-12 xl:p-12 xl:pt-14">
             <div className="w-full max-w-md sm:max-w-lg lg:max-w-md">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(4,12,26,0.08)] transition hover:border-[color:var(--brand-primary-soft)] hover:text-[color:var(--text-dark)]"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back
+              </button>
               <div className="mb-7 text-center">
                 <BrandLogo variant="tab" className="mx-auto mb-4" />
 

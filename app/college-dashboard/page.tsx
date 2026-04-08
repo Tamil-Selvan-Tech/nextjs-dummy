@@ -28,6 +28,7 @@ type AccessRequest = {
   email?: string;
   phone?: string;
   message?: string;
+  createdAt?: string;
   updatedAt?: string;
 };
 
@@ -61,6 +62,7 @@ type CollegeRequestItem = {
   _id: string;
   status?: "pending" | "approved" | "rejected";
   actionType?: "create" | "update" | "delete";
+  createdAt?: string;
   updatedAt?: string;
   approvalMessage?: string;
   verificationStatus?: "pending" | "verified" | "not_required";
@@ -108,6 +110,17 @@ const getCollegeRequestTone = (item?: CollegeRequestItem | null) => {
   if (item.status === "rejected") return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-amber-200 bg-amber-50 text-amber-700";
 };
+
+const formatRequestDateTime = (value?: string) =>
+  value
+    ? new Date(value).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "-";
 
 export default function CollegeDashboardPage() {
   const router = useRouter();
@@ -429,7 +442,7 @@ export default function CollegeDashboardPage() {
                 {portalState.request.updatedAt ? (
                   <p className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
                     <Clock3 className="size-3.5" />
-                    Updated on {new Date(portalState.request.updatedAt).toLocaleDateString()}
+                    Submitted on {formatRequestDateTime(portalState.request.createdAt || portalState.request.updatedAt)}
                   </p>
                 ) : null}
               </>
@@ -477,6 +490,11 @@ export default function CollegeDashboardPage() {
                 <p className="mt-2 text-[13px] leading-5 text-slate-600">
                   An admin approval email will be sent. Confirm that email to unlock the Add College form.
                 </p>
+                {latestCreateCollegeRequest?.createdAt || latestCreateCollegeRequest?.updatedAt ? (
+                  <p className="mt-2 text-[12px] text-slate-500">
+                    Submitted: {formatRequestDateTime(latestCreateCollegeRequest?.createdAt || latestCreateCollegeRequest?.updatedAt)}
+                  </p>
+                ) : null}
               </div>
               <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3.5">
                 <div className="flex items-center justify-between gap-3">
@@ -488,6 +506,11 @@ export default function CollegeDashboardPage() {
                 <p className="mt-2 text-[13px] leading-5 text-slate-600">
                   To edit your existing college profile, a separate edit request must be approved and email-confirmed.
                 </p>
+                {latestUpdateCollegeRequest?.createdAt || latestUpdateCollegeRequest?.updatedAt ? (
+                  <p className="mt-2 text-[12px] text-slate-500">
+                    Submitted: {formatRequestDateTime(latestUpdateCollegeRequest?.createdAt || latestUpdateCollegeRequest?.updatedAt)}
+                  </p>
+                ) : null}
               </div>
             </div>
           </article>

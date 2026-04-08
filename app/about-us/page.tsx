@@ -35,7 +35,7 @@ export default function AboutUsPage() {
         <div className="hero-orb two" />
         <div className="relative z-10">
           <Navbar />
-          <div className="page-container pb-14 pt-8 md:pt-10">
+          <div className="page-container-full pb-14 pt-8 px-4 sm:px-6 md:pt-10">
             <div className="max-w-5xl">
               <div className="editorial-kicker">
                 <Sparkles className="size-3.5" />
@@ -63,7 +63,7 @@ export default function AboutUsPage() {
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6">
           <div className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white/80 p-5 shadow-[0_20px_44px_rgba(12,24,46,0.12)] md:p-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -92,7 +92,7 @@ export default function AboutUsPage() {
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6">
           <h2 className="section-title">Why College EdwiseR</h2>
           <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
             {[
@@ -132,7 +132,7 @@ export default function AboutUsPage() {
       </section>
 
       <section className="page-section bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)] text-slate-800">
-        <div className="page-container">
+        <div className="page-container-full px-4 sm:px-6">
           <h2 className="section-title">Our Ecosystem Model</h2>
           <div className="mt-5 flex flex-wrap items-center gap-2.5 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">
             {["Students", "Colleges", "Industry", "CSR & Government", "Career Outcomes"].map(
@@ -172,7 +172,7 @@ export default function AboutUsPage() {
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6">
           <h2 className="section-title">How College EdwiseR Works</h2>
           <ol className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
             {[

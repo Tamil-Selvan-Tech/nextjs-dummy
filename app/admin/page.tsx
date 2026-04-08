@@ -46,7 +46,7 @@ type PlatformUser = { _id: string; name?: string; email?: string; phone?: string
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
-type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; accessRequests: RequestItem[]; collegeRequests: RequestItem[]; courseRequests: RequestItem[]; subAdmins: SubAdmin[] };
+type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
 type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
 type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
@@ -54,8 +54,10 @@ type CourseForm = { courseType: string; degreeType: string; stream: string; spec
 type SubAdminForm = { email: string; password: string; permissions: string[] };
 type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
+type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
+type CourseOption = { value: string; label: string };
 
-const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], accessRequests: [], collegeRequests: [], courseRequests: [], subAdmins: [] };
+const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
 const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
 const emptyCourseDetail = (): CourseCollegeDetailForm => ({ semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "" });
@@ -82,7 +84,13 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   entranceExams: [emptyCourseExam()],
 });
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
-const adminModules = ["colleges", "courses", "cities", "users", "enquiries"];
+const adminModules = ["colleges", "college-requests", "users", "enquiries"];
+const adminModuleLabels: Record<string, string> = {
+  colleges: "Colleges",
+  "college-requests": "College Requests",
+  users: "Users",
+  enquiries: "Enquiries",
+};
 const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3.5 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:text-sm";
 const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500";
 const primaryButtonClass = "inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0f4c81_0%,#38bdf8_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(56,189,248,0.24)] transition duration-200 hover:shadow-[0_18px_34px_rgba(56,189,248,0.28)]";
@@ -94,22 +102,164 @@ const formSectionClass = "grid gap-2 md:grid-cols-2 xl:grid-cols-3";
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
-const streamOptions = ["Engineering", "Management", "Arts", "Science", "Commerce", "Medical", "Law", "Design", "Education", "Paramedical", "Computer Applications"];
+const streamOptions = ["Engineering", "Computer / IT", "Science", "Medical / Health", "Paramedical", "Commerce", "Management", "Arts", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
 const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
-const qualificationOptions = ["10th", "10+2", "Diploma", "Graduation", "Post Graduation"];
-const streamSpecializationMap: Record<string, string[]> = {
-  Engineering: ["Computer Science and Engineering", "Civil Engineering", "Mechanical Engineering", "Electrical and Electronics Engineering", "Electronics and Communication Engineering", "Information Technology", "Artificial Intelligence and Data Science", "Biomedical Engineering"],
-  Management: ["Finance", "Marketing", "Human Resources", "Operations", "Business Analytics", "International Business", "Entrepreneurship"],
-  Arts: ["English Literature", "Tamil Literature", "History", "Economics", "Political Science", "Sociology", "Public Administration"],
-  Science: ["Physics", "Chemistry", "Mathematics", "Biotechnology", "Microbiology", "Computer Science", "Data Science"],
-  Commerce: ["Accounting and Finance", "Banking and Insurance", "Corporate Secretaryship", "Taxation", "Computer Applications"],
-  Medical: ["General Medicine", "General Surgery", "Pediatrics", "Orthopedics", "Dermatology", "Gynecology"],
-  Law: ["Corporate Law", "Criminal Law", "Constitutional Law", "International Law", "Intellectual Property Law"],
-  Design: ["UI/UX Design", "Graphic Design", "Interior Design", "Fashion Design", "Animation and Multimedia"],
-  Education: ["English", "Mathematics", "Physical Science", "Biological Science", "Computer Science"],
-  Paramedical: ["Physiotherapy", "Medical Lab Technology", "Radiology", "Dialysis Technology", "Operation Theatre Technology"],
-  "Computer Applications": ["Software Development", "Data Analytics", "Cyber Security", "Cloud Computing", "Mobile Application Development"],
+const qualificationLabelMap: Record<string, string> = {
+  "10th": "Secondary School (10th)",
+  "10+2": "Higher Secondary (10+2)",
+  Diploma: "Diploma",
+  Graduation: "Graduation",
+  "Post Graduation": "Post Graduation",
 };
+const qualificationOptions = Object.values(qualificationLabelMap);
+const courseCatalog: CourseCatalogItem[] = [
+  { stream: "Engineering", courseType: "B.E", specialization: "Computer Science Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Information Science Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Mechanical Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Civil Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Electrical Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Electronics & Communication Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Electronics & Instrumentation Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Mechatronics Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Automobile Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Aeronautical Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Aerospace Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.E", specialization: "Marine Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Information Technology", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Artificial Intelligence", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Data Science", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Cyber Security", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Robotics", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Biotechnology", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Chemical Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Petroleum Engineering", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Food Technology", degreeType: "UG" },
+  { stream: "Engineering", courseType: "B.Tech", specialization: "Textile Technology", degreeType: "UG" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Mechanical Engineering", degreeType: "Diploma" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Civil Engineering", degreeType: "Diploma" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Electrical Engineering", degreeType: "Diploma" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Electronics Engineering", degreeType: "Diploma" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Automobile Engineering", degreeType: "Diploma" },
+  { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Information Technology", degreeType: "Diploma" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "General", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Data Science", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Artificial Intelligence", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Cyber Security", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Cloud Computing", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Blockchain Technology", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Game Development", degreeType: "UG" },
+  { stream: "Computer / IT", courseType: "BCA", specialization: "Web Development", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Computer Science", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Information Technology", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Software Engineering", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Data Analytics", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Artificial Intelligence", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Cyber Security", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Animation & Multimedia", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Physics", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Chemistry", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Mathematics", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Statistics", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Biotechnology", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Microbiology", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Biochemistry", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Genetics", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Zoology", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Botany", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Environmental Science", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Food Science", degreeType: "UG" },
+  { stream: "Science", courseType: "B.Sc", specialization: "Nutrition & Dietetics", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "MBBS", specialization: "General Medicine", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "BDS", specialization: "Dentistry", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "BAMS", specialization: "Ayurveda", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "BHMS", specialization: "Homeopathy", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "BUMS", specialization: "Unani", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "BPT", specialization: "Physiotherapy", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "B.Sc", specialization: "Nursing", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "B.Pharm", specialization: "Pharmacy", degreeType: "UG" },
+  { stream: "Medical / Health", courseType: "Pharm.D", specialization: "Doctor of Pharmacy", degreeType: "Doctorate" },
+  { stream: "Medical / Health", courseType: "B.V.Sc", specialization: "Veterinary Science", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Radiology", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Medical Lab Technology", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Optometry", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Dialysis Technology", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Operation Theatre Technology", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Cardiac Technology", degreeType: "UG" },
+  { stream: "Paramedical", courseType: "B.Sc", specialization: "Respiratory Therapy", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "General", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "Accounting & Finance", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "Banking & Insurance", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "Corporate Secretaryship", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "Computer Applications", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "Taxation", degreeType: "UG" },
+  { stream: "Commerce", courseType: "B.Com", specialization: "E-Commerce", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "General", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "Marketing", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "Finance", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "Human Resource", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "Logistics", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "International Business", degreeType: "UG" },
+  { stream: "Management", courseType: "BBA", specialization: "Aviation Management", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "English", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Tamil", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Hindi", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "History", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Political Science", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Sociology", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Psychology", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Economics", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Journalism", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Public Administration", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Philosophy", degreeType: "UG" },
+  { stream: "Arts", courseType: "B.A", specialization: "Geography", degreeType: "UG" },
+  { stream: "Law", courseType: "LLB", specialization: "General", degreeType: "UG" },
+  { stream: "Law", courseType: "BA LLB", specialization: "Integrated", degreeType: "UG" },
+  { stream: "Law", courseType: "BBA LLB", specialization: "Integrated", degreeType: "UG" },
+  { stream: "Law", courseType: "B.Com LLB", specialization: "Integrated", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Des", specialization: "Graphic Design", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Des", specialization: "UI/UX Design", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Des", specialization: "Animation", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Des", specialization: "Fashion Design", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Des", specialization: "Interior Design", degreeType: "UG" },
+  { stream: "Design", courseType: "BFA", specialization: "Fine Arts", degreeType: "UG" },
+  { stream: "Design", courseType: "B.Sc", specialization: "Visual Communication", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Agriculture", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Horticulture", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Forestry", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Sericulture", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Tech", specialization: "Agricultural Engineering", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Dairy Technology", degreeType: "UG" },
+  { stream: "Agriculture", courseType: "B.Sc", specialization: "Fisheries Science", degreeType: "UG" },
+  { stream: "Aviation", courseType: "B.Sc", specialization: "Aviation", degreeType: "UG" },
+  { stream: "Aviation", courseType: "BBA", specialization: "Aviation", degreeType: "UG" },
+  { stream: "Aviation", courseType: "Commercial Pilot License (CPL)", specialization: "Commercial Pilot License (CPL)", degreeType: "Certificate" },
+  { stream: "Aviation", courseType: "Aircraft Maintenance Engineering (AME)", specialization: "Aircraft Maintenance Engineering (AME)", degreeType: "Certificate" },
+  { stream: "Hotel Management", courseType: "BHM", specialization: "Hotel Management", degreeType: "UG" },
+  { stream: "Hotel Management", courseType: "B.Sc", specialization: "Catering Science", degreeType: "UG" },
+  { stream: "Hotel Management", courseType: "B.Sc", specialization: "Hospitality & Hotel Administration", degreeType: "UG" },
+  { stream: "Hotel Management", courseType: "Diploma", specialization: "Hotel Management", degreeType: "Diploma" },
+  { stream: "Education", courseType: "B.Ed", specialization: "Bachelor of Education", degreeType: "UG" },
+  { stream: "Education", courseType: "D.El.Ed", specialization: "Diploma in Elementary Education", degreeType: "Diploma" },
+  { stream: "Education", courseType: "B.P.Ed", specialization: "Physical Education", degreeType: "UG" },
+  { stream: "Social Work", courseType: "BSW", specialization: "Social Work", degreeType: "UG" },
+  { stream: "Physical Education & Sports", courseType: "B.Sc", specialization: "Sports Science", degreeType: "UG" },
+  { stream: "Physical Education & Sports", courseType: "B.P.Ed", specialization: "Physical Education", degreeType: "UG" },
+  { stream: "Vocational Courses", courseType: "B.Voc", specialization: "Retail Management", degreeType: "UG" },
+  { stream: "Vocational Courses", courseType: "B.Voc", specialization: "Tourism", degreeType: "UG" },
+  { stream: "Vocational Courses", courseType: "B.Voc", specialization: "Software Development", degreeType: "UG" },
+  { stream: "Vocational Courses", courseType: "B.Voc", specialization: "Banking & Finance", degreeType: "UG" },
+  { stream: "Diploma / ITI", courseType: "Diploma", specialization: "Mechanical Engineering", degreeType: "Diploma" },
+  { stream: "Diploma / ITI", courseType: "Diploma", specialization: "Civil Engineering", degreeType: "Diploma" },
+  { stream: "Diploma / ITI", courseType: "Diploma", specialization: "Electrical Engineering", degreeType: "Diploma" },
+  { stream: "Diploma / ITI", courseType: "Diploma", specialization: "Electronics Engineering", degreeType: "Diploma" },
+  { stream: "Diploma / ITI", courseType: "Diploma", specialization: "Automobile Engineering", degreeType: "Diploma" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Electrician", degreeType: "Certificate" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Fitter", degreeType: "Certificate" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Welder", degreeType: "Certificate" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Mechanic", degreeType: "Certificate" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Plumber", degreeType: "Certificate" },
+  { stream: "Diploma / ITI", courseType: "ITI", specialization: "Computer Operator", degreeType: "Certificate" },
+];
 const defaultDurationByDegreeType: Record<string, string> = {
   UG: "3 Years",
   PG: "2 Years",
@@ -144,29 +294,38 @@ const getDefaultDuration = (stream: string, degreeType: string) =>
   streamDurationByDegreeType[stream]?.[degreeType] || defaultDurationByDegreeType[degreeType] || "";
 const getDefaultCourseName = (stream: string, degreeType: string) =>
   streamCourseNameByDegreeType[stream]?.[degreeType] || "";
+const getResolvedCourseName = (stream: string, degreeType: string, currentValue: string) =>
+  getDefaultCourseName(stream, degreeType) || currentValue;
+const formatQualificationLabel = (value?: string) => qualificationLabelMap[String(value || "").trim()] || String(value || "").trim();
 const getDefaultMinimumQualification = (courseName: string, degreeType: string, stream: string) => {
   const normalizedCourse = courseName.trim().toUpperCase();
   const normalizedStream = stream.trim();
 
   if (["MBA", "MCA", "M.E", "M.TECH", "M.SC", "M.COM", "M.A", "LLM", "MPT", "M.DES", "M.ED"].includes(normalizedCourse)) {
-    return "Graduation";
+    return formatQualificationLabel("Graduation");
   }
   if (["PH.D", "M.D"].includes(normalizedCourse) || degreeType === "Doctorate") {
-    return "Post Graduation";
+    return formatQualificationLabel("Post Graduation");
   }
   if (["B.ED"].includes(normalizedCourse)) {
-    return "Graduation";
+    return formatQualificationLabel("Graduation");
   }
-  if (degreeType === "PG") return "Graduation";
-  if (degreeType === "Doctorate") return "Post Graduation";
-  if (degreeType === "Diploma") return "10th";
-  if (degreeType === "Certificate") return normalizedStream === "Medical" ? "10+2" : "10th";
-  return "10+2";
+  if (degreeType === "PG") return formatQualificationLabel("Graduation");
+  if (degreeType === "Doctorate") return formatQualificationLabel("Post Graduation");
+  if (degreeType === "Diploma") return formatQualificationLabel("10th");
+  if (degreeType === "Certificate") return formatQualificationLabel(normalizedStream === "Medical" ? "10+2" : "10th");
+  return formatQualificationLabel("10+2");
 };
 const getQualificationSuggestions = (courseName: string, degreeType: string, stream: string) => {
   const highestRequired = getDefaultMinimumQualification(courseName, degreeType, stream);
-  return highestRequired ? [highestRequired] : qualificationOptions;
+  return Array.from(new Set(highestRequired ? [highestRequired] : qualificationOptions));
 };
+const normalizeAdminOption = (value?: string) => String(value || "").trim();
+const streamAliasMap: Record<string, string> = {
+  "Computer Applications": "Computer / IT",
+  Medical: "Medical / Health",
+};
+const normalizeCourseStream = (value?: string) => streamAliasMap[normalizeAdminOption(value)] || normalizeAdminOption(value);
 const getDurationMultiplier = (duration: string) => {
   const match = String(duration || "").match(/(\d+(?:\.\d+)?)/);
   if (!match) return 0;
@@ -232,6 +391,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [statusText, setStatusText] = useState("");
   const lastToastMessageRef = useRef("");
+  const collegeFormRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCollegeForm, setShowCollegeForm] = useState(false);
   const [editCollegeId, setEditCollegeId] = useState("");
@@ -260,9 +420,6 @@ export default function AdminPage() {
     lastToastMessageRef.current = statusText;
   }, [statusText]);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
-  const [accessRequestId, setAccessRequestId] = useState("");
-  const [accessGrantEmail, setAccessGrantEmail] = useState("");
-  const [accessGrantCollegeIds, setAccessGrantCollegeIds] = useState<string[]>([]);
   const [showRequestNotifications, setShowRequestNotifications] = useState(false);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
@@ -295,14 +452,75 @@ export default function AdminPage() {
       })),
     [imageFiles],
   );
+  const getCourseTypeOptionsForSelection = useCallback(
+    (stream: string, degreeType: string) => {
+      const normalizedStream = normalizeCourseStream(stream);
+      const catalogOptions = courseCatalog
+        .filter((item) => (!normalizedStream || item.stream === normalizedStream) && (!degreeType || item.degreeType === degreeType))
+        .map((item) => item.courseType);
+      const existingOptions = adminState.courses.flatMap((course) => {
+        if (normalizeCourseStream(course.stream) !== normalizedStream) return [];
+        if (degreeType && normalizeAdminOption(course.degreeType) !== degreeType) return [];
+        return [normalizeAdminOption(course.courseType)].filter(Boolean);
+      });
 
-  const embeddedSpecializationOptions = useMemo(
-    () => streamSpecializationMap[embeddedCourseForm.stream] || [],
-    [embeddedCourseForm.stream],
+      return Array.from(new Set([...catalogOptions, ...existingOptions]));
+    },
+    [adminState.courses],
   );
-  const courseSpecializationOptions = useMemo(
-    () => streamSpecializationMap[courseForm.stream] || [],
-    [courseForm.stream],
+  const getSpecializationOptionsForSelection = useCallback(
+    (stream: string, degreeType: string, courseType: string) => {
+      const normalizedStream = normalizeCourseStream(stream);
+      const catalogOptions = courseCatalog
+        .filter((item) =>
+          (!normalizedStream || item.stream === normalizedStream) &&
+          (!degreeType || item.degreeType === degreeType) &&
+          (!courseType || item.courseType === courseType),
+        )
+        .map((item) => ({
+          value: item.specialization,
+          label: item.specialization === item.courseType ? item.courseType : `${item.courseType} - ${item.specialization}`,
+        }));
+      const existingOptions = adminState.courses.flatMap((course) => {
+        if (normalizeCourseStream(course.stream) !== normalizedStream) return [];
+        if (degreeType && normalizeAdminOption(course.degreeType) !== degreeType) return [];
+        if (courseType && normalizeAdminOption(course.courseType) !== courseType) return [];
+
+        const specialization = normalizeAdminOption(course.specialization || course.courseName);
+        const existingCourseType = normalizeAdminOption(course.courseType);
+        if (!specialization) return [];
+
+        return [{
+          value: specialization,
+          label: specialization === existingCourseType ? existingCourseType : `${existingCourseType} - ${specialization}`,
+        }];
+      });
+
+      const optionMap = new Map<string, CourseOption>();
+      [...catalogOptions, ...existingOptions].forEach((item) => {
+        if (!item.value) return;
+        optionMap.set(item.value, item);
+      });
+
+      return Array.from(optionMap.values());
+    },
+    [adminState.courses],
+  );
+  const embeddedCourseTypeOptions = useMemo(
+    () => getCourseTypeOptionsForSelection(embeddedCourseForm.stream, embeddedCourseForm.degreeType),
+    [embeddedCourseForm.degreeType, embeddedCourseForm.stream, getCourseTypeOptionsForSelection],
+  );
+  const courseTypeOptions = useMemo(
+    () => getCourseTypeOptionsForSelection(courseForm.stream, courseForm.degreeType),
+    [courseForm.degreeType, courseForm.stream, getCourseTypeOptionsForSelection],
+  );
+  const embeddedSpecializationEntries = useMemo(
+    () => getSpecializationOptionsForSelection(embeddedCourseForm.stream, embeddedCourseForm.degreeType, embeddedCourseForm.courseType),
+    [embeddedCourseForm.courseType, embeddedCourseForm.degreeType, embeddedCourseForm.stream, getSpecializationOptionsForSelection],
+  );
+  const courseSpecializationEntries = useMemo(
+    () => getSpecializationOptionsForSelection(courseForm.stream, courseForm.degreeType, courseForm.courseType),
+    [courseForm.courseType, courseForm.degreeType, courseForm.stream, getSpecializationOptionsForSelection],
   );
   const embeddedQualificationOptions = useMemo(
     () =>
@@ -322,6 +540,14 @@ export default function AdminPage() {
       ),
     [courseForm.courseType, courseForm.degreeType, courseForm.stream],
   );
+  const embeddedResolvedCourseName = useMemo(
+    () => embeddedCourseForm.courseType,
+    [embeddedCourseForm.courseType],
+  );
+  const courseResolvedCourseName = useMemo(
+    () => courseForm.courseType,
+    [courseForm.courseType],
+  );
 
   const canAccess = useCallback(
     (module: string) =>
@@ -333,19 +559,13 @@ export default function AdminPage() {
     () => [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
       ...(canAccess("colleges")
-        ? [
-            { id: "colleges", label: "Colleges", icon: Building2 },
-            { id: "college-requests", label: "College Requests", icon: FileClock },
-          ]
+        ? [{ id: "colleges", label: "Colleges", icon: Building2 }]
         : []),
-      ...(canAccess("courses")
-        ? [{ id: "course-requests", label: "Course Requests", icon: FileClock }]
+      ...(canAccess("college-requests")
+        ? [{ id: "college-requests", label: "College Requests", icon: FileClock }]
         : []),
       ...(canAccess("users")
-        ? [
-            { id: "users", label: "Users", icon: UserRound },
-            { id: "access-requests", label: "Access Requests", icon: KeyRound },
-          ]
+        ? [{ id: "users", label: "Users", icon: UserRound }]
         : []),
       ...(canAccess("enquiries")
         ? [{ id: "enquiries", label: "Enquiries", icon: MailOpen }]
@@ -395,13 +615,11 @@ export default function AdminPage() {
         canRead("courses") ? request("/api/admin/courses", withAuth(authToken)) : Promise.resolve({}),
         canRead("users") ? request("/api/admin/users", withAuth(authToken)) : Promise.resolve({}),
         canRead("enquiries") ? request("/api/admin/enquiries", withAuth(authToken)) : Promise.resolve({}),
-        canRead("users") ? request("/api/admin/college-access-requests", withAuth(authToken)) : Promise.resolve({}),
-        canRead("colleges") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
-        canRead("courses") ? request("/api/admin/course-add-requests", withAuth(authToken)) : Promise.resolve({}),
+        canRead("college-requests") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
         nextUser.isSuperAdmin ? request("/api/admin/sub-admins", withAuth(authToken)).catch(() => ({})) : Promise.resolve({}),
       ];
 
-      const [colleges, courses, users, enquiries, accessRequests, collegeRequests, courseRequests, subAdmins] =
+      const [colleges, courses, users, enquiries, collegeRequests, subAdmins] =
         await Promise.all(jobs);
 
       setAdminState({
@@ -409,9 +627,7 @@ export default function AdminPage() {
         courses: (courses as { courses?: AdminCourse[] })?.courses || [],
         users: ((users as { users?: PlatformUser[] })?.users || []).filter((item) => item.role !== "admin"),
         enquiries: (enquiries as { enquiries?: Enquiry[] })?.enquiries || [],
-        accessRequests: (accessRequests as { requests?: RequestItem[] })?.requests || [],
         collegeRequests: (collegeRequests as { requests?: RequestItem[] })?.requests || [],
-        courseRequests: (courseRequests as { requests?: RequestItem[] })?.requests || [],
         subAdmins: (subAdmins as { admins?: SubAdmin[] })?.admins || [],
       });
     } catch (error) {
@@ -462,6 +678,16 @@ export default function AdminPage() {
       setCollegeForm((prev) => ({ ...prev, district: "" }));
     }
   }, [availableDistricts, collegeForm.district, collegeForm.state]);
+
+  useEffect(() => {
+    if (!showCollegeForm || activeTab !== "colleges") return;
+
+    const timer = window.setTimeout(() => {
+      collegeFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, collegeStep, showCollegeForm]);
 
   useEffect(() => {
     if (collegeForm.hostelAvailability === "available") return;
@@ -523,7 +749,7 @@ export default function AdminPage() {
       mode: course.mode || "Full-time",
       lateralEntryAvailable: Boolean(course.lateralEntryAvailable),
       lateralEntryDetails: course.lateralEntryDetails || "",
-      minimumQualification: course.minimumQualification || "",
+      minimumQualification: formatQualificationLabel(course.minimumQualification || ""),
       university: course.university || "",
       admissionProcess: course.admissionProcess || "",
       description: course.description || "",
@@ -549,7 +775,11 @@ export default function AdminPage() {
   const buildEmbeddedCoursesForCollege = (collegeId: string) =>
     adminState.courses
       .filter((course) =>
-        (course.colleges || []).some((item) => String(item._id || "") === collegeId) ||
+        (course.colleges || []).some((item) => {
+          const linkedCollegeId =
+            typeof item === "string" ? item : String(item?._id || "");
+          return linkedCollegeId === collegeId;
+        }) ||
         (course.collegeDetails || []).some((item) =>
           (typeof item.college === "string" ? item.college : String(item.college?._id || "")) === collegeId),
       )
@@ -611,10 +841,14 @@ export default function AdminPage() {
       setStatusText("Cutoff is required for each college course");
       return;
     }
+    if (!embeddedCourseForm.intake.trim()) {
+      setStatusText("Allotted seats is required for each college course");
+      return;
+    }
 
     const normalizedDraft: EmbeddedCourseDraft = {
       ...embeddedCourseForm,
-      courseType: embeddedCourseForm.courseType.trim(),
+      courseType: embeddedResolvedCourseName.trim(),
       degreeType: embeddedCourseForm.degreeType.trim(),
       stream: embeddedCourseForm.stream.trim(),
       specialization: embeddedCourseForm.specialization.trim(),
@@ -901,6 +1135,21 @@ export default function AdminPage() {
 
     await runAction(editCourseId || "course-new", async () => {
       const selectedCollegeIds = [...new Set(courseForm.colleges.filter(Boolean))];
+      if (selectedCollegeIds.length === 0) {
+        setStatusText("Select at least one college for this course");
+        return;
+      }
+
+      const collegeWithoutIntake = selectedCollegeIds.find(
+        (collegeId) => !String(courseForm.details[collegeId]?.intake || "").trim(),
+      );
+      if (collegeWithoutIntake) {
+        const collegeName =
+          adminState.colleges.find((college) => college._id === collegeWithoutIntake)?.name || "selected college";
+        setStatusText(`Allotted seats is required for ${collegeName}`);
+        return;
+      }
+
       const collegeDetails = selectedCollegeIds.map((collegeId) => ({
         college: collegeId,
         semesterFees: Number(courseForm.details[collegeId]?.semesterFees || 0),
@@ -919,7 +1168,7 @@ export default function AdminPage() {
           method: editCourseId ? "PUT" : "POST",
           body: JSON.stringify({
             course: `${courseForm.courseType} - ${courseForm.stream} - ${courseForm.specialization}`,
-            courseType: courseForm.courseType.trim(),
+            courseType: courseResolvedCourseName.trim(),
             courseCategory: courseForm.stream.trim(),
             courseName: courseForm.specialization.trim(),
             degreeType: courseForm.degreeType.trim(),
@@ -1072,8 +1321,8 @@ export default function AdminPage() {
       if (savedCollegeId && embeddedCourses.length > 0) {
         for (const draft of embeddedCourses) {
           const payload = {
-            course: `${draft.courseType} - ${draft.stream} - ${draft.specialization}`,
-            courseType: draft.courseType,
+            course: `${getResolvedCourseName(draft.stream, draft.degreeType, draft.courseType)} - ${draft.stream} - ${draft.specialization}`,
+            courseType: getResolvedCourseName(draft.stream, draft.degreeType, draft.courseType),
             courseCategory: draft.stream,
             courseName: draft.specialization,
             degreeType: draft.degreeType,
@@ -1152,7 +1401,7 @@ export default function AdminPage() {
   const stats = [
     { label: "Live Colleges", value: adminState.colleges.length, icon: Building2 },
     { label: "Active Courses", value: adminState.courses.length, icon: BadgeCheck },
-    { label: "Pending Reviews", value: adminState.collegeRequests.length + adminState.courseRequests.length, icon: FileClock },
+    { label: "Pending Reviews", value: adminState.collegeRequests.length, icon: FileClock },
     { label: "Users", value: adminState.users.length, icon: UserRound },
   ];
   const pendingRequestNotifications = [
@@ -1164,15 +1413,6 @@ export default function AdminPage() {
         name: item.payload?.name || item.requesterName || "College request",
         email: item.requesterEmail || "-",
         tab: "college-requests",
-      })),
-    ...adminState.courseRequests
-      .filter((item) => (item.status || "pending") === "pending")
-      .map((item) => ({
-        id: `course-${item._id}`,
-        kind: "Course Request",
-        name: item.payload?.courseName || item.payload?.course || "Course request",
-        email: item.requesterEmail || "-",
-        tab: "course-requests",
       })),
   ];
 
@@ -1204,7 +1444,7 @@ export default function AdminPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                     Notifications
                   </p>
-                  <p className="mt-1 text-sm font-bold text-slate-900">College & Course Requests</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">College Requests</p>
                 </div>
                 <button
                   type="button"
@@ -1235,7 +1475,7 @@ export default function AdminPage() {
                   ))
                 ) : (
                   <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
-                    No pending college or course requests.
+                    No pending college requests.
                   </div>
                 )}
               </div>
@@ -1293,7 +1533,7 @@ export default function AdminPage() {
           </div>
 
           {showCollegeForm ? (
-            <form onSubmit={saveCollege} className="rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 text-sm shadow-[0_24px_46px_rgba(148,163,184,0.14)] sm:p-4">
+            <form ref={collegeFormRef} onSubmit={saveCollege} className="rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 text-sm shadow-[0_24px_46px_rgba(148,163,184,0.14)] sm:p-4">
               <div className="mb-4 rounded-[1.3rem] border border-[rgba(148,163,184,0.16)] bg-[linear-gradient(135deg,#fffdf8_0%,#f4faff_100%)] px-4 py-5">
                 <div className="relative hidden sm:block">
                   <div className="absolute left-[3%] right-[3%] top-[1.15rem] h-[4px] rounded-full bg-[#dbeafe]" />
@@ -1954,33 +2194,27 @@ export default function AdminPage() {
 
                   <div className={formSectionClass}>
                     <label>
-                      <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
-                      <input className={inputClass} placeholder="B.Tech, MBA, B.Sc..." value={embeddedCourseForm.courseType} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, courseType: event.target.value }))} required />
-                    </label>
-                    <label>
                       <span className={labelClass}>Degree Type<span className={requiredMarkClass}>*</span></span>
                       <select
                         className={inputClass}
                         value={embeddedCourseForm.degreeType}
                         onChange={(event) =>
-                          setEmbeddedCourseForm((prev) => ({
-                            ...prev,
-                            degreeType: event.target.value,
-                            courseType: getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                            duration: getDefaultDuration(prev.stream, event.target.value) || prev.duration,
-                            minimumQualification:
-                              getDefaultMinimumQualification(
-                                getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                                event.target.value,
-                                prev.stream,
-                              ) || prev.minimumQualification,
-                            entranceExamsEnabled:
-                              shouldAutoShowEntranceExams(
-                                getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                                event.target.value,
-                                prev.stream,
-                              ) || prev.entranceExamsEnabled,
-                          }))
+                          setEmbeddedCourseForm((prev) => {
+                            const nextCourseTypeOptions = getCourseTypeOptionsForSelection(prev.stream, event.target.value);
+                            const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
+
+                            return {
+                              ...prev,
+                              degreeType: event.target.value,
+                              courseType: nextCourseType,
+                              specialization: "",
+                              duration: getDefaultDuration(prev.stream, event.target.value) || prev.duration,
+                              minimumQualification:
+                                getDefaultMinimumQualification(nextCourseType, event.target.value, prev.stream) || prev.minimumQualification,
+                              entranceExamsEnabled:
+                                shouldAutoShowEntranceExams(nextCourseType, event.target.value, prev.stream) || prev.entranceExamsEnabled,
+                            };
+                          })
                         }
                         required
                       >
@@ -1996,25 +2230,22 @@ export default function AdminPage() {
                         className={inputClass}
                         value={embeddedCourseForm.stream}
                         onChange={(event) =>
-                          setEmbeddedCourseForm((prev) => ({
-                            ...prev,
-                            stream: event.target.value,
-                            courseType: getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                            specialization: "",
-                            duration: getDefaultDuration(event.target.value, prev.degreeType) || prev.duration,
-                            minimumQualification:
-                              getDefaultMinimumQualification(
-                                getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                                prev.degreeType,
-                                event.target.value,
-                              ) || prev.minimumQualification,
-                            entranceExamsEnabled:
-                              shouldAutoShowEntranceExams(
-                                getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                                prev.degreeType,
-                                event.target.value,
-                              ) || prev.entranceExamsEnabled,
-                          }))
+                          setEmbeddedCourseForm((prev) => {
+                            const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
+                            const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
+
+                            return {
+                              ...prev,
+                              stream: event.target.value,
+                              courseType: nextCourseType,
+                              specialization: "",
+                              duration: getDefaultDuration(event.target.value, prev.degreeType) || prev.duration,
+                              minimumQualification:
+                                getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
+                              entranceExamsEnabled:
+                                shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                            };
+                          })
                         }
                         required
                       >
@@ -2033,16 +2264,15 @@ export default function AdminPage() {
                           setEmbeddedCourseForm((prev) => ({
                             ...prev,
                             specialization: event.target.value,
-                            courseType: getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
                             minimumQualification:
                               getDefaultMinimumQualification(
-                                getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
+                                prev.courseType,
                                 prev.degreeType,
                                 prev.stream,
                               ) || prev.minimumQualification,
                             entranceExamsEnabled:
                               shouldAutoShowEntranceExams(
-                                getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
+                                prev.courseType,
                                 prev.degreeType,
                                 prev.stream,
                               ) || prev.entranceExamsEnabled,
@@ -2051,7 +2281,31 @@ export default function AdminPage() {
                         required
                       >
                         <option value="">Select specialization</option>
-                        {embeddedSpecializationOptions.map((item) => (
+                        {embeddedSpecializationEntries.map((item) => (
+                          <option key={item.label} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
+                      <select
+                        className={inputClass}
+                        value={embeddedResolvedCourseName}
+                        onChange={(event) =>
+                          setEmbeddedCourseForm((prev) => ({
+                            ...prev,
+                            courseType: event.target.value,
+                            specialization: "",
+                            minimumQualification:
+                              getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
+                          }))
+                        }
+                        required
+                      >
+                        <option value="">Select course name</option>
+                        {embeddedCourseTypeOptions.map((item) => (
                           <option key={item} value={item}>{item}</option>
                         ))}
                       </select>
@@ -2109,8 +2363,8 @@ export default function AdminPage() {
                       <input className={inputClass} placeholder="Cutoff" value={embeddedCourseForm.cutoff} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, cutoff: event.target.value }))} required />
                     </label>
                     <label>
-                      <span className={labelClass}>Intake</span>
-                      <input className={inputClass} placeholder="Total allotted seats" value={embeddedCourseForm.intake} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, intake: event.target.value }))} />
+                      <span className={labelClass}>Allotted Seats<span className={requiredMarkClass}>*</span></span>
+                      <input className={inputClass} placeholder="Total allotted seats" value={embeddedCourseForm.intake} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, intake: event.target.value }))} required />
                     </label>
                     <label>
                       <span className={labelClass}>Application Fee</span>
@@ -2483,33 +2737,27 @@ export default function AdminPage() {
                 </div>
                 <div className={formSectionClass}>
                   <label>
-                    <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
-                    <input className={inputClass} placeholder="B.Tech, MBA, B.Sc..." value={courseForm.courseType} onChange={(event) => setCourseForm((prev) => ({ ...prev, courseType: event.target.value }))} required />
-                  </label>
-                  <label>
                     <span className={labelClass}>Degree Type<span className={requiredMarkClass}>*</span></span>
                     <select
                       className={inputClass}
                       value={courseForm.degreeType}
                       onChange={(event) =>
-                        setCourseForm((prev) => ({
-                          ...prev,
-                          degreeType: event.target.value,
-                          courseType: getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                          duration: getDefaultDuration(prev.stream, event.target.value) || prev.duration,
-                          minimumQualification:
-                            getDefaultMinimumQualification(
-                              getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                              event.target.value,
-                              prev.stream,
-                            ) || prev.minimumQualification,
-                          entranceExamsEnabled:
-                            shouldAutoShowEntranceExams(
-                              getDefaultCourseName(prev.stream, event.target.value) || prev.courseType,
-                              event.target.value,
-                              prev.stream,
-                            ) || prev.entranceExamsEnabled,
-                        }))
+                        setCourseForm((prev) => {
+                          const nextCourseTypeOptions = getCourseTypeOptionsForSelection(prev.stream, event.target.value);
+                          const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
+
+                          return {
+                            ...prev,
+                            degreeType: event.target.value,
+                            courseType: nextCourseType,
+                            specialization: "",
+                            duration: getDefaultDuration(prev.stream, event.target.value) || prev.duration,
+                            minimumQualification:
+                              getDefaultMinimumQualification(nextCourseType, event.target.value, prev.stream) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(nextCourseType, event.target.value, prev.stream) || prev.entranceExamsEnabled,
+                          };
+                        })
                       }
                       required
                     >
@@ -2525,25 +2773,22 @@ export default function AdminPage() {
                       className={inputClass}
                       value={courseForm.stream}
                       onChange={(event) =>
-                        setCourseForm((prev) => ({
-                          ...prev,
-                          stream: event.target.value,
-                          courseType: getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                          specialization: "",
-                          duration: getDefaultDuration(event.target.value, prev.degreeType) || prev.duration,
-                          minimumQualification:
-                            getDefaultMinimumQualification(
-                              getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                              prev.degreeType,
-                              event.target.value,
-                            ) || prev.minimumQualification,
-                          entranceExamsEnabled:
-                            shouldAutoShowEntranceExams(
-                              getDefaultCourseName(event.target.value, prev.degreeType) || prev.courseType,
-                              prev.degreeType,
-                              event.target.value,
-                            ) || prev.entranceExamsEnabled,
-                        }))
+                        setCourseForm((prev) => {
+                          const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
+                          const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
+
+                          return {
+                            ...prev,
+                            stream: event.target.value,
+                            courseType: nextCourseType,
+                            specialization: "",
+                            duration: getDefaultDuration(event.target.value, prev.degreeType) || prev.duration,
+                            minimumQualification:
+                              getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                          };
+                        })
                       }
                       required
                     >
@@ -2562,16 +2807,15 @@ export default function AdminPage() {
                         setCourseForm((prev) => ({
                           ...prev,
                           specialization: event.target.value,
-                          courseType: getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
                           minimumQualification:
                             getDefaultMinimumQualification(
-                              getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
+                              prev.courseType,
                               prev.degreeType,
                               prev.stream,
                             ) || prev.minimumQualification,
                           entranceExamsEnabled:
                             shouldAutoShowEntranceExams(
-                              getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType,
+                              prev.courseType,
                               prev.degreeType,
                               prev.stream,
                             ) || prev.entranceExamsEnabled,
@@ -2580,7 +2824,31 @@ export default function AdminPage() {
                       required
                     >
                       <option value="">Select specialization</option>
-                      {courseSpecializationOptions.map((item) => (
+                      {courseSpecializationEntries.map((item) => (
+                        <option key={item.label} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                      <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
+                    <select
+                      className={inputClass}
+                      value={courseResolvedCourseName}
+                      onChange={(event) =>
+                        setCourseForm((prev) => ({
+                          ...prev,
+                          courseType: event.target.value,
+                          specialization: "",
+                          minimumQualification:
+                            getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
+                          entranceExamsEnabled:
+                            shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
+                        }))
+                      }
+                      required
+                    >
+                      <option value="">Select course name</option>
+                      {courseTypeOptions.map((item) => (
                         <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
@@ -2798,8 +3066,8 @@ export default function AdminPage() {
                           <input className={inputClass} placeholder="Cutoff" value={courseForm.details[collegeId]?.cutoff || ""} onChange={(event) => setCourseForm((prev) => ({ ...prev, details: { ...prev.details, [collegeId]: { ...(prev.details[collegeId] || emptyCourseDetail()), cutoff: event.target.value } } }))} />
                         </label>
                         <label>
-                          <span className={labelClass}>Total Allotted Seats</span>
-                          <input className={inputClass} placeholder="Total allotted seats" value={courseForm.details[collegeId]?.intake || ""} onChange={(event) => setCourseForm((prev) => ({ ...prev, details: { ...prev.details, [collegeId]: { ...(prev.details[collegeId] || emptyCourseDetail()), intake: event.target.value } } }))} />
+                          <span className={labelClass}>Total Allotted Seats<span className={requiredMarkClass}>*</span></span>
+                          <input className={inputClass} placeholder="Total allotted seats" value={courseForm.details[collegeId]?.intake || ""} onChange={(event) => setCourseForm((prev) => ({ ...prev, details: { ...prev.details, [collegeId]: { ...(prev.details[collegeId] || emptyCourseDetail()), intake: event.target.value } } }))} required />
                         </label>
                         <label>
                           <span className={labelClass}>Application Fee</span>
@@ -2849,7 +3117,7 @@ export default function AdminPage() {
                   </p>
                   <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                      <span className="font-semibold text-slate-900">Eligibility:</span> {course.minimumQualification || "Not set"}
+                      <span className="font-semibold text-slate-900">Eligibility:</span> {formatQualificationLabel(course.minimumQualification || "") || "Not set"}
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                       <span className="font-semibold text-slate-900">Colleges:</span> {(course.colleges || []).length || 0}
@@ -2884,7 +3152,7 @@ export default function AdminPage() {
                           mode: course.mode || "Full-time",
                           lateralEntryAvailable: Boolean(course.lateralEntryAvailable),
                           lateralEntryDetails: course.lateralEntryDetails || "",
-                          minimumQualification: course.minimumQualification || "",
+                          minimumQualification: formatQualificationLabel(course.minimumQualification || ""),
                           university: course.university || "",
                           admissionProcess: course.admissionProcess || "",
                           description: course.description || "",
@@ -3012,50 +3280,6 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "access-requests" ? (
-        <div className="space-y-3">
-          {adminState.accessRequests.map((item) => (
-            <article key={item._id} className="luxe-card flex items-start justify-between gap-4 p-5">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="font-bold text-slate-900">{item.requesterName || "College access request"}</h3>
-                  <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">{item.status || "pending"}</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500">{item.email || "-"}</p>
-                <p className="text-sm text-slate-500">{[item.phone || "No phone", formatDate(item.updatedAt)].join(" â€¢ ")}</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAccessRequestId(item._id);
-                    setAccessGrantEmail(item.email || "");
-                    setAccessGrantCollegeIds(item.grantedCollegeIds || []);
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  <BadgeCheck className="size-4" />
-                  Send Access
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runAction(`access-${item._id}`, async () => {
-                      const data = await request(`/api/admin/college-access-requests/${item._id}`, withAuth(token, { method: "DELETE" }));
-                      setStatusText(data?.message || "Access request declined");
-                      await loadAdminData(token, currentUser);
-                    })
-                  }
-                  className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Decline
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
       {!loading && activeTab === "college-requests" ? (
         <div className="space-y-3">
           {adminState.collegeRequests.map((item) => (
@@ -3122,50 +3346,6 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "course-requests" ? (
-        <div className="space-y-3">
-          {adminState.courseRequests.map((item) => (
-            <article key={item._id} className="luxe-card flex items-start justify-between gap-4 p-5">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="font-bold text-slate-900">{item.payload?.courseName || item.payload?.course || "Course request"}</h3>
-                  <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">{item.status || "pending"}</span>
-                </div>
-                <p className="text-sm text-slate-500">{item.requesterEmail || "-"}</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runAction(`course-request-${item._id}`, async () => {
-                      const data = await request(`/api/admin/course-add-requests/${item._id}/status`, withAuth(token, { method: "PUT", body: JSON.stringify({ status: "approved" }) }));
-                      setStatusText(data?.message || "Course request approved");
-                      await loadAdminData(token, currentUser);
-                    })
-                  }
-                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runAction(`course-request-delete-${item._id}`, async () => {
-                      const data = await request(`/api/admin/course-add-requests/${item._id}`, withAuth(token, { method: "DELETE" }));
-                      setStatusText(data?.message || "Course request rejected");
-                      await loadAdminData(token, currentUser);
-                    })
-                  }
-                  className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Reject
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
       {!loading && activeTab === "admin-access" ? (
         <div className="space-y-4">
           <div className="flex justify-end">
@@ -3201,7 +3381,7 @@ export default function AdminPage() {
                         }))
                       }
                     />
-                    {module}
+                    {adminModuleLabels[module] || module}
                   </label>
                 ))}
               </div>
@@ -3262,66 +3442,6 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      {accessRequestId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={() => setAccessRequestId("")}>
-          <div className="w-full max-w-xl rounded-3xl bg-white p-5" onClick={(event) => event.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900">Grant Access</h3>
-            <input className={`${inputClass} mt-4`} value={accessGrantEmail} readOnly />
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {adminState.colleges.map((college) => (
-                <label key={college._id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={accessGrantCollegeIds.includes(college._id)}
-                    onChange={(event) =>
-                      setAccessGrantCollegeIds((prev) =>
-                        event.target.checked
-                          ? [...new Set([...prev, college._id])]
-                          : prev.filter((item) => item !== college._id),
-                      )
-                    }
-                  />
-                  {college.name || "College"}
-                </label>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setAccessRequestId("")}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  void runAction(`access-grant-${accessRequestId}`, async () => {
-                    const data = await request(
-                      `/api/admin/college-access-requests/${accessRequestId}/status`,
-                      withAuth(token, {
-                        method: "PUT",
-                        body: JSON.stringify({
-                          status: "accepted",
-                          grantedCollegeIds: accessGrantCollegeIds,
-                          allowOwnCollegeCreate: accessGrantCollegeIds.length === 0,
-                        }),
-                      }),
-                    );
-                    setStatusText(data?.message || "Access request approved");
-                    setAccessRequestId("");
-                    await loadAdminData(token, currentUser);
-                  })
-                }
-                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Send Access
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {showSavedCourseList ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onClick={() => setShowSavedCourseList(false)}>
           <div className="w-full max-w-7xl rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
@@ -3372,7 +3492,7 @@ export default function AdminPage() {
                         <td className="px-3 py-3">{item.degreeType || "-"}</td>
                         <td className="px-3 py-3">{item.stream || "-"}</td>
                         <td className="px-3 py-3">{item.duration || "-"}</td>
-                        <td className="px-3 py-3">{item.minimumQualification || "-"}</td>
+                        <td className="px-3 py-3">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
                         <td className="px-3 py-3">{item.semesterFees || "-"}</td>
                         <td className="px-3 py-3 font-semibold text-slate-900">{item.totalFees || "-"}</td>
                         <td className="px-3 py-3">{item.cutoff || "-"}</td>

@@ -40,9 +40,9 @@ export function CollegePortalShell({
       <div className="mesh-bg opacity-65" />
       <div className="hero-grid absolute inset-0 opacity-[0.05]" />
 
-      <div className="page-container relative z-10 py-3 sm:py-5">
-        <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] max-w-[1240px] gap-3 lg:grid-cols-[232px_1fr] xl:grid-cols-[244px_1fr]">
-          <aside className="glass-panel reveal-up rounded-[1.35rem] border border-white/35 bg-[linear-gradient(180deg,rgba(15,76,129,0.94),rgba(18,54,112,0.97))] p-3.5 text-white shadow-[0_22px_48px_rgba(6,18,38,0.2)] sm:p-4 lg:sticky lg:top-5 lg:self-start">
+      <div className="page-container-full relative z-10 py-3 sm:py-5">
+        <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] w-full max-w-none gap-3 lg:grid-cols-[232px_1fr] xl:grid-cols-[244px_1fr]">
+          <aside className="glass-panel reveal-up min-h-[calc(100vh-1.5rem)] rounded-[1.35rem] border border-white/35 bg-[linear-gradient(180deg,rgba(15,76,129,0.94),rgba(18,54,112,0.97))] p-3.5 text-white shadow-[0_22px_48px_rgba(6,18,38,0.2)] sm:p-4 lg:sticky lg:top-5 lg:self-start">
             <div className="flex items-center justify-between gap-3">
               <BrandLogo className="h-10" />
               <span className="inline-flex items-center rounded-full border border-white/25 bg-white p-1.5 text-slate-900">

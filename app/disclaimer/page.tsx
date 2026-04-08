@@ -37,13 +37,13 @@ export default function DisclaimerPage() {
         <div className="mesh-bg" />
         <div className="relative z-10">
           <Navbar />
-          <div className="page-container pb-16 pt-10 md:pt-14">
+          <div className="page-container-full pb-16 pt-10 px-4 sm:px-6 md:pt-14">
             <div className="max-w-4xl">
               <div className="editorial-kicker">
                 <Sparkles className="size-3.5" />
                 Disclaimer
               </div>
-              <h1 className="display-title mt-6 max-w-4xl text-[color:var(--text-dark)]">
+              <h1 className="display-title mt-6 text-[color:var(--text-dark)] md:whitespace-nowrap">
                 Information is provided for general guidance purposes.
               </h1>
               <p className="mt-5 max-w-3xl text-base leading-8 text-[color:var(--text-muted)] md:text-lg">
@@ -58,7 +58,7 @@ export default function DisclaimerPage() {
       </section>
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6 md:pr-16">
           <div className="space-y-8">
             <div className="space-y-6">
               {sections.map((section) => (

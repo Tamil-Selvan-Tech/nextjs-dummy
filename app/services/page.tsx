@@ -38,7 +38,7 @@ export default function ServicesPage() {
         <div className="hero-orb three" />
         <div className="relative z-10">
           <Navbar />
-          <div className="page-container pb-20 pt-10 md:pt-14">
+          <div className="page-container-full pb-20 pt-10 px-4 sm:px-6 md:pt-14">
             <div className="max-w-4xl">
               <div className="editorial-kicker">
                 <Sparkles className="size-3.5" />
@@ -58,7 +58,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="section-shell page-section bg-[#f2eee4] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 px-4 sm:px-6">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
               What We Offer
@@ -92,7 +92,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="page-section bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)] text-slate-800">
-        <div className="page-container">
+        <div className="page-container-full px-4 sm:px-6">
           <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white/90 p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary)]">
               Why It Matters

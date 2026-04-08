@@ -57,9 +57,9 @@ export function AdminPortalShell({
       <div className="absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(251,191,36,0.12)] blur-3xl" />
       <div className="absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
 
-      <div className="page-container relative z-10 py-3 sm:py-4">
-        <div className="grid min-h-0 gap-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
-          <aside className="reveal-up overflow-hidden rounded-[1.55rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,248,239,0.96))] p-3 text-[color:var(--text-dark)] shadow-[0_24px_50px_rgba(148,163,184,0.18)] backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+      <div className="page-container-full relative z-10 py-3 sm:py-4">
+        <div className="grid min-h-0 gap-2 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="reveal-up rounded-[1.55rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,248,239,0.96))] p-3 text-[color:var(--text-dark)] shadow-[0_24px_50px_rgba(148,163,184,0.18)] backdrop-blur-sm">
             <div className="space-y-1.5">
               <BrandLogo className="h-10" />
               <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(251,191,36,0.2)] bg-[linear-gradient(135deg,rgba(255,251,235,0.98),rgba(255,255,255,0.95))] px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#9a6700] shadow-[0_8px_20px_rgba(251,191,36,0.14)]">
@@ -83,7 +83,7 @@ export function AdminPortalShell({
                 </div>
                 <div className="flex items-start gap-2.5 text-xs sm:text-sm">
                   <Mail className="mt-0.5 size-4 text-[color:var(--brand-primary)]" />
-                  <span className="overflow-x-auto whitespace-nowrap text-slate-700 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <span className="min-w-0 break-all whitespace-normal text-slate-700">
                     {currentUser?.email || "-"}
                   </span>
                 </div>
@@ -100,14 +100,16 @@ export function AdminPortalShell({
                     key={item.id}
                     type="button"
                     onClick={() => onChangeTab(item.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-[1.05rem] px-3 py-2.5 text-left text-xs font-semibold transition duration-200 sm:text-sm ${
+                    className={`flex w-full items-start gap-2.5 rounded-[1.05rem] px-3 py-2.5 text-left text-xs font-semibold transition duration-200 sm:text-sm ${
                       active
                         ? "border border-[rgba(56,189,248,0.18)] bg-[linear-gradient(135deg,#ffffff_0%,#eff8ff_100%)] text-[#0f4c81] shadow-[0_14px_28px_rgba(56,189,248,0.12)]"
                         : "border border-transparent text-slate-600 hover:border-[rgba(148,163,184,0.16)] hover:bg-[rgba(255,255,255,0.78)] hover:text-[#0f4c81]"
                     }`}
                   >
-                    <Icon className={`size-4.5 ${active ? "text-[#0284c7]" : "text-slate-400"}`} />
-                    {item.label}
+                    <Icon className={`mt-0.5 size-4.5 shrink-0 ${active ? "text-[#0284c7]" : "text-slate-400"}`} />
+                    <span className="whitespace-normal break-words leading-5">
+                      {item.label}
+                    </span>
                   </button>
                 );
               })}
