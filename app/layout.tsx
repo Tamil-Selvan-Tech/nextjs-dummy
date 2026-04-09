@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AppToastProvider } from "@/components/app-toast-provider";
 import { Footer } from "@/components/footer";
 import "./globals.css";
@@ -11,6 +11,12 @@ export const metadata: Metadata = {
     shortcut: "/college.png",
     apple: "/college.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

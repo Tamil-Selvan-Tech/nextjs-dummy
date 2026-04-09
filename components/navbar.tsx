@@ -85,7 +85,10 @@ export function Navbar() {
     }
   }, [currentUserRaw]);
   const isCollegeUser = currentUser?.role === "college";
-  const accountHref = isCollegeUser ? "/college-dashboard" : "/account";
+  const isAdminUser = currentUser?.role === "admin";
+  const accountHref = isAdminUser ? "/admin" : isCollegeUser ? "/college-dashboard" : "/account";
+  const accountLabel = isAdminUser ? "Admin" : "Account";
+  const hideBackButton = pathname === "/" || pathname.startsWith("/explore/course/");
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
   const filteredCourses = useMemo(() => {
@@ -202,8 +205,8 @@ export function Navbar() {
 
   return (
     <header className="page-container-full relative z-30 pt-4 pb-2 text-[color:var(--text-dark)] md:pt-6 md:pb-0">
-      {pathname !== "/" ? <div className="mb-3"><PageBackButton /></div> : null}
-      <div className="rounded-[1.75rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-3 shadow-[0_16px_40px_rgba(22,50,79,0.08)] md:px-4">
+      {!hideBackButton ? <div className="mb-3"><PageBackButton /></div> : null}
+      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-white px-3 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4">
         <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
           <Link href="/" className="transition hover:opacity-80">
             <BrandLogo variant="tab" textColor="dark" className="h-9" />
@@ -263,7 +266,7 @@ export function Navbar() {
                 <Menu className="size-4" />
               </button>
               <div
-                className={`absolute right-0 top-[calc(100%+0.7rem)] w-44 origin-top-right rounded-2xl border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.98))] p-2 shadow-[0_18px_40px_rgba(22,50,79,0.12)] transition-all duration-300 ${
+                className={`absolute right-0 top-[calc(100%+0.7rem)] w-44 origin-top-right rounded-2xl border border-[rgba(30,78,121,0.12)] bg-white p-2 shadow-[0_18px_40px_rgba(30,78,121,0.16)] transition-all duration-300 ${
                   isAccountMenuOpen
                     ? "pointer-events-auto translate-y-0 opacity-100"
                     : "pointer-events-none -translate-y-2 opacity-0"
@@ -277,7 +280,7 @@ export function Navbar() {
                       className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.06)]"
                     >
                       <LayoutDashboard className="size-4 text-[color:var(--brand-primary)]" />
-                      {isCollegeUser ? "Dashboard" : "Account"}
+                      {accountLabel}
                     </button>
                     <button
                       type="button"
@@ -337,28 +340,32 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
-          className="peer w-full rounded-full border border-[rgba(255,138,61,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(255,138,61,0.6)] hover:bg-[rgba(255,138,61,0.05)] md:w-auto md:py-1.5"
+          className="peer w-full rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:w-auto md:py-1.5"
         >
           All Courses
         </button>
-        <div className="relative z-20 min-w-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white/70 px-3 py-2 shadow-[0_10px_24px_rgba(22,50,79,0.04)] transition duration-300 md:block md:py-1.5">
-          <div className="scrollbar-hide relative z-30 flex w-full items-center gap-x-1 gap-y-1 overflow-x-auto whitespace-nowrap py-1 text-xs font-semibold md:flex-wrap md:justify-center md:py-0">
-            {movingNavLinks.map((item, index) => (
-              <span key={item.label} className="inline-flex items-center">
-                <button
-                  type="button"
-                  onClick={() => goTo(item.href)}
-                  className="rounded-full px-2.5 py-1 font-[family:var(--font-display)] text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.05)] hover:text-[color:var(--brand-primary)]"
-                >
-                  {item.label}
-                </button>
-                {index < movingNavLinks.length - 1 ? (
-                  <span className="px-1.5 text-[color:var(--brand-accent)]">|</span>
-                ) : null}
-              </span>
-            ))}
+        {pathname === "/" ? (
+          <div className="hidden min-w-0 flex-1 md:block" aria-hidden="true" />
+        ) : (
+          <div className="relative z-20 min-w-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white/70 px-3 py-2 shadow-[0_10px_24px_rgba(22,50,79,0.04)] transition duration-300 md:block md:py-1.5">
+            <div className="scrollbar-hide relative z-30 flex w-full items-center gap-x-1 gap-y-1 overflow-x-auto whitespace-nowrap py-1 text-xs font-semibold md:flex-wrap md:justify-center md:py-0">
+              {movingNavLinks.map((item, index) => (
+                <span key={item.label} className="inline-flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => goTo(item.href)}
+                    className="rounded-full px-2.5 py-1 font-[family:var(--font-display)] text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.05)] hover:text-[color:var(--brand-primary)]"
+                  >
+                    {item.label}
+                  </button>
+                  {index < movingNavLinks.length - 1 ? (
+                    <span className="px-1.5 text-[color:var(--brand-accent)]">|</span>
+                  ) : null}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {isDrawerOpen ? (
@@ -369,7 +376,7 @@ export function Navbar() {
             className="absolute inset-0 h-full w-full"
             onClick={() => setIsDrawerOpen(false)}
           />
-          <aside className="absolute right-0 top-0 z-[401] h-full w-[86%] max-w-sm overflow-y-auto border-l border-[rgba(15,76,129,0.12)] bg-[linear-gradient(180deg,#ffffff,#f1f6ff)] p-5 text-[color:var(--text-dark)] shadow-2xl">
+          <aside className="absolute right-0 top-0 z-[401] h-full w-[86%] max-w-sm overflow-y-auto border-l border-[rgba(30,78,121,0.12)] bg-white p-5 text-[color:var(--text-dark)] shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <BrandLogo variant="tab" textColor="dark" className="h-8" />
               <button
@@ -420,7 +427,7 @@ export function Navbar() {
                     className="flex w-full items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
                   >
                     <LayoutDashboard className="size-4" />
-                    {isCollegeUser ? "Dashboard" : "Account"}
+                    {accountLabel}
                   </Link>
                   <button
                     type="button"

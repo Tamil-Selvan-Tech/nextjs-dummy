@@ -340,7 +340,7 @@ export function CourseDetailsView({
                       <div className="mt-5 flex flex-wrap gap-3">
                         <Link
                           href={`/college/${college.id}?course=${encodeURIComponent(course.course)}`}
-                          className="shine-button inline-flex items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                          className="shine-button inline-flex items-center justify-center gap-2 rounded-full bg-[#0f4c81] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0c3d6b]"
                         >
                           View College
                           <ArrowRight className="size-4" />

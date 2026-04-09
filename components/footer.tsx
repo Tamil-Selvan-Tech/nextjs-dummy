@@ -53,9 +53,9 @@ export function Footer() {
   }
 
   return (
-    <footer className="border-t border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#f7fbff_0%,#edf5fb_100%)] text-[color:var(--text-dark)]">
+    <footer className="border-t border-[rgba(30,78,121,0.12)] bg-white text-[color:var(--text-dark)]">
       <div className="page-container-full py-10 md:py-12">
-        <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(245,250,255,0.92))] p-5 shadow-[0_18px_44px_rgba(22,50,79,0.08)] md:p-8">
+        <div className="rounded-[1.8rem] border border-[rgba(30,78,121,0.12)] bg-white p-5 shadow-[0_18px_44px_rgba(30,78,121,0.12)] md:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.9fr] xl:items-start">
           <div className="max-w-sm">
             <BrandLogo variant="tab" textColor="dark" className="h-9" />
@@ -63,10 +63,10 @@ export function Footer() {
               Your gateway to educational excellence and career opportunities.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)]">
+              <span className="rounded-full bg-[rgba(30,78,121,0.08)] px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)]">
                 Student First
               </span>
-              <span className="rounded-full bg-[rgba(255,138,61,0.12)] px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
+              <span className="rounded-full bg-[rgba(239,68,68,0.12)] px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
                 Trusted Discovery
               </span>
             </div>
@@ -121,7 +121,7 @@ export function Footer() {
           </div>
         </div>
 
-          <div className="mt-8 border-t border-[rgba(15,76,129,0.08)] pt-6">
+          <div className="mt-8 border-t border-[rgba(30,78,121,0.12)] pt-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <h4 className="mb-3 text-sm font-bold text-[color:var(--text-dark)]">Get in Touch</h4>
@@ -165,7 +165,7 @@ export function Footer() {
                     rel="noreferrer"
                     aria-label={item.label}
                     title={item.label}
-                    className="flex size-9 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-white text-[color:var(--text-muted)] transition hover:border-[rgba(255,138,61,0.35)] hover:bg-[rgba(15,76,129,0.04)] hover:text-[color:var(--brand-primary)]"
+                    className="flex size-9 items-center justify-center rounded-full border border-[rgba(30,78,121,0.12)] bg-white text-[color:var(--text-muted)] transition hover:border-[rgba(239,68,68,0.4)] hover:bg-[rgba(30,78,121,0.04)] hover:text-[color:var(--brand-primary)]"
                   >
                     <Icon className="size-4" />
                   </a>
@@ -176,7 +176,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-[rgba(15,76,129,0.08)] pt-6 text-center text-sm text-[color:var(--text-muted)] md:flex-row md:text-left">
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-[rgba(30,78,121,0.12)] pt-6 text-center text-sm text-[color:var(--text-muted)] md:flex-row md:text-left">
           <p>&copy; 2026 College EdwiseR. All Rights Reserved.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/privacy-policy" className="transition hover:text-[color:var(--brand-primary)]">Privacy Policy</Link>

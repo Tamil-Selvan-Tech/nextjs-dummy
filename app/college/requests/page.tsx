@@ -22,6 +22,7 @@ type UserRequest = {
   approvalMessage?: string;
   verificationStatus?: "pending" | "verified" | "not_required";
   verificationMailSentAt?: string;
+  formAccessUsedAt?: string;
   payload?: Record<string, unknown> | null;
 };
 
@@ -114,7 +115,7 @@ export default function CollegeRequestsPage() {
     if (!collegeProfile?._id) return;
     setCollegeForm((previous) => ({
       ...previous,
-      actionType: previous.actionType === "create" ? previous.actionType : "update",
+      actionType: "update",
       entityName: collegeProfile.name || previous.entityName,
       university: collegeProfile.university || previous.university,
       state: collegeProfile.state || previous.state,
@@ -136,11 +137,8 @@ export default function CollegeRequestsPage() {
   const submitCollegeRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) return;
-    if (collegeForm.actionType === "update" && !collegeProfile?._id) {
-      setStatus({ type: "error", text: "Your college profile is not available for edit request." });
-      return;
-    }
-    if (!collegeForm.entityName.trim() && collegeForm.actionType !== "delete") {
+    const normalizedActionType = "update" as const;
+    if (!collegeForm.entityName.trim() && normalizedActionType !== "delete") {
       setStatus({ type: "error", text: "College name is required." });
       return;
     }
@@ -156,9 +154,9 @@ export default function CollegeRequestsPage() {
         withAuth(token, {
           method: "POST",
           body: JSON.stringify({
-            actionType: collegeForm.actionType,
+            actionType: normalizedActionType,
             entityName: collegeForm.entityName,
-            targetCollegeId: collegeForm.actionType === "update" ? collegeProfile?._id : undefined,
+            targetCollegeId: normalizedActionType === "update" ? collegeProfile?._id || undefined : undefined,
             payload: {
               name: collegeForm.entityName,
               university: collegeForm.university,
@@ -217,6 +215,9 @@ export default function CollegeRequestsPage() {
         : "border-amber-200 bg-amber-50 text-amber-700";
 
   const requestStageLabel = (item: UserRequest) => {
+    if (item.formAccessUsedAt) {
+      return "used";
+    }
     if (
       item.status === "approved" &&
       (item.verificationStatus === "verified" || item.verificationStatus === "not_required")
@@ -231,57 +232,27 @@ export default function CollegeRequestsPage() {
 
   const mergedRequests = collegeRequests.map((item) => ({ ...item, kind: "college" as const })).slice(0, 8);
   const canEditExistingCollege = Boolean(collegeProfile?._id);
+  const editRequestTypeLabel = "Edit Our College";
 
   return (
     <CollegePortalShell
       title="Request Center"
-      subtitle="Track your access approval and send college add or edit requests without leaving the portal."
+      subtitle="Track your access approval and send only edit requests for the college linked to your login email."
       currentUser={currentUser}
     >
       <div className="grid gap-4 xl:grid-cols-1">
         <section>
           <article className="luxe-card p-4">
             <h3 className="text-lg font-bold text-[color:var(--text-dark)]">Submit college request</h3>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setCollegeForm((previous) => ({
-                    ...previous,
-                    actionType: "create",
-                    entityName: "",
-                    university: "",
-                    state: "",
-                    district: "",
-                  }))
-                }
-                className={`rounded-[1rem] border px-4 py-3 text-left transition ${collegeForm.actionType === "create" ? "border-[color:var(--brand-primary)] bg-[rgba(15,76,129,0.06)]" : "border-[rgba(15,76,129,0.1)] bg-white"}`}
-              >
-                <p className="text-sm font-semibold text-[color:var(--text-dark)]">Add New College</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Send a fresh college creation request to admin.</p>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setCollegeForm((previous) => ({
-                    ...previous,
-                    actionType: "update",
-                    entityName: collegeProfile?.name || previous.entityName,
-                    university: collegeProfile?.university || previous.university,
-                    state: collegeProfile?.state || previous.state,
-                    district: collegeProfile?.district || previous.district,
-                  }))
-                }
-                disabled={!canEditExistingCollege}
-                className={`rounded-[1rem] border px-4 py-3 text-left transition ${collegeForm.actionType === "update" ? "border-[color:var(--brand-primary)] bg-[rgba(15,76,129,0.06)]" : "border-[rgba(15,76,129,0.1)] bg-white"} ${!canEditExistingCollege ? "cursor-not-allowed opacity-60" : ""}`}
-              >
-                <p className="text-sm font-semibold text-[color:var(--text-dark)]">Edit Our College</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Approval required before editing your existing college profile.</p>
-              </button>
+            <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] px-4 py-3">
+              <p className="text-sm font-semibold text-[color:var(--text-dark)]">{editRequestTypeLabel}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Admin added your college with the same mail as this login account-na, inga irundhu edit request anuppi approval vandha apram update pannalaam.
+              </p>
             </div>
             {!canEditExistingCollege ? (
               <p className="mt-2 text-xs text-amber-700">
-                `Edit Our College` becomes available only after the existing college profile is loaded. Save the college profile first and restart the backend if needed, then refresh this page.
+                Admin add pannina college-ku same email match aana backend auto detect pannum. Inga form fill panni request anuppalaam; refresh pannina apram linked college details visible aagum.
               </p>
             ) : null}
             <form onSubmit={submitCollegeRequest} className="mt-3 space-y-3">
@@ -292,14 +263,14 @@ export default function CollegeRequestsPage() {
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Request Type</label>
-                  <input value={collegeForm.actionType === "update" ? "Edit Our College" : "Add New College"} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
+                  <input value={editRequestTypeLabel} readOnly className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-sm outline-none" />
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <input
                   value={collegeForm.entityName}
                   onChange={(e) => setCollegeForm((p) => ({ ...p, entityName: e.target.value }))}
-                  placeholder={collegeForm.actionType === "update" ? "Existing college name" : "New college name"}
+                  placeholder="Existing college name"
                   className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
                 />
                 <input
@@ -313,7 +284,7 @@ export default function CollegeRequestsPage() {
                 rows={4}
                 value={collegeForm.description}
                 onChange={(e) => setCollegeForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder={collegeForm.actionType === "update" ? "Explain what you want to edit in your college profile" : "Explain the new college you want to add"}
+                placeholder="Explain what you want to edit in your college profile"
                 className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-sm outline-none"
               />
               <button
@@ -322,11 +293,7 @@ export default function CollegeRequestsPage() {
                 className="inline-flex w-full max-w-[320px] items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)] disabled:opacity-60 sm:max-w-[360px] sm:self-start"
               >
                 <Send className="size-4" />
-                {submitting === "college"
-                  ? "Submitting..."
-                  : collegeForm.actionType === "update"
-                    ? "Submit Edit Request"
-                    : "Submit Add Request"}
+                {submitting === "college" ? "Submitting..." : "Submit Edit Request"}
               </button>
             </form>
           </article>
@@ -356,14 +323,17 @@ export default function CollegeRequestsPage() {
                         <p className="mt-2 text-xs leading-5 text-slate-500">{item.approvalMessage}</p>
                       ) : null}
                     </div>
-                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusTone(item.status === "approved" && item.verificationStatus === "pending" ? "pending" : item.status)}`}>
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold capitalize ${item.formAccessUsedAt ? "border-slate-200 bg-slate-50 text-slate-600" : statusTone(item.status === "approved" && item.verificationStatus === "pending" ? "pending" : item.status)}`}>
                       {requestStageLabel(item)}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-slate-500">
-                      Submitted: {formatRequestDateTime(item.createdAt || item.updatedAt)}
-                    </p>
+                    <div className="text-xs text-slate-500">
+                      <p>Submitted: {formatRequestDateTime(item.createdAt || item.updatedAt)}</p>
+                      {item.formAccessUsedAt ? (
+                        <p className="mt-1">Form used on: {formatRequestDateTime(item.formAccessUsedAt)}</p>
+                      ) : null}
+                    </div>
                     {item.status === "pending" ? (
                       <button type="button" onClick={() => deleteRequest(item.kind, item._id)} className="inline-flex items-center gap-2 text-sm font-semibold text-rose-600 transition hover:text-rose-700">
                         <Trash2 className="size-4" />

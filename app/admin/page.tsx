@@ -84,6 +84,12 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   entranceExams: [emptyCourseExam()],
 });
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
+const normalizeIndianPhoneInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
+  return digits.slice(0, 10);
+};
+const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
 const adminModules = ["colleges", "college-requests", "users", "enquiries"];
 const adminModuleLabels: Record<string, string> = {
   colleges: "Colleges",
@@ -1002,6 +1008,8 @@ export default function AdminPage() {
       { valid: Boolean(collegeForm.pincode.trim()), step: 1, field: "pincode", message: "Location: Pincode is required" },
       { valid: Boolean(collegeForm.contactEmail.trim()), step: 2, field: "contactEmail", message: "Contact: Official email is required" },
       { valid: Boolean(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Phone number is required" },
+      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Enter a valid 10 digit mobile number" },
+      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 2, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate number" },
       { valid: Boolean(nextLogo.trim()), step: 3, field: "logo", message: "Media: College logo is required" },
       { valid: Boolean(nextCoverImage.trim()), step: 3, field: "coverImage", message: "Media: Cover image is required" },
       { valid: nextImages.length >= 2, step: 3, field: "images", message: "Media: At least 2 gallery images are required" },
@@ -1721,12 +1729,13 @@ export default function AdminPage() {
                 </label>
                 <label>
                   <span className={labelClass}>Phone Number<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("contactPhone")} placeholder="Contact phone" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: event.target.value })); }} required />
+                  <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit mobile number" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
                   {collegeFieldErrors.contactPhone ? <span className={errorTextClass}>{collegeFieldErrors.contactPhone}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Alternate Phone</span>
-                  <input className={inputClass} placeholder="Alternate phone" value={collegeForm.alternatePhone} onChange={(event) => setCollegeForm((prev) => ({ ...prev, alternatePhone: event.target.value }))} />
+                  <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit alternate number" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
+                  {collegeFieldErrors.alternatePhone ? <span className={errorTextClass}>{collegeFieldErrors.alternatePhone}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Website URL</span>
@@ -2069,6 +2078,11 @@ export default function AdminPage() {
                 <p className="text-xs text-slate-500">Placement numbers and package information.</p>
               </div>
               <div className={formSectionClass}>
+                <label className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                  <span className={`${labelClass} text-emerald-700`}>Placement Percentage</span>
+                  <input className={`${inputClass} border-emerald-200 bg-white`} placeholder="Placement %" value={collegeForm.placementRate} onChange={(event) => setCollegeForm((prev) => ({ ...prev, placementRate: event.target.value }))} />
+                  <span className="mt-2 block text-[11px] font-medium text-emerald-700">Keep this as an important highlight point for the college profile.</span>
+                </label>
                 <label>
                   <span className={labelClass}>Average Package</span>
                   <input className={inputClass} placeholder="Average package" value={collegeForm.averagePackage} onChange={(event) => setCollegeForm((prev) => ({ ...prev, averagePackage: event.target.value }))} />
@@ -2076,10 +2090,6 @@ export default function AdminPage() {
                 <label>
                   <span className={labelClass}>Highest Package</span>
                   <input className={inputClass} placeholder="Highest package" value={collegeForm.highestPackage} onChange={(event) => setCollegeForm((prev) => ({ ...prev, highestPackage: event.target.value }))} />
-                </label>
-                <label>
-                  <span className={labelClass}>Placement Percentage</span>
-                  <input className={inputClass} placeholder="Placement %" value={collegeForm.placementRate} onChange={(event) => setCollegeForm((prev) => ({ ...prev, placementRate: event.target.value }))} />
                 </label>
               </div>
               </>

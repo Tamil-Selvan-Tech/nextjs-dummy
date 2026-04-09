@@ -16,6 +16,7 @@ import { useStatusToast } from "@/lib/toast";
 
 const OTP_LENGTH = 6;
 const OTP_DURATION_SECONDS = 5 * 60;
+const RESEND_COOLDOWN_SECONDS = 5;
 
 export default function LoginOtpPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function LoginOtpPage() {
 
   const [otpDigits, setOtpDigits] = useState(() => Array(OTP_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(OTP_DURATION_SECONDS);
+  const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -51,6 +53,14 @@ export default function LoginOtpPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [secondsLeft]);
+
+  useEffect(() => {
+    if (resendCooldownLeft <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldownLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldownLeft]);
 
   const maskedEmail = useMemo(() => {
     const email = String(emailParam || "").trim();
@@ -154,6 +164,7 @@ export default function LoginOtpPage() {
   };
 
   const handleResendOtp = async () => {
+    if (isResending || resendCooldownLeft > 0) return;
     setStatus(null);
     setIsResending(true);
     try {
@@ -169,6 +180,7 @@ export default function LoginOtpPage() {
       setIsResending(false);
       setOtpDigits(Array(OTP_LENGTH).fill(""));
       setSecondsLeft(OTP_DURATION_SECONDS);
+      setResendCooldownLeft(RESEND_COOLDOWN_SECONDS);
       inputRefs.current[0]?.focus();
       setStatus({ type: "success", text: data.message || "OTP resent successfully." });
     } catch (error) {
@@ -287,10 +299,14 @@ export default function LoginOtpPage() {
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    disabled={isResending}
+                    disabled={isResending || resendCooldownLeft > 0}
                     className="text-sm font-semibold text-[color:var(--brand-primary)] transition hover:text-[color:var(--brand-primary-soft)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isResending ? "Resending OTP..." : "Resend OTP"}
+                    {isResending
+                      ? "Resending OTP..."
+                      : resendCooldownLeft > 0
+                        ? `Resend OTP in ${resendCooldownLeft}s`
+                        : "Resend OTP"}
                   </button>
                   <Link
                     href={`/login?type=${accountType}`}

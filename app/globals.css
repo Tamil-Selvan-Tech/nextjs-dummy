@@ -48,10 +48,13 @@ body {
   min-height: 100%;
   max-width: 100%;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  width: 100%;
   background:
     radial-gradient(circle at top left, rgba(15, 76, 129, 0.12), transparent 28%),
     radial-gradient(circle at top right, rgba(255, 138, 61, 0.12), transparent 22%),
@@ -66,8 +69,37 @@ body {
 img,
 svg,
 video,
-canvas {
+canvas,
+iframe {
   max-width: 100%;
+}
+
+main,
+section,
+article,
+div {
+  min-width: 0;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+a,
+button,
+label {
+  overflow-wrap: anywhere;
 }
 
 body::-webkit-scrollbar,
@@ -83,14 +115,14 @@ button,
 
 .page-container {
   margin-inline: auto;
-  width: 100%;
+  width: min(100%, var(--container-max));
   max-width: var(--container-max);
   padding-inline: 1rem;
 }
 
 .page-container-full {
   margin-inline: auto;
-  width: 100%;
+  width: min(100%, var(--container-max-wide));
   max-width: var(--container-max-wide);
   padding-inline: 0.9rem;
 }
@@ -167,11 +199,11 @@ button,
   align-items: center;
   gap: 0.75rem;
   margin-right: 1rem;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  padding: 0.35rem 0.4rem;
-  box-shadow: none;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 76, 129, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 255, 0.92));
+  padding: 0.55rem 0.75rem;
+  box-shadow: 0 10px 24px rgba(15, 76, 129, 0.08);
 }
 
 .feature-pill-icon {
@@ -196,6 +228,13 @@ button,
   margin-top: 0.1rem;
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.luxe-card,
+.glass-panel,
+.feature-pill,
+.feature-highlight-shell {
+  max-width: 100%;
 }
 
 .card-base {
@@ -253,6 +292,10 @@ button,
     radial-gradient(circle at top left, rgba(32, 69, 125, 0.08), transparent 22%),
     radial-gradient(circle at bottom right, rgba(239, 180, 76, 0.08), transparent 18%);
   pointer-events: none;
+}
+
+.home-theme .section-shell::before {
+  background: none;
 }
 
 .mesh-bg {
@@ -343,6 +386,10 @@ button,
   transform: translateY(-4px);
   border-color: rgba(213, 140, 31, 0.45);
   box-shadow: 0 22px 46px rgba(10, 19, 35, 0.14);
+}
+
+.home-theme .luxe-card:hover {
+  border-color: rgba(239, 68, 68, 0.6);
 }
 
 .soft-ring {
@@ -561,6 +608,17 @@ button,
   }
 }
 
+@media (max-width: 1023px) {
+  :root {
+    --space-section-y: 3.5rem;
+  }
+
+  .page-container,
+  .page-container-full {
+    padding-inline: 1rem;
+  }
+}
+
 @media (max-width: 767px) {
   :root {
     --space-section-y: 3rem;
@@ -582,6 +640,12 @@ button,
     line-height: 1.5;
   }
 
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .section-title {
     line-height: 1.15;
   }
@@ -596,6 +660,37 @@ button,
     letter-spacing: 0.16em;
     font-size: 0.66rem;
     padding: 0.5rem 0.85rem;
+  }
+
+  .feature-pill {
+    min-width: min(16rem, calc(100vw - 2.2rem));
+    margin-right: 0.75rem;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .responsive-data-table > * {
+    min-width: 34rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .page-container,
+  .page-container-full {
+    padding-inline: 0.75rem;
+  }
+
+  .page-section {
+    padding-block: 2.5rem;
+  }
+
+  .feature-pill {
+    min-width: min(15rem, calc(100vw - 1.75rem));
+    border-radius: 0.9rem;
+  }
+
+  .hero-bg {
+    background-position: center top;
+    background-size: cover;
   }
 }
 

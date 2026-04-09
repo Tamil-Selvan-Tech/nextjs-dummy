@@ -17,7 +17,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
 
@@ -32,12 +32,13 @@ type HomePageProps = {
   coursesData?: Course[];
 };
 
+type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
+
 export function HomePage({ collegesData = fallbackColleges, coursesData = fallbackCourses }: HomePageProps) {
   const router = useRouter();
   const [heroSearchInput, setHeroSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
-  const [expandedSpotlightId, setExpandedSpotlightId] = useState<string | null>(null);
   const [typedSearchText, setTypedSearchText] = useState("");
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -285,6 +286,8 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
     return [...bestColleges, ...additionalColleges].slice(0, 8);
   }, [collegesData]);
   const activeCollege = spotlightColleges[activeAction] ?? spotlightColleges[0];
+  const getSpotlightImage = (college: College) =>
+    String(college.image || college.logo || "").trim();
 
   const syncScrollIndicators = (
     element: HTMLDivElement | null,
@@ -309,7 +312,6 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
   useEffect(() => {
     if (isSpotlightPaused) return;
     const timer = window.setInterval(() => {
-      setExpandedSpotlightId(null);
       setActiveAction((current) => (current + 1) % Math.max(spotlightColleges.length, 1));
     }, 2800);
 
@@ -364,11 +366,25 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
     setHeroSearchInput("");
   };
 
+  const homeThemeStyles: ThemeStyleVars = {
+    "--brand-primary": "#1e4e79",
+    "--brand-primary-soft": "#2f6aa3",
+    "--brand-accent": "#ef4444",
+    "--brand-accent-deep": "#dc2626",
+    "--brand-support": "#2563eb",
+    "--surface-base": "#ffffff",
+    "--surface-muted": "#ffffff",
+    "--surface-soft": "#ffffff",
+    "--page-bg": "#ffffff",
+    "--text-dark": "#0f172a",
+    "--text-muted": "#475569",
+  };
+
   return (
-    <>
+    <div className="home-theme bg-white" style={homeThemeStyles}>
       <section className="relative overflow-hidden bg-white text-[color:var(--text-dark)]">
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('/college-hero-v2.jpg')] bg-cover bg-center opacity-[0.26]" />
+          <div className="hero-bg absolute inset-0 bg-[url('/college-hero-v2.jpg')] bg-cover bg-center opacity-[0.26]" />
           <div className="absolute inset-0 bg-white/55" />
         </div>
 
@@ -382,11 +398,11 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
               <div className="reveal-up mx-auto -mt-1 mb-3 w-full px-2">
                 <div className="relative py-6 sm:py-8">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
-                  <div className="pointer-events-none absolute -right-10 top-6 h-28 w-28 rounded-full bg-[rgba(255,138,61,0.18)] blur-3xl" />
+                  <div className="pointer-events-none absolute -right-10 top-6 h-28 w-28 rounded-full bg-[rgba(239,68,68,0.18)] blur-3xl" />
                   <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-center">
                     <div className="hero-search-shell group relative w-full md:w-[68%] md:flex-none">
                       <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.8),transparent_60%)] opacity-70" />
-                      <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-[3] flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(255,138,61,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
+                      <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-[3] flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,68,68,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
                         <Search className="size-4" />
                       </div>
 
@@ -416,19 +432,19 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                           }
                         }}
                         placeholder=""
-                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(15,76,129,0.25)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,250,255,0.96))] pl-14 pr-5 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(15,76,129,0.18)] ring-1 ring-[rgba(255,138,61,0.18)] sm:h-[3.85rem] sm:text-sm"
+                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(30,78,121,0.3)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,250,255,0.96))] pl-14 pr-5 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(30,78,121,0.22)] ring-1 ring-[rgba(239,68,68,0.18)] sm:h-[3.85rem] sm:text-sm"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => router.push("/find")}
-                      className="shine-button w-full rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(15,76,129,0.22)] transition hover:scale-[1.01] hover:brightness-105 md:w-auto md:px-8"
+                      className="shine-button w-full rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(30,78,121,0.28)] transition hover:scale-[1.01] hover:brightness-105 md:w-auto md:px-8"
                     >
                       Find Colleges
                     </button>
                   </div>
 
-                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:w-[68%] md:flex-nowrap md:justify-center md:overflow-x-auto md:scrollbar-hide md:text-sm md:mx-auto">
+                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:mx-auto md:w-[68%] md:flex-nowrap md:justify-center md:overflow-x-auto md:scrollbar-hide md:text-sm">
                     <span className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 font-semibold text-[color:var(--brand-primary)]">
                       Live search flow
                     </span>
@@ -448,14 +464,14 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     ))}
                   </div>
 
-                  <div className="feature-marquee mt-5 w-full rounded-2xl border border-[rgba(15,76,129,0.2)] bg-white/90 py-3 pl-20 pr-4 shadow-[0_18px_36px_rgba(15,76,129,0.2)] md:mx-auto md:w-[68%] md:pl-28">
+                  <div className="feature-marquee mt-5 w-full md:mx-auto md:w-[68%]">
                     <div className="marquee-track">
                       {featureMarqueeItems.map((item, index) => {
                         const Icon = item.icon;
                         return (
                           <div
                             key={`${item.title}-${index}`}
-                            className="feature-pill marquee-item border border-[rgba(15,76,129,0.14)] bg-white/80"
+                            className="feature-pill marquee-item border  border-[rgba(15,76,129,0.14)] bg-white/80"
                           >
                             <span className="feature-pill-icon">
                               <Icon className="size-4" />
@@ -490,19 +506,19 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                       ))}
                     </div>
                   </div>
-                  <div className="mt-4 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(15,76,129,0.05),rgba(255,138,61,0.08))] p-4">
+                  <div className="mt-4 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(15,76,129,0.05),rgba(239,68,68,0.08))] p-4">
                     <div
                       className="relative h-40 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-44"
                       onMouseEnter={() => setIsSpotlightPaused(true)}
                       onMouseLeave={() => setIsSpotlightPaused(false)}
                     >
                       <div
-                        className="flex h-full transition-transform duration-700 ease-out"
+                        className="flex h-full w-full transition-transform duration-700 ease-out"
                         style={{ transform: `translateX(-${activeAction * 100}%)` }}
                       >
                         {spotlightColleges.map((college) => (
-                          <div key={college.id} className="relative h-full min-w-full">
-                            {brokenCollegeImages[college.id] ? (
+                          <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
+                            {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
                               <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
                                 <div>
                                   <p className="text-sm font-semibold text-white">{college.name}</p>
@@ -513,7 +529,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                               </div>
                             ) : (
                               <img
-                                src={college.image}
+                                src={getSpotlightImage(college)}
                                 alt={college.name}
                                 className="h-full w-full object-cover"
                                 onError={() =>
@@ -550,7 +566,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="rounded-full bg-[color:var(--brand-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_16px_rgba(15,76,129,0.22)] transition hover:bg-[color:var(--brand-primary-soft)]"
+                            className="rounded-full bg-[color:var(--brand-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_16px_rgba(30,78,121,0.26)] transition hover:bg-[color:var(--brand-primary-soft)]"
                           >
                             Browse Colleges
                           </button>
@@ -558,25 +574,29 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                       </div>
                     </div>
                     <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-                      <div className="flex items-start gap-3">
-                        <p
-                          className={`text-sm leading-6 text-[color:var(--text-muted)] ${
-                            expandedSpotlightId === activeCollege?.id ? "" : "line-clamp-3"
-                          }`}
-                        >
-                          {activeCollege?.description || "Top college details not available."}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedSpotlightId((current) =>
-                              current === activeCollege?.id ? null : (activeCollege?.id ?? null),
-                            )
-                          }
-                          className="shrink-0 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
-                        >
-                          {expandedSpotlightId === activeCollege?.id ? "Less" : "More"}
-                        </button>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
+                            Placement
+                          </p>
+                          <p className="mt-2 text-lg font-bold text-[color:var(--text-dark)]">
+                            {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
+                          </p>
+                          <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+                            Recent placement performance
+                          </p>
+                        </div>
+                        <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.22)] bg-[rgba(239,68,68,0.08)] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-accent-deep)]">
+                            Accreditation
+                          </p>
+                          <p className="mt-2 text-lg font-bold text-[color:var(--text-dark)]">
+                            {activeCollege?.accreditation || "-"}
+                          </p>
+                          <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+                            Latest approved accreditation status
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -604,10 +624,10 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                           key={course.id}
                           type="button"
                           onClick={() => router.push(course.href)}
-                          className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
+                          className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,138,61,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
+                            <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(239,68,68,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
                               <Icon className="size-[13px]" />
                             </div>
                           </div>
@@ -839,8 +859,10 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">
-          <div className="mx-auto max-w-4xl rounded-[2rem] border border-[rgba(16,37,78,0.1)] bg-[linear-gradient(135deg,#fffdf7,#f4ecdf)] p-6 shadow-[0_18px_36px_rgba(16,37,78,0.12)] md:p-8">
-            <div className="mx-auto max-w-2xl text-center">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_20px_44px_rgba(31,41,55,0.18),0_12px_28px_rgba(31,41,55,0.14)] md:p-8">
+            <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
+            <div className="relative z-10 mx-auto max-w-2xl text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Newsletter
               </p>
@@ -852,16 +874,16 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
               </p>
             </div>
 
-            <form className="mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div className="rounded-[1.4rem] border border-[rgba(16,37,78,0.12)] bg-white px-4 py-2">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Email</label>
+            <form className="relative z-10 mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Email</label>
                 <div className="flex items-center gap-2">
                   <Mail className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
-                  <input type="email" placeholder="your@email.com" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+                  <input type="email" placeholder="your@email.com" className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
                 </div>
               </div>
-              <div className="rounded-[1.4rem] border border-[rgba(16,37,78,0.12)] bg-white px-4 py-2">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Phone</label>
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Phone</label>
                 <div className="flex items-center gap-2">
                   <Phone className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
                   <input
@@ -870,7 +892,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     pattern="[0-9]{10}"
                     maxLength={10}
                     placeholder="10-digit number"
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                     onInput={(event) => {
                       const target = event.currentTarget;
                       target.value = target.value.replace(/\D/g, "").slice(0, 10);
@@ -878,17 +900,17 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                   />
                 </div>
               </div>
-              <div className="rounded-[1.4rem] border border-[rgba(16,37,78,0.12)] bg-white px-4 py-2">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Course</label>
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Course</label>
                 <div className="flex items-center gap-2">
                   <CourseIcon className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
-                  <input type="text" placeholder="B.Tech, MBA, etc." className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+                  <input type="text" placeholder="B.Tech, MBA, etc." className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
                 </div>
               </div>
               <div className="flex items-stretch sm:col-span-2 md:col-span-1">
                 <button
                   type="submit"
-                  className="shine-button w-full rounded-[1.4rem] bg-[color:var(--brand-primary)] px-6 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                  className="shine-button w-full rounded-[1.4rem] bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(30,78,121,0.32),0_10px_22px_rgba(239,68,68,0.2)] transition hover:translate-y-[-1px] hover:brightness-105"
                 >
                   Join Updates
                 </button>
@@ -897,6 +919,6 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
