@@ -138,7 +138,7 @@ export default function CollegeRequestsPage() {
     event.preventDefault();
     if (!token) return;
     const normalizedActionType = "update" as const;
-    if (!collegeForm.entityName.trim() && normalizedActionType !== "delete") {
+    if (!collegeForm.entityName.trim()) {
       setStatus({ type: "error", text: "College name is required." });
       return;
     }
