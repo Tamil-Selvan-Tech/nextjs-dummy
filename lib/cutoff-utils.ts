@@ -1,5 +1,6 @@
 const cutoffMinValue = 0;
 const cutoffMaxValue = 9999;
+type ParsedCutoffRange = { start: number; end: number };
 const normalizeDash = (value: string) => String(value || "").replace(/[\u2013\u2014]/g, "-");
 
 const normalizeCutoffPart = (value: string) => {
@@ -33,7 +34,9 @@ const parseCutoffPart = (value: string) => {
   return parsed;
 };
 
-export const parseCutoffValue = (value: string | number | null | undefined) => {
+export const parseCutoffValue = (
+  value: string | number | null | undefined,
+): ParsedCutoffRange | null => {
   if (value === null || value === undefined) return null;
   const raw = String(value || "").trim();
   if (!raw) return null;
@@ -46,17 +49,17 @@ export const parseCutoffValue = (value: string | number | null | undefined) => {
     const start = parseCutoffPart(startText);
     const end = parseCutoffPart(endText);
 
-    if (!Number.isFinite(start) && !Number.isFinite(end)) return null;
+    if (start === null && end === null) return null;
 
-    const resolvedStart = Number.isFinite(start) ? start : end;
-    const resolvedEnd = Number.isFinite(end) ? end : start;
+    const resolvedStart = start ?? end;
+    const resolvedEnd = end ?? start;
 
-    if (!Number.isFinite(resolvedStart) || !Number.isFinite(resolvedEnd)) return null;
+    if (resolvedStart === null || resolvedEnd === null) return null;
     return { start: resolvedStart, end: resolvedEnd };
   }
 
   const parsed = parseCutoffPart(normalized);
-  if (!Number.isFinite(parsed)) return null;
+  if (parsed === null) return null;
   return { start: parsed, end: parsed };
 };
 
