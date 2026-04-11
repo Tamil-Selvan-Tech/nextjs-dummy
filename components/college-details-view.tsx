@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { PageBackButton } from "@/components/global-back-button";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import type { College, Course } from "@/lib/site-data";
 import { EnquiryForm } from "@/components/enquiry-form";
@@ -114,6 +115,15 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       return `₹${numeric.toLocaleString()}`;
     }
     return raw || "Not available";
+  };
+  const formatCutoffDetails = (course: Course) => {
+    if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
+      return course.cutoffByCategory
+        .filter((item) => item.category && item.cutoff)
+        .map((item) => `${item.category}: ${item.cutoff}`)
+        .join(", ");
+    }
+    return course.cutoff ? String(course.cutoff) : "-";
   };
 
   const getFeeRangeFromStructure = () => {
@@ -807,6 +817,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       </button>
                     </div>
                   ) : null}
+                  <div className="flex justify-center pt-4">
+                    <PageBackButton />
+                  </div>
                 </div>
               ) : null}
 
@@ -1016,7 +1029,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       <div className="px-3 py-3 font-semibold">{getCourseTitle(course)}</div>
                       <div className="px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.cutoff || "-"}</div>
+                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCutoffDetails(course)}</div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.minimumQualification || "-"}

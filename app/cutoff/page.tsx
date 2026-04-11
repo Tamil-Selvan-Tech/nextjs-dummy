@@ -1,4 +1,5 @@
 import { CutoffClient } from "@/app/cutoff/cutoff-client";
+import { fetchPublicPanelData } from "@/lib/public-data";
 
 export default async function CutoffPage({
   searchParams,
@@ -8,6 +9,7 @@ export default async function CutoffPage({
   const params = await searchParams;
   const pick = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] || "" : value || "";
+  const panelData = await fetchPublicPanelData();
 
   return (
     <CutoffClient
@@ -16,6 +18,7 @@ export default async function CutoffPage({
       selectedCourse={pick(params.course)}
       selectedSpecialization={pick(params.specialization)}
       enteredCutoff={pick(params.cutoff)}
+      colleges={panelData.colleges}
     />
   );
 }

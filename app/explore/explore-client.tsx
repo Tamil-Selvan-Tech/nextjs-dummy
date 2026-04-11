@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
+import { PageBackButton } from "@/components/global-back-button";
 import { colleges, courses, normalizeText, type College, type Course } from "@/lib/site-data";
 
 type ExploreClientProps = {
@@ -372,6 +373,9 @@ export function ExploreClient({
                   })}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-5 flex justify-center">
+              <PageBackButton />
             </div>
           </div>
         ) : null}

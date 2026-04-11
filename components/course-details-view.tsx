@@ -87,6 +87,15 @@ export function CourseDetailsView({
       }),
     [collegeLookup, relatedCourses],
   );
+  const formatCutoffDetails = (course: Course) => {
+    if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
+      return course.cutoffByCategory
+        .filter((item) => item.category && item.cutoff)
+        .map((item) => `${item.category}: ${item.cutoff}`)
+        .join(", ");
+    }
+    return course.cutoff ? String(course.cutoff) : "-";
+  };
 
   const filteredRows = useMemo(() => {
     return collegeRows.filter(({ course, college, location }) => {
@@ -328,7 +337,7 @@ export function CourseDetailsView({
                         </div>
                         <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Cutoff</p>
-                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">{course.cutoff}</p>
+                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">{formatCutoffDetails(course)}</p>
                         </div>
                       </div>
 

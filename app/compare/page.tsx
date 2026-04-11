@@ -4,18 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BadgeIndianRupee,
+  Building2,
   Download,
+  Dumbbell,
   GraduationCap,
+  Hospital,
   Heart,
+  Laptop,
   List,
   Library,
   MapPin,
   Medal,
+  Monitor,
   Plus,
   RefreshCw,
   Search,
   ShieldCheck,
   Trophy,
+  Wifi,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -25,9 +31,13 @@ import { Navbar } from "@/components/navbar";
 import { PopularComparisons } from "@/components/popular-comparisons";
 import { readAuthToken } from "@/lib/auth-storage";
 import { fetchPublicPanelData } from "@/lib/public-data";
+import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   colleges,
+  courses as fallbackCourses,
   getCoursesForCollege,
+  normalizeText,
+  type Course,
   type College,
 } from "@/lib/site-data";
 
@@ -36,37 +46,111 @@ type CompareCollege = College | null;
 const sectionCards = [
   { key: "overview", title: "Institute Information", icon: GraduationCap },
   { key: "ranking", title: "Ranking & Recognition", icon: Trophy },
-  { key: "fees", title: "Course Fees", icon: BadgeIndianRupee },
-  { key: "cutoff", title: "Cut Off Snapshot", icon: Medal },
+  { key: "fees", title: "Course Details", icon: BadgeIndianRupee },
+  { key: "cutoff", title: "Admission Quotas", icon: Medal },
   { key: "facilities", title: "Infrastructure & Facilities", icon: Library },
 ];
 
 const facilityIconMap: Record<string, typeof Library> = {
   Library,
   Hostel: ShieldCheck,
+  "Medical Center": Hospital,
+  Hospital,
   Labs: GraduationCap,
+  "Specialized computer labs": Laptop,
+  "Computer Labs": Laptop,
+  "Academic & IT Infrastructure": Monitor,
+  "ICT-enabled classrooms": Monitor,
+  "Innovation Hub": GraduationCap,
+  "Incubation Center": GraduationCap,
   Sports: Trophy,
-  Hospital: ShieldCheck,
+  "Sports & Wellness": Dumbbell,
+  Gym: Dumbbell,
+  "Wi-Fi": Wifi,
+  WiFi: Wifi,
+  "Accommodations": Building2,
+  "Accommodation": Building2,
+};
+
+const getFacilityIcon = (facility: string) => {
+  const key = facility.trim();
+  if (facilityIconMap[key]) return facilityIconMap[key];
+  const normalized = key.toLowerCase();
+  if (normalized.includes("lab")) return Laptop;
+  if (normalized.includes("library")) return Library;
+  if (normalized.includes("hostel") || normalized.includes("accommodation")) return Building2;
+  if (normalized.includes("sport") || normalized.includes("wellness") || normalized.includes("gym"))
+    return Dumbbell;
+  if (normalized.includes("hospital") || normalized.includes("medical")) return Hospital;
+  if (normalized.includes("wifi") || normalized.includes("wi-fi")) return Wifi;
+  if (normalized.includes("ict") || normalized.includes("it") || normalized.includes("computer"))
+    return Monitor;
+  return ShieldCheck;
 };
 
 const comparisonPairs = [
   { label: "University", value: (college: College) => college.university || "-" },
   { label: "Location", value: (college: College) => `${college.district}, ${college.state}` },
-  { label: "Accreditation", value: (college: College) => college.accreditation || "-" },
+  { label: "Established Year", value: (college: College) => college.establishedYear || "-" },
+  { label: "Ownership Type", value: (college: College) => college.ownershipType || "-" },
   { label: "Placement Rate", value: (college: College) => `${college.placementRate || 0}%` },
   { label: "Hostel", value: (college: College) => (college.hasHostel ? "Available" : "Not Available") },
 ];
 
-const getCourseSummary = (college: College) => {
-  const collegeCourses = getCoursesForCollege(college.name);
+const toList = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  return String(value || "")
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const formatMoney = (value?: unknown) => {
+  if (typeof value !== "string" && typeof value !== "number") return "Not available";
+  const raw = String(value ?? "").replace(/[₹,\s]/g, "").trim();
+  const numeric = Number(raw);
+  if (raw && Number.isFinite(numeric)) {
+    return `₹${numeric.toLocaleString()}`;
+  }
+  return raw || "Not available";
+};
+
+const getFeeRangeFromStructure = (college: College) => {
+  const structure = college.feesStructure as Record<string, unknown> | undefined;
+  if (!structure || typeof structure !== "object") return "";
+  const tuition = (structure.tuitionFee as Record<string, unknown> | undefined) || structure;
+  const min = (tuition.minAmount ?? structure.minAmount ?? tuition.min ?? structure.min ?? "") as
+    | string
+    | number;
+  const max = (tuition.maxAmount ?? structure.maxAmount ?? tuition.max ?? structure.max ?? "") as
+    | string
+    | number;
+  if (!min && !max) return "";
+  return `${formatMoney(min)} - ${formatMoney(max)}`;
+};
+
+const getRelatedCoursesForCollege = (college: College, courseData: Course[]) =>
+  courseData.filter(
+    (course) =>
+      course.collegeId === college.id ||
+      normalizeText(course.college) === normalizeText(college.name) ||
+      normalizeText(course.university) === normalizeText(college.university),
+  );
+
+const getCourseSummary = (college: College, courseData: Course[] = fallbackCourses) => {
+  const matchedCourses = courseData.length ? getRelatedCoursesForCollege(college, courseData) : [];
+  const collegeCourses = matchedCourses.length ? matchedCourses : getCoursesForCollege(college.name);
   const topCourse = collegeCourses[0];
   return {
     totalCourses: collegeCourses.length,
     topCourse,
     fees:
-      typeof topCourse?.totalFees === "number"
+      getFeeRangeFromStructure(college) ||
+      (typeof topCourse?.totalFees === "number"
         ? `Rs. ${topCourse.totalFees.toLocaleString()}`
-        : "-",
+        : "-"),
     cutoff: topCourse?.cutoff ? `${topCourse.cutoff}` : "-",
   };
 };
@@ -93,6 +177,7 @@ export default function ComparePage() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [likedCollegeId, setLikedCollegeId] = useState<string | null>(null);
   const [availableColleges, setAvailableColleges] = useState<College[]>(colleges);
+  const [availableCourses, setAvailableCourses] = useState<Course[]>(fallbackCourses);
   const [compareColleges, setCompareColleges] = useState<CompareCollege[]>([null, null, null]);
 
   useEffect(() => {
@@ -133,6 +218,7 @@ export default function ComparePage() {
         }
 
         setAvailableColleges(resolvedColleges);
+        setAvailableCourses(panelData.courses.length ? panelData.courses : fallbackCourses);
         setCompareColleges((previous) => {
           const seed = seededCollege || previous[0] || null;
           const focus = focusedCollege || previous[1] || null;
@@ -148,6 +234,7 @@ export default function ComparePage() {
             ? getCollegeByIdFromList(colleges, focusCollegeId)
             : null;
 
+        setAvailableCourses(fallbackCourses);
         setCompareColleges((previous) => {
           const seed = seededCollege || previous[0] || null;
           const focus = focusedCollege || previous[1] || null;
@@ -324,7 +411,7 @@ export default function ComparePage() {
                   <Trophy className="size-3.5" />
                   Compare Colleges
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
+                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
                   Side-by-side college snapshot
                 </div>
                 <h1 className="mt-4 max-w-4xl text-balance font-[family:var(--font-display)] text-[1.55rem] font-bold leading-[1.2] text-[color:var(--text-dark)] sm:text-[1.85rem]">
@@ -341,7 +428,7 @@ export default function ComparePage() {
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
+                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(22,50,79,0.18)] transition hover:bg-[color:var(--brand-primary-soft)]"
                 >
                   <Download className="size-4" />
                   Download / Print
@@ -421,7 +508,9 @@ export default function ComparePage() {
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                           Ranking
                         </p>
-                        <p className="mt-2 font-bold text-[color:var(--text-dark)]">{college.ranking}</p>
+                        <p className="mt-2 font-bold text-[color:var(--text-dark)]">
+                          {formatRankingRangeForDisplay(college.ranking)}
+                        </p>
                       </div>
                       <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -513,23 +602,23 @@ export default function ComparePage() {
                         return (
                           <div
                             key={`${section.key}-empty-${index}`}
-                            className={`rounded-[1.3rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-[rgba(15,76,129,0.03)] px-3 py-6 text-center text-sm text-[color:var(--text-muted)] sm:px-4 sm:py-8 ${
+                          className={`rounded-[1.3rem] border border-dashed border-[rgba(15,76,129,0.26)] bg-[rgba(15,76,129,0.03)] px-3 py-6 text-center text-sm text-[color:var(--text-muted)] sm:px-4 sm:py-8 ${
                               index === 2 ? "hidden lg:block" : ""
                             }`}
-                          >
+                        >
                             No college selected
                           </div>
                         );
                       }
 
-                      const summary = getCourseSummary(college);
+                      const summary = getCourseSummary(college, availableCourses);
                       const topFacilities = college.facilities.slice(0, 3);
                       const facilityHighlightsMobile = topFacilities;
 
                       return (
                         <article
                           key={`${section.key}-${college.id}`}
-                          className={`flex h-full flex-col border border-[rgba(15,76,129,0.08)] bg-white px-3 py-3 sm:rounded-[1.3rem] sm:px-4 sm:py-4 ${
+                          className={`flex h-full flex-col border border-[rgba(15,76,129,0.18)] bg-white px-3 py-3 sm:rounded-[1.3rem] sm:px-4 sm:py-4 ${
                             index === 0 ? "border-r-0 sm:border" : ""
                           } ${index === 1 ? "border-l-0 sm:border" : ""} ${
                             index === 2 ? "hidden lg:block" : ""
@@ -571,7 +660,7 @@ export default function ComparePage() {
                               <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 sm:grid-cols-[92px_minmax(0,1fr)]">
                                 <span className="text-slate-500">Current Rank</span>
                                 <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
-                                  {college.ranking}
+                                  {formatRankingRangeForDisplay(college.ranking)}
                                 </span>
                               </div>
                               <div className="rounded-[1rem] bg-[rgba(255,138,61,0.08)] px-4 py-3 text-[13px] text-[color:var(--brand-accent-deep)]">
@@ -583,9 +672,9 @@ export default function ComparePage() {
                           {section.key === "fees" ? (
                             <div className="space-y-2.5 text-[12.5px] sm:text-[13px]">
                               <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
-                                <span className="text-slate-500">Top Course</span>
+                                <span className="text-slate-500">Courses</span>
                                 <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
-                                  {summary.topCourse?.course || "-"}
+                                  {summary.totalCourses}
                                 </span>
                               </div>
                               <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
@@ -594,25 +683,26 @@ export default function ComparePage() {
                                   {summary.fees}
                                 </span>
                               </div>
-                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 sm:grid-cols-[92px_minmax(0,1fr)]">
-                                <span className="text-slate-500">Programs Listed</span>
-                                <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
-                                  {summary.totalCourses}
-                                </span>
-                              </div>
                             </div>
                           ) : null}
 
                           {section.key === "cutoff" ? (
                             <div className="space-y-2.5 text-[12.5px] sm:text-[13px]">
-                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 sm:grid-cols-[92px_minmax(0,1fr)]">
-                                <span className="text-slate-500">Top Cutoff</span>
-                                <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
-                                  {summary.cutoff}
-                                </span>
-                              </div>
-                              <div className="rounded-[1rem] bg-[rgba(15,76,129,0.05)] px-4 py-3 text-[13px] text-slate-600">
-                                Compare with caution: cutoff varies by course, category, and counselling round.
+                              <div className="grid gap-2">
+                                {toList(college.quotas).length ? (
+                                  toList(college.quotas).map((quota) => (
+                                    <div
+                                      key={`${college.id}-quota-${quota}`}
+                                      className="rounded-[1rem] bg-[rgba(15,76,129,0.06)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--brand-primary)]"
+                                    >
+                                      {quota}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="rounded-[1rem] bg-[rgba(15,76,129,0.05)] px-4 py-3 text-[13px] text-slate-600">
+                                    Admission quota details not available.
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ) : null}
@@ -625,14 +715,17 @@ export default function ComparePage() {
                                     key={`${college.id}-facility-${idx}`}
                                     className="flex items-start gap-2 rounded-[1.1rem] bg-[rgba(15,76,129,0.06)] px-3 py-2 text-[11.5px] font-semibold leading-4 text-[color:var(--brand-primary)] min-[380px]:text-[12px] min-[380px]:leading-5"
                                   >
-                                    <List className="mt-0.5 size-3.5 shrink-0" />
+                                    {(() => {
+                                      const FacilityIcon = getFacilityIcon(item);
+                                      return <FacilityIcon className="mt-0.5 size-3.5 shrink-0" />;
+                                    })()}
                                     <span className="line-clamp-4 text-pretty break-words">{item}</span>
                                   </div>
                                 ))}
                               </div>
                               <div className="hidden flex-wrap gap-2 sm:flex">
                                 {topFacilities.map((facility) => {
-                                  const FacilityIcon = facilityIconMap[facility] || Library;
+                                  const FacilityIcon = getFacilityIcon(facility);
                                   return (
                                     <span
                                       key={facility}

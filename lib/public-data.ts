@@ -115,6 +115,10 @@ type BackendCourse = {
   semesterFees?: number | string;
   totalFees?: number | string;
   cutoff?: number | string;
+  cutoffByCategory?: Array<{
+    category?: string;
+    cutoff?: string;
+  }>;
   isTopCourse?: boolean;
   university?: string;
   college?: string;
@@ -147,6 +151,14 @@ const mapCourses = (records: BackendCourse[]): Course[] =>
     semesterFees: toNumber(item.semesterFees),
     totalFees: toNumber(item.totalFees),
     cutoff: toNumber(item.cutoff),
+    cutoffByCategory: Array.isArray(item.cutoffByCategory)
+      ? item.cutoffByCategory
+          .map((entry) => ({
+            category: String(entry.category || "").trim(),
+            cutoff: String(entry.cutoff || "").trim(),
+          }))
+          .filter((entry) => entry.category && entry.cutoff)
+      : [],
     isTopCourse: Boolean(item.isTopCourse),
     university: String(item.university || ""),
     college: String(item.college || ""),

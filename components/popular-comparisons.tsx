@@ -165,7 +165,7 @@ export function PopularComparisons({
             </div>
           </div>
 
-          <div className="mt-6 flex gap-4 overflow-x-auto pb-2">
+          <div className="mt-6 flex gap-4 overflow-x-auto overflow-y-visible pb-4 pt-2">
             {popularColleges.map((college) => {
               const leftInfo = getTopCourseInfo(selectedCollege);
               const rightInfo = getTopCourseInfo(college);

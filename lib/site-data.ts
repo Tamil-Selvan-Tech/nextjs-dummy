@@ -49,6 +49,10 @@ export type Course = {
   semesterFees?: number;
   totalFees: number;
   cutoff: number;
+  cutoffByCategory?: Array<{
+    category: string;
+    cutoff: string;
+  }>;
   isTopCourse: boolean;
   university: string;
   college: string;
@@ -81,6 +85,10 @@ export type Course = {
     totalFees?: number;
     hostelFees?: number;
     cutoff: number;
+    cutoffByCategory?: Array<{
+      category: string;
+      cutoff: string;
+    }>;
     intake?: number;
     applicationFee?: number;
   }>;

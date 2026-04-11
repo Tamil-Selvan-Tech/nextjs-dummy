@@ -264,8 +264,8 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
       icon: CourseIcon,
     },
     {
-      title: "Top Colleges",
-      description: "Browse spotlight colleges with details, location, and quick access.",
+      title: "Cutoff Calculation",
+      description: "Cutoff calculation insights to shortlist colleges faster.",
       icon: Sparkles,
     },
     {
@@ -464,7 +464,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     ))}
                   </div>
 
-                  <div className="feature-marquee mt-5 w-full md:mx-auto md:w-[68%]">
+                  <div className="feature-marquee mt-5 w-full md:mx-auto md:w-[94%] lg:w-[98%]">
                     <div className="marquee-track">
                       {featureMarqueeItems.map((item, index) => {
                         const Icon = item.icon;
@@ -682,7 +682,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
               onScroll={() =>
                 syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
               }
-              className="flex gap-3 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
+              className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
             >
               {exploreCourseCards.slice(0, 10).map((course) => (
                 <article
@@ -742,6 +742,24 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                 <ChevronRight className="size-5" />
               </button>
             ) : null}
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featureCards.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article
+                  key={item.title}
+                  className="luxe-card flex flex-col gap-3 p-5"
+                >
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
+                    <Icon className="size-5 text-[color:var(--brand-primary)]" />
+                  </div>
+                  <h3 className="text-base font-semibold text-[color:var(--text-dark)]">{item.title}</h3>
+                  <p className="text-sm leading-6 text-[color:var(--text-muted)]">{item.description}</p>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -859,7 +877,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">
-          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_20px_44px_rgba(31,41,55,0.18),0_12px_28px_rgba(31,41,55,0.14)] md:p-8">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8">
             <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
             <div className="relative z-10 mx-auto max-w-2xl text-center">

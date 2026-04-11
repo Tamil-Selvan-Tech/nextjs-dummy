@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BadgeCheck, Plus, X } from "lucide-react";
 import type { SafeAuthUser } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
@@ -181,6 +181,40 @@ const calcTotalFees = (semesterFees: string, duration: string) => {
   if (!Number.isFinite(perSem) || perSem <= 0 || !Number.isFinite(years) || years <= 0) return "";
   return String(Math.round(perSem * years * 2));
 };
+const normalizeExamDraft = (exam: CourseExam) => ({
+  examName: String(exam.examName || "").trim(),
+  cutoffScoreOrRank: String(exam.cutoffScoreOrRank || "").trim(),
+  weightage: String(exam.weightage || "").trim(),
+  paperOrSyllabus: String(exam.paperOrSyllabus || "").trim(),
+  preparationNotes: String(exam.preparationNotes || "").trim(),
+});
+const serializeCourseDraftForCompare = (course: CourseDraft) =>
+  JSON.stringify({
+    courseType: String(course.courseType || "").trim(),
+    degreeType: String(course.degreeType || "").trim(),
+    stream: String(course.stream || "").trim(),
+    specialization: String(course.specialization || "").trim(),
+    duration: String(course.duration || "").trim(),
+    mode: String(course.mode || "").trim(),
+    lateralEntryAvailable: Boolean(course.lateralEntryAvailable),
+    lateralEntryDetails: String(course.lateralEntryDetails || "").trim(),
+    minimumQualification: String(course.minimumQualification || "").trim(),
+    university: String(course.university || "").trim(),
+    admissionProcess: String(course.admissionProcess || "").trim(),
+    description: String(course.description || "").trim(),
+    semesterFees: String(course.semesterFees || "").trim(),
+    totalFees: String(course.totalFees || "").trim(),
+    cutoff: String(course.cutoff || "").trim(),
+    intake: String(course.intake || "").trim(),
+    applicationFee: String(course.applicationFee || "").trim(),
+    entranceExamsEnabled: Boolean(course.entranceExamsEnabled),
+    entranceExams: (course.entranceExamsEnabled ? course.entranceExams : [])
+      .map(normalizeExamDraft)
+      .filter((exam) =>
+        [exam.examName, exam.cutoffScoreOrRank, exam.weightage, exam.paperOrSyllabus, exam.preparationNotes].some(Boolean),
+      ),
+    isTopCourse: Boolean(course.isTopCourse),
+  });
 const getDefaultDuration = (stream: string, degreeType: string) =>
   streamDurationByDegreeType[stream]?.[degreeType] || defaultDurationByDegreeType[degreeType] || "";
 const getDefaultCourseName = (stream: string, degreeType: string) =>
@@ -249,14 +283,21 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
   const [showCourseEditor, setShowCourseEditor] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState("");
   const [courseForm, setCourseForm] = useState<CourseDraft>(() => emptyCourseDraft(text(college, "university")));
+  const persistedCourseBaselineRef = useRef<Record<string, string>>({});
   useStatusToast(status);
   useEffect(() => {
+    const mappedCourseDrafts = courses.map(mapExistingCourseToDraft);
     setForm(buildForm(college, currentUser));
-    setCourseDrafts(courses.map(mapExistingCourseToDraft));
+    setCourseDrafts(mappedCourseDrafts);
     setRemovedCourseIds([]);
     setCourseForm(emptyCourseDraft(text(college, "university")));
     setEditingCourseId("");
     setShowCourseEditor(false);
+    persistedCourseBaselineRef.current = Object.fromEntries(
+      mappedCourseDrafts
+        .filter((item) => item.persisted && item.id)
+        .map((item) => [item.id, serializeCourseDraftForCompare(item)]),
+    );
   }, [college, courses, currentUser]);
   const hasHostel = form.hostelAvailability === "available";
   const availableStates = useMemo(() => INDIA_STATES, []);
@@ -335,6 +376,9 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
       for (const course of courseDrafts) {
         const coursePayload = { courseType: course.courseType, degreeType: course.degreeType, stream: course.stream, specialization: course.specialization, duration: course.duration, mode: course.mode, lateralEntryAvailable: course.lateralEntryAvailable, lateralEntryDetails: course.lateralEntryDetails, minimumQualification: course.minimumQualification, university: course.university, admissionProcess: course.admissionProcess, description: course.description, semesterFees: course.semesterFees, totalFees: course.totalFees, cutoff: course.cutoff, intake: course.intake, applicationFee: course.applicationFee, entranceExams: course.entranceExamsEnabled ? course.entranceExams : [], isTopCourse: course.isTopCourse };
         if (course.persisted) {
+          if (persistedCourseBaselineRef.current[course.id] === serializeCourseDraftForCompare(course)) {
+            continue;
+          }
           await request(`/api/users/my-courses/${course.id}`, withAuth(token, { method: "PUT", body: JSON.stringify(coursePayload) }));
         } else {
           await request("/api/users/my-courses", withAuth(token, { method: "POST", body: JSON.stringify(coursePayload) }));

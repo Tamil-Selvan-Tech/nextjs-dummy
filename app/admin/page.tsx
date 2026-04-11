@@ -39,9 +39,10 @@ import {
 import { showToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
+type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
-type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; description?: string; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; intake?: number; applicationFee?: number }> };
+type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
@@ -52,7 +53,7 @@ type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: 
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
-type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
+type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
 type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
 type CourseOption = { value: string; label: string };
@@ -60,6 +61,92 @@ type CourseOption = { value: string; label: string };
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
 const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
+const cutoffCategoryOptions = [
+  { value: "OC", label: "OC / General" },
+  { value: "BC", label: "BC" },
+  { value: "BCM", label: "BCM" },
+  { value: "MBC", label: "MBC / DNC" },
+  { value: "SC", label: "SC" },
+  { value: "SCA", label: "SCA" },
+  { value: "ST", label: "ST" },
+];
+const defaultCutoffCategory = cutoffCategoryOptions[0]?.value || "OC";
+const normalizeCategoryCutoffs = (value: unknown): CategoryCutoff[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value
+    .map((item) => ({
+      category: String((item as CategoryCutoff)?.category || "").trim().toUpperCase(),
+      cutoff: String((item as CategoryCutoff)?.cutoff || "").trim(),
+    }))
+    .filter((item) => {
+      if (!item.category || !item.cutoff || seen.has(item.category)) {
+        return false;
+      }
+      seen.add(item.category);
+      return true;
+    })
+    .sort((left, right) => {
+      const leftIndex = cutoffCategoryOptions.findIndex((item) => item.value === left.category);
+      const rightIndex = cutoffCategoryOptions.findIndex((item) => item.value === right.category);
+      const normalizedLeft = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+      const normalizedRight = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+      if (normalizedLeft !== normalizedRight) return normalizedLeft - normalizedRight;
+      return left.category.localeCompare(right.category);
+    });
+};
+const resolvePrimaryCategoryCutoff = (
+  cutoffByCategory: CategoryCutoff[],
+  fallback: string | number | undefined = "",
+) =>
+  normalizeCategoryCutoffs(cutoffByCategory).find((item) => item.category === defaultCutoffCategory)?.cutoff ||
+  normalizeCategoryCutoffs(cutoffByCategory)[0]?.cutoff ||
+  String(fallback || "").trim();
+const formatCategoryCutoffSummary = (cutoffByCategory: CategoryCutoff[]) =>
+  normalizeCategoryCutoffs(cutoffByCategory)
+    .map((item) => `${item.category}: ${item.cutoff}`)
+    .join(" | ");
+const normalizeCategoryCutoffsWithFallback = (
+  cutoffByCategory: unknown,
+  fallbackCutoff: string | number | undefined = "",
+  fallbackCategory: string = defaultCutoffCategory,
+) => {
+  const normalizedCutoffs = normalizeCategoryCutoffs(cutoffByCategory);
+  if (normalizedCutoffs.length > 0) return normalizedCutoffs;
+
+  const normalizedFallbackCutoff = String(fallbackCutoff || "").trim();
+  const normalizedFallbackCategory = String(fallbackCategory || defaultCutoffCategory).trim().toUpperCase();
+  if (!normalizedFallbackCutoff || !normalizedFallbackCategory) {
+    return [];
+  }
+
+  return [{ category: normalizedFallbackCategory, cutoff: normalizedFallbackCutoff }];
+};
+const getCutoffValueForCategory = (cutoffByCategory: CategoryCutoff[], category: string) =>
+  normalizeCategoryCutoffs(cutoffByCategory).find(
+    (item) => String(item.category || "").trim().toUpperCase() === String(category || "").trim().toUpperCase(),
+  )?.cutoff || "";
+const getNextCutoffCategoryValue = (currentCategory: string, cutoffByCategory: CategoryCutoff[]) => {
+  const normalizedCurrentCategory = String(currentCategory || "").trim().toUpperCase();
+  const normalizedCutoffs = normalizeCategoryCutoffs(cutoffByCategory);
+  const usedCategories = new Set(
+    normalizedCutoffs.map((item) => String(item.category || "").trim().toUpperCase()),
+  );
+  const orderedCategories = cutoffCategoryOptions.map((item) => item.value);
+  const startIndex = Math.max(orderedCategories.indexOf(normalizedCurrentCategory), 0);
+
+  for (let index = startIndex + 1; index < orderedCategories.length; index += 1) {
+    if (!usedCategories.has(orderedCategories[index])) {
+      return orderedCategories[index];
+    }
+  }
+  for (let index = 0; index < orderedCategories.length; index += 1) {
+    if (!usedCategories.has(orderedCategories[index])) {
+      return orderedCategories[index];
+    }
+  }
+  return orderedCategories[0] || normalizedCurrentCategory || defaultCutoffCategory;
+};
 const emptyCourseDetail = (): CourseCollegeDetailForm => ({ semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "" });
 const emptyCourseForm: CourseForm = { courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university: "", admissionProcess: "", description: "", entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} };
 const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
@@ -79,6 +166,9 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   semesterFees: "",
   totalFees: "",
   cutoff: "",
+  cutoffByCategory: [],
+  cutoffCategory: defaultCutoffCategory,
+  cutoffValue: "",
   intake: "",
   applicationFee: "",
   entranceExams: [emptyCourseExam()],
@@ -100,7 +190,8 @@ const adminModuleLabels: Record<string, string> = {
 const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3.5 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:text-sm";
 const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500";
 const primaryButtonClass = "inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0f4c81_0%,#38bdf8_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(56,189,248,0.24)] transition duration-200 hover:shadow-[0_18px_34px_rgba(56,189,248,0.28)]";
-const softButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(148,163,184,0.2)] bg-[linear-gradient(180deg,#ffffff_0%,#fdfefe_100%)] px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition duration-200 hover:bg-sky-50 hover:text-[#0f4c81]";
+const softButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-4 py-2.5 text-sm font-semibold text-[#2563eb] shadow-[0_10px_20px_rgba(37,99,235,0.08)] transition duration-200 hover:bg-[#3b82f6] hover:text-white hover:border-[#3b82f6] hover:shadow-[0_12px_24px_rgba(37,99,235,0.18)]";
+const solidBlueButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:bg-white hover:text-[#2563eb] hover:border-[rgba(37,99,235,0.34)] hover:shadow-[0_12px_24px_rgba(37,99,235,0.12)]";
 const dangerButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(251,191,36,0.22)] bg-[linear-gradient(135deg,#fff8e7_0%,#fff0d2_100%)] px-4 py-2.5 text-sm font-semibold text-[#9a6700] shadow-[0_8px_18px_rgba(251,191,36,0.12)] transition duration-200 hover:bg-[linear-gradient(135deg,#fff4d6_0%,#ffebc2_100%)]";
 const requiredMarkClass = "ml-1 text-rose-500";
 const errorTextClass = "mt-1 block text-[11px] font-medium text-rose-600";
@@ -744,6 +835,15 @@ export default function AdminPage() {
           (typeof item.college === "string" ? item.college : String(item.college?._id || "")) === collegeId,
       ) ||
       course.collegeDetails?.[0];
+    const detailCutoffByCategory =
+      Array.isArray(collegeDetail?.cutoffByCategory) && collegeDetail.cutoffByCategory.length > 0
+        ? collegeDetail.cutoffByCategory
+        : course.cutoffByCategory;
+    const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+      detailCutoffByCategory,
+      collegeDetail?.cutoff || course.cutoff || "",
+    );
+    const initialCutoffCategory = normalizedCutoffs[0]?.category || defaultCutoffCategory;
 
     return {
       id: course._id,
@@ -762,7 +862,15 @@ export default function AdminPage() {
       entranceExamsEnabled: Array.isArray(course.entranceExams) && course.entranceExams.length > 0,
       semesterFees: String(collegeDetail?.semesterFees || ""),
       totalFees: String(collegeDetail?.totalFees || ""),
-      cutoff: String(collegeDetail?.cutoff || course.cutoff || ""),
+      cutoffByCategory: normalizedCutoffs,
+      cutoff: String(
+        resolvePrimaryCategoryCutoff(
+          normalizedCutoffs,
+          collegeDetail?.cutoff || course.cutoff || "",
+        ),
+      ),
+      cutoffCategory: initialCutoffCategory,
+      cutoffValue: getCutoffValueForCategory(normalizedCutoffs, initialCutoffCategory),
       intake: String(collegeDetail?.intake ?? course.intake ?? ""),
       applicationFee: String(collegeDetail?.applicationFee ?? course.applicationFee ?? ""),
       entranceExams:
@@ -797,14 +905,62 @@ export default function AdminPage() {
     setShowEmbeddedCourseEditor(false);
   };
 
+  const upsertEmbeddedCourseCutoff = () => {
+    const category = String(embeddedCourseForm.cutoffCategory || "").trim().toUpperCase();
+    const cutoffValue = String(embeddedCourseForm.cutoffValue || "").trim();
+    if (!category) {
+      setStatusText("Select a cutoff category");
+      return;
+    }
+    if (!cutoffValue) {
+      setStatusText("Enter cutoff for the selected category");
+      return;
+    }
+
+    setEmbeddedCourseForm((prev) => {
+      const normalizedCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory);
+      const nextCutoffs = normalizeCategoryCutoffs([
+        ...normalizedCutoffs.filter((item) => item.category !== category),
+        { category, cutoff: cutoffValue },
+      ]);
+      const nextCategory = getNextCutoffCategoryValue(category, nextCutoffs);
+      return {
+        ...prev,
+        cutoffByCategory: nextCutoffs,
+        cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, cutoffValue),
+        cutoffCategory: nextCategory,
+        cutoffValue: getCutoffValueForCategory(nextCutoffs, nextCategory),
+      };
+    });
+    setStatusText("");
+  };
+
+  const removeEmbeddedCourseCutoff = (category: string) => {
+    setEmbeddedCourseForm((prev) => {
+      const nextCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory).filter(
+        (item) => item.category !== category,
+      );
+      return {
+        ...prev,
+        cutoffByCategory: nextCutoffs,
+        cutoff: resolvePrimaryCategoryCutoff(nextCutoffs),
+      };
+    });
+  };
+
   const editEmbeddedCourse = (index: number) => {
     const draft = embeddedCourses[index];
     if (!draft) return;
+    const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(draft.cutoffByCategory, draft.cutoff);
+    const initialCategory = normalizedCutoffs[0]?.category || defaultCutoffCategory;
     setEmbeddedCourseForm({
       ...draft,
       entranceExamsEnabled:
         Boolean(draft.entranceExamsEnabled) ||
         (Array.isArray(draft.entranceExams) && draft.entranceExams.length > 0),
+      cutoffByCategory: normalizedCutoffs,
+      cutoffCategory: initialCategory,
+      cutoffValue: getCutoffValueForCategory(normalizedCutoffs, initialCategory),
       entranceExams:
         Array.isArray(draft.entranceExams) && draft.entranceExams.length > 0
           ? draft.entranceExams.map((exam) => ({ ...exam }))
@@ -843,7 +999,12 @@ export default function AdminPage() {
       setStatusText("Total fees is required for each college course");
       return;
     }
-    if (!embeddedCourseForm.cutoff.trim()) {
+    const normalizedDraftCutoffs = normalizeCategoryCutoffsWithFallback(
+      embeddedCourseForm.cutoffByCategory,
+      embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff,
+      embeddedCourseForm.cutoffCategory,
+    );
+    if (normalizedDraftCutoffs.length === 0) {
       setStatusText("Cutoff is required for each college course");
       return;
     }
@@ -868,7 +1029,10 @@ export default function AdminPage() {
       entranceExamsEnabled: embeddedCourseForm.entranceExamsEnabled,
       semesterFees: embeddedCourseForm.semesterFees.trim(),
       totalFees: embeddedCourseForm.totalFees.trim(),
-      cutoff: embeddedCourseForm.cutoff.trim(),
+      cutoffByCategory: normalizedDraftCutoffs,
+      cutoff: resolvePrimaryCategoryCutoff(normalizedDraftCutoffs, embeddedCourseForm.cutoff),
+      cutoffCategory: defaultCutoffCategory,
+      cutoffValue: "",
       intake: embeddedCourseForm.intake.trim(),
       applicationFee: embeddedCourseForm.applicationFee.trim(),
       entranceExams: embeddedCourseForm.entranceExams
@@ -1157,6 +1321,15 @@ export default function AdminPage() {
         setStatusText(`Allotted seats is required for ${collegeName}`);
         return;
       }
+      const collegeWithoutCutoff = selectedCollegeIds.find(
+        (collegeId) => !String(courseForm.details[collegeId]?.cutoff || "").trim(),
+      );
+      if (collegeWithoutCutoff) {
+        const collegeName =
+          adminState.colleges.find((college) => college._id === collegeWithoutCutoff)?.name || "selected college";
+        setStatusText(`Cutoff is required for ${collegeName}`);
+        return;
+      }
 
       const collegeDetails = selectedCollegeIds.map((collegeId) => ({
         college: collegeId,
@@ -1351,6 +1524,7 @@ export default function AdminPage() {
             totalFees: Number(draft.totalFees || 0),
             hostelFees: 0,
             cutoff: draft.cutoff,
+            cutoffByCategory: draft.cutoffByCategory,
             intake: Number(draft.intake || 0),
             applicationFee: Number(draft.applicationFee || 0),
             collegeDetails: [
@@ -1360,6 +1534,7 @@ export default function AdminPage() {
                 totalFees: Number(draft.totalFees || 0),
                 hostelFees: 0,
                 cutoff: draft.cutoff,
+                cutoffByCategory: draft.cutoffByCategory,
                 intake: Number(draft.intake || 0),
                 applicationFee: Number(draft.applicationFee || 0),
               },
@@ -1407,10 +1582,50 @@ export default function AdminPage() {
   };
 
   const stats = [
-    { label: "Live Colleges", value: adminState.colleges.length, icon: Building2 },
-    { label: "Active Courses", value: adminState.courses.length, icon: BadgeCheck },
-    { label: "Pending Reviews", value: adminState.collegeRequests.length, icon: FileClock },
-    { label: "Users", value: adminState.users.length, icon: UserRound },
+    {
+      label: "Live Colleges",
+      value: adminState.colleges.length,
+      icon: Building2,
+      helper: "Published and visible now",
+      accent: "Campus Network",
+      cardClass: "border-[rgba(59,130,246,0.12)] bg-[linear-gradient(145deg,#ffffff_0%,#eef6ff_62%,#f8fbff_100%)]",
+      iconWrapClass: "bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_100%)] text-[#1d4ed8] shadow-[0_12px_26px_rgba(59,130,246,0.18)]",
+      accentClass: "border-[rgba(59,130,246,0.18)] bg-white/80 text-[#2563eb]",
+      glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.22),transparent_56%)]",
+    },
+    {
+      label: "Active Courses",
+      value: adminState.courses.length,
+      icon: BadgeCheck,
+      helper: "Programs currently mapped",
+      accent: "Course Catalog",
+      cardClass: "border-[rgba(14,165,233,0.14)] bg-[linear-gradient(145deg,#ffffff_0%,#ecfeff_60%,#f8fbff_100%)]",
+      iconWrapClass: "bg-[linear-gradient(135deg,#cffafe_0%,#ecfeff_100%)] text-cyan-600 shadow-[0_12px_26px_rgba(6,182,212,0.16)]",
+      accentClass: "border-[rgba(6,182,212,0.18)] bg-white/80 text-cyan-700",
+      glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_58%)]",
+    },
+    {
+      label: "Pending Reviews",
+      value: adminState.collegeRequests.length,
+      icon: FileClock,
+      helper: "Requests waiting for action",
+      accent: "Approval Queue",
+      cardClass: "border-[rgba(251,191,36,0.18)] bg-[linear-gradient(145deg,#ffffff_0%,#fffbeb_60%,#fffdf7_100%)]",
+      iconWrapClass: "bg-[linear-gradient(135deg,#fef3c7_0%,#fff7ed_100%)] text-amber-600 shadow-[0_12px_26px_rgba(245,158,11,0.16)]",
+      accentClass: "border-[rgba(245,158,11,0.16)] bg-white/85 text-amber-700",
+      glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(252,211,77,0.24),transparent_58%)]",
+    },
+    {
+      label: "Users",
+      value: adminState.users.length,
+      icon: UserRound,
+      helper: "Registered platform accounts",
+      accent: "User Base",
+      cardClass: "border-[rgba(168,85,247,0.14)] bg-[linear-gradient(145deg,#ffffff_0%,#faf5ff_60%,#fdfaff_100%)]",
+      iconWrapClass: "bg-[linear-gradient(135deg,#f3e8ff_0%,#faf5ff_100%)] text-violet-600 shadow-[0_12px_26px_rgba(168,85,247,0.16)]",
+      accentClass: "border-[rgba(168,85,247,0.16)] bg-white/85 text-violet-700",
+      glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(196,181,253,0.22),transparent_58%)]",
+    },
   ];
   const pendingRequestNotifications = [
     ...adminState.collegeRequests
@@ -1511,16 +1726,35 @@ export default function AdminPage() {
           {stats.map((item) => {
             const Icon = item.icon;
             return (
-              <article key={item.label} className="rounded-[1.55rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#f6fbff_100%)] p-5 shadow-[0_22px_40px_rgba(148,163,184,0.14)]">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    {item.label}
-                  </p>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#eff6ff_0%,#fef3c7_100%)]">
-                    <Icon className="size-4 text-[#0f4c81]" />
+              <article
+                key={item.label}
+                className={`group relative overflow-hidden rounded-[1.6rem] border p-5 shadow-[0_24px_48px_rgba(148,163,184,0.14)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_56px_rgba(148,163,184,0.18)] ${item.cardClass}`}
+              >
+                <div className={`pointer-events-none absolute inset-0 ${item.glowClass}`} />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${item.accentClass}`}>
+                      {item.accent}
+                    </span>
+                    <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {item.label}
+                    </p>
+                  </div>
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] ${item.iconWrapClass}`}>
+                    <Icon className="size-5" />
                   </span>
                 </div>
-                <p className="mt-4 text-3xl font-bold tracking-tight text-slate-900">{item.value}</p>
+                <div className="relative mt-7 flex items-end justify-between gap-3">
+                  <p className="text-4xl font-bold tracking-[-0.04em] text-slate-900">{item.value}</p>
+                  <div className="rounded-[1rem] border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Live Status</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">Updated from dashboard</p>
+                  </div>
+                </div>
+                <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-white/70 pt-4">
+                  <p className="text-sm text-slate-600">{item.helper}</p>
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(74,222,128,0.14)]" />
+                </div>
               </article>
             );
           })}
@@ -2368,10 +2602,65 @@ export default function AdminPage() {
                       <span className={labelClass}>Total Fees<span className={requiredMarkClass}>*</span></span>
                       <input className={inputClass} placeholder="Total fees" value={embeddedCourseForm.totalFees} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, totalFees: event.target.value }))} required />
                     </label>
-                    <label>
-                      <span className={labelClass}>Cutoff<span className={requiredMarkClass}>*</span></span>
-                      <input className={inputClass} placeholder="Cutoff" value={embeddedCourseForm.cutoff} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, cutoff: event.target.value }))} required />
-                    </label>
+                    <div className="md:col-span-2 xl:col-span-3">
+                      <span className={labelClass}>Cutoff By Category<span className={requiredMarkClass}>*</span></span>
+                      <div className="grid gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
+                        <select
+                          className={inputClass}
+                          value={embeddedCourseForm.cutoffCategory}
+                          onChange={(event) =>
+                            setEmbeddedCourseForm((prev) => ({
+                              ...prev,
+                              cutoffCategory: event.target.value,
+                              cutoffValue: getCutoffValueForCategory(prev.cutoffByCategory, event.target.value),
+                            }))
+                          }
+                        >
+                          {cutoffCategoryOptions.map((item) => (
+                            <option key={item.value} value={item.value}>{item.label}</option>
+                          ))}
+                        </select>
+                        <input
+                          className={inputClass}
+                          placeholder="Enter cutoff for selected category"
+                          value={embeddedCourseForm.cutoffValue}
+                          onChange={(event) =>
+                            setEmbeddedCourseForm((prev) => ({
+                              ...prev,
+                              cutoffValue: event.target.value,
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={upsertEmbeddedCourseCutoff}
+                          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          Add Cutoff
+                        </button>
+                      </div>
+                      {normalizeCategoryCutoffs(embeddedCourseForm.cutoffByCategory).length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {normalizeCategoryCutoffs(embeddedCourseForm.cutoffByCategory).map((item) => (
+                            <div key={item.category} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                              <span>{item.category}: {item.cutoff}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeEmbeddedCourseCutoff(String(item.category || ""))}
+                                className="text-rose-600 transition hover:text-rose-700"
+                                aria-label={`Remove ${item.category} cutoff`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Add category-wise cutoff values like OC, BC, MBC, SC, and ST.
+                        </p>
+                      )}
+                    </div>
                     <label>
                       <span className={labelClass}>Allotted Seats<span className={requiredMarkClass}>*</span></span>
                       <input className={inputClass} placeholder="Total allotted seats" value={embeddedCourseForm.intake} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, intake: event.target.value }))} required />
@@ -2515,6 +2804,9 @@ export default function AdminPage() {
                           </span>
                         ))}
                       </div>
+                      <p className="mt-2 text-xs text-slate-500">
+                        {embeddedCourses.map((item) => formatCategoryCutoffSummary(item.cutoffByCategory)).filter(Boolean).join(" • ")}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -2598,27 +2890,30 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCollegeIds((prev) =>
-                          prev.includes(college._id)
-                            ? prev.filter((item) => item !== college._id)
-                            : [...prev, college._id],
-                        )
-                      }
-                      className={softButtonClass}
-                    >
-                      {isExpanded ? "Hide" : "View all"}
-                    </button>
-                    <Link href={`/college/${college._id}`} className={softButtonClass}>
-                      View
-                      <ExternalLink className="size-4" />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
+                  <div className="mt-3 space-y-2">
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedCollegeIds((prev) =>
+                            prev.includes(college._id)
+                              ? prev.filter((item) => item !== college._id)
+                              : [...prev, college._id],
+                          )
+                        }
+                        className={`${softButtonClass} w-[132px] justify-center px-3 py-1.5 text-xs`}
+                      >
+                        {isExpanded ? "Hide Info" : "See Details"}
+                      </button>
+                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-[132px] justify-center px-3 py-1.5 text-sm`}>
+                        View
+                        <ExternalLink className="size-4" />
+                      </Link>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
                         const rangeData = formatFeeRange(college.feesStructure);
                         const placementData = college.placements || {};
                         const hostelFees = college.hostelDetails?.hostelFees || {};
@@ -2688,26 +2983,27 @@ export default function AdminPage() {
                           roomCleaningFrequency: String(hostelData.roomCleaningFrequency || ""),
                           hostelRules: String(hostelData.rules || ""),
                         });
-                      }}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                    >
-                      <PencilLine className="size-4" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void runAction(`college-${college._id}`, async () => {
-                          const data = await request(`/api/admin/colleges/${college._id}`, withAuth(token, { method: "DELETE" }));
-                          setStatusText(data?.message || "College deleted");
-                          await loadAdminData(token, currentUser);
-                        })
-                      }
-                      className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-3 py-2 text-xs font-semibold text-white"
-                    >
-                      <Trash2 className="size-4" />
-                      Delete
-                    </button>
+                        }}
+                        className={`${solidBlueButtonClass} w-[132px] justify-center px-3 py-1.5 text-xs`}
+                      >
+                        <PencilLine className="size-4" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void runAction(`college-${college._id}`, async () => {
+                            const data = await request(`/api/admin/colleges/${college._id}`, withAuth(token, { method: "DELETE" }));
+                            setStatusText(data?.message || "College deleted");
+                            await loadAdminData(token, currentUser);
+                          })
+                        }
+                        className="inline-flex w-[132px] items-center justify-center gap-2 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                      >
+                        <Trash2 className="size-4" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </article>
               );
@@ -3142,10 +3438,14 @@ export default function AdminPage() {
                         (course.collegeDetails || []).forEach((item) => {
                           const collegeId = typeof item.college === "string" ? item.college : String(item.college?._id || "");
                           if (!collegeId) return;
+                          const detailCutoffByCategory =
+                            Array.isArray(item.cutoffByCategory) && item.cutoffByCategory.length > 0
+                              ? item.cutoffByCategory
+                              : course.cutoffByCategory;
                           details[collegeId] = {
                             semesterFees: String(item.semesterFees || ""),
                             totalFees: String(item.totalFees || ""),
-                            cutoff: String(item.cutoff || course.cutoff || ""),
+                            cutoff: String(resolvePrimaryCategoryCutoff(detailCutoffByCategory, item.cutoff || course.cutoff || "")),
                             intake: String(item.intake ?? course.intake ?? ""),
                             applicationFee: String(item.applicationFee ?? course.applicationFee ?? ""),
                           };
@@ -3182,7 +3482,7 @@ export default function AdminPage() {
                           details,
                         });
                       }}
-                      className={softButtonClass}
+                      className={solidBlueButtonClass}
                     >
                       <PencilLine className="size-4" />
                       Edit
@@ -3312,7 +3612,7 @@ export default function AdminPage() {
                 <p className="text-sm text-slate-500">{item.requesterEmail || "-"}</p>
               </div>
               <div className="flex gap-3">
-                <Link href={`/admin/requested-college/${item._id}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+                <Link href={`/admin/requested-college/${item._id}`} className={solidBlueButtonClass}>
                   Review
                   <ExternalLink className="size-4" />
                 </Link>
@@ -3427,7 +3727,7 @@ export default function AdminPage() {
                         permissions: item.permissions || [],
                       });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                    className={solidBlueButtonClass}
                   >
                     <PencilLine className="size-4" />
                     Edit
@@ -3505,7 +3805,19 @@ export default function AdminPage() {
                         <td className="px-3 py-3">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
                         <td className="px-3 py-3">{item.semesterFees || "-"}</td>
                         <td className="px-3 py-3 font-semibold text-slate-900">{item.totalFees || "-"}</td>
-                        <td className="px-3 py-3">{item.cutoff || "-"}</td>
+                        <td className="px-3 py-3">
+                          {normalizeCategoryCutoffs(item.cutoffByCategory).length > 0 ? (
+                            <div className="space-y-1 text-[11px] text-slate-600">
+                              {normalizeCategoryCutoffs(item.cutoffByCategory).map((cutoffItem) => (
+                                <p key={`${item.id || item.courseType}-${cutoffItem.category}`}>
+                                  <span className="font-semibold text-slate-800">{cutoffItem.category}</span>: {cutoffItem.cutoff}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            item.cutoff || "-"
+                          )}
+                        </td>
                         <td className="px-3 py-3">{item.intake || "-"}</td>
                         <td className="px-3 py-3">{item.applicationFee || "-"}</td>
                         <td className="px-3 py-3">

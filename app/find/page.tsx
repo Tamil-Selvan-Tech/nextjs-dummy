@@ -4,29 +4,21 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import {
-  courseSpecializationOptions,
-  degreeCourseOptions,
-  degreeOptions,
-} from "@/lib/site-data";
+import { degreeOptions } from "@/lib/site-data";
 
 export default function FindPage() {
   const router = useRouter();
-  const [selectedLevel, setSelectedLevel] = useState("");
-  const [selectedDegree, setSelectedDegree] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [selectedSpecialization, setSelectedSpecialization] = useState("");
-  const [cutoff, setCutoff] = useState("");
-
-  const courseOptions = useMemo(
-    () => (selectedDegree ? degreeCourseOptions[selectedDegree] || [] : []),
-    [selectedDegree],
-  );
-
-  const specializationOptions = useMemo(
-    () => (selectedCourse ? courseSpecializationOptions[selectedCourse] || [] : []),
-    [selectedCourse],
-  );
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("11");
+  const [selectedDegree, setSelectedDegree] = useState("Engineering");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [physicsMarks, setPhysicsMarks] = useState("");
+  const [chemistryMarks, setChemistryMarks] = useState("");
+  const [mathsMarks, setMathsMarks] = useState("");
+  const [medicalMarks, setMedicalMarks] = useState("");
+  const levelOptions = useMemo(() => ["6", "7", "8", "9", "10", "11", "12"], []);
+  const isSeniorLevel = selectedLevel === "11" || selectedLevel === "12";
 
   return (
     <section className="min-h-screen bg-[linear-gradient(180deg,#eef4fb_0%,#e7eef8_100%)] text-[color:var(--text-dark)]">
@@ -37,8 +29,8 @@ export default function FindPage() {
           <div className="absolute left-[-4rem] top-8 h-56 w-56 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
           <div className="absolute right-[-3rem] top-20 h-48 w-48 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
         </div>
-        <div className="page-container relative z-10 py-8 md:py-10">
-          <div className="mx-auto max-w-4xl">
+        <div className="page-container-full relative z-10 py-8 md:py-10">
+          <div className="mx-auto max-w-none">
           <p className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.06)] px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
             College Finder
           </p>
@@ -53,16 +45,48 @@ export default function FindPage() {
             onSubmit={(event) => {
               event.preventDefault();
               const params = new URLSearchParams();
+              if (name) params.set("name", name);
+              if (phone) params.set("phone", phone);
               if (selectedLevel) params.set("level", selectedLevel);
               if (selectedDegree) params.set("degree", selectedDegree);
-              if (selectedCourse) params.set("course", selectedCourse);
-              if (selectedSpecialization) params.set("specialization", selectedSpecialization);
-              if (cutoff) params.set("cutoff", cutoff);
+              if (selectedCategory) params.set("category", selectedCategory);
+              if (selectedDegree === "Engineering" && isSeniorLevel) {
+                if (physicsMarks) params.set("physics", physicsMarks);
+                if (chemistryMarks) params.set("chemistry", chemistryMarks);
+                if (mathsMarks) params.set("maths", mathsMarks);
+              }
+              if (selectedDegree === "Medical" && isSeniorLevel) {
+                if (medicalMarks) params.set("marks", medicalMarks);
+              }
               router.push(`/cutoff?${params.toString()}`);
             }}
             className="mt-7 rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] p-5 shadow-[0_24px_56px_rgba(22,50,79,0.08)] md:p-6"
           >
             <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Name"
+                  aria-label="Name"
+                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="Phone No"
+                  aria-label="Phone number"
+                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                  required
+                />
+              </label>
+
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Select Level</span>
                 <select
@@ -72,8 +96,28 @@ export default function FindPage() {
                   required
                 >
                   <option value="">Choose level</option>
-                  <option value="11">11</option>
-                  <option value="12">12</option>
+                  {levelOptions.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Category</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(event) => setSelectedCategory(event.target.value)}
+                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                  required
+                >
+                  <option value="">Select category</option>
+                  <option value="General">General</option>
+                  <option value="OBC">OBC</option>
+                  <option value="SC">SC</option>
+                  <option value="ST">ST</option>
+                  <option value="EWS">EWS</option>
                 </select>
               </label>
 
@@ -82,9 +126,16 @@ export default function FindPage() {
                 <select
                   value={selectedDegree}
                   onChange={(event) => {
-                    setSelectedDegree(event.target.value);
-                    setSelectedCourse("");
-                    setSelectedSpecialization("");
+                    const value = event.target.value;
+                    setSelectedDegree(value);
+                    if (value !== "Engineering") {
+                      setPhysicsMarks("");
+                      setChemistryMarks("");
+                      setMathsMarks("");
+                    }
+                    if (value !== "Medical") {
+                      setMedicalMarks("");
+                    }
                   }}
                   className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
                   required
@@ -98,59 +149,75 @@ export default function FindPage() {
                 </select>
               </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Select Course</span>
-                <select
-                  value={selectedCourse}
-                  onChange={(event) => {
-                    setSelectedCourse(event.target.value);
-                    setSelectedSpecialization("");
-                  }}
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-[color:var(--brand-primary-soft)]"
-                  disabled={!selectedDegree}
-                  required
-                >
-                  <option value="">{selectedDegree ? "Choose course" : "Select degree first"}</option>
-                  {courseOptions.map((course) => (
-                    <option key={course} value={course}>
-                      {course}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {selectedDegree === "Engineering" && isSeniorLevel ? (
+                <>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Physics</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="200"
+                      step="0.01"
+                      value={physicsMarks}
+                      onChange={(event) => setPhysicsMarks(event.target.value)}
+                      placeholder="Enter your marks"
+                      aria-label="Physics marks"
+                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      required
+                    />
+                  </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Select Specialization</span>
-                <select
-                  value={selectedSpecialization}
-                  onChange={(event) => setSelectedSpecialization(event.target.value)}
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-[color:var(--brand-primary-soft)]"
-                  disabled={!selectedCourse}
-                  required
-                >
-                  <option value="">{selectedCourse ? "Choose specialization" : "Select course first"}</option>
-                  {specializationOptions.map((specialization) => (
-                    <option key={specialization} value={specialization}>
-                      {specialization}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Chemistry</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="200"
+                      step="0.01"
+                      value={chemistryMarks}
+                      onChange={(event) => setChemistryMarks(event.target.value)}
+                      placeholder="Enter your marks"
+                      aria-label="Chemistry marks"
+                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      required
+                    />
+                  </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Enter Cutoff</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="600"
-                  step="0.01"
-                  value={cutoff}
-                  onChange={(event) => setCutoff(event.target.value)}
-                  placeholder="Example: 185.50"
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
-                  required
-                />
-              </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Maths</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="200"
+                      step="0.01"
+                      value={mathsMarks}
+                      onChange={(event) => setMathsMarks(event.target.value)}
+                      placeholder="Enter your marks"
+                      aria-label="Maths marks"
+                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      required
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              {selectedDegree === "Medical" && isSeniorLevel ? (
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Enter your mark</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="200"
+                    step="0.01"
+                    value={medicalMarks}
+                    onChange={(event) => setMedicalMarks(event.target.value)}
+                    placeholder="Enter your marks"
+                    aria-label="Medical marks"
+                    className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                    required
+                  />
+                </label>
+              ) : null}
             </div>
 
             <button

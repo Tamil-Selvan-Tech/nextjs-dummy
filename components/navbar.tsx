@@ -88,7 +88,15 @@ export function Navbar() {
   const isAdminUser = currentUser?.role === "admin";
   const accountHref = isAdminUser ? "/admin" : isCollegeUser ? "/college-dashboard" : "/account";
   const accountLabel = isAdminUser ? "Admin" : "Account";
-  const hideBackButton = pathname === "/" || pathname.startsWith("/explore/course/");
+  const hideBackButton =
+    pathname === "/" ||
+    pathname.startsWith("/explore") ||
+    pathname.startsWith("/college/") ||
+    pathname.startsWith("/explore/course/");
+  const showBackUnderNav =
+    pathname?.startsWith("/explore") ||
+    pathname?.startsWith("/college/") ||
+    pathname?.startsWith("/compare");
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
   const filteredCourses = useMemo(() => {
@@ -367,6 +375,11 @@ export function Navbar() {
           </div>
         )}
       </nav>
+      {showBackUnderNav ? (
+        <div className="mt-3 flex justify-start">
+          <PageBackButton />
+        </div>
+      ) : null}
 
       {isDrawerOpen ? (
         <div className="fixed inset-0 z-[400] bg-black/35 md:hidden">
