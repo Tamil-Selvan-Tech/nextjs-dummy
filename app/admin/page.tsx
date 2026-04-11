@@ -3441,7 +3441,7 @@ export default function AdminPage() {
                           const detailCutoffByCategory =
                             Array.isArray(item.cutoffByCategory) && item.cutoffByCategory.length > 0
                               ? item.cutoffByCategory
-                              : course.cutoffByCategory;
+                              : course.cutoffByCategory || [];
                           details[collegeId] = {
                             semesterFees: String(item.semesterFees || ""),
                             totalFees: String(item.totalFees || ""),
