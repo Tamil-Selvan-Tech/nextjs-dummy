@@ -4,5 +4,11 @@ import { fetchPublicPanelData } from "@/lib/public-data";
 export default async function Page() {
   const panelData = await fetchPublicPanelData();
 
-  return <HomePage collegesData={panelData.colleges} coursesData={panelData.courses} />;
+  return (
+    <HomePage
+      collegesData={panelData.colleges}
+      coursesData={panelData.courses}
+      heroImageUrl={panelData.homeHeroImageUrl}
+    />
+  );
 }

@@ -15,6 +15,7 @@ export type College = {
   images?: string[];
   logo?: string;
   isBestCollege: boolean;
+  isTopCollege?: boolean;
   accreditation: string;
   ranking: string;
   placementRate: number;
@@ -49,6 +50,7 @@ export type Course = {
   semesterFees?: number;
   totalFees: number;
   cutoff: number;
+  cutoffText?: string;
   cutoffByCategory?: Array<{
     category: string;
     cutoff: string;
@@ -85,6 +87,7 @@ export type Course = {
     totalFees?: number;
     hostelFees?: number;
     cutoff: number;
+    cutoffText?: string;
     cutoffByCategory?: Array<{
       category: string;
       cutoff: string;
@@ -372,14 +375,61 @@ export const topCollegeCourseLinks = [
   { label: "MBBS", query: "MBBS" },
 ];
 
-export const degreeOptions = ["Engineering", "Arts & Science", "Medical", "Law"];
+export const degreeOptions = [
+  "Engineering",
+  "Arts & Science",
+  "Medical",
+  "Law",
+  "Agriculture",
+  "Nursing",
+  "Paramedical",
+];
 
 export const degreeCourseOptions: Record<string, string[]> = {
   "Arts & Science": ["BSc", "BA", "BCom", "BBA", "BCA", "MSc", "MCA", "MBA"],
+  Agriculture: ["BSc Agriculture", "BTech Agriculture", "MSc Agriculture"],
   Engineering: ["BE", "BTech", "MCA", "MTech", "MBA"],
   Law: ["LLB", "BA_LLB", "BBA_LLB", "LLM"],
   Medical: ["MBBS", "BDS", "BAMS", "BHMS", "BPT", "BPharm", "MPharm"],
+  Nursing: ["BSc Nursing", "GNM", "MSc Nursing"],
+  Paramedical: ["BPT", "BOT", "BMLT", "BSc Radiology", "BSc Anesthesia"],
 };
+
+export const engineeringCourseOptions = [
+  "B.E - Computer Science Engineering",
+  "B.E - Information Science Engineering",
+  "B.E - Mechanical Engineering",
+  "B.E - Civil Engineering",
+  "B.E - Electrical Engineering",
+  "B.E - Electronics & Communication Engineering",
+  "B.E - Electronics & Instrumentation Engineering",
+  "B.E - Mechatronics Engineering",
+  "B.E - Automobile Engineering",
+  "B.E - Aeronautical Engineering",
+  "B.E - Aerospace Engineering",
+  "B.E - Marine Engineering",
+  "B.E - Electronics and Communication Engineering",
+  "B.E - Information Technology",
+  "B.Tech - Information Technology",
+  "B.Tech - Artificial Intelligence",
+  "B.Tech - Data Science",
+  "B.Tech - Cyber Security",
+  "B.Tech - Robotics",
+  "B.Tech - Biotechnology",
+  "B.Tech - Chemical Engineering",
+  "B.Tech - Petroleum Engineering",
+  "B.Tech - Food Technology",
+  "B.Tech - Textile Technology",
+];
+
+export const medicalCourseOptions = [
+  "MBBS - General Medicine",
+  "MBBS - General Surgery",
+  "BDS - Dentistry",
+  "BAMS - Ayurveda",
+  "BHMS - Homeopathy",
+  "BUMS - Unani",
+];
 
 export const courseSpecializationOptions: Record<string, string[]> = {
   BSc: ["Computer Science", "Mathematics", "Physics", "Chemistry"],

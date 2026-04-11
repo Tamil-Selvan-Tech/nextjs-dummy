@@ -1,4 +1,5 @@
 import { API_BASE_URL, LOCAL_API_BASE_URL, REMOTE_FALLBACK_BASE_URL } from "@/lib/api";
+import { formatCutoffForSave, parseCutoffValue } from "@/lib/cutoff-utils";
 import {
   colleges as fallbackColleges,
   courses as fallbackCourses,
@@ -21,11 +22,21 @@ const shouldTryLocalFallback =
 
 const toNumber = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const digits = String(value ?? "")
-    .replace(/[^0-9.]/g, "")
-    .trim();
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  const parsedRange = parseCutoffValue(raw);
+  if (parsedRange) return parsedRange.start;
+  const digits = raw.replace(/[^0-9.]/g, "").trim();
   const parsed = Number(digits);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toCutoffText = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const normalized = formatCutoffForSave(raw);
+  if (!normalized || !normalized.includes("-")) return "";
+  return normalized;
 };
 
 const toList = (value: unknown) => {
@@ -69,6 +80,10 @@ type BackendCollege = {
   description?: string;
   establishedYear?: string | number;
   ownershipType?: string;
+  ownership?: string;
+  ownership_type?: string;
+  collegeType?: string;
+  type?: string;
   country?: string;
   city?: string;
   district?: string;
@@ -86,6 +101,7 @@ type BackendCollege = {
   quotas?: string | string[];
   courseTags?: string | string[];
   isBestCollege?: boolean;
+  isTopCollege?: boolean;
   reviews?: string;
   admissionProcess?: string;
   applicationMode?: string;
@@ -141,49 +157,106 @@ type BackendCourse = {
     preparationNotes?: string;
   }>;
   minimumQualification?: string;
+  collegeDetails?: Array<{
+    college?: string | { _id?: string; name?: string };
+    semesterFees?: number | string;
+    totalFees?: number | string;
+    hostelFees?: number | string;
+    cutoff?: number | string;
+    cutoffByCategory?: Array<{
+      category?: string;
+      cutoff?: string;
+    }>;
+    intake?: number | string;
+    applicationFee?: number | string;
+  }>;
+};
+
+type BackendSiteSettings = {
+  settings?: {
+    homeHeroImageUrl?: string;
+  };
 };
 
 const mapCourses = (records: BackendCourse[]): Course[] =>
-  records.map((item, index) => ({
-    id: String(item.id || `course-${index}`),
-    course: String(item.course || item.courseName || "Course"),
-    duration: String(item.duration || "Not available"),
-    semesterFees: toNumber(item.semesterFees),
-    totalFees: toNumber(item.totalFees),
-    cutoff: toNumber(item.cutoff),
-    cutoffByCategory: Array.isArray(item.cutoffByCategory)
+  records.map((item, index) => {
+    const cutoffByCategory = Array.isArray(item.cutoffByCategory)
       ? item.cutoffByCategory
           .map((entry) => ({
             category: String(entry.category || "").trim(),
             cutoff: String(entry.cutoff || "").trim(),
           }))
           .filter((entry) => entry.category && entry.cutoff)
-      : [],
-    isTopCourse: Boolean(item.isTopCourse),
-    university: String(item.university || ""),
-    college: String(item.college || ""),
-    collegeId: String(item.collegeId || ""),
-    specialization: String(item.specialization || item.courseName || item.courseCategory || "General"),
-    courseType: String(item.courseType || ""),
-    courseCategory: String(item.courseCategory || "General"),
-    degreeType: String(item.degreeType || ""),
-    stream: String(item.stream || ""),
-    mode: String(item.mode || ""),
-    applicationFee: toNumber(item.applicationFee),
-    intake: toNumber(item.intake),
-    description: String(item.description || ""),
-    minimumQualification: String(item.minimumQualification || ""),
-    entranceExams: Array.isArray(item.entranceExams)
-      ? item.entranceExams.map((exam) => ({
-          examName: String(exam.examName || ""),
-          cutoffScoreOrRank: String(exam.cutoffScoreOrRank || ""),
-          weightage: String(exam.weightage || ""),
-          paperOrSyllabus: String(exam.paperOrSyllabus || ""),
-          preparationNotes: String(exam.preparationNotes || ""),
-        }))
-      : [],
-    collegeDetails: [],
-  }));
+      : [];
+
+    const collegeDetails = Array.isArray(item.collegeDetails)
+      ? item.collegeDetails
+          .map((detail) => {
+            const rawCollege = detail?.college;
+            const resolvedCollege =
+              typeof rawCollege === "string"
+                ? rawCollege
+                : String(rawCollege?.name || rawCollege?._id || "").trim();
+
+            return {
+              college: resolvedCollege,
+              semesterFees: toNumber(detail.semesterFees),
+              totalFees: toNumber(detail.totalFees),
+              hostelFees: toNumber(detail.hostelFees),
+              cutoff: toNumber(detail.cutoff),
+              cutoffText: toCutoffText(detail.cutoff),
+              cutoffByCategory: Array.isArray(detail.cutoffByCategory)
+                ? detail.cutoffByCategory
+                    .map((entry) => ({
+                      category: String(entry.category || "").trim(),
+                      cutoff: String(entry.cutoff || "").trim(),
+                    }))
+                    .filter((entry) => entry.category && entry.cutoff)
+                : [],
+              intake: toNumber(detail.intake),
+              applicationFee: toNumber(detail.applicationFee),
+            };
+          })
+          .filter((detail) => detail.college)
+      : [];
+
+    return {
+      id: String(item.id || `course-${index}`),
+      course: String(item.course || item.courseName || "Course"),
+      duration: String(item.duration || "Not available"),
+      semesterFees: toNumber(item.semesterFees),
+      totalFees: toNumber(item.totalFees),
+      cutoff: toNumber(item.cutoff),
+      cutoffText: toCutoffText(item.cutoff),
+      cutoffByCategory,
+      isTopCourse: Boolean(item.isTopCourse),
+      university: String(item.university || ""),
+      college: String(item.college || ""),
+      collegeId: String(item.collegeId || ""),
+      specialization: String(
+        item.specialization || item.courseName || item.courseCategory || "General",
+      ),
+      courseType: String(item.courseType || ""),
+      courseCategory: String(item.courseCategory || "General"),
+      degreeType: String(item.degreeType || ""),
+      stream: String(item.stream || ""),
+      mode: String(item.mode || ""),
+      applicationFee: toNumber(item.applicationFee),
+      intake: toNumber(item.intake),
+      description: String(item.description || ""),
+      minimumQualification: String(item.minimumQualification || ""),
+      entranceExams: Array.isArray(item.entranceExams)
+        ? item.entranceExams.map((exam) => ({
+            examName: String(exam.examName || ""),
+            cutoffScoreOrRank: String(exam.cutoffScoreOrRank || ""),
+            weightage: String(exam.weightage || ""),
+            paperOrSyllabus: String(exam.paperOrSyllabus || ""),
+            preparationNotes: String(exam.preparationNotes || ""),
+          }))
+        : [],
+      collegeDetails,
+    };
+  });
 
 const getFallbackCollegeImage = (item: BackendCollege) => {
   const matchedCollege = fallbackColleges.find(
@@ -229,7 +302,14 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       university: String(item.university || ""),
       description: String(item.description || "College information will appear here."),
       establishedYear: String(item.establishedYear || ""),
-      ownershipType: String(item.ownershipType || ""),
+      ownershipType: String(
+        item.ownershipType ||
+          item.ownership ||
+          item.ownership_type ||
+          item.collegeType ||
+          item.type ||
+          "",
+      ),
       country: String(item.country || ""),
       district: String(item.district || ""),
       state: String(item.state || ""),
@@ -242,7 +322,8 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
           : getFallbackCollegeImage(item),
       images: toList(item.images),
       logo: String(item.logo || ""),
-      isBestCollege: Boolean(item.isBestCollege),
+      isBestCollege: Boolean(item.isBestCollege || item.isTopCollege),
+      isTopCollege: Boolean(item.isTopCollege || item.isBestCollege),
       accreditation: String(item.accreditation || "Not available"),
       ranking: String(item.ranking || "Not ranked"),
       placementRate: toNumber(item.placementRate),
@@ -280,9 +361,10 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
 
 export async function fetchPublicPanelData() {
   try {
-    const [collegeData, courseData] = await Promise.all([
+    const [collegeData, courseData, siteSettingsData] = await Promise.all([
       fetchJson<{ colleges?: BackendCollege[] }>("/api/public/colleges"),
       fetchJson<{ courses?: BackendCourse[] }>("/api/public/courses"),
+      fetchJson<BackendSiteSettings>("/api/public/site-settings"),
     ]);
 
     const mappedCourses = mapCourses(Array.isArray(courseData.courses) ? courseData.courses : []);
@@ -294,11 +376,13 @@ export async function fetchPublicPanelData() {
     return {
       colleges: mappedColleges.length ? mappedColleges : fallbackColleges,
       courses: mappedCourses.length ? mappedCourses : fallbackCourses,
+      homeHeroImageUrl: String(siteSettingsData?.settings?.homeHeroImageUrl || "").trim(),
     };
   } catch {
     return {
       colleges: fallbackColleges,
       courses: fallbackCourses,
+      homeHeroImageUrl: "",
     };
   }
 }

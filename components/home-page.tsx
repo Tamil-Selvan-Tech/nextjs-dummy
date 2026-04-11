@@ -30,11 +30,16 @@ const SEARCH_FLOW_ITEMS = [
 type HomePageProps = {
   collegesData?: College[];
   coursesData?: Course[];
+  heroImageUrl?: string;
 };
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
 
-export function HomePage({ collegesData = fallbackColleges, coursesData = fallbackCourses }: HomePageProps) {
+export function HomePage({
+  collegesData = fallbackColleges,
+  coursesData = fallbackCourses,
+  heroImageUrl = "",
+}: HomePageProps) {
   const router = useRouter();
   const [heroSearchInput, setHeroSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
@@ -281,8 +286,12 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
   ];
   const featureMarqueeItems = useMemo(() => [...featureCards, ...featureCards], [featureCards]);
   const spotlightColleges = useMemo(() => {
-    const bestColleges = collegesData.filter((college) => college.isBestCollege);
-    const additionalColleges = collegesData.filter((college) => !college.isBestCollege).slice(0, 4);
+    const bestColleges = collegesData.filter(
+      (college) => college.isBestCollege || college.isTopCollege,
+    );
+    const additionalColleges = collegesData.filter(
+      (college) => !college.isBestCollege && !college.isTopCollege,
+    ).slice(0, 4);
     return [...bestColleges, ...additionalColleges].slice(0, 8);
   }, [collegesData]);
   const activeCollege = spotlightColleges[activeAction] ?? spotlightColleges[0];
@@ -379,12 +388,16 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
     "--text-dark": "#0f172a",
     "--text-muted": "#475569",
   };
+  const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
 
   return (
     <div className="home-theme bg-white" style={homeThemeStyles}>
       <section className="relative overflow-hidden bg-white text-[color:var(--text-dark)]">
         <div className="absolute inset-0">
-          <div className="hero-bg absolute inset-0 bg-[url('/college-hero-v2.jpg')] bg-cover bg-center opacity-[0.26]" />
+          <div
+            className="hero-bg absolute inset-0 bg-cover bg-center opacity-[0.26]"
+            style={{ backgroundImage: `url('${resolvedHeroImageUrl}')` }}
+          />
           <div className="absolute inset-0 bg-white/55" />
         </div>
 
@@ -493,7 +506,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                   <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
-                      Top College Flow
+                      Best College Flow
                     </p>
                     <div className="flex gap-1.5">
                       {spotlightColleges.map((college, index) => (
@@ -542,7 +555,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                             )}
                             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
                             <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                              Top College
+                              Best College
                             </div>
                             <div className="absolute bottom-3 left-3 right-3">
                               <div>
@@ -556,7 +569,7 @@ export function HomePage({ collegesData = fallbackColleges, coursesData = fallba
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[color:var(--text-dark)]">
-                          {activeCollege?.name || "Top College"}
+                          {activeCollege?.name || "Best College"}
                         </p>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-muted)]">
                           <span className="inline-flex items-center gap-1">

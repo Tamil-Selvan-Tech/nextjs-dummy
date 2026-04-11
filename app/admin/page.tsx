@@ -7,6 +7,7 @@ import {
   Building2,
   ExternalLink,
   FileClock,
+  ImageUp,
   KeyRound,
   LayoutDashboard,
   MailOpen,
@@ -31,6 +32,11 @@ import {
   INDIA_STATES,
 } from "@/lib/india-location-data";
 import {
+  formatCutoffForSave,
+  isValidCutoffValue,
+  normalizeCutoffInput,
+} from "@/lib/cutoff-utils";
+import {
   formatRankingRangeForDisplay,
   formatRankingRangeForSave,
   isValidRankingRange,
@@ -42,18 +48,19 @@ type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[]
 type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
-type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
+type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
+type SiteSettings = { homeHeroImageUrl?: string };
 type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
 type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
-type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
+type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
-type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
+type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
 type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
 type CourseOption = { value: string; label: string };
@@ -71,6 +78,32 @@ const cutoffCategoryOptions = [
   { value: "ST", label: "ST" },
 ];
 const defaultCutoffCategory = cutoffCategoryOptions[0]?.value || "OC";
+const cutoffValidationMessage = "Enter cutoff like 190, 190.5, or a range like 190-195. Each value must be between 0 and 9999.";
+const normalizeCutoffSideInput = (value: string) =>
+  normalizeCutoffInput(
+    String(value || "")
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/-/g, ""),
+  );
+const getCutoffRangeParts = (value: string | number | null | undefined) => {
+  const raw = String(value || "").replace(/[\u2013\u2014]/g, "-");
+  if (!raw.includes("-")) {
+    return { start: normalizeCutoffSideInput(raw), end: "" };
+  }
+
+  const [start = "", ...rest] = raw.split("-");
+  return {
+    start: normalizeCutoffSideInput(start),
+    end: normalizeCutoffSideInput(rest.join("-")),
+  };
+};
+const buildCutoffRangeValue = (start: string, end: string) => {
+  const normalizedStart = normalizeCutoffSideInput(start);
+  const normalizedEnd = normalizeCutoffSideInput(end);
+
+  if (!normalizedStart && !normalizedEnd) return "";
+  return `${normalizedStart}-${normalizedEnd}`;
+};
 const normalizeCategoryCutoffs = (value: unknown): CategoryCutoff[] => {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -101,11 +134,7 @@ const resolvePrimaryCategoryCutoff = (
 ) =>
   normalizeCategoryCutoffs(cutoffByCategory).find((item) => item.category === defaultCutoffCategory)?.cutoff ||
   normalizeCategoryCutoffs(cutoffByCategory)[0]?.cutoff ||
-  String(fallback || "").trim();
-const formatCategoryCutoffSummary = (cutoffByCategory: CategoryCutoff[]) =>
-  normalizeCategoryCutoffs(cutoffByCategory)
-    .map((item) => `${item.category}: ${item.cutoff}`)
-    .join(" | ");
+  formatCutoffForSave(fallback);
 const normalizeCategoryCutoffsWithFallback = (
   cutoffByCategory: unknown,
   fallbackCutoff: string | number | undefined = "",
@@ -147,8 +176,15 @@ const getNextCutoffCategoryValue = (currentCategory: string, cutoffByCategory: C
   }
   return orderedCategories[0] || normalizedCurrentCategory || defaultCutoffCategory;
 };
+const getNextEmbeddedCutoffSelection = (currentCategory: string, cutoffByCategory: CategoryCutoff[]) => {
+  const nextCategory = getNextCutoffCategoryValue(currentCategory, cutoffByCategory);
+  return {
+    nextCategory,
+    nextCutoffValue: getCutoffValueForCategory(cutoffByCategory, nextCategory),
+  };
+};
 const emptyCourseDetail = (): CourseCollegeDetailForm => ({ semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "" });
-const emptyCourseForm: CourseForm = { courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university: "", admissionProcess: "", description: "", entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} };
+const emptyCourseForm: CourseForm = { courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university: "", admissionProcess: "", description: "", isTopCourse: false, entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} };
 const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   courseType: "",
   degreeType: "",
@@ -162,6 +198,7 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   university: "",
   admissionProcess: "",
   description: "",
+  isTopCourse: false,
   entranceExamsEnabled: false,
   semesterFees: "",
   totalFees: "",
@@ -485,6 +522,7 @@ export default function AdminPage() {
   const token = readAuthToken() || "";
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [adminState, setAdminState] = useState<AdminState>(emptyState);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [statusText, setStatusText] = useState("");
   const lastToastMessageRef = useRef("");
@@ -511,6 +549,9 @@ export default function AdminPage() {
   const [showSubAdminForm, setShowSubAdminForm] = useState(false);
   const [editSubAdminId, setEditSubAdminId] = useState("");
   const [subAdminForm, setSubAdminForm] = useState<SubAdminForm>(emptySubAdminForm);
+  const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
+  const [homeHeroImageFile, setHomeHeroImageFile] = useState<File | null>(null);
+  const [isUploadingHomeHeroImage, setIsUploadingHomeHeroImage] = useState(false);
   useEffect(() => {
     if (!statusText || statusText === lastToastMessageRef.current) return;
     showToast(statusText, "info");
@@ -527,6 +568,13 @@ export default function AdminPage() {
   const coverImagePreviewUrl = useMemo(
     () => (coverImageFile ? URL.createObjectURL(coverImageFile) : collegeForm.coverImage || ""),
     [collegeForm.coverImage, coverImageFile],
+  );
+  const homeHeroPreviewUrl = useMemo(
+    () =>
+      homeHeroImageFile
+        ? URL.createObjectURL(homeHeroImageFile)
+        : String(siteSettings.homeHeroImageUrl || "").trim(),
+    [homeHeroImageFile, siteSettings.homeHeroImageUrl],
   );
   const selectedFacilities = useMemo(
     () =>
@@ -714,9 +762,10 @@ export default function AdminPage() {
         canRead("enquiries") ? request("/api/admin/enquiries", withAuth(authToken)) : Promise.resolve({}),
         canRead("college-requests") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
         nextUser.isSuperAdmin ? request("/api/admin/sub-admins", withAuth(authToken)).catch(() => ({})) : Promise.resolve({}),
+        request("/api/admin/site-settings", withAuth(authToken)).catch(() => ({})),
       ];
 
-      const [colleges, courses, users, enquiries, collegeRequests, subAdmins] =
+      const [colleges, courses, users, enquiries, collegeRequests, subAdmins, settings] =
         await Promise.all(jobs);
 
       setAdminState({
@@ -727,6 +776,7 @@ export default function AdminPage() {
         collegeRequests: (collegeRequests as { requests?: RequestItem[] })?.requests || [],
         subAdmins: (subAdmins as { admins?: SubAdmin[] })?.admins || [],
       });
+      setSiteSettings((settings as { settings?: SiteSettings })?.settings || {});
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load admin";
       setStatusText(message);
@@ -812,9 +862,10 @@ export default function AdminPage() {
     return () => {
       if (logoFile && logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
       if (coverImageFile && coverImagePreviewUrl) URL.revokeObjectURL(coverImagePreviewUrl);
+      if (homeHeroImageFile && homeHeroPreviewUrl) URL.revokeObjectURL(homeHeroPreviewUrl);
       collegeImagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
     };
-  }, [collegeImagePreviews, coverImageFile, coverImagePreviewUrl, logoFile, logoPreviewUrl]);
+  }, [collegeImagePreviews, coverImageFile, coverImagePreviewUrl, homeHeroImageFile, homeHeroPreviewUrl, logoFile, logoPreviewUrl]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -859,6 +910,7 @@ export default function AdminPage() {
       university: course.university || "",
       admissionProcess: course.admissionProcess || "",
       description: course.description || "",
+      isTopCourse: Boolean(course.isTopCourse),
       entranceExamsEnabled: Array.isArray(course.entranceExams) && course.entranceExams.length > 0,
       semesterFees: String(collegeDetail?.semesterFees || ""),
       totalFees: String(collegeDetail?.totalFees || ""),
@@ -905,33 +957,72 @@ export default function AdminPage() {
     setShowEmbeddedCourseEditor(false);
   };
 
+  const buildEmbeddedCourseCutoffState = (draft: EmbeddedCourseDraft) => {
+    const category = String(draft.cutoffCategory || "").trim().toUpperCase();
+    const cutoffValue = formatCutoffForSave(draft.cutoffValue);
+    if (!category || !cutoffValue || !isValidCutoffValue(cutoffValue)) {
+      return null;
+    }
+
+    const normalizedCutoffs = normalizeCategoryCutoffs(draft.cutoffByCategory);
+    const nextCutoffs = normalizeCategoryCutoffs([
+      ...normalizedCutoffs.filter((item) => item.category !== category),
+      { category, cutoff: cutoffValue },
+    ]);
+    const { nextCategory, nextCutoffValue } = getNextEmbeddedCutoffSelection(category, nextCutoffs);
+
+    return {
+      ...draft,
+      cutoffByCategory: nextCutoffs,
+      cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, cutoffValue),
+      cutoffCategory: nextCategory,
+      cutoffValue: nextCutoffValue,
+    };
+  };
+
+  const shouldSkipEmbeddedCutoffAutoAdvance = (
+    event: React.FocusEvent<HTMLInputElement>,
+    segment: "start" | "end",
+  ) => {
+    const nextTarget = event.relatedTarget as HTMLElement | null;
+    if (!nextTarget) return false;
+    if (nextTarget.dataset.cutoffAction === "add") return true;
+    if (segment === "start" && nextTarget.dataset.cutoffInputSegment === "end") {
+      return true;
+    }
+    return false;
+  };
+
+  const handleEmbeddedCutoffBlur = (segment: "start" | "end") =>
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      const shouldSkipAutoAdvance = shouldSkipEmbeddedCutoffAutoAdvance(event, segment);
+      setEmbeddedCourseForm((prev) => {
+        const parts = getCutoffRangeParts(prev.cutoffValue);
+        const normalizedDraft = {
+          ...prev,
+          cutoffValue: buildCutoffRangeValue(parts.start, parts.end),
+        };
+        if (shouldSkipAutoAdvance) {
+          return normalizedDraft;
+        }
+        return buildEmbeddedCourseCutoffState(normalizedDraft) ?? normalizedDraft;
+      });
+      setStatusText("");
+    };
+
   const upsertEmbeddedCourseCutoff = () => {
     const category = String(embeddedCourseForm.cutoffCategory || "").trim().toUpperCase();
-    const cutoffValue = String(embeddedCourseForm.cutoffValue || "").trim();
+    const cutoffValue = formatCutoffForSave(embeddedCourseForm.cutoffValue);
     if (!category) {
       setStatusText("Select a cutoff category");
       return;
     }
     if (!cutoffValue) {
-      setStatusText("Enter cutoff for the selected category");
+      setStatusText(cutoffValidationMessage);
       return;
     }
 
-    setEmbeddedCourseForm((prev) => {
-      const normalizedCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory);
-      const nextCutoffs = normalizeCategoryCutoffs([
-        ...normalizedCutoffs.filter((item) => item.category !== category),
-        { category, cutoff: cutoffValue },
-      ]);
-      const nextCategory = getNextCutoffCategoryValue(category, nextCutoffs);
-      return {
-        ...prev,
-        cutoffByCategory: nextCutoffs,
-        cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, cutoffValue),
-        cutoffCategory: nextCategory,
-        cutoffValue: getCutoffValueForCategory(nextCutoffs, nextCategory),
-      };
-    });
+    setEmbeddedCourseForm((prev) => buildEmbeddedCourseCutoffState(prev) ?? prev);
     setStatusText("");
   };
 
@@ -940,10 +1031,15 @@ export default function AdminPage() {
       const nextCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory).filter(
         (item) => item.category !== category,
       );
+      const activeCategory = nextCutoffs.some((item) => item.category === prev.cutoffCategory)
+        ? prev.cutoffCategory
+        : getNextCutoffCategoryValue(prev.cutoffCategory, nextCutoffs);
       return {
         ...prev,
         cutoffByCategory: nextCutoffs,
         cutoff: resolvePrimaryCategoryCutoff(nextCutoffs),
+        cutoffCategory: activeCategory,
+        cutoffValue: getCutoffValueForCategory(nextCutoffs, activeCategory),
       };
     });
   };
@@ -1003,9 +1099,18 @@ export default function AdminPage() {
       embeddedCourseForm.cutoffByCategory,
       embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff,
       embeddedCourseForm.cutoffCategory,
-    );
+    )
+      .map((item) => ({
+        ...item,
+        cutoff: formatCutoffForSave(item.cutoff),
+      }))
+      .filter((item) => item.cutoff);
     if (normalizedDraftCutoffs.length === 0) {
       setStatusText("Cutoff is required for each college course");
+      return;
+    }
+    if (normalizedDraftCutoffs.some((item) => !isValidCutoffValue(item.cutoff))) {
+      setStatusText(cutoffValidationMessage);
       return;
     }
     if (!embeddedCourseForm.intake.trim()) {
@@ -1026,11 +1131,15 @@ export default function AdminPage() {
       university: embeddedCourseForm.university.trim(),
       admissionProcess: embeddedCourseForm.admissionProcess.trim(),
       description: embeddedCourseForm.description.trim(),
+      isTopCourse: Boolean(embeddedCourseForm.isTopCourse),
       entranceExamsEnabled: embeddedCourseForm.entranceExamsEnabled,
       semesterFees: embeddedCourseForm.semesterFees.trim(),
       totalFees: embeddedCourseForm.totalFees.trim(),
       cutoffByCategory: normalizedDraftCutoffs,
-      cutoff: resolvePrimaryCategoryCutoff(normalizedDraftCutoffs, embeddedCourseForm.cutoff),
+      cutoff: resolvePrimaryCategoryCutoff(
+        normalizedDraftCutoffs,
+        formatCutoffForSave(embeddedCourseForm.cutoff),
+      ),
       cutoffCategory: defaultCutoffCategory,
       cutoffValue: "",
       intake: embeddedCourseForm.intake.trim(),
@@ -1156,6 +1265,56 @@ export default function AdminPage() {
       setStatusText(message);
     } finally {
       void key;
+    }
+  };
+
+  const sendSuperAdminPasswordChangeLink = async () => {
+    if (!token || !currentUser?.isSuperAdmin || isSendingPasswordLink) {
+      return;
+    }
+
+    setIsSendingPasswordLink(true);
+    try {
+      const data = await request("/api/admin/super-admin/password-change/request", withAuth(token, {
+        method: "POST",
+      }));
+      setStatusText((data as { message?: string })?.message || "Password change link sent to admin email");
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to send password change link");
+    } finally {
+      setIsSendingPasswordLink(false);
+    }
+  };
+
+  const uploadHomeHeroImage = async () => {
+    if (!token || !currentUser?.isSuperAdmin || !homeHeroImageFile || isUploadingHomeHeroImage) {
+      return;
+    }
+
+    setIsUploadingHomeHeroImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("homeHeroImage", homeHeroImageFile);
+
+      const data = await request("/api/admin/site-settings/home-hero-image", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      setSiteSettings((data as { settings?: SiteSettings })?.settings || {});
+      setHomeHeroImageFile(null);
+      setStatusText(
+        (data as { message?: string })?.message || "Home page background image updated",
+      );
+    } catch (error) {
+      setStatusText(
+        error instanceof Error ? error.message : "Unable to update home page background image",
+      );
+    } finally {
+      setIsUploadingHomeHeroImage(false);
     }
   };
 
@@ -1330,13 +1489,22 @@ export default function AdminPage() {
         setStatusText(`Cutoff is required for ${collegeName}`);
         return;
       }
+      const collegeWithInvalidCutoff = selectedCollegeIds.find(
+        (collegeId) => !isValidCutoffValue(courseForm.details[collegeId]?.cutoff || ""),
+      );
+      if (collegeWithInvalidCutoff) {
+        const collegeName =
+          adminState.colleges.find((college) => college._id === collegeWithInvalidCutoff)?.name || "selected college";
+        setStatusText(`${collegeName}: ${cutoffValidationMessage}`);
+        return;
+      }
 
       const collegeDetails = selectedCollegeIds.map((collegeId) => ({
         college: collegeId,
         semesterFees: Number(courseForm.details[collegeId]?.semesterFees || 0),
         totalFees: Number(courseForm.details[collegeId]?.totalFees || 0),
         hostelFees: 0,
-        cutoff: courseForm.details[collegeId]?.cutoff || "",
+        cutoff: formatCutoffForSave(courseForm.details[collegeId]?.cutoff || ""),
         intake: Number(courseForm.details[collegeId]?.intake || 0),
         applicationFee: Number(courseForm.details[collegeId]?.applicationFee || 0),
       }));
@@ -1363,6 +1531,7 @@ export default function AdminPage() {
             university: courseForm.university.trim(),
             admissionProcess: courseForm.admissionProcess.trim(),
             description: courseForm.description.trim(),
+            isTopCourse: courseForm.isTopCourse,
             entranceExams: courseForm.entranceExams.filter((item) =>
               [item.examName, item.cutoffScoreOrRank, item.weightage, item.paperOrSyllabus, item.preparationNotes]
                 .some((value) => String(value || "").trim()),
@@ -1372,7 +1541,7 @@ export default function AdminPage() {
             semesterFees: Number(primaryDetails.semesterFees || 0),
             totalFees: Number(primaryDetails.totalFees || 0),
             hostelFees: 0,
-            cutoff: primaryDetails.cutoff || "",
+            cutoff: formatCutoffForSave(primaryDetails.cutoff || ""),
             intake: Number(primaryDetails.intake || 0),
             applicationFee: Number(primaryDetails.applicationFee || 0),
             collegeDetails,
@@ -1517,6 +1686,7 @@ export default function AdminPage() {
             university: draft.university || collegeForm.university,
             admissionProcess: draft.admissionProcess,
             description: draft.description,
+            isTopCourse: draft.isTopCourse,
             entranceExams: draft.entranceExams,
             colleges: [savedCollegeId],
             college: savedCollegeId,
@@ -1638,6 +1808,7 @@ export default function AdminPage() {
         tab: "college-requests",
       })),
   ];
+  const embeddedCutoffRangeParts = getCutoffRangeParts(embeddedCourseForm.cutoffValue);
 
   return (
     <AdminPortalShell
@@ -1646,64 +1817,80 @@ export default function AdminPage() {
       activeTab={activeTab}
       onChangeTab={handleTabChange}
       headerActions={
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowRequestNotifications((prev) => !prev)}
-            className="relative inline-flex items-center justify-center rounded-[1rem] border border-[rgba(56,189,248,0.18)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(56,189,248,0.28)] hover:bg-sky-50 sm:text-sm"
-          >
-            <Bell className="size-4" />
-            <span className="ml-2">Requests</span>
-            {pendingRequestNotifications.length > 0 ? (
-              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                {pendingRequestNotifications.length}
+        <div className="flex items-center gap-3">
+          {currentUser?.isSuperAdmin ? (
+            <button
+              type="button"
+              onClick={() => void sendSuperAdminPasswordChangeLink()}
+              disabled={isSendingPasswordLink}
+              className="inline-flex items-center justify-center rounded-[1rem] border border-[rgba(15,76,129,0.14)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(15,76,129,0.24)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+            >
+              <KeyRound className="size-4" />
+              <span className="ml-2">
+                {isSendingPasswordLink ? "Sending Link..." : "Change Password"}
               </span>
-            ) : null}
-          </button>
-          {showRequestNotifications ? (
-            <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[22rem] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                    Notifications
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-slate-900">College Requests</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestNotifications(false)}
-                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto">
-                {pendingRequestNotifications.length > 0 ? (
-                  pendingRequestNotifications.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setShowRequestNotifications(false);
-                        handleTabChange(item.tab);
-                      }}
-                      className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white px-3.5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                        {item.kind}
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">{item.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{item.email}</p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
-                    No pending college requests.
-                  </div>
-                )}
-              </div>
-            </div>
+            </button>
           ) : null}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowRequestNotifications((prev) => !prev)}
+              className="relative inline-flex items-center justify-center rounded-[1rem] border border-[rgba(56,189,248,0.18)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(56,189,248,0.28)] hover:bg-sky-50 sm:text-sm"
+            >
+              <Bell className="size-4" />
+              <span className="ml-2">Requests</span>
+              {pendingRequestNotifications.length > 0 ? (
+                <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {pendingRequestNotifications.length}
+                </span>
+              ) : null}
+            </button>
+            {showRequestNotifications ? (
+              <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[22rem] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                      Notifications
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">College Requests</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRequestNotifications(false)}
+                    className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto">
+                  {pendingRequestNotifications.length > 0 ? (
+                    pendingRequestNotifications.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setShowRequestNotifications(false);
+                          handleTabChange(item.tab);
+                        }}
+                        className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white px-3.5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                          {item.kind}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">{item.name}</p>
+                        <p className="mt-1 text-xs text-slate-500">{item.email}</p>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
+                      No pending college requests.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       }
     >
@@ -1722,42 +1909,114 @@ export default function AdminPage() {
       ) : null}
 
       {!loading && activeTab === "overview" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => {
-            const Icon = item.icon;
-            return (
-              <article
-                key={item.label}
-                className={`group relative overflow-hidden rounded-[1.6rem] border p-5 shadow-[0_24px_48px_rgba(148,163,184,0.14)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_56px_rgba(148,163,184,0.18)] ${item.cardClass}`}
-              >
-                <div className={`pointer-events-none absolute inset-0 ${item.glowClass}`} />
-                <div className="relative flex items-start justify-between gap-4">
-                  <div>
-                    <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${item.accentClass}`}>
-                      {item.accent}
+        <div className="space-y-4">
+          <article className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,#ffffff_0%,#f5faff_100%)] p-5 shadow-[0_24px_48px_rgba(148,163,184,0.12)]">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
+                  Home Page Background
+                </div>
+                <h3 className="mt-3 text-lg font-bold text-slate-900">Change the home page hero background image</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Admin overview-la indha section use panni new background image upload panna mudiyum. Save aana udane home page hero background change aagum.
+                </p>
+                {currentUser?.isSuperAdmin ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300">
+                      <ImageUp className="size-4" />
+                      <span>{homeHeroImageFile ? "Change Selected Image" : "Choose Image"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => setHomeHeroImageFile(event.target.files?.[0] || null)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void uploadHomeHeroImage()}
+                      disabled={!homeHeroImageFile || isUploadingHomeHeroImage}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isUploadingHomeHeroImage ? "Uploading..." : "Update Background"}
+                    </button>
+                    {homeHeroImageFile ? (
+                      <button
+                        type="button"
+                        onClick={() => setHomeHeroImageFile(null)}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm font-medium text-slate-500">
+                    Super admin can update this image.
+                  </p>
+                )}
+              </div>
+
+              <div className="w-full max-w-xl">
+                <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)]">
+                  {homeHeroPreviewUrl ? (
+                    <div
+                      className="h-56 w-full bg-cover bg-center"
+                      style={{ backgroundImage: `url('${homeHeroPreviewUrl}')` }}
+                    />
+                  ) : (
+                    <div className="flex h-56 items-center justify-center bg-[linear-gradient(135deg,#eef6ff_0%,#f8fbff_100%)] text-sm font-medium text-slate-500">
+                      No custom home background image set
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+                    <span>Preview</span>
+                    <span className="truncate text-right">
+                      {homeHeroImageFile?.name || siteSettings.homeHeroImageUrl || "Using default image"}
                     </span>
-                    <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {item.label}
-                    </p>
-                  </div>
-                  <span className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] ${item.iconWrapClass}`}>
-                    <Icon className="size-5" />
-                  </span>
-                </div>
-                <div className="relative mt-7 flex items-end justify-between gap-3">
-                  <p className="text-4xl font-bold tracking-[-0.04em] text-slate-900">{item.value}</p>
-                  <div className="rounded-[1rem] border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Live Status</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-700">Updated from dashboard</p>
                   </div>
                 </div>
-                <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-white/70 pt-4">
-                  <p className="text-sm text-slate-600">{item.helper}</p>
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(74,222,128,0.14)]" />
-                </div>
-              </article>
-            );
-          })}
+              </div>
+            </div>
+          </article>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {stats.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article
+                  key={item.label}
+                  className={`group relative overflow-hidden rounded-[1.6rem] border p-5 shadow-[0_24px_48px_rgba(148,163,184,0.14)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_56px_rgba(148,163,184,0.18)] ${item.cardClass}`}
+                >
+                  <div className={`pointer-events-none absolute inset-0 ${item.glowClass}`} />
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div>
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${item.accentClass}`}>
+                        {item.accent}
+                      </span>
+                      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {item.label}
+                      </p>
+                    </div>
+                    <span className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] ${item.iconWrapClass}`}>
+                      <Icon className="size-5" />
+                    </span>
+                  </div>
+                  <div className="relative mt-7 flex items-end justify-between gap-3">
+                    <p className="text-4xl font-bold tracking-[-0.04em] text-slate-900">{item.value}</p>
+                    <div className="rounded-[1rem] border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Live Status</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-700">Updated from dashboard</p>
+                    </div>
+                  </div>
+                  <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-white/70 pt-4">
+                    <p className="text-sm text-slate-600">{item.helper}</p>
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(74,222,128,0.14)]" />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 
@@ -2580,6 +2839,19 @@ export default function AdminPage() {
                       />
                       Lateral Entry
                     </label>
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={embeddedCourseForm.isTopCourse}
+                        onChange={(event) =>
+                          setEmbeddedCourseForm((prev) => ({
+                            ...prev,
+                            isTopCourse: event.target.checked,
+                          }))
+                        }
+                      />
+                      Best Course
+                    </label>
                     {embeddedCourseForm.lateralEntryAvailable ? (
                       <label className="md:col-span-2">
                         <span className={labelClass}>Lateral Entry Details</span>
@@ -2620,19 +2892,42 @@ export default function AdminPage() {
                             <option key={item.value} value={item.value}>{item.label}</option>
                           ))}
                         </select>
-                        <input
-                          className={inputClass}
-                          placeholder="Enter cutoff for selected category"
-                          value={embeddedCourseForm.cutoffValue}
-                          onChange={(event) =>
-                            setEmbeddedCourseForm((prev) => ({
-                              ...prev,
-                              cutoffValue: event.target.value,
-                            }))
-                          }
-                        />
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                          <input
+                            className={`${inputClass} text-center`}
+                            placeholder=""
+                            value={embeddedCutoffRangeParts.start}
+                            data-cutoff-input-segment="start"
+                            onChange={(event) =>
+                              setEmbeddedCourseForm((prev) => ({
+                                ...prev,
+                                cutoffValue: buildCutoffRangeValue(event.target.value, getCutoffRangeParts(prev.cutoffValue).end),
+                              }))
+                            }
+                            onBlur={handleEmbeddedCutoffBlur("start")}
+                            inputMode="decimal"
+                            maxLength={7}
+                          />
+                          <span className="text-base font-semibold text-slate-500">-</span>
+                          <input
+                            className={`${inputClass} text-center`}
+                            placeholder=""
+                            value={embeddedCutoffRangeParts.end}
+                            data-cutoff-input-segment="end"
+                            onChange={(event) =>
+                              setEmbeddedCourseForm((prev) => ({
+                                ...prev,
+                                cutoffValue: buildCutoffRangeValue(getCutoffRangeParts(prev.cutoffValue).start, event.target.value),
+                              }))
+                            }
+                            onBlur={handleEmbeddedCutoffBlur("end")}
+                            inputMode="decimal"
+                            maxLength={7}
+                          />
+                        </div>
                         <button
                           type="button"
+                          data-cutoff-action="add"
                           onClick={upsertEmbeddedCourseCutoff}
                           className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                         >
@@ -2657,7 +2952,7 @@ export default function AdminPage() {
                         </div>
                       ) : (
                         <p className="mt-2 text-xs text-slate-500">
-                          Add category-wise cutoff values like OC, BC, MBC, SC, and ST.
+                          Add category-wise cutoff values like OC, BC, MBC, SC, and ST. Use values like 190, 190.5, or 190-195.
                         </p>
                       )}
                     </div>
@@ -2804,9 +3099,6 @@ export default function AdminPage() {
                           </span>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs text-slate-500">
-                        {embeddedCourses.map((item) => formatCategoryCutoffSummary(item.cutoffByCategory)).filter(Boolean).join(" • ")}
-                      </p>
                     </div>
                     <button
                       type="button"
@@ -2820,6 +3112,22 @@ export default function AdminPage() {
               ) : null}
               </>
               ) : null}
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={collegeForm.isTopCollege}
+                    onChange={(event) =>
+                      setCollegeForm((prev) => ({
+                        ...prev,
+                        isTopCollege: event.target.checked,
+                      }))
+                    }
+                  />
+                  Mark as Best College
+                </label>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -2876,7 +3184,7 @@ export default function AdminPage() {
                         <p className="mt-1 text-xs text-slate-500">Facilities: {Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || "-")}</p>
                         <p className="mt-1 text-xs text-slate-500">Placement: {String(college.placements?.placementRate || college.placementRate || "-")}</p>
                         <p className="mt-1 text-xs text-slate-500">Contact: {college.contactPhone || college.phone || "-"}</p>
-                        <p className="mt-1 text-xs text-slate-500">{college.isTopCollege || college.isBestCollege ? "Top college" : "Standard listing"}</p>
+                        <p className="mt-1 text-xs text-slate-500">{college.isTopCollege || college.isBestCollege ? "Best college" : "Standard listing"}</p>
                         </>
                       ) : null}
                     </div>
@@ -3185,6 +3493,19 @@ export default function AdminPage() {
                     />
                     Lateral Entry
                   </label>
+                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={courseForm.isTopCourse}
+                      onChange={(event) =>
+                        setCourseForm((prev) => ({
+                          ...prev,
+                          isTopCourse: event.target.checked,
+                        }))
+                      }
+                    />
+                    Best Course
+                  </label>
                   {courseForm.lateralEntryAvailable ? (
                     <label className="md:col-span-2">
                       <span className={labelClass}>Lateral Entry Details</span>
@@ -3369,7 +3690,84 @@ export default function AdminPage() {
                         </label>
                         <label>
                           <span className={labelClass}>Cutoff</span>
-                          <input className={inputClass} placeholder="Cutoff" value={courseForm.details[collegeId]?.cutoff || ""} onChange={(event) => setCourseForm((prev) => ({ ...prev, details: { ...prev.details, [collegeId]: { ...(prev.details[collegeId] || emptyCourseDetail()), cutoff: event.target.value } } }))} />
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                            <input
+                              className={`${inputClass} text-center`}
+                              placeholder=""
+                              value={getCutoffRangeParts(courseForm.details[collegeId]?.cutoff || "").start}
+                              onChange={(event) =>
+                                setCourseForm((prev) => {
+                                  const parts = getCutoffRangeParts(prev.details[collegeId]?.cutoff || "");
+                                  return {
+                                    ...prev,
+                                    details: {
+                                      ...prev.details,
+                                      [collegeId]: {
+                                        ...(prev.details[collegeId] || emptyCourseDetail()),
+                                        cutoff: buildCutoffRangeValue(event.target.value, parts.end),
+                                      },
+                                    },
+                                  };
+                                })
+                              }
+                              onBlur={() =>
+                                setCourseForm((prev) => {
+                                  const parts = getCutoffRangeParts(prev.details[collegeId]?.cutoff || "");
+                                  return {
+                                    ...prev,
+                                    details: {
+                                      ...prev.details,
+                                      [collegeId]: {
+                                        ...(prev.details[collegeId] || emptyCourseDetail()),
+                                        cutoff: buildCutoffRangeValue(parts.start, parts.end),
+                                      },
+                                    },
+                                  };
+                                })
+                              }
+                              inputMode="decimal"
+                              maxLength={7}
+                            />
+                            <span className="text-base font-semibold text-slate-500">-</span>
+                            <input
+                              className={`${inputClass} text-center`}
+                              placeholder=""
+                              value={getCutoffRangeParts(courseForm.details[collegeId]?.cutoff || "").end}
+                              onChange={(event) =>
+                                setCourseForm((prev) => {
+                                  const parts = getCutoffRangeParts(prev.details[collegeId]?.cutoff || "");
+                                  return {
+                                    ...prev,
+                                    details: {
+                                      ...prev.details,
+                                      [collegeId]: {
+                                        ...(prev.details[collegeId] || emptyCourseDetail()),
+                                        cutoff: buildCutoffRangeValue(parts.start, event.target.value),
+                                      },
+                                    },
+                                  };
+                                })
+                              }
+                              onBlur={() =>
+                                setCourseForm((prev) => {
+                                  const parts = getCutoffRangeParts(prev.details[collegeId]?.cutoff || "");
+                                  return {
+                                    ...prev,
+                                    details: {
+                                      ...prev.details,
+                                      [collegeId]: {
+                                        ...(prev.details[collegeId] || emptyCourseDetail()),
+                                        cutoff: buildCutoffRangeValue(parts.start, parts.end),
+                                      },
+                                    },
+                                  };
+                                })
+                              }
+                              inputMode="decimal"
+                              maxLength={7}
+                            />
+                          </div>
+                          <span className="mt-1 block text-[11px] text-slate-500">Use values like 190, 190.5, or 190-195</span>
                         </label>
                         <label>
                           <span className={labelClass}>Total Allotted Seats<span className={requiredMarkClass}>*</span></span>
@@ -3441,7 +3839,7 @@ export default function AdminPage() {
                           const detailCutoffByCategory =
                             Array.isArray(item.cutoffByCategory) && item.cutoffByCategory.length > 0
                               ? item.cutoffByCategory
-                              : course.cutoffByCategory || [];
+                              : course.cutoffByCategory;
                           details[collegeId] = {
                             semesterFees: String(item.semesterFees || ""),
                             totalFees: String(item.totalFees || ""),
@@ -3466,6 +3864,7 @@ export default function AdminPage() {
                           university: course.university || "",
                           admissionProcess: course.admissionProcess || "",
                           description: course.description || "",
+                          isTopCourse: Boolean(course.isTopCourse),
                           entranceExamsEnabled:
                             Array.isArray(course.entranceExams) && course.entranceExams.length > 0,
                           entranceExams:
