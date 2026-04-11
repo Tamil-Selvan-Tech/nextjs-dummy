@@ -3840,10 +3840,14 @@ export default function AdminPage() {
                             Array.isArray(item.cutoffByCategory) && item.cutoffByCategory.length > 0
                               ? item.cutoffByCategory
                               : course.cutoffByCategory;
+                          const normalizedDetailCutoffs = normalizeCategoryCutoffsWithFallback(
+                            detailCutoffByCategory,
+                            item.cutoff || course.cutoff || "",
+                          );
                           details[collegeId] = {
                             semesterFees: String(item.semesterFees || ""),
                             totalFees: String(item.totalFees || ""),
-                            cutoff: String(resolvePrimaryCategoryCutoff(detailCutoffByCategory, item.cutoff || course.cutoff || "")),
+                            cutoff: String(resolvePrimaryCategoryCutoff(normalizedDetailCutoffs, item.cutoff || course.cutoff || "")),
                             intake: String(item.intake ?? course.intake ?? ""),
                             applicationFee: String(item.applicationFee ?? course.applicationFee ?? ""),
                           };
