@@ -9,7 +9,7 @@ export default async function CutoffPage({
   const params = await searchParams;
   const pick = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] || "" : value || "";
-  const enteredScore = pick(params.cutoff) || pick(params.marks);
+  const enteredScore = pick(params.cutoff) || pick(params.marks) || pick(params.rank);
   const panelData = await fetchPublicPanelData();
 
   return (
@@ -20,6 +20,7 @@ export default async function CutoffPage({
       selectedSpecialization={pick(params.specialization)}
       selectedCategory={pick(params.category)}
       selectedCollegeType={pick(params.collegeType)}
+      selectedAdmissionType={pick(params.admissionType)}
       enteredCutoff={enteredScore}
       colleges={panelData.colleges}
       courses={panelData.courses}

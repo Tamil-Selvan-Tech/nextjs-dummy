@@ -377,11 +377,11 @@ export const topCollegeCourseLinks = [
 
 export const degreeOptions = [
   "Engineering",
+  "B.Arch",
   "Arts & Science",
   "Medical",
   "Law",
   "Agriculture",
-  "Nursing",
   "Paramedical",
 ];
 
@@ -389,9 +389,9 @@ export const degreeCourseOptions: Record<string, string[]> = {
   "Arts & Science": ["BSc", "BA", "BCom", "BBA", "BCA", "MSc", "MCA", "MBA"],
   Agriculture: ["BSc Agriculture", "BTech Agriculture", "MSc Agriculture"],
   Engineering: ["BE", "BTech", "MCA", "MTech", "MBA"],
+  "B.Arch": ["B.Arch"],
   Law: ["LLB", "BA_LLB", "BBA_LLB", "LLM"],
   Medical: ["MBBS", "BDS", "BAMS", "BHMS", "BPT", "BPharm", "MPharm"],
-  Nursing: ["BSc Nursing", "GNM", "MSc Nursing"],
   Paramedical: ["BPT", "BOT", "BMLT", "BSc Radiology", "BSc Anesthesia"],
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FileStack, Home, LayoutDashboard, LogOut, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Home, LayoutDashboard, LogOut, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
@@ -17,7 +17,6 @@ type PortalShellProps = {
 
 const navItems = [
   { href: "/college-dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/college/requests", label: "Requests", icon: FileStack },
 ];
 
 export function CollegePortalShell({

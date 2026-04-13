@@ -31,6 +31,7 @@ type CutoffClientProps = {
   selectedSpecialization: string;
   selectedCategory: string;
   selectedCollegeType: string;
+  selectedAdmissionType: string;
   enteredCutoff: string;
   colleges: College[];
   courses: Course[];
@@ -43,6 +44,7 @@ export function CutoffClient({
   selectedSpecialization,
   selectedCategory,
   selectedCollegeType,
+  selectedAdmissionType,
   enteredCutoff,
   colleges,
   courses,
@@ -51,20 +53,35 @@ export function CutoffClient({
   const summaryDegree = selectedDegree || "Engineering";
   const summaryCourse = selectedCourse || "-";
   const summarySpecialization = selectedSpecialization || "-";
-  const summaryCutoff = enteredCutoff || "184.5";
-  const cutoffMax = summaryDegree === "Medical" ? 720 : 200;
+  const summaryCutoff = enteredCutoff || (summaryDegree === "Law" ? "0" : "184.5");
+  const cutoffMax =
+    summaryDegree === "Medical"
+      ? 720
+      : summaryDegree === "Paramedical"
+        ? 100
+        : summaryDegree === "Law"
+          ? selectedAdmissionType === "CLAT"
+            ? 120
+            : 300
+          : 200;
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(summaryLevel);
   const examsByDegree: Record<string, string[]> = {
     Engineering: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE", "TNEA Counseling"],
     Medical: ["NEET UG", "AIIMS (via NEET)", "JIPMER (via NEET)", "State Medical Counseling"],
     "Arts & Science": ["CUET UG", "State University Entrance", "TANCET (PG)"],
     Law: ["CLAT", "AILET", "SLAT"],
+    Agriculture: ["ICAR AIEEA (UG)", "State Agriculture Entrance", "University Counseling"],
+    Nursing: ["NEET UG (B.Sc Nursing)", "State Nursing Entrance", "Nursing Counseling"],
+    Paramedical: ["State Paramedical Entrance", "Health Science Counseling", "Institute Entrance Tests"],
   };
   const degreeStreamMap: Record<string, string[]> = {
     Engineering: ["Engineering"],
     Medical: ["Medical", "Paramedical"],
     "Arts & Science": ["Science", "Arts", "Computer Science", "Management"],
     Law: ["Law"],
+    Agriculture: ["Agriculture", "Agri"],
+    Nursing: ["Nursing", "Medical"],
+    Paramedical: ["Paramedical", "Medical"],
   };
   const resolveCategoryKey = (value: string) => {
     const normalized = normalizeText(value);
@@ -117,9 +134,9 @@ export function CutoffClient({
   const subjectTips: Record<number, string> = {
     1: "Start with basics and short daily practice.",
     2: "Revise core topics with simple examples.",
-    3: "Good progress—add more practice questions.",
-    4: "Strong—start timed problem sets.",
-    5: "Excellent—help peers or teach-back.",
+    3: "Good progress - add more practice questions.",
+    4: "Strong - start timed problem sets.",
+    5: "Excellent - help peers or teach-back.",
   };
   const [subjectRatings, setSubjectRatings] = useState({
     Maths: 3,
@@ -174,8 +191,10 @@ export function CutoffClient({
     return { level: "4", label: "Needs Improvement", tip: "Ask for help and revise fundamentals." };
   }, [resolvedScore]);
 
-  const matchingCards = useMemo(() => {
-    if (!courses.length || !colleges.length) return [];
+  const { matchingCards, aimHigherCards } = useMemo(() => {
+    if (!courses.length || !colleges.length) {
+      return { matchingCards: [], aimHigherCards: [] };
+    }
     const categoryKey = resolveCategoryKey(selectedCategory);
     const normalizedCollegeType = normalizeText(selectedCollegeType);
     const normalizeCollegeType = (value: string) => {
@@ -210,10 +229,14 @@ export function CutoffClient({
     );
     const userCutoff = parseCutoffValue(enteredCutoff);
     const userScore = userCutoff ? Math.max(userCutoff.start, userCutoff.end) : null;
-    const degreeTokens =
-      summaryDegree === "Arts & Science"
-        ? ["arts", "science"]
-        : [normalizeText(summaryDegree)];
+    const degreeTokens = (degreeTargets.length ? degreeTargets : [summaryDegree]).map((value) =>
+      normalizeText(value),
+    );
+    const formatGap = (value: number) => {
+      if (!Number.isFinite(value)) return "";
+      const rounded = Math.round(value * 10) / 10;
+      return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+    };
 
     const resolveCutoffByCategory = (
       entries: Array<{ category: string; cutoff: string }> | undefined,
@@ -291,6 +314,19 @@ export function CutoffClient({
         score: number;
       }
     >();
+    const aimHigherMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        location: string;
+        require: string;
+        need: string;
+        image: string;
+        href: string;
+        gap: number;
+      }
+    >();
 
     courses.forEach((course) => {
       const courseSelectionMatch = matchesCourseSelection(course);
@@ -337,7 +373,29 @@ export function CutoffClient({
             ? String(rawCutoff)
             : "N/A";
 
-        if (userScore !== null && parsedCutoff && userScore < parsedCutoff.start) return;
+        if (userScore !== null && parsedCutoff && userScore < parsedCutoff.start) {
+          if (college.isBestCollege) {
+            const gap = parsedCutoff.start - userScore;
+            const requireText = categoryKey
+              ? `Requires ${categoryKey} ${cutoffLabel} Cutoff`
+              : `Requires ${cutoffLabel} Cutoff`;
+            const needText = `+${formatGap(gap)} marks`;
+            const existingTarget = aimHigherMap.get(college.id);
+            if (!existingTarget || gap < existingTarget.gap) {
+              aimHigherMap.set(college.id, {
+                id: college.id,
+                name: college.name,
+                location: [college.district, college.state].filter(Boolean).join(", "),
+                require: requireText,
+                need: needText,
+                image: college.image,
+                href: `/college/${college.id}`,
+                gap,
+              });
+            }
+          }
+          return;
+        }
 
         const target = parsedCutoff ? parsedCutoff.end : null;
         const ratio = userScore !== null && target ? userScore / target : 0.75;
@@ -369,9 +427,14 @@ export function CutoffClient({
       });
     });
 
-    return Array.from(matchingMap.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
+    return {
+      matchingCards: Array.from(matchingMap.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6),
+      aimHigherCards: Array.from(aimHigherMap.values())
+        .sort((a, b) => a.gap - b.gap)
+        .slice(0, 4),
+    };
   }, [
     colleges,
     courses,
@@ -382,6 +445,11 @@ export function CutoffClient({
     selectedSpecialization,
     summaryDegree,
   ]);
+  const closestAimGap = aimHigherCards[0]?.gap;
+  const closestAimGapText =
+    typeof closestAimGap === "number" && Number.isFinite(closestAimGap)
+      ? `${Math.round(closestAimGap * 10) / 10}`
+      : "";
 
   if (isJuniorLevel) {
     return (
@@ -389,8 +457,8 @@ export function CutoffClient({
         className="min-h-screen bg-white text-[color:var(--text-dark)]"
         style={
           {
-            "--brand-primary": "#1E4FA3",
-            "--brand-primary-soft": "#2E6BD1",
+            "--brand-primary": "#0B2A55",
+            "--brand-primary-soft": "#153B75",
           } as CSSProperties
         }
       >
@@ -403,7 +471,7 @@ export function CutoffClient({
                   Career Guidance
                 </span>
                 <h1 className="mt-4 text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">
-                  Level {summaryLevel} • {summaryDegree}
+                  Level {summaryLevel} - {summaryDegree}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm text-[color:var(--text-muted)] md:text-base">
                   Based on your selected degree, here are suggested exams and colleges to explore.
@@ -509,7 +577,10 @@ export function CutoffClient({
                           </p>
                           <div className="mt-2 flex items-center justify-between text-[11px] text-[color:rgb(24,64,132)]">
                             <span>{exam.date}</span>
-                            <button type="button" className="font-semibold text-[color:var(--brand-primary)]">
+                            <button
+                              type="button"
+                              className="rounded-full bg-[color:var(--brand-primary)] px-3 py-1 text-[10px] font-semibold text-white"
+                            >
                               Portal <ArrowUpRight className="ml-1 inline size-3" />
                             </button>
                           </div>
@@ -531,21 +602,21 @@ export function CutoffClient({
               Cutoff is the minimum mark you need to get admission in a good college.
             </p>
             <div className="mt-3 grid gap-2 text-xs text-[color:var(--text-muted)] sm:grid-cols-3">
-              <div className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <Award className="size-4 text-[color:var(--text-dark)]" />
+              <div className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Award className="size-4 text-white" />
                   90% = Top college
                 </div>
               </div>
-              <div className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <TrendingUp className="size-4 text-[color:var(--text-dark)]" />
+              <div className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <TrendingUp className="size-4 text-white" />
                   80% = Good college
                 </div>
               </div>
-              <div className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <Target className="size-4 text-[color:var(--text-dark)]" />
+              <div className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Target className="size-4 text-white" />
                   60% = Average college
                 </div>
               </div>
@@ -556,38 +627,38 @@ export function CutoffClient({
               Level System
             </div>
             <ul className="mt-2 grid gap-2 text-xs text-[color:var(--text-muted)] sm:grid-cols-2">
-              <li className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <Award className="size-4 text-[color:var(--text-dark)]" />
+              <li className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Award className="size-4 text-white" />
                   Level 10 = Top Performer
                 </div>
               </li>
-              <li className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <TrendingUp className="size-4 text-[color:var(--text-dark)]" />
+              <li className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <TrendingUp className="size-4 text-white" />
                   Level 8 = Very Good
                 </div>
               </li>
-              <li className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <Target className="size-4 text-[color:var(--text-dark)]" />
+              <li className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Target className="size-4 text-white" />
                   Level 6 = Good
                 </div>
               </li>
-              <li className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <div className="flex items-center gap-2 font-semibold text-[color:var(--text-dark)]">
-                  <Lightbulb className="size-4 text-[color:var(--text-dark)]" />
+              <li className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Lightbulb className="size-4 text-white" />
                   Level 4 = Needs Improvement
                 </div>
               </li>
             </ul>
 
-            <div className="mt-5 rounded-2xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                <Lightbulb className="size-4 text-[color:var(--text-dark)]" />
+            <div className="mt-5 rounded-2xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-4 text-white">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Lightbulb className="size-4 text-white" />
                 Motivation
               </div>
-              <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+              <p className="mt-2 text-xs text-[rgba(255,255,255,0.75)]">
                 Cutoff becomes important in 11th and 12th. Focus on Maths and Science now to keep
                 your options open later.
               </p>
@@ -602,8 +673,8 @@ export function CutoffClient({
                 Enter your current percentage to see your level and a small improvement tip.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 rounded-full border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
-                  <Calculator className="size-3.5 text-[color:var(--text-dark)]" />
+                <label className="flex items-center gap-2 rounded-full border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-xs text-[rgba(255,255,255,0.75)]">
+                  <Calculator className="size-3.5 text-white" />
                   % Score
                   <input
                     type="number"
@@ -613,13 +684,13 @@ export function CutoffClient({
                     value={scoreInput}
                     onChange={(event) => setScoreInput(event.target.value)}
                     placeholder="78"
-                    className="w-16 bg-transparent text-[color:var(--text-dark)] outline-none"
+                    className="w-16 bg-transparent text-white outline-none"
                   />
                 </label>
-                <span className="rounded-full border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-1 text-[11px] font-semibold text-[color:var(--text-dark)]">
-                  Level {levelResult.level} • {levelResult.label}
+                <span className="rounded-full border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary-soft)] px-3 py-1 text-[11px] font-semibold text-white">
+                  Level {levelResult.level} - {levelResult.label}
                 </span>
-                <span className="text-[11px] text-[color:var(--text-muted)]">
+                <span className="text-[11px] text-[rgba(11,42,85,0.7)]">
                   Tip: {levelResult.tip}
                 </span>
               </div>
@@ -630,67 +701,67 @@ export function CutoffClient({
               Future Awareness
             </div>
             <div className="mt-2 grid gap-2 text-xs text-[color:var(--text-muted)] sm:grid-cols-3">
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <BookOpen className="size-3.5 text-[color:var(--text-dark)]" />
-                Engineering → Maths + Science marks
+              <div className="flex items-center gap-2 rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <BookOpen className="size-3.5 text-white" />
+                Engineering -&gt; Maths + Science marks
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <Stethoscope className="size-3.5 text-[color:var(--text-dark)]" />
-                Medical → NEET exam
+              <div className="flex items-center gap-2 rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <Stethoscope className="size-3.5 text-white" />
+                Medical -&gt; NEET exam
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-2">
-                <Scale className="size-3.5 text-[color:var(--text-dark)]" />
-                Law → Entrance exams
+              <div className="flex items-center gap-2 rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] px-3 py-2 text-white">
+                <Scale className="size-3.5 text-white" />
+                Law -&gt; Entrance exams
               </div>
             </div>
 
             {summaryDegree === "Engineering" ? (
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Info className="size-4 text-[color:var(--text-dark)]" />
+                <div className="rounded-2xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-4 text-white">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Info className="size-4 text-white" />
                     About Engineering
                   </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                  <p className="mt-2 text-xs text-[rgba(255,255,255,0.75)]">
                     Engineering teaches how to design, build, and improve things using Maths and
                     Science.
                   </p>
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <TrendingUp className="size-4 text-[color:var(--text-dark)]" />
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white">
+                    <TrendingUp className="size-4 text-white" />
                     How to Join Engineering?
                   </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                  <p className="mt-2 text-xs text-[rgba(255,255,255,0.75)]">
                     Do well in Maths and Science in school, then take engineering entrance exams in
                     11th and 12th.
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Brain className="size-4 text-[color:var(--text-dark)]" />
+                <div className="rounded-2xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-4 text-white">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Brain className="size-4 text-white" />
                     Skills Needed
                   </div>
-                  <ul className="mt-2 space-y-2 text-xs text-[color:var(--text-muted)]">
+                  <ul className="mt-2 space-y-2 text-xs text-[rgba(255,255,255,0.75)]">
                     <li className="flex items-center gap-2">
-                      <Target className="size-3.5 text-[color:var(--text-dark)]" />
+                      <Target className="size-3.5 text-white" />
                       Strong Maths
                     </li>
                     <li className="flex items-center gap-2">
-                      <Lightbulb className="size-3.5 text-[color:var(--text-dark)]" />
+                      <Lightbulb className="size-3.5 text-white" />
                       Logical thinking
                     </li>
                     <li className="flex items-center gap-2">
-                      <TrendingUp className="size-3.5 text-[color:var(--text-dark)]" />
+                      <TrendingUp className="size-3.5 text-white" />
                       Problem solving
                     </li>
                     <li className="flex items-center gap-2">
-                      <BookOpen className="size-3.5 text-[color:var(--text-dark)]" />
+                      <BookOpen className="size-3.5 text-white" />
                       Basic coding (optional)
                     </li>
                   </ul>
 
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <GraduationCap className="size-4 text-[color:var(--text-dark)]" />
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white">
+                    <GraduationCap className="size-4 text-white" />
                     Popular Courses
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -704,7 +775,7 @@ export function CutoffClient({
                     ].map((course) => (
                       <span
                         key={course}
-                        className="rounded-full border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] px-3 py-1 text-[10px] font-semibold text-[color:var(--text-dark)]"
+                        className="rounded-full border border-[rgba(255,255,255,0.24)] bg-[color:var(--brand-primary-soft)] px-3 py-1 text-[10px] font-semibold text-white"
                       >
                         {course}
                       </span>
@@ -727,11 +798,11 @@ export function CutoffClient({
                   {studyPlan.map((item) => (
                     <div
                       key={item.title}
-                      className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-3"
+                      className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-3 text-white"
                     >
-                      <div className="text-xs font-semibold text-[color:var(--text-dark)]">{item.title}</div>
-                      <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">{item.detail}</div>
-                      <div className="mt-2 text-[11px] font-semibold text-[color:var(--brand-primary)]">
+                      <div className="text-xs font-semibold text-white">{item.title}</div>
+                      <div className="mt-1 text-[11px] text-[rgba(255,255,255,0.75)]">{item.detail}</div>
+                      <div className="mt-2 text-[11px] font-semibold text-[rgba(255,255,255,0.9)]">
                         {item.time}
                       </div>
                     </div>
@@ -749,9 +820,9 @@ export function CutoffClient({
                 </p>
                 <div className="mt-4 space-y-3">
                   {Object.entries(subjectRatings).map(([subject, rating]) => (
-                    <div key={subject} className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-3">
+                    <div key={subject} className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-3 text-white">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-semibold text-[color:var(--text-dark)]">{subject}</span>
+                        <span className="text-xs font-semibold text-white">{subject}</span>
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((value) => (
                             <button
@@ -762,8 +833,8 @@ export function CutoffClient({
                               }
                               className={`h-7 w-7 rounded-full border text-[11px] font-semibold transition ${
                                 rating === value
-                                  ? "border-transparent bg-[color:var(--brand-primary)] text-white"
-                                  : "border-[rgba(79,141,187,0.2)] bg-white text-[color:var(--text-dark)]"
+                                  ? "border-transparent bg-[color:var(--brand-primary-soft)] text-white"
+                                  : "border-[rgba(255,255,255,0.2)] bg-[color:var(--brand-primary)] text-white"
                               }`}
                             >
                               {value}
@@ -771,7 +842,7 @@ export function CutoffClient({
                           ))}
                         </div>
                       </div>
-                      <p className="mt-2 text-[11px] text-[color:var(--text-muted)]">{subjectTips[rating]}</p>
+                      <p className="mt-2 text-[11px] text-[rgba(255,255,255,0.75)]">{subjectTips[rating]}</p>
                     </div>
                   ))}
                 </div>
@@ -788,11 +859,11 @@ export function CutoffClient({
               </p>
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 {["Q1", "Q2", "Q3"].map((label, index) => (
-                  <div key={label} className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-white p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+                  <div key={label} className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-4 text-white">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.6)]">
                       {label}
                     </div>
-                    <div className="mt-3 space-y-2 text-[11px] text-[color:var(--text-muted)]">
+                    <div className="mt-3 space-y-2 text-[11px] text-[rgba(255,255,255,0.75)]">
                       {(quizOptionsByQuestion[index] || []).map((option, optionIndex) => (
                         <button
                           key={option.label}
@@ -806,8 +877,8 @@ export function CutoffClient({
                           }
                           className={`w-full rounded-xl border px-3 py-2 text-left font-semibold transition ${
                             quizAnswers[index] === optionIndex
-                              ? "border-transparent bg-[color:var(--brand-primary)] text-white"
-                              : "border-[rgba(79,141,187,0.18)] bg-[rgba(248,252,255,0.9)] text-[color:var(--text-dark)]"
+                              ? "border-transparent bg-[color:var(--brand-primary-soft)] text-white ring-2 ring-[rgba(255,255,255,0.35)]"
+                              : "border-[rgba(255,255,255,0.24)] bg-[color:var(--brand-primary)] text-white"
                           }`}
                         >
                           {option.label}
@@ -817,9 +888,9 @@ export function CutoffClient({
                   </div>
                 ))}
               </div>
-              <div className="mt-5 rounded-2xl border border-[rgba(79,141,187,0.16)] bg-white p-4 text-xs text-[color:var(--text-muted)]">
+              <div className="mt-5 rounded-2xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-4 text-xs text-[rgba(255,255,255,0.75)]">
                 Result:{" "}
-                <span className="font-semibold text-[color:var(--brand-primary)]">
+                <span className="font-semibold text-white">
                   You may like {quizResult}.
                 </span>{" "}
                 Explore more options and talk to teachers for guidance.
@@ -843,10 +914,10 @@ export function CutoffClient({
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className="rounded-xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-3"
+                    className="rounded-xl border border-[rgba(11,42,85,0.4)] bg-[color:var(--brand-primary)] p-3 text-white"
                   >
-                    <div className="text-xs font-semibold text-[color:var(--text-dark)]">{item.title}</div>
-                    <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">{item.exams}</div>
+                    <div className="text-xs font-semibold text-white">{item.title}</div>
+                    <div className="mt-1 text-[11px] text-[rgba(255,255,255,0.75)]">{item.exams}</div>
                   </div>
                 ))}
               </div>
@@ -862,8 +933,8 @@ export function CutoffClient({
       className="min-h-screen bg-white text-[color:var(--text-dark)]"
       style={
         {
-          "--brand-primary": "#1E4FA3",
-          "--brand-primary-soft": "#2E6BD1",
+          "--brand-primary": "#3B82F6",
+          "--brand-primary-soft": "#60A5FA",
         } as CSSProperties
       }
     >
@@ -884,18 +955,44 @@ export function CutoffClient({
                     Based on your current academic scores and state-level standards, here is your predicted cutoff estimate for 2025.
                   </p>
                 </div>
-                <div className="min-w-[220px] rounded-2xl border border-[rgba(30,79,163,0.2)] bg-white p-4 text-center shadow-[0_14px_30px_rgba(30,79,163,0.12)]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
-                    Estimated Cutoff
-                  </p>
-                <div className="mt-3 flex items-end justify-center gap-2">
-                  <span className="text-3xl font-bold text-[color:var(--text-dark)] md:text-4xl">{summaryCutoff}</span>
-                    <span className="text-sm font-semibold text-[color:var(--text-muted)]">/ {cutoffMax}</span>
-                </div>
-                  <p className="mt-2 text-xs font-semibold text-[color:rgb(24,64,132)]">Top 15% Percentile</p>
-                </div>
+                {summaryDegree !== "Medical" ? (
+                  <div className="min-w-[220px] rounded-2xl border border-[rgba(30,79,163,0.2)] bg-white p-4 text-center shadow-[0_14px_30px_rgba(30,79,163,0.12)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+                      Estimated Cutoff
+                    </p>
+                    <div className="mt-3 flex items-end justify-center gap-2">
+                      <span className="text-3xl font-bold text-[color:var(--text-dark)] md:text-4xl">
+                        {summaryCutoff}
+                      </span>
+                      <span className="text-sm font-semibold text-[color:var(--text-muted)]">
+                        / {cutoffMax}{summaryDegree === "Paramedical" ? " %" : ""}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-[color:rgb(24,64,132)]">
+                      Top 15% Percentile
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </section>
+
+            {summaryDegree === "Medical" ? (
+              <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
+                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                  <Stethoscope className="size-4 text-[color:var(--brand-primary)]" />
+                  Medical Admission Guidance
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                  Your matching colleges below are based on the selected course, category, and available cutoff ranges.
+                </p>
+                <div className="mt-4 space-y-2 text-sm text-[color:var(--text-muted)]">
+                  <p>1. NEET UG score is the primary eligibility for MBBS/BDS seats.</p>
+                  <p>2. Category cutoff ranges vary by college and counseling round.</p>
+                  <p>3. Government and private seats can have different cutoff bands.</p>
+                  <p>4. Use the suggested matches as safe options, and aim higher if you plan to improve.</p>
+                </div>
+              </section>
+            ) : null}
 
             <section className="rounded-[1.6rem] border border-[rgba(31,108,78,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -991,55 +1088,46 @@ export function CutoffClient({
                   </button>
                 </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  {[
-                    {
-                      name: "Anna University (CEG)",
-                      city: "Chennai, Tamil Nadu",
-                      require: "Requires 197 Cutoff",
-                      need: "+12.5 marks",
-                      image: "/college-hero.jpg",
-                    },
-                    {
-                      name: "Madras Institute of Technology",
-                      city: "Chromepet, Chennai",
-                      require: "Requires 193 Cutoff",
-                      need: "+8.5 marks",
-                      image: "/college-hero-v2.jpg",
-                    },
-                  ].map((college) => (
-                    <article
-                      key={college.name}
-                      className="rounded-2xl border border-[rgba(15,76,129,0.1)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
-                          <Image
-                            src={college.image}
-                            alt={college.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
-                          <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                            <MapPin className="size-3" />
-                            {college.city}
+                  {aimHigherCards.length ? (
+                    aimHigherCards.map((college) => (
+                      <article
+                        key={college.id}
+                        className="rounded-2xl border border-[rgba(15,76,129,0.1)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
+                            <Image
+                              src={college.image}
+                              alt={college.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
                           </div>
-                          <span className="mt-2 inline-flex rounded-full bg-[rgba(30,79,163,0.14)] px-2.5 py-1 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
-                            {college.require}
-                          </span>
+                          <div>
+                            <div className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
+                            <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                              <MapPin className="size-3" />
+                              {college.location || "Location not listed"}
+                            </div>
+                            <span className="mt-2 inline-flex rounded-full bg-[rgba(30,79,163,0.14)] px-2.5 py-1 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
+                              {college.require}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between text-[11px] text-[color:var(--text-muted)]">
-                        <span className="font-semibold text-[color:var(--text-dark)]">Need {college.need}</span>
-                        <button type="button" className="font-semibold text-[color:var(--brand-primary)]">
-                          Preparation Guide
-                        </button>
-                      </div>
-                    </article>
-                  ))}
+                        <div className="mt-4 flex items-center justify-between text-[11px] text-[color:var(--text-muted)]">
+                          <span className="font-semibold text-[color:var(--text-dark)]">Need {college.need}</span>
+                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
+                            Preparation Guide
+                          </Link>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[color:var(--text-muted)]">
+                      You are already in range for the top colleges listed for your selection.
+                    </p>
+                  )}
                 </div>
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white p-4">
                   <div className="flex items-center gap-3">
@@ -1049,7 +1137,9 @@ export function CutoffClient({
                     <div>
                       <div className="text-sm font-semibold text-[color:var(--text-dark)]">Academic Improvement Plan</div>
                       <div className="text-xs text-[color:var(--text-muted)]">
-                        Our mentors can help you bridge the 12.5 mark gap.
+                        {closestAimGapText
+                          ? `Our mentors can help you bridge the ${closestAimGapText} mark gap.`
+                          : "Our mentors can help you set a goal-based improvement plan."}
                       </div>
                     </div>
                   </div>
@@ -1074,36 +1164,14 @@ export function CutoffClient({
                 Critical deadlines tailored to your profile
               </p>
               <div className="mt-4 space-y-3">
-                {[
-                  {
-                    title: "JEE Main 2025",
-                    desc: "Gateway to NITs, IIITs and GFTIs. Essential for all engineering aspirants.",
-                    date: "Jan 24 - Feb 01",
-                    icon: BookOpen,
-                    tag: "Upcoming",
-                  },
-                  {
-                    title: "NEET UG 2025",
-                    desc: "National level medical entrance exam for MBBS/BDS courses across India.",
-                    date: "May 04, 2025",
-                    icon: Stethoscope,
-                    tag: "Upcoming",
-                  },
-                  {
-                    title: "TNEA Counseling",
-                    desc: "Tamil Nadu Engineering Admissions single-window counseling process.",
-                    date: "July 2025 Expected",
-                    icon: GraduationCap,
-                    tag: "Upcoming",
-                  },
-                ].map((exam) => (
+                {examCards.map((exam) => (
                   <div
                     key={exam.title}
                     className="rounded-xl border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(30,79,163,0.12)] text-[color:rgb(24,64,132)]">
-                        <exam.icon className="size-4" />
+                        <BookOpen className="size-4" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between gap-3">
@@ -1112,7 +1180,7 @@ export function CutoffClient({
                             {exam.tag}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs text-[color:var(--text-muted)]">{exam.desc}</p>
+                        <p className="mt-1 text-xs text-[color:var(--text-muted)]">Check official portal for dates</p>
                         <div className="mt-2 flex items-center justify-between text-[11px] text-[color:rgb(24,64,132)]">
                           <span>{exam.date}</span>
                           <button type="button" className="font-semibold text-[color:var(--brand-primary)]">
@@ -1130,7 +1198,7 @@ export function CutoffClient({
                   <div>
                     <div className="text-sm font-semibold text-[color:var(--text-dark)]">Exclusive Workshop</div>
                     <p className="mt-1 text-xs text-[color:var(--text-muted)]">
-                      Join our “Mastering JEE 2025” webinar this weekend with IIT Madras alumni.
+                      Join our "Mastering JEE 2025" webinar this weekend with IIT Madras alumni.
                     </p>
                   </div>
                   <Award className="size-6 text-[rgba(15,76,129,0.2)]" />

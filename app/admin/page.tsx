@@ -46,12 +46,13 @@ import { showToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
-type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
+type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
 type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
-type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
+type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
+type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; createdAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; submittedPayload?: Record<string, unknown> | null; changeSummary?: ChangeSummaryItem[]; formAccessUsedAt?: string; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
 type SiteSettings = { homeHeroImageUrl?: string };
@@ -220,7 +221,7 @@ const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
 const adminModules = ["colleges", "college-requests", "users", "enquiries"];
 const adminModuleLabels: Record<string, string> = {
   colleges: "Colleges",
-  "college-requests": "College Requests",
+  "college-requests": "College Notifications",
   users: "Users",
   enquiries: "Enquiries",
 };
@@ -486,6 +487,19 @@ const formatDate = (value?: string) =>
     ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
     : "-";
 
+const renderChangeValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    const normalized = value.map((item) => String(item ?? "").trim()).filter(Boolean);
+    if (normalized.length === 0) return "Empty";
+    return normalized.join(", ");
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  const text = String(value ?? "").trim();
+  return text || "Empty";
+};
+
 const formatFeeRange = (value?: Record<string, unknown>) => {
   const tuition = ((value?.tuitionFee as Record<string, unknown> | undefined) || value || {}) as Record<string, unknown>;
   return { min: String(tuition.minAmount ?? value?.minAmount ?? "").trim(), max: String(tuition.maxAmount ?? value?.maxAmount ?? "").trim() };
@@ -559,6 +573,10 @@ export default function AdminPage() {
   }, [statusText]);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [showRequestNotifications, setShowRequestNotifications] = useState(false);
+  const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
+  const [lastSeenNotificationAt, setLastSeenNotificationAt] = useState(0);
+  const [isSeenNotificationsReady, setIsSeenNotificationsReady] = useState(false);
+  const seenNotificationHydratedRef = useRef(false);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
   const logoPreviewUrl = useMemo(
@@ -707,7 +725,7 @@ export default function AdminPage() {
         ? [{ id: "colleges", label: "Colleges", icon: Building2 }]
         : []),
       ...(canAccess("college-requests")
-        ? [{ id: "college-requests", label: "College Requests", icon: FileClock }]
+        ? [{ id: "college-notifications", label: "College Notifications", icon: FileClock }]
         : []),
       ...(canAccess("users")
         ? [{ id: "users", label: "Users", icon: UserRound }]
@@ -816,7 +834,8 @@ export default function AdminPage() {
   }, [activeTab, navItems]);
 
   useEffect(() => {
-    const nextTab = searchParams.get("tab") || "overview";
+    const rawTab = searchParams.get("tab") || "overview";
+    const nextTab = rawTab === "college-requests" ? "college-notifications" : rawTab;
     setActiveTab(nextTab);
   }, [searchParams]);
 
@@ -1751,6 +1770,18 @@ export default function AdminPage() {
     });
   };
 
+  const collegeChangeNotifications = useMemo(
+    () =>
+      adminState.collegeRequests
+        .filter((item) => Array.isArray(item.changeSummary) && item.changeSummary.length > 0)
+        .sort(
+          (left, right) =>
+            new Date(right.updatedAt || right.createdAt || 0).getTime() -
+            new Date(left.updatedAt || left.createdAt || 0).getTime(),
+        ),
+    [adminState.collegeRequests],
+  );
+
   const stats = [
     {
       label: "Live Colleges",
@@ -1775,11 +1806,11 @@ export default function AdminPage() {
       glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_58%)]",
     },
     {
-      label: "Pending Reviews",
-      value: adminState.collegeRequests.length,
+      label: "Change Alerts",
+      value: collegeChangeNotifications.length,
       icon: FileClock,
-      helper: "Requests waiting for action",
-      accent: "Approval Queue",
+      helper: "College dashboard field updates",
+      accent: "Notification Feed",
       cardClass: "border-[rgba(251,191,36,0.18)] bg-[linear-gradient(145deg,#ffffff_0%,#fffbeb_60%,#fffdf7_100%)]",
       iconWrapClass: "bg-[linear-gradient(135deg,#fef3c7_0%,#fff7ed_100%)] text-amber-600 shadow-[0_12px_26px_rgba(245,158,11,0.16)]",
       accentClass: "border-[rgba(245,158,11,0.16)] bg-white/85 text-amber-700",
@@ -1797,17 +1828,131 @@ export default function AdminPage() {
       glowClass: "bg-[radial-gradient(circle_at_top_right,rgba(196,181,253,0.22),transparent_58%)]",
     },
   ];
-  const pendingRequestNotifications = [
-    ...adminState.collegeRequests
-      .filter((item) => (item.status || "pending") === "pending")
-      .map((item) => ({
+  const pendingRequestNotifications = useMemo(
+    () =>
+      collegeChangeNotifications.map((item) => ({
         id: `college-${item._id}`,
-        kind: "College Request",
-        name: item.payload?.name || item.requesterName || "College request",
+        kind: "College Change",
+        name: item.payload?.name || item.requesterName || "College update",
         email: item.requesterEmail || "-",
-        tab: "college-requests",
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        tab: "college-notifications",
       })),
-  ];
+    [collegeChangeNotifications],
+  );
+  const collegeDashboardEditStatus = useMemo(() => {
+    const edited = adminState.colleges.filter((item) => Boolean(item.lastDashboardEditAt));
+    const notEdited = adminState.colleges.filter((item) => !item.lastDashboardEditAt);
+    return { edited, notEdited };
+  }, [adminState.colleges]);
+  const unreadRequestNotifications = useMemo(
+    () =>
+      isSeenNotificationsReady
+        ? pendingRequestNotifications.filter((item) => {
+            const itemTimestamp = new Date(String(item.updatedAt || item.createdAt || "")).getTime();
+            if (!Number.isFinite(itemTimestamp) || itemTimestamp <= 0) {
+              return !seenNotificationIds.includes(item.id);
+            }
+            return (
+              itemTimestamp > lastSeenNotificationAt &&
+              !seenNotificationIds.includes(item.id)
+            );
+          })
+        : [],
+    [isSeenNotificationsReady, pendingRequestNotifications, seenNotificationIds, lastSeenNotificationAt],
+  );
+  const seenNotificationStorageKey = useMemo(
+    () =>
+      currentUser?.email
+        ? `collegehub_admin_seen_notifications_${String(currentUser.email).trim().toLowerCase()}`
+        : "",
+    [currentUser?.email],
+  );
+  const markNotificationsAsSeen = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    setSeenNotificationIds((previous) => {
+      const merged = Array.from(new Set([...previous, ...ids]));
+      if (merged.length === previous.length) return previous;
+      return merged;
+    });
+  }, []);
+
+  useEffect(() => {
+    seenNotificationHydratedRef.current = false;
+    setIsSeenNotificationsReady(false);
+    if (!seenNotificationStorageKey) {
+      setSeenNotificationIds([]);
+      setLastSeenNotificationAt(0);
+      setIsSeenNotificationsReady(true);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(seenNotificationStorageKey);
+      if (!raw) {
+        setSeenNotificationIds([]);
+        setLastSeenNotificationAt(0);
+        seenNotificationHydratedRef.current = true;
+        setIsSeenNotificationsReady(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const nextIds = Array.isArray(parsed.seenIds)
+          ? parsed.seenIds.map((item: unknown) => String(item || "").trim()).filter(Boolean)
+          : [];
+        const nextLastSeenAt =
+          Number.isFinite(Number(parsed.lastSeenAt)) && Number(parsed.lastSeenAt) > 0
+            ? Number(parsed.lastSeenAt)
+            : 0;
+        setSeenNotificationIds(nextIds);
+        setLastSeenNotificationAt(nextLastSeenAt);
+      } else if (Array.isArray(parsed)) {
+        setSeenNotificationIds(parsed.map((item) => String(item || "").trim()).filter(Boolean));
+        setLastSeenNotificationAt(0);
+      } else {
+        setSeenNotificationIds([]);
+        setLastSeenNotificationAt(0);
+      }
+    } catch {
+      setSeenNotificationIds([]);
+      setLastSeenNotificationAt(0);
+    } finally {
+      seenNotificationHydratedRef.current = true;
+      setIsSeenNotificationsReady(true);
+    }
+  }, [seenNotificationStorageKey]);
+
+  useEffect(() => {
+    if (!seenNotificationStorageKey || !seenNotificationHydratedRef.current) return;
+    try {
+      window.localStorage.setItem(
+        seenNotificationStorageKey,
+        JSON.stringify({
+          seenIds: seenNotificationIds,
+          lastSeenAt: lastSeenNotificationAt,
+        }),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [seenNotificationIds, lastSeenNotificationAt, seenNotificationStorageKey]);
+
+  useEffect(() => {
+    const activeIds = new Set(pendingRequestNotifications.map((item) => item.id));
+    setSeenNotificationIds((previous) => {
+      const next = previous.filter((id) => activeIds.has(id));
+      if (next.length === previous.length) return previous;
+      return next;
+    });
+  }, [pendingRequestNotifications]);
+
+  useEffect(() => {
+    if (activeTab !== "college-notifications") return;
+    if (unreadRequestNotifications.length === 0) return;
+    markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
+    setLastSeenNotificationAt(Date.now());
+  }, [activeTab, markNotificationsAsSeen, pendingRequestNotifications, unreadRequestNotifications.length]);
   const embeddedCutoffRangeParts = getCutoffRangeParts(embeddedCourseForm.cutoffValue);
 
   return (
@@ -1818,7 +1963,7 @@ export default function AdminPage() {
       onChangeTab={handleTabChange}
       headerActions={
         <div className="flex items-center gap-3">
-          {currentUser?.isSuperAdmin ? (
+          {currentUser?.isSuperAdmin && activeTab === "admin-access" ? (
             <button
               type="button"
               onClick={() => void sendSuperAdminPasswordChangeLink()}
@@ -1835,14 +1980,22 @@ export default function AdminPage() {
           <div className="relative">
             <button
               type="button"
-              onClick={() => setShowRequestNotifications((prev) => !prev)}
-              className="relative inline-flex items-center justify-center rounded-[1rem] border border-[rgba(56,189,248,0.18)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(56,189,248,0.28)] hover:bg-sky-50 sm:text-sm"
+              onClick={() => {
+                const nextOpen = !showRequestNotifications;
+                setShowRequestNotifications(nextOpen);
+                if (nextOpen) {
+                  markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
+                  if (unreadRequestNotifications.length > 0) {
+                    setLastSeenNotificationAt(Date.now());
+                  }
+                }
+              }}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(56,189,248,0.28)] bg-white text-slate-700 transition hover:border-[rgba(56,189,248,0.4)] hover:bg-sky-50"
             >
               <Bell className="size-4" />
-              <span className="ml-2">Requests</span>
-              {pendingRequestNotifications.length > 0 ? (
-                <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {pendingRequestNotifications.length}
+              {unreadRequestNotifications.length > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {unreadRequestNotifications.length}
                 </span>
               ) : null}
             </button>
@@ -1853,7 +2006,7 @@ export default function AdminPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                       Notifications
                     </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">College Requests</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">College Notifications</p>
                   </div>
                   <button
                     type="button"
@@ -1884,7 +2037,7 @@ export default function AdminPage() {
                     ))
                   ) : (
                     <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
-                      No pending college requests.
+                      No college change notifications.
                     </div>
                   )}
                 </div>
@@ -2017,6 +2170,86 @@ export default function AdminPage() {
               );
             })}
           </div>
+
+          <article className="rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-white p-5 shadow-[0_20px_40px_rgba(148,163,184,0.1)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                  College Edit Status
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction("college-edit-reminders", async () => {
+                    const data = await request(
+                      "/api/admin/colleges/send-edit-reminders",
+                      withAuth(token, { method: "POST" }),
+                    );
+                    setStatusText(
+                      data?.message || "Reminder emails processed for pending college edits",
+                    );
+                  })
+                }
+                disabled={!token || collegeDashboardEditStatus.notEdited.length === 0}
+                className={solidBlueButtonClass}
+              >
+                Send Mail
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[1.25rem] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-emerald-900">Edited Colleges</p>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+                    {collegeDashboardEditStatus.edited.length}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {collegeDashboardEditStatus.edited.length > 0 ? (
+                    collegeDashboardEditStatus.edited.slice(0, 8).map((college) => (
+                      <div key={`edited-${college._id}`} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2">
+                        <p className="text-sm font-semibold text-slate-900">{college.name || "College"}</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Last edit: {college.lastDashboardEditAt ? new Date(college.lastDashboardEditAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-emerald-200 bg-white/70 px-3 py-4 text-sm text-emerald-800">
+                      Innum yaarum college dashboard edit pannala.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-amber-900">Not Yet Edited</p>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700">
+                    {collegeDashboardEditStatus.notEdited.length}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {collegeDashboardEditStatus.notEdited.length > 0 ? (
+                    collegeDashboardEditStatus.notEdited.slice(0, 8).map((college) => (
+                      <div key={`not-edited-${college._id}`} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2">
+                        <p className="text-sm font-semibold text-slate-900">{college.name || "College"}</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Mail: {college.contactEmail || college.ownerEmail || "-"}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-amber-200 bg-white/70 px-3 py-4 text-sm text-amber-800">
+                      Ella colleges-um least once dashboard edit pannirukku.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </article>
         </div>
       ) : null}
 
@@ -2214,10 +2447,15 @@ export default function AdminPage() {
                 <p className="text-sm font-semibold text-slate-900">Contact Details</p>
                 <p className="text-xs text-slate-500">Primary contact details shown for this college.</p>
               </div>
+              <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50/90 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">Important Contact</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">Official Email is the primary email used for college communication, request updates, and dashboard follow-up.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Use the active official college mail ID here so admin and college dashboard communication stay aligned.</p>
+              </div>
               <div className={formSectionClass}>
-                <label>
-                  <span className={labelClass}>Official Email<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("contactEmail")} type="email" placeholder="Official email" value={collegeForm.contactEmail} onChange={(event) => { clearCollegeFieldError("contactEmail"); setCollegeForm((prev) => ({ ...prev, contactEmail: event.target.value })); }} required />
+                <label className="md:col-span-2 xl:col-span-2">
+                  <span className={`${labelClass} text-sky-700`}>Official Email<span className={requiredMarkClass}>*</span></span>
+                  <input className={`${getCollegeInputClass("contactEmail")} border-sky-200 bg-sky-50/40`} type="email" placeholder="Official email" value={collegeForm.contactEmail} onChange={(event) => { clearCollegeFieldError("contactEmail"); setCollegeForm((prev) => ({ ...prev, contactEmail: event.target.value })); }} required />
                   {collegeFieldErrors.contactEmail ? <span className={errorTextClass}>{collegeFieldErrors.contactEmail}</span> : null}
                 </label>
                 <label>
@@ -3993,13 +4231,15 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "college-requests" ? (
+      {!loading && activeTab === "college-notifications" ? (
         <div className="space-y-3">
-          {adminState.collegeRequests.map((item) => (
+          {collegeChangeNotifications.map((item) => (
             <article key={item._id} className="luxe-card flex items-start justify-between gap-4 p-5">
               <div>
                 <div className="flex items-center gap-3">
-                  <h3 className="font-bold text-slate-900">{item.payload?.name || item.requesterName || "College request"}</h3>
+                  <h3 className="font-bold text-slate-900">
+                    {item.payload?.name || item.requesterName || "College update"}
+                  </h3>
                   <span
                     className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
                       item.status === "approved"
@@ -4012,50 +4252,38 @@ export default function AdminPage() {
                     {item.status || "pending"}
                   </span>
                 </div>
-                <p className="text-sm text-slate-500">{item.requesterEmail || "-"}</p>
-              </div>
-              <div className="flex gap-3">
-                <Link href={`/admin/requested-college/${item._id}`} className={solidBlueButtonClass}>
-                  Review
-                  <ExternalLink className="size-4" />
-                </Link>
-                {item.status !== "approved" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void runAction(`college-request-${item._id}`, async () => {
-                          const data = await request(`/api/admin/college-add-requests/${item._id}/status`, withAuth(token, { method: "PUT", body: JSON.stringify({ status: "approved" }) }));
-                          setStatusText(data?.message || "College request approved");
-                          await loadAdminData(token, currentUser);
-                        })
-                      }
-                      className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+                <p className="text-sm text-slate-500">
+                  Edited by login email: {item.requesterEmail || "-"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Updated on {formatDate(item.updatedAt || item.createdAt)}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {(item.changeSummary || []).map((change, index) => (
+                    <div
+                      key={`${item._id}-${change.field || index}`}
+                      className="rounded-[0.9rem] border border-slate-200 bg-slate-50 px-3 py-2"
                     >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void runAction(`college-request-delete-${item._id}`, async () => {
-                          const data = await request(`/api/admin/college-add-requests/${item._id}`, withAuth(token, { method: "DELETE" }));
-                          setStatusText(data?.message || "College request rejected");
-                          await loadAdminData(token, currentUser);
-                        })
-                      }
-                      className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Reject
-                    </button>
-                  </>
-                ) : (
-                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                    Approved
-                  </span>
-                )}
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        {change.label || change.field || "Field"}
+                      </p>
+                      <p className="mt-1 text-sm text-rose-700">
+                        Before: {renderChangeValue(change.before)}
+                      </p>
+                      <p className="mt-0.5 text-sm text-emerald-700">
+                        Now: {renderChangeValue(change.after)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </article>
           ))}
+          {collegeChangeNotifications.length === 0 ? (
+            <div className="rounded-[1rem] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+              No field change notifications yet.
+            </div>
+          ) : null}
         </div>
       ) : null}
 

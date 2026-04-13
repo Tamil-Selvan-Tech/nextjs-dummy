@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BadgeCheck, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Plus, Trash2, X } from "lucide-react";
 import type { SafeAuthUser } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
 import {
@@ -9,6 +9,11 @@ import {
   INDIA_STATE_DISTRICT_MAP,
   INDIA_STATES,
 } from "@/lib/india-location-data";
+import {
+  formatCutoffForSave,
+  isValidCutoffValue,
+  normalizeCutoffInput,
+} from "@/lib/cutoff-utils";
 import { formatRankingRangeForSave, normalizeRankingRangeInput, parseRankingRange } from "@/lib/ranking-utils";
 import { useStatusToast } from "@/lib/toast";
 
@@ -30,6 +35,11 @@ type CourseExam = {
   preparationNotes: string;
 };
 
+type CategoryCutoff = {
+  category?: string;
+  cutoff?: string;
+};
+
 type CourseDraft = {
   id: string;
   persisted?: boolean;
@@ -48,6 +58,9 @@ type CourseDraft = {
   semesterFees: string;
   totalFees: string;
   cutoff: string;
+  cutoffByCategory: CategoryCutoff[];
+  cutoffCategory: string;
+  cutoffValue: string;
   intake: string;
   applicationFee: string;
   entranceExamsEnabled: boolean;
@@ -81,6 +94,17 @@ const availabilityOptions = [
   { value: "available", label: "Available" },
   { value: "not_available", label: "Not Available" },
 ];
+const cutoffCategoryOptions = [
+  { value: "OC", label: "OC / General" },
+  { value: "BC", label: "BC" },
+  { value: "BCM", label: "BCM" },
+  { value: "MBC", label: "MBC / DNC" },
+  { value: "SC", label: "SC" },
+  { value: "SCA", label: "SCA" },
+  { value: "ST", label: "ST" },
+];
+const defaultCutoffCategory = cutoffCategoryOptions[0]?.value || "OC";
+const cutoffValidationMessage = "Enter cutoff like 190, 190.5, or a range like 190-195. Each value must be between 0 and 9999.";
 const specializationMap: Record<string, string[]> = {
   Engineering: ["Computer Science", "Information Technology", "Mechanical", "Civil", "ECE", "EEE"],
   Management: ["Finance", "Marketing", "HR", "Operations", "Business Analytics"],
@@ -129,15 +153,126 @@ const normalizeIndianPhoneInput = (value: string) => {
   return digits.slice(0, 10);
 };
 const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
+const normalizeCutoffSideInput = (value: string) =>
+  normalizeCutoffInput(
+    String(value || "")
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/-/g, ""),
+  );
+const getCutoffRangeParts = (value: string | number | null | undefined) => {
+  const raw = String(value || "").replace(/[\u2013\u2014]/g, "-");
+  if (!raw.includes("-")) {
+    return { start: normalizeCutoffSideInput(raw), end: "" };
+  }
+
+  const [start = "", ...rest] = raw.split("-");
+  return {
+    start: normalizeCutoffSideInput(start),
+    end: normalizeCutoffSideInput(rest.join("-")),
+  };
+};
+const buildCutoffRangeValue = (start: string, end: string) => {
+  const normalizedStart = normalizeCutoffSideInput(start);
+  const normalizedEnd = normalizeCutoffSideInput(end);
+
+  if (!normalizedStart && !normalizedEnd) return "";
+  return `${normalizedStart}-${normalizedEnd}`;
+};
+const normalizeCategoryCutoffs = (value: unknown): CategoryCutoff[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value
+    .map((item) => ({
+      category: String((item as CategoryCutoff)?.category || "").trim().toUpperCase(),
+      cutoff: String((item as CategoryCutoff)?.cutoff || "").trim(),
+    }))
+    .filter((item) => {
+      if (!item.category || !item.cutoff || seen.has(item.category)) {
+        return false;
+      }
+      seen.add(item.category);
+      return true;
+    })
+    .sort((left, right) => {
+      const leftIndex = cutoffCategoryOptions.findIndex((item) => item.value === left.category);
+      const rightIndex = cutoffCategoryOptions.findIndex((item) => item.value === right.category);
+      const normalizedLeft = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+      const normalizedRight = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+      if (normalizedLeft !== normalizedRight) return normalizedLeft - normalizedRight;
+      return left.category.localeCompare(right.category);
+    });
+};
+const resolvePrimaryCategoryCutoff = (
+  cutoffByCategory: CategoryCutoff[],
+  fallback: string | number | undefined = "",
+) =>
+  normalizeCategoryCutoffs(cutoffByCategory).find((item) => item.category === defaultCutoffCategory)?.cutoff ||
+  normalizeCategoryCutoffs(cutoffByCategory)[0]?.cutoff ||
+  formatCutoffForSave(fallback);
+const normalizeCategoryCutoffsWithFallback = (
+  cutoffByCategory: unknown,
+  fallbackCutoff: string | number | undefined = "",
+  fallbackCategory: string = defaultCutoffCategory,
+) => {
+  const normalizedCutoffs = normalizeCategoryCutoffs(cutoffByCategory);
+  if (normalizedCutoffs.length > 0) return normalizedCutoffs;
+
+  const normalizedFallbackCutoff = formatCutoffForSave(fallbackCutoff);
+  const normalizedFallbackCategory = String(fallbackCategory || defaultCutoffCategory).trim().toUpperCase();
+  if (!normalizedFallbackCutoff || !normalizedFallbackCategory) {
+    return [];
+  }
+
+  return [{ category: normalizedFallbackCategory, cutoff: normalizedFallbackCutoff }];
+};
+const getCutoffValueForCategory = (cutoffByCategory: CategoryCutoff[], category: string) =>
+  normalizeCategoryCutoffs(cutoffByCategory).find(
+    (item) => String(item.category || "").trim().toUpperCase() === String(category || "").trim().toUpperCase(),
+  )?.cutoff || "";
+const getNextCutoffCategoryValue = (currentCategory: string, cutoffByCategory: CategoryCutoff[]) => {
+  const normalizedCurrentCategory = String(currentCategory || "").trim().toUpperCase();
+  const normalizedCutoffs = normalizeCategoryCutoffs(cutoffByCategory);
+  const usedCategories = new Set(
+    normalizedCutoffs.map((item) => String(item.category || "").trim().toUpperCase()),
+  );
+  const orderedCategories = cutoffCategoryOptions.map((item) => item.value);
+  const startIndex = Math.max(orderedCategories.indexOf(normalizedCurrentCategory), 0);
+
+  for (let index = startIndex + 1; index < orderedCategories.length; index += 1) {
+    if (!usedCategories.has(orderedCategories[index])) {
+      return orderedCategories[index];
+    }
+  }
+  for (let index = 0; index < orderedCategories.length; index += 1) {
+    if (!usedCategories.has(orderedCategories[index])) {
+      return orderedCategories[index];
+    }
+  }
+  return orderedCategories[0] || normalizedCurrentCategory || defaultCutoffCategory;
+};
+const getNextEmbeddedCutoffSelection = (currentCategory: string, cutoffByCategory: CategoryCutoff[]) => {
+  const nextCategory = getNextCutoffCategoryValue(currentCategory, cutoffByCategory);
+  return {
+    nextCategory,
+    nextCutoffValue: getCutoffValueForCategory(cutoffByCategory, nextCategory),
+  };
+};
 
 const toList = (value: unknown) => Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
 const text = (obj: Record<string, unknown> | null, key: string) => String(obj?.[key] || "");
 const nested = (obj: Record<string, unknown> | null, key: string) => ((obj?.[key] as Record<string, unknown>) || {});
 const emptyExam = (): CourseExam => ({ examName: "", cutoffScoreOrRank: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
-const emptyCourseDraft = (university = ""): CourseDraft => ({ id: "", persisted: false, courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university, admissionProcess: "", description: "", semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "", entranceExamsEnabled: false, entranceExams: [emptyExam()], isTopCourse: false });
+const emptyCourseDraft = (university = ""): CourseDraft => ({ id: "", persisted: false, courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university, admissionProcess: "", description: "", semesterFees: "", totalFees: "", cutoff: "", cutoffByCategory: [], cutoffCategory: defaultCutoffCategory, cutoffValue: "", intake: "", applicationFee: "", entranceExamsEnabled: false, entranceExams: [emptyExam()], isTopCourse: false });
 const mergeUniqueValues = (primary: string[], secondary: string[]) => Array.from(new Set([...primary, ...secondary].filter(Boolean)));
 const mapExistingCourseToDraft = (course: Record<string, unknown>): CourseDraft => {
   const collegeDetails = Array.isArray(course.collegeDetails) ? course.collegeDetails[0] as Record<string, unknown> : null;
+  const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+    Array.isArray(collegeDetails?.cutoffByCategory) && collegeDetails.cutoffByCategory.length > 0
+      ? collegeDetails.cutoffByCategory
+      : course.cutoffByCategory,
+    String(collegeDetails?.cutoff ?? course.cutoff ?? ""),
+  );
+  const initialCutoffCategory = normalizedCutoffs[0]?.category || defaultCutoffCategory;
   const entranceExams = Array.isArray(course.entranceExams)
     ? course.entranceExams
         .map((exam) => ({
@@ -167,7 +302,10 @@ const mapExistingCourseToDraft = (course: Record<string, unknown>): CourseDraft 
     description: String(course.description || ""),
     semesterFees: String(collegeDetails?.semesterFees ?? ""),
     totalFees: String(collegeDetails?.totalFees ?? course.totalFees ?? ""),
-    cutoff: String(collegeDetails?.cutoff ?? course.cutoff ?? ""),
+    cutoff: resolvePrimaryCategoryCutoff(normalizedCutoffs, String(collegeDetails?.cutoff ?? course.cutoff ?? "")),
+    cutoffByCategory: normalizedCutoffs,
+    cutoffCategory: initialCutoffCategory,
+    cutoffValue: getCutoffValueForCategory(normalizedCutoffs, initialCutoffCategory),
     intake: String(collegeDetails?.intake ?? course.intake ?? ""),
     applicationFee: String(collegeDetails?.applicationFee ?? course.applicationFee ?? ""),
     entranceExamsEnabled: entranceExams.length > 0,
@@ -205,6 +343,9 @@ const serializeCourseDraftForCompare = (course: CourseDraft) =>
     semesterFees: String(course.semesterFees || "").trim(),
     totalFees: String(course.totalFees || "").trim(),
     cutoff: String(course.cutoff || "").trim(),
+    cutoffByCategory: normalizeCategoryCutoffs(course.cutoffByCategory),
+    cutoffCategory: String(course.cutoffCategory || "").trim().toUpperCase(),
+    cutoffValue: String(course.cutoffValue || "").trim(),
     intake: String(course.intake || "").trim(),
     applicationFee: String(course.applicationFee || "").trim(),
     entranceExamsEnabled: Boolean(course.entranceExamsEnabled),
@@ -311,6 +452,11 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
     () => getQualificationSuggestions(courseForm.courseType, courseForm.degreeType, courseForm.stream),
     [courseForm.courseType, courseForm.degreeType, courseForm.stream],
   );
+  const normalizedCourseCutoffs = useMemo(
+    () => normalizeCategoryCutoffs(courseForm.cutoffByCategory),
+    [courseForm.cutoffByCategory],
+  );
+  const cutoffRangeParts = useMemo(() => getCutoffRangeParts(courseForm.cutoffValue), [courseForm.cutoffValue]);
   const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const setCourseField = <K extends keyof CourseDraft>(key: K, value: CourseDraft[K]) => setCourseForm((prev) => ({ ...prev, [key]: value }));
 
@@ -337,13 +483,84 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
     setCourseForm(emptyCourseDraft(form.university));
   };
 
+  const handleCourseCutoffBlur = (segment: "start" | "end") => () => {
+    setCourseForm((prev) => {
+      const parts = getCutoffRangeParts(prev.cutoffValue);
+      return {
+        ...prev,
+        cutoffValue: buildCutoffRangeValue(
+          segment === "start" ? formatCutoffForSave(parts.start) : parts.start,
+          segment === "end" ? formatCutoffForSave(parts.end) : parts.end,
+        ),
+      };
+    });
+  };
+
+  const upsertCourseCutoff = () => {
+    const category = String(courseForm.cutoffCategory || "").trim().toUpperCase();
+    const cutoffValue = formatCutoffForSave(courseForm.cutoffValue);
+
+    if (!category || !cutoffValue || !isValidCutoffValue(cutoffValue)) {
+      setStatus({ type: "error", text: cutoffValidationMessage });
+      return;
+    }
+
+    const normalizedCutoffs = normalizeCategoryCutoffs(courseForm.cutoffByCategory);
+    const nextCutoffs = normalizeCategoryCutoffs([
+      ...normalizedCutoffs.filter((item) => item.category !== category),
+      { category, cutoff: cutoffValue },
+    ]);
+    const { nextCategory, nextCutoffValue } = getNextEmbeddedCutoffSelection(category, nextCutoffs);
+
+    setCourseForm((prev) => ({
+      ...prev,
+      cutoffByCategory: nextCutoffs,
+      cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, cutoffValue),
+      cutoffCategory: nextCategory,
+      cutoffValue: nextCutoffValue,
+    }));
+  };
+
+  const removeCourseCutoff = (categoryToRemove: string) => {
+    setCourseForm((prev) => {
+      const nextCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory).filter(
+        (item) => item.category !== String(categoryToRemove || "").trim().toUpperCase(),
+      );
+      const activeCategory = nextCutoffs.some((item) => item.category === prev.cutoffCategory)
+        ? prev.cutoffCategory
+        : getNextCutoffCategoryValue(prev.cutoffCategory, nextCutoffs);
+
+      return {
+        ...prev,
+        cutoffByCategory: nextCutoffs,
+        cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, ""),
+        cutoffCategory: activeCategory,
+        cutoffValue: getCutoffValueForCategory(nextCutoffs, activeCategory),
+      };
+    });
+  };
+
   const saveCourseDraft = () => {
-    if (!courseForm.courseType.trim() || !courseForm.degreeType.trim() || !courseForm.stream.trim() || !courseForm.specialization.trim() || !courseForm.duration.trim() || !courseForm.minimumQualification.trim() || !courseForm.totalFees.trim() || !courseForm.cutoff.trim()) {
+    const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+      courseForm.cutoffByCategory,
+      courseForm.cutoffValue || courseForm.cutoff,
+      courseForm.cutoffCategory,
+    );
+    if (!courseForm.courseType.trim() || !courseForm.degreeType.trim() || !courseForm.stream.trim() || !courseForm.specialization.trim() || !courseForm.duration.trim() || !courseForm.minimumQualification.trim() || !courseForm.totalFees.trim() || normalizedCutoffs.length === 0) {
       setStatus({ type: "error", text: "Courses: fill all required course fields." });
       return;
     }
+    if (normalizedCutoffs.some((item) => !isValidCutoffValue(item.cutoff))) {
+      setStatus({ type: "error", text: cutoffValidationMessage });
+      return;
+    }
+    const initialCategory = normalizedCutoffs[0]?.category || defaultCutoffCategory;
     const nextDraft = {
       ...courseForm,
+      cutoffByCategory: normalizedCutoffs,
+      cutoff: resolvePrimaryCategoryCutoff(normalizedCutoffs, courseForm.cutoff),
+      cutoffCategory: initialCategory,
+      cutoffValue: getCutoffValueForCategory(normalizedCutoffs, initialCategory),
       id: editingCourseId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       persisted: editingCourseId ? courseDrafts.find((item) => item.id === editingCourseId)?.persisted || false : false,
       entranceExams: courseForm.entranceExams.filter((exam) => [exam.examName, exam.cutoffScoreOrRank, exam.weightage, exam.paperOrSyllabus, exam.preparationNotes].some((value) => String(value || "").trim())),
@@ -351,6 +568,83 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
     setCourseDrafts((prev) => editingCourseId ? prev.map((item) => item.id === editingCourseId ? nextDraft : item) : [...prev, nextDraft]);
     setStatus({ type: "success", text: "Course draft saved." });
     resetCourseEditor();
+  };
+
+  const validateStep = (stepIndex: number, formState = form) => {
+    if (stepIndex === 0) {
+      if (
+        !formState.name.trim() ||
+        !formState.description.trim() ||
+        !formState.establishedYear.trim() ||
+        !formState.university.trim()
+      ) {
+        return "Basic Info: fill all required fields.";
+      }
+    }
+    if (stepIndex === 1) {
+      if (
+        !formState.country.trim() ||
+        !formState.state.trim() ||
+        !formState.city.trim() ||
+        !formState.address.trim() ||
+        !formState.pincode.trim()
+      ) {
+        return "Location: fill all required fields.";
+      }
+    }
+    if (stepIndex === 2) {
+      if (!formState.contactEmail.trim() || !formState.contactPhone.trim()) {
+        return "Contact: fill all required fields.";
+      }
+      if (!isValidIndianPhone(formState.contactPhone)) {
+        return "Contact: enter a valid 10 digit phone number.";
+      }
+      if (formState.alternatePhone.trim() && !isValidIndianPhone(formState.alternatePhone)) {
+        return "Contact: alternate phone must be a valid 10 digit number.";
+      }
+    }
+    if (stepIndex === 3) {
+      if (!formState.logo.trim() || !formState.coverImage.trim() || formState.images.length < 2) {
+        return "Media: logo, cover image, and minimum 2 college images are required.";
+      }
+    }
+    if (stepIndex === 6) {
+      if (
+        !formState.feeMin.trim() ||
+        !formState.feeMax.trim() ||
+        !formState.admissionProcess.trim() ||
+        !formState.applicationMode.trim()
+      ) {
+        return "Admission: fill all required fields.";
+      }
+    }
+    if (stepIndex === 8 && formState.hostelAvailability === "available") {
+      if (
+        !formState.hostelType.trim() ||
+        !formState.hostelFeeMin.trim() ||
+        !formState.hostelFeeMax.trim() ||
+        !formState.cctvAvailable.trim()
+      ) {
+        return "Hostel: fill all required fields.";
+      }
+    }
+    return "";
+  };
+
+  const goToStep = (targetStep: number) => {
+    if (targetStep <= step) {
+      setStep(Math.max(0, Math.min(targetStep, steps.length - 1)));
+      return;
+    }
+    for (let index = 0; index < targetStep; index += 1) {
+      const errorMessage = validateStep(index);
+      if (errorMessage) {
+        setStatus({ type: "error", text: errorMessage });
+        setStep(index);
+        return;
+      }
+    }
+    setStep(Math.max(0, Math.min(targetStep, steps.length - 1)));
   };
 
   const saveCollege = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -374,7 +668,7 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
         await request(`/api/users/my-courses/${courseId}`, withAuth(token, { method: "DELETE" }));
       }
       for (const course of courseDrafts) {
-        const coursePayload = { courseType: course.courseType, degreeType: course.degreeType, stream: course.stream, specialization: course.specialization, duration: course.duration, mode: course.mode, lateralEntryAvailable: course.lateralEntryAvailable, lateralEntryDetails: course.lateralEntryDetails, minimumQualification: course.minimumQualification, university: course.university, admissionProcess: course.admissionProcess, description: course.description, semesterFees: course.semesterFees, totalFees: course.totalFees, cutoff: course.cutoff, intake: course.intake, applicationFee: course.applicationFee, entranceExams: course.entranceExamsEnabled ? course.entranceExams : [], isTopCourse: course.isTopCourse };
+        const coursePayload = { courseType: course.courseType, degreeType: course.degreeType, stream: course.stream, specialization: course.specialization, duration: course.duration, mode: course.mode, lateralEntryAvailable: course.lateralEntryAvailable, lateralEntryDetails: course.lateralEntryDetails, minimumQualification: course.minimumQualification, university: course.university, admissionProcess: course.admissionProcess, description: course.description, semesterFees: course.semesterFees, totalFees: course.totalFees, cutoff: course.cutoff, cutoffByCategory: course.cutoffByCategory, intake: course.intake, applicationFee: course.applicationFee, entranceExams: course.entranceExamsEnabled ? course.entranceExams : [], isTopCourse: course.isTopCourse };
         if (course.persisted) {
           if (persistedCourseBaselineRef.current[course.id] === serializeCourseDraftForCompare(course)) {
             continue;
@@ -399,6 +693,206 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
     }
   };
 
+  const courseStepContent = (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Courses In Add College</p>
+          <p className="text-xs text-slate-500">Existing courses are loaded here as-is, so you can edit, keep, or remove them before saving.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Selected: {courseDrafts.length}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCourseEditor(true);
+              setEditingCourseId("");
+              setCourseForm(emptyCourseDraft(form.university));
+            }}
+            className={primaryButton}
+          >
+            Add Course
+          </button>
+        </div>
+      </div>
+
+      {showCourseEditor ? (
+        <div className="space-y-4 rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">{editingCourseId ? "Edit Course In Add College" : "Create Course In Add College"}</h3>
+              <p className="text-xs text-slate-500">This course will be saved together with the current college.</p>
+            </div>
+            <button type="button" onClick={resetCourseEditor} className={softButton}>Cancel</button>
+          </div>
+
+          <div className={sectionClass}>
+            <label>
+              <span className={labelClass}>Course Name *</span>
+              <input className={inputClass} value={courseForm.courseType} onChange={(e) => setCourseField("courseType", e.target.value)} placeholder="B.Tech, MBA, B.Sc..." />
+            </label>
+            <label>
+              <span className={labelClass}>Degree Type *</span>
+              <select className={inputClass} value={courseForm.degreeType} onChange={(e) => setCourseForm((prev) => { const nextDegreeType = e.target.value; const nextCourseName = getDefaultCourseName(prev.stream, nextDegreeType) || prev.courseType; return { ...prev, degreeType: nextDegreeType, courseType: nextCourseName, duration: getDefaultDuration(prev.stream, nextDegreeType) || prev.duration, minimumQualification: getDefaultMinimumQualification(nextCourseName, nextDegreeType, prev.stream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, nextDegreeType, prev.stream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, nextDegreeType, prev.stream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}>
+                <option value="">Select degree type</option>
+                {degreeTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className={labelClass}>Stream *</span>
+              <select className={inputClass} value={courseForm.stream} onChange={(e) => setCourseForm((prev) => { const nextStream = e.target.value; const nextCourseName = getDefaultCourseName(nextStream, prev.degreeType) || prev.courseType; return { ...prev, stream: nextStream, courseType: nextCourseName, specialization: "", duration: getDefaultDuration(nextStream, prev.degreeType) || prev.duration, minimumQualification: getDefaultMinimumQualification(nextCourseName, prev.degreeType, nextStream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, nextStream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, nextStream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}>
+                <option value="">Select stream</option>
+                {streamOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className={labelClass}>Specialization *</span>
+              <select className={inputClass} value={courseForm.specialization} onChange={(e) => setCourseForm((prev) => { const nextSpecialization = e.target.value; const nextCourseName = getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType; return { ...prev, specialization: nextSpecialization, courseType: nextCourseName, minimumQualification: getDefaultMinimumQualification(nextCourseName, prev.degreeType, prev.stream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, prev.stream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, prev.stream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}>
+                <option value="">Select specialization</option>
+                {specializationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className={labelClass}>Duration *</span>
+              <input className={inputClass} value={courseForm.duration} onChange={(e) => setCourseForm((prev) => ({ ...prev, duration: e.target.value, totalFees: calcTotalFees(prev.semesterFees, e.target.value) || prev.totalFees }))} placeholder="4 Years" />
+            </label>
+            <label>
+              <span className={labelClass}>Mode</span>
+              <select className={inputClass} value={courseForm.mode} onChange={(e) => setCourseField("mode", e.target.value)}>
+                {modeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <input type="checkbox" checked={courseForm.lateralEntryAvailable} onChange={(e) => setCourseForm((prev) => ({ ...prev, lateralEntryAvailable: e.target.checked, lateralEntryDetails: e.target.checked ? prev.lateralEntryDetails : "" }))} />
+              Lateral Entry
+            </label>
+            {courseForm.lateralEntryAvailable ? <label className="md:col-span-2"><span className={labelClass}>Lateral Entry Details</span><input className={inputClass} value={courseForm.lateralEntryDetails} onChange={(e) => setCourseField("lateralEntryDetails", e.target.value)} placeholder="Direct second year / diploma entry rules" /></label> : null}
+            <label>
+              <span className={labelClass}>Minimum Qualification *</span>
+              <input className={inputClass} list="course-qualification-options" value={courseForm.minimumQualification} onChange={(e) => setCourseField("minimumQualification", e.target.value)} placeholder="10+2 / Graduation" />
+            </label>
+            <label>
+              <span className={labelClass}>University</span>
+              <input className={inputClass} value={courseForm.university} onChange={(e) => setCourseField("university", e.target.value)} placeholder="Affiliated or awarding university" />
+            </label>
+            <label>
+              <span className={labelClass}>Semester Fees *</span>
+              <input className={inputClass} value={courseForm.semesterFees} onChange={(e) => setCourseForm((prev) => ({ ...prev, semesterFees: e.target.value, totalFees: calcTotalFees(e.target.value, prev.duration) || prev.totalFees }))} placeholder="Semester fees" />
+            </label>
+            <label>
+              <span className={labelClass}>Total Fees *</span>
+              <input className={inputClass} value={courseForm.totalFees} onChange={(e) => setCourseField("totalFees", e.target.value)} placeholder="Total fees" />
+            </label>
+            <div className="md:col-span-2 xl:col-span-3">
+              <span className={labelClass}>Cutoff By Category *</span>
+              <div className="grid gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
+                <select className={inputClass} value={courseForm.cutoffCategory} onChange={(e) => setCourseForm((prev) => ({ ...prev, cutoffCategory: e.target.value, cutoffValue: getCutoffValueForCategory(prev.cutoffByCategory, e.target.value) }))}>
+                  {cutoffCategoryOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                  <input className={`${inputClass} text-center`} value={cutoffRangeParts.start} onChange={(e) => setCourseForm((prev) => ({ ...prev, cutoffValue: buildCutoffRangeValue(e.target.value, getCutoffRangeParts(prev.cutoffValue).end) }))} onBlur={handleCourseCutoffBlur("start")} inputMode="decimal" maxLength={7} />
+                  <span className="text-base font-semibold text-slate-500">-</span>
+                  <input className={`${inputClass} text-center`} value={cutoffRangeParts.end} onChange={(e) => setCourseForm((prev) => ({ ...prev, cutoffValue: buildCutoffRangeValue(getCutoffRangeParts(prev.cutoffValue).start, e.target.value) }))} onBlur={handleCourseCutoffBlur("end")} inputMode="decimal" maxLength={7} />
+                </div>
+                <button type="button" onClick={upsertCourseCutoff} className={primaryButton}>Add Cutoff</button>
+              </div>
+              {normalizedCourseCutoffs.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {normalizedCourseCutoffs.map((item) => (
+                    <div key={item.category} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                      <span>{item.category}: {item.cutoff}</span>
+                      <button type="button" onClick={() => removeCourseCutoff(String(item.category || ""))} className="text-rose-600 transition hover:text-rose-700" aria-label={`Remove ${item.category} cutoff`}>
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-2 text-xs text-slate-500">{cutoffValidationMessage}</p>}
+            </div>
+            <label>
+              <span className={labelClass}>Intake</span>
+              <input className={inputClass} value={courseForm.intake} onChange={(e) => setCourseField("intake", e.target.value)} placeholder="Total allotted seats" />
+            </label>
+            <label>
+              <span className={labelClass}>Application Fee</span>
+              <input className={inputClass} value={courseForm.applicationFee} onChange={(e) => setCourseField("applicationFee", e.target.value)} placeholder="Application fee" />
+            </label>
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <input type="checkbox" checked={courseForm.isTopCourse} onChange={(e) => setCourseField("isTopCourse", e.target.checked)} />
+              Top Course
+            </label>
+            <label className="md:col-span-2 xl:col-span-3">
+              <span className={labelClass}>Admission Process</span>
+              <textarea className={inputClass} rows={2} value={courseForm.admissionProcess} onChange={(e) => setCourseField("admissionProcess", e.target.value)} />
+            </label>
+            <label className="md:col-span-2 xl:col-span-3">
+              <span className={labelClass}>Course Description</span>
+              <textarea className={inputClass} rows={3} value={courseForm.description} onChange={(e) => setCourseField("description", e.target.value)} />
+            </label>
+          </div>
+
+          {courseForm.entranceExamsEnabled ? (
+            <div className="rounded-[1rem] border border-slate-200 bg-white p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Entrance Exams</h3>
+                  <p className="text-xs text-slate-500">Add exam details if this course needs them.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: false, entranceExams: [emptyExam()] }))} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"><X className="size-4" /></button>
+                  <button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExams: [...prev.entranceExams, emptyExam()] }))} className={softButton}><Plus className="size-4" />Add Exam</button>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {courseForm.entranceExams.map((exam, index) => (
+                  <div key={`exam-${index}`} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>
+                      {courseForm.entranceExams.length > 1 ? <button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index) }))} className="text-xs font-semibold text-rose-600">Remove</button> : null}
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      <input className={inputClass} value={exam.examName} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, examName: e.target.value } : item) }))} placeholder="Exam name" />
+                      <input className={inputClass} value={exam.cutoffScoreOrRank} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, cutoffScoreOrRank: e.target.value } : item) }))} placeholder="Cutoff score / rank" />
+                      <input className={inputClass} value={exam.weightage} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, weightage: e.target.value } : item) }))} placeholder="Exam weightage" />
+                      <input className={`${inputClass} md:col-span-2 xl:col-span-3`} value={exam.paperOrSyllabus} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, paperOrSyllabus: e.target.value } : item) }))} placeholder="Specified paper / syllabus" />
+                      <textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} value={exam.preparationNotes} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, preparationNotes: e.target.value } : item) }))} placeholder="Preparation notes" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white p-3"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: true, entranceExams: prev.entranceExams.length ? prev.entranceExams : [emptyExam()] }))} className={softButton}><Plus className="size-4" />Add Entrance Exam</button><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: false, entranceExams: [emptyExam()] }))} className={softButton}>Entrance Exam Not Needed</button></div></div>}
+
+          <div className="flex gap-2">
+            <button type="button" onClick={saveCourseDraft} className={primaryButton}>{editingCourseId ? "Update Course" : "Save Course"}</button>
+            <button type="button" onClick={resetCourseEditor} className={softButton}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
+
+      {courseDrafts.length > 0 ? (
+        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-sm font-bold text-slate-900">Saved Course List</h3>
+          <div className="mt-3 space-y-3">
+            {courseDrafts.map((item) => (
+              <div key={item.id} className="flex flex-col gap-3 rounded-[1rem] border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{[item.courseType, item.specialization].filter(Boolean).join(" - ")}</p>
+                  <p className="mt-1 text-xs text-slate-500">{[item.degreeType, item.stream, item.duration].filter(Boolean).join(" | ")}</p>
+                  {normalizeCategoryCutoffs(item.cutoffByCategory).length > 0 ? <div className="mt-2 flex flex-wrap gap-2">{normalizeCategoryCutoffs(item.cutoffByCategory).map((cutoffItem) => <span key={`${item.id}-${cutoffItem.category}`} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{cutoffItem.category}: {cutoffItem.cutoff}</span>)}</div> : null}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => { setEditingCourseId(item.id); setCourseForm(item); setShowCourseEditor(true); }} className={softButton}>Edit</button>
+                  <button type="button" onClick={() => { if (item.persisted) { setRemovedCourseIds((prev) => prev.includes(item.id) ? prev : [...prev, item.id]); } setCourseDrafts((prev) => prev.filter((course) => course.id !== item.id)); }} className={softButton}>Remove</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
   return (
     <article className="luxe-card reveal-up delay-3 rounded-[1.35rem] p-3.5 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -413,23 +907,71 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
       <form onSubmit={saveCollege} className="mt-4 rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 text-sm shadow-[0_24px_46px_rgba(148,163,184,0.14)] sm:p-4">
         <div className="rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3">
           <div className="h-2 rounded-full bg-white"><div className="h-2 rounded-full bg-slate-900 transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-5 xl:grid-cols-10">{steps.map((item, index) => <button key={item} type="button" onClick={() => setStep(index)} className={`rounded-[0.95rem] border px-2.5 py-2 text-left text-[11px] font-semibold transition ${index === step ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500"}`}>{item}</button>)}</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-5 xl:grid-cols-10">{steps.map((item, index) => <button key={item} type="button" onClick={() => goToStep(index)} className={`rounded-[0.95rem] border px-2.5 py-2 text-left text-[11px] font-semibold transition ${index === step ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500"}`}>{item}</button>)}</div>
         </div>
         <div className="mt-4 space-y-4">
           {step === 0 ? <div className={sectionClass}><label><span className={labelClass}>College Name *</span><input className={inputClass} value={form.name} onChange={(e) => setField("name", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Description *</span><textarea className={inputClass} rows={4} value={form.description} onChange={(e) => setField("description", e.target.value)} /></label><label><span className={labelClass}>Established Year *</span><input className={inputClass} value={form.establishedYear} onChange={(e) => setField("establishedYear", e.target.value)} /></label><label><span className={labelClass}>Ownership Type</span><select className={inputClass} value={form.ownershipType} onChange={(e) => setField("ownershipType", e.target.value)}><option value="">Select ownership</option>{ownershipTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>University / Affiliation *</span><input className={inputClass} value={form.university} onChange={(e) => setField("university", e.target.value)} /></label></div> : null}
           {step === 1 ? <div className={sectionClass}><label><span className={labelClass}>Country *</span><select className={inputClass} value={form.country} onChange={(e) => setField("country", e.target.value)}>{availableCountries.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>State *</span><select className={inputClass} value={form.state} onChange={(e) => setForm((prev) => ({ ...prev, state: e.target.value, district: "" }))}><option value="">Select state</option>{availableStates.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>City *</span><input className={inputClass} value={form.city} onChange={(e) => setField("city", e.target.value)} /></label><label><span className={labelClass}>District</span><select className={inputClass} value={form.district} onChange={(e) => setField("district", e.target.value)}><option value="">Select district</option>{availableDistricts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Address *</span><textarea className={inputClass} rows={3} value={form.address} onChange={(e) => setField("address", e.target.value)} /></label><label><span className={labelClass}>Pincode *</span><input className={inputClass} value={form.pincode} onChange={(e) => setField("pincode", e.target.value)} /></label><label><span className={labelClass}>Google Map URL</span><input className={inputClass} value={form.locationLink} onChange={(e) => setField("locationLink", e.target.value)} /></label></div> : null}
-          {step === 2 ? <div className={sectionClass}><label><span className={labelClass}>Official Email *</span><input className={inputClass} type="email" value={form.contactEmail} onChange={(e) => setField("contactEmail", e.target.value)} /></label><label><span className={labelClass}>Phone Number *</span><input className={inputClass} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit mobile number" value={form.contactPhone} onChange={(e) => setField("contactPhone", normalizeIndianPhoneInput(e.target.value))} /></label><label><span className={labelClass}>Alternate Phone</span><input className={inputClass} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit alternate number" value={form.alternatePhone} onChange={(e) => setField("alternatePhone", normalizeIndianPhoneInput(e.target.value))} /></label><label><span className={labelClass}>Website URL</span><input className={inputClass} value={form.website} onChange={(e) => setField("website", e.target.value)} /></label></div> : null}
+          {step === 2 ? (
+            <div className="space-y-3">
+              <div className="rounded-[1rem] border border-sky-200 bg-sky-50/90 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">Important Contact</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">Official Email is the main mail used for dashboard updates, requests, and admin communication.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Use the active college mail ID here. This email will be treated as the primary contact for important updates.</p>
+              </div>
+              <div className={sectionClass}>
+                <label className="md:col-span-2 xl:col-span-2">
+                  <span className={`${labelClass} text-sky-700`}>Official Email *</span>
+                  <input
+                    className={`${inputClass} border-sky-200 bg-sky-50/40`}
+                    type="email"
+                    placeholder="Official college email"
+                    value={form.contactEmail}
+                    onChange={(e) => setField("contactEmail", e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span className={labelClass}>Phone Number *</span>
+                  <input
+                    className={inputClass}
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="10 digit mobile number"
+                    value={form.contactPhone}
+                    onChange={(e) => setField("contactPhone", normalizeIndianPhoneInput(e.target.value))}
+                  />
+                </label>
+                <label>
+                  <span className={labelClass}>Alternate Phone</span>
+                  <input
+                    className={inputClass}
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="10 digit alternate number"
+                    value={form.alternatePhone}
+                    onChange={(e) => setField("alternatePhone", normalizeIndianPhoneInput(e.target.value))}
+                  />
+                </label>
+                <label>
+                  <span className={labelClass}>Website URL</span>
+                  <input className={inputClass} value={form.website} onChange={(e) => setField("website", e.target.value)} />
+                </label>
+              </div>
+            </div>
+          ) : null}
           {step === 3 ? <div className={sectionClass}><label><span className={labelClass}>Logo Image *</span><input className={inputClass} type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} /></label><label><span className={labelClass}>Cover Image *</span><input className={inputClass} type="file" accept="image/*" onChange={(e) => setCoverImageFile(e.target.files?.[0] || null)} /></label><label><span className={labelClass}>College Images * (Minimum 2)</span><input className={inputClass} type="file" accept="image/*" multiple onChange={(e) => { const nextFiles = Array.from(e.target.files || []); if (nextFiles.length) { setImageFiles((prev) => [...prev, ...nextFiles]); } }} /></label><label><span className={labelClass}>Brochure PDF</span><input className={inputClass} type="file" accept="application/pdf" onChange={(e) => setBrochureFile(e.target.files?.[0] || null)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Campus Video</span><input className={inputClass} value={form.campusVideoUrl} onChange={(e) => setField("campusVideoUrl", e.target.value)} /></label></div> : null}
           {step === 4 ? <div className={sectionClass}><label><span className={labelClass}>Ranking</span><input className={inputClass} value={form.ranking} onChange={(e) => setField("ranking", normalizeRankingRangeInput(e.target.value))} onBlur={() => setField("ranking", formatRankingRangeForSave(form.ranking))} /></label><label><span className={labelClass}>Accreditation</span><input className={inputClass} list="college-accreditation-options" value={form.accreditation} onChange={(e) => setField("accreditation", e.target.value)} /></label><label><span className={labelClass}>Awards & Recognitions</span><input className={inputClass} value={form.awardsRecognitions} onChange={(e) => setField("awardsRecognitions", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Reviews</span><textarea className={inputClass} rows={3} value={form.reviews} onChange={(e) => setField("reviews", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Course Tags</span><input className={inputClass} value={form.courseTags} onChange={(e) => setField("courseTags", e.target.value)} /></label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isTopCollege} onChange={(e) => setField("isTopCollege", e.target.checked)} /> Top College</label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isBestCollege} onChange={(e) => setField("isBestCollege", e.target.checked)} /> Best College</label></div> : null}
           {step === 5 ? <div className="space-y-4"><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{facilityOptions.map((item) => { const selected = selectedFacilities.some((value) => value.toLowerCase() === item.toLowerCase()); const next = selected ? selectedFacilities.filter((value) => value.toLowerCase() !== item.toLowerCase()) : [...selectedFacilities, item]; return <button key={item} type="button" onClick={() => setField("facilities", next.join(", "))} className={`rounded-[1rem] border px-3 py-2 text-sm font-semibold transition ${selected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700"}`}>{item}</button>; })}</div><label><span className={labelClass}>Facilities</span><input className={inputClass} value={form.facilities} onChange={(e) => setField("facilities", e.target.value)} /></label></div> : null}
           {step === 6 ? <div className={sectionClass}><label><span className={labelClass}>Quotas</span><input className={inputClass} value={form.quotas} onChange={(e) => setField("quotas", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Fees Structure *</span><div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={form.feeMin} onChange={(e) => setField("feeMin", e.target.value)} placeholder="Minimum fee" /><input className={inputClass} value={form.feeMax} onChange={(e) => setField("feeMax", e.target.value)} placeholder="Maximum fee" /></div></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Admission Process *</span><textarea className={inputClass} rows={3} value={form.admissionProcess} onChange={(e) => setField("admissionProcess", e.target.value)} /></label><label><span className={labelClass}>Application Mode *</span><select className={inputClass} value={form.applicationMode} onChange={(e) => setField("applicationMode", e.target.value)}><option value="">Select application mode</option>{applicationModeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>Scholarships</span><textarea className={inputClass} rows={2} value={form.scholarships} onChange={(e) => setField("scholarships", e.target.value)} /></label></div> : null}
           {step === 7 ? <div className="space-y-3"><div className="rounded-[1rem] border border-emerald-200 bg-emerald-50 p-3"><p className={`${labelClass} mb-1 text-emerald-700`}>Placement Percentage</p><input className={`${inputClass} border-emerald-200 bg-white`} value={form.placementRate} onChange={(e) => setField("placementRate", e.target.value)} placeholder="Placement %" /><p className="mt-2 text-xs text-emerald-700">Keep this as a key highlight point while submitting the college profile.</p></div><div className={sectionClass}><label><span className={labelClass}>Average Package</span><input className={inputClass} value={form.averagePackage} onChange={(e) => setField("averagePackage", e.target.value)} /></label><label><span className={labelClass}>Highest Package</span><input className={inputClass} value={form.highestPackage} onChange={(e) => setField("highestPackage", e.target.value)} /></label><label><span className={labelClass}>Companies Visited</span><input className={inputClass} value={form.companyCount} onChange={(e) => setField("companyCount", e.target.value)} /></label></div></div> : null}
           {step === 8 ? <div className="space-y-4"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setField("hostelAvailability", "available")} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${hasHostel ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>Hostel Available</button><button type="button" onClick={() => setField("hostelAvailability", "not_available")} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${!hasHostel ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>Hostel Not Available</button></div>{hasHostel ? <div className={sectionClass}><label><span className={labelClass}>Hostel Type *</span><select className={inputClass} value={form.hostelType} onChange={(e) => setField("hostelType", e.target.value)}><option value="">Hostel type</option>{hostelTypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>Hostel Min Fee *</span><input className={inputClass} value={form.hostelFeeMin} onChange={(e) => setField("hostelFeeMin", e.target.value)} /></label><label><span className={labelClass}>Hostel Max Fee *</span><input className={inputClass} value={form.hostelFeeMax} onChange={(e) => setField("hostelFeeMax", e.target.value)} /></label><label><span className={labelClass}>CCTV Availability *</span><select className={inputClass} value={form.cctvAvailable} onChange={(e) => setField("cctvAvailable", e.target.value)}><option value="">CCTV availability</option>{yesNoOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>Facilities</span><input className={inputClass} value={form.hostelFacilityOptions} onChange={(e) => setField("hostelFacilityOptions", e.target.value)} /></label><label><span className={labelClass}>Water Availability</span><select className={inputClass} value={form.waterAvailability} onChange={(e) => setField("waterAvailability", e.target.value)}><option value="">Water availability</option>{availabilityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>Power Backup</span><select className={inputClass} value={form.powerBackup} onChange={(e) => setField("powerBackup", e.target.value)}><option value="">Power backup</option>{yesNoOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>WiFi Availability</span><select className={inputClass} value={form.wifiAvailable} onChange={(e) => setField("wifiAvailable", e.target.value)}><option value="">WiFi availability</option>{yesNoOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>WiFi Speed</span><input className={inputClass} value={form.wifiSpeed} onChange={(e) => setField("wifiSpeed", e.target.value)} /></label><label><span className={labelClass}>WiFi Pricing</span><input className={inputClass} value={form.wifiPricing} onChange={(e) => setField("wifiPricing", e.target.value)} /></label><label><span className={labelClass}>Food Availability</span><select className={inputClass} value={form.foodAvailability} onChange={(e) => setField("foodAvailability", e.target.value)}><option value="">Food availability</option>{availabilityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>Food Timings</span><input className={inputClass} value={form.foodTimings} onChange={(e) => setField("foodTimings", e.target.value)} /></label><label><span className={labelClass}>Laundry Service</span><select className={inputClass} value={form.laundryService} onChange={(e) => setField("laundryService", e.target.value)}><option value="">Laundry service</option>{yesNoOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label><span className={labelClass}>Room Cleaning Frequency</span><input className={inputClass} value={form.roomCleaningFrequency} onChange={(e) => setField("roomCleaningFrequency", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>General Info</span><textarea className={inputClass} rows={3} value={form.hostelRules} onChange={(e) => setField("hostelRules", e.target.value)} /></label></div> : <div className="rounded-[1rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Select Hostel Available to enter hostel details.</div>}</div> : null}
-          {step === 9 ? <div className="space-y-4"><div className="flex items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 p-4"><div><p className="text-sm font-semibold text-slate-900">Courses In Add College</p><p className="text-xs text-slate-500">Existing courses are loaded here as-is, so you can edit, keep, or remove them before saving.</p></div><div className="flex items-center gap-2"><span className="text-xs text-slate-500">Selected: {courseDrafts.length}</span><button type="button" onClick={() => { setShowCourseEditor(true); setEditingCourseId(""); setCourseForm(emptyCourseDraft(form.university)); }} className={primaryButton}>Add Course</button></div></div>{showCourseEditor ? <div className="space-y-4 rounded-[1rem] border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-bold text-slate-900">{editingCourseId ? "Edit Course In Add College" : "Create Course In Add College"}</h3><p className="text-xs text-slate-500">This course will be saved together with the current college.</p></div><button type="button" onClick={resetCourseEditor} className={softButton}>Cancel</button></div><div className={sectionClass}><label><span className={labelClass}>Course Name *</span><input className={inputClass} value={courseForm.courseType} onChange={(e) => setCourseField("courseType", e.target.value)} placeholder="B.Tech, MBA, B.Sc..." /></label><label><span className={labelClass}>Degree Type *</span><select className={inputClass} value={courseForm.degreeType} onChange={(e) => setCourseForm((prev) => { const nextDegreeType = e.target.value; const nextCourseName = getDefaultCourseName(prev.stream, nextDegreeType) || prev.courseType; return { ...prev, degreeType: nextDegreeType, courseType: nextCourseName, duration: getDefaultDuration(prev.stream, nextDegreeType) || prev.duration, minimumQualification: getDefaultMinimumQualification(nextCourseName, nextDegreeType, prev.stream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, nextDegreeType, prev.stream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, nextDegreeType, prev.stream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}><option value="">Select degree type</option>{degreeTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Stream *</span><select className={inputClass} value={courseForm.stream} onChange={(e) => setCourseForm((prev) => { const nextStream = e.target.value; const nextCourseName = getDefaultCourseName(nextStream, prev.degreeType) || prev.courseType; return { ...prev, stream: nextStream, courseType: nextCourseName, specialization: "", duration: getDefaultDuration(nextStream, prev.degreeType) || prev.duration, minimumQualification: getDefaultMinimumQualification(nextCourseName, prev.degreeType, nextStream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, nextStream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, nextStream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}><option value="">Select stream</option>{streamOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Specialization *</span><select className={inputClass} value={courseForm.specialization} onChange={(e) => setCourseForm((prev) => { const nextSpecialization = e.target.value; const nextCourseName = getDefaultCourseName(prev.stream, prev.degreeType) || prev.courseType; return { ...prev, specialization: nextSpecialization, courseType: nextCourseName, minimumQualification: getDefaultMinimumQualification(nextCourseName, prev.degreeType, prev.stream) || prev.minimumQualification, entranceExamsEnabled: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, prev.stream) || prev.entranceExamsEnabled, entranceExams: shouldAutoShowEntranceExams(nextCourseName, prev.degreeType, prev.stream) ? (prev.entranceExams.length ? prev.entranceExams : [emptyExam()]) : prev.entranceExams }; })}><option value="">Select specialization</option>{specializationOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Duration *</span><input className={inputClass} value={courseForm.duration} onChange={(e) => setCourseForm((prev) => ({ ...prev, duration: e.target.value, totalFees: calcTotalFees(prev.semesterFees, e.target.value) || prev.totalFees }))} placeholder="4 Years" /></label><label><span className={labelClass}>Mode</span><select className={inputClass} value={courseForm.mode} onChange={(e) => setCourseField("mode", e.target.value)}>{modeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"><input type="checkbox" checked={courseForm.lateralEntryAvailable} onChange={(e) => setCourseForm((prev) => ({ ...prev, lateralEntryAvailable: e.target.checked, lateralEntryDetails: e.target.checked ? prev.lateralEntryDetails : "" }))} />Lateral Entry</label>{courseForm.lateralEntryAvailable ? <label className="md:col-span-2"><span className={labelClass}>Lateral Entry Details</span><input className={inputClass} value={courseForm.lateralEntryDetails} onChange={(e) => setCourseField("lateralEntryDetails", e.target.value)} placeholder="Direct second year / diploma entry rules" /></label> : null}<label><span className={labelClass}>Minimum Qualification *</span><input className={inputClass} list="course-qualification-options" value={courseForm.minimumQualification} onChange={(e) => setCourseField("minimumQualification", e.target.value)} placeholder="10+2 / Graduation" /></label><label><span className={labelClass}>University</span><input className={inputClass} value={courseForm.university} onChange={(e) => setCourseField("university", e.target.value)} placeholder="Affiliated or awarding university" /></label><label><span className={labelClass}>Semester Fees *</span><input className={inputClass} value={courseForm.semesterFees} onChange={(e) => setCourseForm((prev) => ({ ...prev, semesterFees: e.target.value, totalFees: calcTotalFees(e.target.value, prev.duration) || prev.totalFees }))} placeholder="Semester fees" /></label><label><span className={labelClass}>Total Fees *</span><input className={inputClass} value={courseForm.totalFees} onChange={(e) => setCourseField("totalFees", e.target.value)} placeholder="Total fees" /></label><label><span className={labelClass}>Cutoff *</span><input className={inputClass} value={courseForm.cutoff} onChange={(e) => setCourseField("cutoff", e.target.value)} placeholder="Cutoff" /></label><label><span className={labelClass}>Intake</span><input className={inputClass} value={courseForm.intake} onChange={(e) => setCourseField("intake", e.target.value)} placeholder="Total allotted seats" /></label><label><span className={labelClass}>Application Fee</span><input className={inputClass} value={courseForm.applicationFee} onChange={(e) => setCourseField("applicationFee", e.target.value)} placeholder="Application fee" /></label><label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"><input type="checkbox" checked={courseForm.isTopCourse} onChange={(e) => setCourseField("isTopCourse", e.target.checked)} />Top Course</label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>Admission Process</span><textarea className={inputClass} rows={2} value={courseForm.admissionProcess} onChange={(e) => setCourseField("admissionProcess", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>Course Description</span><textarea className={inputClass} rows={3} value={courseForm.description} onChange={(e) => setCourseField("description", e.target.value)} /></label></div>{courseForm.entranceExamsEnabled ? <div className="rounded-[1rem] border border-slate-200 bg-white p-3"><div className="mb-3 flex items-center justify-between gap-3"><div><h3 className="text-sm font-bold text-slate-900">Entrance Exams</h3><p className="text-xs text-slate-500">Add exam details if this course needs them.</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: false, entranceExams: [emptyExam()] }))} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"><X className="size-4" /></button><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExams: [...prev.entranceExams, emptyExam()] }))} className={softButton}><Plus className="size-4" />Add Exam</button></div></div><div className="space-y-3">{courseForm.entranceExams.map((exam, index) => <div key={`exam-${index}`} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>{courseForm.entranceExams.length > 1 ? <button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index) }))} className="text-xs font-semibold text-rose-600">Remove</button> : null}</div><div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3"><input className={inputClass} value={exam.examName} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, examName: e.target.value } : item) }))} placeholder="Exam name" /><input className={inputClass} value={exam.cutoffScoreOrRank} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, cutoffScoreOrRank: e.target.value } : item) }))} placeholder="Cutoff score / rank" /><input className={inputClass} value={exam.weightage} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, weightage: e.target.value } : item) }))} placeholder="Exam weightage" /><input className={`${inputClass} md:col-span-2 xl:col-span-3`} value={exam.paperOrSyllabus} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, paperOrSyllabus: e.target.value } : item) }))} placeholder="Specified paper / syllabus" /><textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} value={exam.preparationNotes} onChange={(e) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, i) => i === index ? { ...item, preparationNotes: e.target.value } : item) }))} placeholder="Preparation notes" /></div></div>)}</div></div> : <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white p-3"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: true, entranceExams: prev.entranceExams.length ? prev.entranceExams : [emptyExam()] }))} className={softButton}><Plus className="size-4" />Add Entrance Exam</button><button type="button" onClick={() => setCourseForm((prev) => ({ ...prev, entranceExamsEnabled: false, entranceExams: [emptyExam()] }))} className={softButton}>Entrance Exam Not Needed</button></div></div>}<div className="flex gap-2"><button type="button" onClick={saveCourseDraft} className={primaryButton}>{editingCourseId ? "Update Course" : "Save Course"}</button><button type="button" onClick={resetCourseEditor} className={softButton}>Cancel</button></div></div> : null}{courseDrafts.length > 0 ? <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4"><h3 className="text-sm font-bold text-slate-900">Saved Course List</h3><div className="mt-3 space-y-3">{courseDrafts.map((item) => <div key={item.id} className="flex flex-col gap-3 rounded-[1rem] border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-slate-900">{[item.courseType, item.specialization].filter(Boolean).join(" - ")}</p><p className="mt-1 text-xs text-slate-500">{[item.degreeType, item.stream, item.duration].filter(Boolean).join(" | ")}</p></div><div className="flex gap-2"><button type="button" onClick={() => { setEditingCourseId(item.id); setCourseForm(item); setShowCourseEditor(true); }} className={softButton}>Edit</button><button type="button" onClick={() => { if (item.persisted) { setRemovedCourseIds((prev) => prev.includes(item.id) ? prev : [...prev, item.id]); } setCourseDrafts((prev) => prev.filter((course) => course.id !== item.id)); }} className={softButton}>Remove</button></div></div>)}</div></div> : null}</div> : null}
+          {step === 9 ? courseStepContent : null}
         </div>
         <datalist id="college-accreditation-options">{COLLEGE_ACCREDITATION_OPTIONS.map((item) => <option key={item} value={item} />)}</datalist>
         <datalist id="course-qualification-options">{qualificationSuggestions.map((item) => <option key={item} value={item} />)}</datalist>
-        <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-slate-500"><BadgeCheck className="size-4" /><span>Step {step + 1} of {steps.length}</span></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setStep((prev) => Math.max(prev - 1, 0))} className={softButton} disabled={step === 0}><ArrowLeft className="size-4" />Previous</button>{step < steps.length - 1 ? <button type="button" onClick={() => setStep((prev) => Math.min(prev + 1, steps.length - 1))} className={softButton}>Next<ArrowRight className="size-4" /></button> : null}<button type="submit" className={primaryButton} disabled={saving}>{saving ? "Saving..." : "Save College"}</button></div></div>
+        <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-slate-500"><BadgeCheck className="size-4" /><span>Step {step + 1} of {steps.length}</span></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setStep((prev) => Math.max(prev - 1, 0))} className={softButton} disabled={step === 0}><ArrowLeft className="size-4" />Previous</button>{step < steps.length - 1 ? <button type="button" onClick={() => goToStep(step + 1)} className={softButton}>Next<ArrowRight className="size-4" /></button> : null}<button type="submit" className={primaryButton} disabled={saving}>{saving ? "Saving..." : "Save College"}</button></div></div>
       </form>
     </article>
   );
