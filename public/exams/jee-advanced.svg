@@ -1,0 +1,6 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="120" rx="60" fill="#F2F6FF"/>
+  <circle cx="60" cy="60" r="46" fill="#0F2E5A"/>
+  <text x="60" y="55" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="700">JEE</text>
+  <text x="60" y="73" text-anchor="middle" fill="#B2C8F2" font-family="Arial, sans-serif" font-size="10" font-weight="700">ADVANCED</text>
+</svg>

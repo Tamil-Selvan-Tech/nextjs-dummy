@@ -1862,12 +1862,20 @@ export default function AdminPage() {
         : [],
     [isSeenNotificationsReady, pendingRequestNotifications, seenNotificationIds, lastSeenNotificationAt],
   );
+  const fallbackAdminEmail = useMemo(
+    () => String(readCurrentUser()?.email || "").trim().toLowerCase(),
+    [],
+  );
   const seenNotificationStorageKey = useMemo(
     () =>
-      currentUser?.email
-        ? `collegehub_admin_seen_notifications_${String(currentUser.email).trim().toLowerCase()}`
+      (currentUser?.email || fallbackAdminEmail)
+        ? `collegehub_admin_seen_notifications_${String(
+            currentUser?.email || fallbackAdminEmail,
+          )
+            .trim()
+            .toLowerCase()}`
         : "",
-    [currentUser?.email],
+    [currentUser?.email, fallbackAdminEmail],
   );
   const markNotificationsAsSeen = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
@@ -2054,7 +2062,7 @@ export default function AdminPage() {
       ) : null}
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={`admin-skeleton-${index}`} className="h-28 rounded-[1.5rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-[0_16px_28px_rgba(148,163,184,0.1)]" />
           ))}
@@ -2133,7 +2141,7 @@ export default function AdminPage() {
             </div>
           </article>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
             {stats.map((item) => {
               const Icon = item.icon;
               return (

@@ -284,6 +284,44 @@ export function HomePage({
       icon: BadgeCheck,
     },
   ];
+  const topExamCards = [
+    {
+      name: "JEE Main",
+      slug: "jee-main",
+      logo: "/exams/jee-main.svg",
+      mode: "Online Exam",
+      participatingColleges: "2031",
+      examDate: "April 02, 2026",
+      examLevel: "National",
+    },
+    {
+      name: "JEE Advanced",
+      slug: "jee-advanced",
+      logo: "/exams/jee-advanced.svg",
+      mode: "Online Exam",
+      participatingColleges: "73",
+      examDate: "May 17, 2026",
+      examLevel: "National",
+    },
+    {
+      name: "CUET",
+      slug: "cuet",
+      logo: "/exams/cuet.svg",
+      mode: "Offline Exam",
+      participatingColleges: "584",
+      examDate: "May 11, 2026",
+      examLevel: "National",
+    },
+    {
+      name: "NEET",
+      slug: "neet",
+      logo: "/exams/neet.svg",
+      mode: "Offline Exam",
+      participatingColleges: "612",
+      examDate: "May 05, 2026",
+      examLevel: "National",
+    },
+  ];
   const featureMarqueeItems = useMemo(() => [...featureCards, ...featureCards], [featureCards]);
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter(
@@ -774,6 +812,95 @@ export function HomePage({
               );
             })}
           </div>
+
+          <div className="mt-12">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">Top Exams</h2>
+              <button
+                type="button"
+                onClick={() => router.push("/search?type=exam")}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+              >
+                Explore all
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {topExamCards.map((exam) => (
+                <article
+                  key={exam.name}
+                  onClick={() => router.push(`/exams/${exam.slug}`)}
+                  className="luxe-card relative flex h-[17.5rem] w-[13.5rem] shrink-0 flex-col gap-3 p-4 sm:h-[18rem] sm:w-[14.5rem] lg:h-[18.5rem] lg:w-[15rem]"
+                >
+                  <span
+                    className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
+                      exam.mode === "Online Exam"
+                        ? "bg-[rgba(34,197,94,0.14)] text-[rgb(21,128,61)]"
+                        : "bg-[rgba(249,115,22,0.14)] text-[rgb(194,65,12)]"
+                    }`}
+                  >
+                    {exam.mode}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
+                      <img
+                        src={exam.logo}
+                        alt={`${exam.name} logo`}
+                        className="h-full w-full object-contain p-1"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
+                        {exam.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <dl className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                      <dt className="text-[color:var(--text-muted)]">Colleges</dt>
+                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                      <dt className="text-[color:var(--text-muted)]">Exam Date</dt>
+                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-[color:var(--text-muted)]">Level</dt>
+                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-auto space-y-1.5 border-t border-[rgba(20,32,51,0.08)] pt-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        router.push(`/exams/${exam.slug}`);
+                      }}
+                      className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                    >
+                      Application Process
+                      <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        router.push(`/exams/${exam.slug}`);
+                      }}
+                      className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                    >
+                      Exam Info
+                      <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -887,6 +1014,7 @@ export function HomePage({
         </div>
       </section>
       )}
+      
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">
