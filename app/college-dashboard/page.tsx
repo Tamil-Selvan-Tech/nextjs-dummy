@@ -197,8 +197,8 @@ export default function CollegeDashboardPage() {
             }`}
           >
             {isEditCooldownActive
-              ? `Neenga ${formattedLastDashboardEditAt || "recently"} edit pannirukkinga. Next edit ${formattedNextDashboardEditAt || "10 days"} apram dha unlock aagum.`
-              : "College details save pannina udane next dashboard edit 10 days cooldown-ku pogum."}
+              ? `You edited this on ${formattedLastDashboardEditAt || "recently"}. The next edit will unlock on ${formattedNextDashboardEditAt || "after 10 days"}.`
+              : "Once you save college details, the next dashboard edit will be available after a 10-day cooldown."}
           </p>
         </article>
       ) : null}

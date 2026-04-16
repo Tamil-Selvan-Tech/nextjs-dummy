@@ -491,7 +491,7 @@ export function HomePage({
                       onClick={() => router.push("/find")}
                       className="shine-button w-full rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(30,78,121,0.28)] transition hover:scale-[1.01] hover:brightness-105 md:w-auto md:px-8"
                     >
-                      Find Colleges
+                      Cutoff Match
                     </button>
                   </div>
 

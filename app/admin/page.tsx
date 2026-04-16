@@ -241,7 +241,7 @@ const streamOptions = ["Engineering", "Computer / IT", "Science", "Medical / Hea
 const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
 const qualificationLabelMap: Record<string, string> = {
   "10th": "Secondary School (10th)",
-  "10+2": "Higher Secondary (10+2)",
+  "10+2": "Higher Secondary (+2)",
   Diploma: "Diploma",
   Graduation: "Graduation",
   "Post Graduation": "Post Graduation",
@@ -1841,6 +1841,14 @@ export default function AdminPage() {
       })),
     [collegeChangeNotifications],
   );
+  const latestPendingNotificationAt = useMemo(
+    () =>
+      pendingRequestNotifications.reduce((latest, item) => {
+        const ts = new Date(String(item.updatedAt || item.createdAt || "")).getTime();
+        return Number.isFinite(ts) && ts > latest ? ts : latest;
+      }, 0),
+    [pendingRequestNotifications],
+  );
   const collegeDashboardEditStatus = useMemo(() => {
     const edited = adminState.colleges.filter((item) => Boolean(item.lastDashboardEditAt));
     const notEdited = adminState.colleges.filter((item) => !item.lastDashboardEditAt);
@@ -1850,14 +1858,14 @@ export default function AdminPage() {
     () =>
       isSeenNotificationsReady
         ? pendingRequestNotifications.filter((item) => {
+            if (seenNotificationIds.includes(item.id)) {
+              return false;
+            }
             const itemTimestamp = new Date(String(item.updatedAt || item.createdAt || "")).getTime();
             if (!Number.isFinite(itemTimestamp) || itemTimestamp <= 0) {
-              return !seenNotificationIds.includes(item.id);
+              return true;
             }
-            return (
-              itemTimestamp > lastSeenNotificationAt &&
-              !seenNotificationIds.includes(item.id)
-            );
+            return itemTimestamp > lastSeenNotificationAt;
           })
         : [],
     [isSeenNotificationsReady, pendingRequestNotifications, seenNotificationIds, lastSeenNotificationAt],
@@ -1947,6 +1955,7 @@ export default function AdminPage() {
   }, [seenNotificationIds, lastSeenNotificationAt, seenNotificationStorageKey]);
 
   useEffect(() => {
+    if (pendingRequestNotifications.length === 0) return;
     const activeIds = new Set(pendingRequestNotifications.map((item) => item.id));
     setSeenNotificationIds((previous) => {
       const next = previous.filter((id) => activeIds.has(id));
@@ -1959,8 +1968,14 @@ export default function AdminPage() {
     if (activeTab !== "college-notifications") return;
     if (unreadRequestNotifications.length === 0) return;
     markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
-    setLastSeenNotificationAt(Date.now());
-  }, [activeTab, markNotificationsAsSeen, pendingRequestNotifications, unreadRequestNotifications.length]);
+    setLastSeenNotificationAt((previous) => Math.max(previous, latestPendingNotificationAt));
+  }, [
+    activeTab,
+    latestPendingNotificationAt,
+    markNotificationsAsSeen,
+    pendingRequestNotifications,
+    unreadRequestNotifications.length,
+  ]);
   const embeddedCutoffRangeParts = getCutoffRangeParts(embeddedCourseForm.cutoffValue);
 
   return (
@@ -1994,7 +2009,9 @@ export default function AdminPage() {
                 if (nextOpen) {
                   markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
                   if (unreadRequestNotifications.length > 0) {
-                    setLastSeenNotificationAt(Date.now());
+                    setLastSeenNotificationAt((previous) =>
+                      Math.max(previous, latestPendingNotificationAt),
+                    );
                   }
                 }
               }}
@@ -2975,8 +2992,10 @@ export default function AdminPage() {
                     </label>
                     <label>
                       <span className={labelClass}>Stream<span className={requiredMarkClass}>*</span></span>
-                      <select
+                      <input
                         className={inputClass}
+                        placeholder="Select or type stream"
+                        list="embedded-course-stream-options"
                         value={embeddedCourseForm.stream}
                         onChange={(event) =>
                           setEmbeddedCourseForm((prev) => {
@@ -2992,22 +3011,19 @@ export default function AdminPage() {
                               minimumQualification:
                                 getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
                               entranceExamsEnabled:
-                                shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                              shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
                             };
                           })
                         }
                         required
-                      >
-                        <option value="">Select stream</option>
-                        {streamOptions.map((item) => (
-                          <option key={item} value={item}>{item}</option>
-                        ))}
-                      </select>
+                      />
                     </label>
                     <label>
                       <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
-                      <select
+                      <input
                         className={inputClass}
+                        placeholder="Select or type specialization"
+                        list="embedded-course-specialization-options"
                         value={embeddedCourseForm.specialization}
                         onChange={(event) =>
                           setEmbeddedCourseForm((prev) => ({
@@ -3028,13 +3044,18 @@ export default function AdminPage() {
                           }))
                         }
                         required
-                      >
-                        <option value="">Select specialization</option>
-                        {embeddedSpecializationEntries.map((item) => (
-                          <option key={item.label} value={item.value}>{item.label}</option>
-                        ))}
-                      </select>
+                      />
                     </label>
+                    <datalist id="embedded-course-stream-options">
+                      {streamOptions.map((item) => (
+                        <option key={item} value={item} />
+                      ))}
+                    </datalist>
+                    <datalist id="embedded-course-specialization-options">
+                      {embeddedSpecializationEntries.map((item) => (
+                        <option key={item.label} value={item.value} />
+                      ))}
+                    </datalist>
                     <label>
                       <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
                       <select
@@ -3629,8 +3650,10 @@ export default function AdminPage() {
                   </label>
                   <label>
                     <span className={labelClass}>Stream<span className={requiredMarkClass}>*</span></span>
-                    <select
+                    <input
                       className={inputClass}
+                      placeholder="Select or type stream"
+                      list="course-stream-options"
                       value={courseForm.stream}
                       onChange={(event) =>
                         setCourseForm((prev) => {
@@ -3651,17 +3674,14 @@ export default function AdminPage() {
                         })
                       }
                       required
-                    >
-                      <option value="">Select stream</option>
-                      {streamOptions.map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   <label>
                     <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
-                    <select
+                    <input
                       className={inputClass}
+                      placeholder="Select or type specialization"
+                      list="course-specialization-options"
                       value={courseForm.specialization}
                       onChange={(event) =>
                         setCourseForm((prev) => ({
@@ -3682,13 +3702,18 @@ export default function AdminPage() {
                         }))
                       }
                       required
-                    >
-                      <option value="">Select specialization</option>
-                      {courseSpecializationEntries.map((item) => (
-                        <option key={item.label} value={item.value}>{item.label}</option>
-                      ))}
-                    </select>
+                    />
                   </label>
+                  <datalist id="course-stream-options">
+                    {streamOptions.map((item) => (
+                      <option key={item} value={item} />
+                    ))}
+                  </datalist>
+                  <datalist id="course-specialization-options">
+                    {courseSpecializationEntries.map((item) => (
+                      <option key={item.label} value={item.value} />
+                    ))}
+                  </datalist>
                   <label>
                       <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
                     <select
@@ -4393,7 +4418,7 @@ export default function AdminPage() {
 
       {showSavedCourseList ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onClick={() => setShowSavedCourseList(false)}>
-          <div className="w-full max-w-7xl rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
+          <div className="w-full max-w-[96vw] rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <h3 className="text-base font-bold text-slate-900">Saved Course List</h3>
               <div className="flex items-center gap-2">
@@ -4409,42 +4434,42 @@ export default function AdminPage() {
 
             <div className="max-h-[75vh] overflow-auto p-5">
               <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                <table className="min-w-full text-left text-[12px] text-slate-700 sm:text-[13px]">
+                <table className="min-w-[2200px] table-fixed text-left text-[12px] text-slate-700 sm:text-[13px]">
                   <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                     <tr>
-                      <th className="px-3 py-2.5">Course</th>
-                      <th className="px-3 py-2.5">Degree</th>
-                      <th className="px-3 py-2.5">Stream</th>
-                      <th className="px-3 py-2.5">Duration</th>
-                      <th className="px-3 py-2.5">Qualification</th>
-                      <th className="px-3 py-2.5">Semester Fee</th>
-                      <th className="px-3 py-2.5">Total Fee</th>
-                      <th className="px-3 py-2.5">Cutoff</th>
-                      <th className="px-3 py-2.5">Intake</th>
-                      <th className="px-3 py-2.5">Application Fee</th>
-                      <th className="px-3 py-2.5">Entrance Exam</th>
-                      <th className="px-3 py-2.5">University</th>
-                      <th className="px-3 py-2.5">Lateral Entry</th>
-                      <th className="px-3 py-2.5">Description</th>
-                      <th className="px-3 py-2.5 text-right">Action</th>
+                      <th className="w-[260px] px-3 py-2.5">Course</th>
+                      <th className="w-[90px] px-3 py-2.5">Degree</th>
+                      <th className="w-[140px] px-3 py-2.5">Stream</th>
+                      <th className="w-[110px] px-3 py-2.5">Duration</th>
+                      <th className="w-[220px] px-3 py-2.5">Qualification</th>
+                      <th className="w-[130px] px-3 py-2.5">Semester Fee</th>
+                      <th className="w-[130px] px-3 py-2.5">Total Fee</th>
+                      <th className="w-[220px] px-3 py-2.5">Cutoff</th>
+                      <th className="w-[100px] px-3 py-2.5">Intake</th>
+                      <th className="w-[140px] px-3 py-2.5">Application Fee</th>
+                      <th className="w-[360px] px-3 py-2.5">Entrance Exam</th>
+                      <th className="w-[220px] px-3 py-2.5">University</th>
+                      <th className="w-[220px] px-3 py-2.5">Lateral Entry</th>
+                      <th className="w-[280px] px-3 py-2.5">Description</th>
+                      <th className="w-[150px] px-3 py-2.5 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {embeddedCourses.map((item, index) => (
                       <tr key={`${item.id || item.courseType}-${index}`} className="border-t border-slate-100 align-top">
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 align-top">
                           <p className="font-semibold text-slate-900">
                             {[item.courseType, item.specialization].filter(Boolean).join(" - ") || "Course"}
                           </p>
                           <p className="mt-1 text-[11px] text-slate-500">{item.mode || "-"}</p>
                         </td>
-                        <td className="px-3 py-3">{item.degreeType || "-"}</td>
-                        <td className="px-3 py-3">{item.stream || "-"}</td>
-                        <td className="px-3 py-3">{item.duration || "-"}</td>
-                        <td className="px-3 py-3">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
-                        <td className="px-3 py-3">{item.semesterFees || "-"}</td>
-                        <td className="px-3 py-3 font-semibold text-slate-900">{item.totalFees || "-"}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.degreeType || "-"}</td>
+                        <td className="px-3 py-3 align-top">{item.stream || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.duration || "-"}</td>
+                        <td className="px-3 py-3 align-top">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.semesterFees || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap font-semibold text-slate-900">{item.totalFees || "-"}</td>
+                        <td className="px-3 py-3 align-top">
                           {normalizeCategoryCutoffs(item.cutoffByCategory).length > 0 ? (
                             <div className="space-y-1 text-[11px] text-slate-600">
                               {normalizeCategoryCutoffs(item.cutoffByCategory).map((cutoffItem) => (
@@ -4457,9 +4482,9 @@ export default function AdminPage() {
                             item.cutoff || "-"
                           )}
                         </td>
-                        <td className="px-3 py-3">{item.intake || "-"}</td>
-                        <td className="px-3 py-3">{item.applicationFee || "-"}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.intake || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.applicationFee || "-"}</td>
+                        <td className="px-3 py-3 align-top">
                           {item.entranceExams.some((exam) => Object.values(exam).some(Boolean)) ? (
                             <div className="space-y-2">
                               {item.entranceExams
@@ -4478,14 +4503,14 @@ export default function AdminPage() {
                             "Not needed"
                           )}
                         </td>
-                        <td className="px-3 py-3">{item.university || "-"}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 align-top">{item.university || "-"}</td>
+                        <td className="px-3 py-3 align-top">
                           {item.lateralEntryAvailable
                             ? `Available${item.lateralEntryDetails ? ` - ${item.lateralEntryDetails}` : ""}`
                             : "Not available"}
                         </td>
-                        <td className="max-w-[18rem] px-3 py-3 whitespace-normal">{item.description || "-"}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 align-top whitespace-normal break-words">{item.description || "-"}</td>
+                        <td className="px-3 py-3 align-top">
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"

@@ -11,10 +11,11 @@ import {
   CalendarDays,
   FileText,
   GraduationCap,
-  Info,
   Lightbulb,
   MapPin,
   Scale,
+  Search,
+  SlidersHorizontal,
   Stethoscope,
   Target,
   TrendingUp,
@@ -946,7 +947,7 @@ export function CutoffClient({
     return { level: "4", label: "Needs Improvement", tip: "Ask for help and revise fundamentals." };
   }, [resolvedScore]);
 
-  const { matchingCards, aimHigherCards } = useMemo(() => {
+  const { matchingCards } = useMemo(() => {
     if (!courses.length || !colleges.length) {
       return { matchingCards: [], aimHigherCards: [] };
     }
@@ -1200,11 +1201,54 @@ export function CutoffClient({
     selectedSpecialization,
     summaryDegree,
   ]);
-  const closestAimGap = aimHigherCards[0]?.gap;
-  const closestAimGapText =
-    typeof closestAimGap === "number" && Number.isFinite(closestAimGap)
-      ? `${Math.round(closestAimGap * 10) / 10}`
-      : "";
+  const seniorParsedCutoff = parseCutoffValue(summaryCutoff);
+  const seniorCutoffScore = seniorParsedCutoff
+    ? Math.max(seniorParsedCutoff.start, seniorParsedCutoff.end)
+    : 0;
+  const seniorConfidence = cutoffMax
+    ? Math.max(55, Math.min(98, Math.round((seniorCutoffScore / cutoffMax) * 100)))
+    : 0;
+  const seniorDisplayCards = matchingCards.length
+    ? matchingCards
+    : topColleges.slice(0, 5).map((college, index) => ({
+        id: college.id,
+        name: college.name,
+        location: [college.district, college.state].filter(Boolean).join(", "),
+        cutoff: ["195.5 - 199", "192 - 197.5", "188.5 - 194", "185 - 191.5", "182 - 190"][index] || "180 - 190",
+        match: `${92 - index * 4}% Match`,
+        image: college.image,
+        tags: [college.ownershipType || "Engineering", college.accreditation, college.ranking]
+          .filter(Boolean)
+          .slice(0, 3),
+        href: `/college/${college.id}`,
+        score: 92 - index * 4,
+      }));
+  const seniorLocations = Array.from(
+    new Set(
+      seniorDisplayCards
+        .map((college) => (college.location || "").split(",")[0]?.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 5);
+  const seniorFeeEstimates = [
+    "Rs25,000 / year",
+    "Rs1.5L - 2.5L / year",
+    "Rs2.0L - 3.0L / year",
+    "Rs45,000 - 80,000 / year",
+    "Rs3.5L+ / year",
+    "Contact college",
+  ];
+  const seniorExamCards = examCards.slice(0, 3);
+  const seniorHeroTitle =
+    normalizeText(summaryDegree) === "engineering"
+      ? `Top ${summaryCourse !== "-" ? summaryCourse : "B.E / B.Tech"} Matches for You`
+      : `Top ${summaryDegree} Matches for You`;
+  const seniorHeroSubtitle = [
+    `Based on your aggregate of ${summaryCutoff || "0"}, we identified colleges where you have a strong chance of admission in Tamil Nadu.`,
+    summarySpecialization !== "-" ? `Specialization focus: ${summarySpecialization}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (isJuniorLevel) {
     return (
@@ -1473,6 +1517,136 @@ export function CutoffClient({
             ))}
           </section>
 
+          {normalizeText(summaryDegree) === "engineering" ? (
+            <>
+              <div className="mt-6 grid gap-4 lg:grid-cols-[1.05fr_1fr]">
+                <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                    <Target className="size-4 text-[color:var(--brand-primary)]" />
+                    Weekly Study Plan
+                  </div>
+                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                    Simple daily goals to keep you consistent this week.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {studyPlan.map((item) => (
+                      <div
+                        key={item.title}
+                        className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
+                      >
+                        <div className="text-xs font-semibold text-[color:var(--text-dark)]">
+                          {item.title}
+                        </div>
+                        <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
+                          {item.detail}
+                        </div>
+                        <div className="mt-2 text-[11px] font-semibold text-[color:var(--text-dark)]">
+                          {item.time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                    <Brain className="size-4 text-[color:var(--brand-primary)]" />
+                    Subject Strength Meter
+                  </div>
+                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                    Rate yourself from 1 to 5 and get a quick tip.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {Object.entries(subjectRatings).map(([subject, rating]) => (
+                      <div
+                        key={subject}
+                        className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold text-[color:var(--text-dark)]">
+                            {subject}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() =>
+                                  setSubjectRatings((prev) => ({ ...prev, [subject]: value }))
+                                }
+                                className={`h-7 w-7 rounded-full border text-[11px] font-semibold transition ${
+                                  rating === value
+                                    ? "border-transparent bg-[color:var(--brand-primary)] text-white"
+                                    : "border-[rgba(255,255,255,0.2)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
+                                }`}
+                              >
+                                {value}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11px] text-[color:var(--text-muted)]">
+                          {subjectTips[rating]}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <section className="mt-6 rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-[rgba(248,252,255,0.9)] p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                  <BookOpen className="size-4 text-[color:var(--brand-primary)]" />
+                  Mini Career Quiz
+                </div>
+                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                  Pick the option that feels most like you.
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  {["Q1", "Q2", "Q3"].map((label, index) => (
+                    <div
+                      key={label}
+                      className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-[color:var(--text-dark)]"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+                        {label}
+                      </div>
+                      <div className="mt-3 space-y-2 text-[11px] text-[color:var(--text-muted)]">
+                        {(quizOptionsByQuestion[index] || []).map((option, optionIndex) => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            onClick={() =>
+                              setQuizAnswers((prev) => {
+                                const next = [...prev];
+                                next[index] = optionIndex;
+                                return next;
+                              })
+                            }
+                            className={`w-full rounded-xl border px-3 py-2 text-left font-semibold transition ${
+                              quizAnswers[index] === optionIndex
+                                ? "border-transparent bg-[color:var(--brand-primary)] text-white ring-2 ring-[rgba(11,42,85,0.35)]"
+                                : "border-[rgba(255,255,255,0.24)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 rounded-2xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-xs text-[color:var(--text-muted)]">
+                  Result:{" "}
+                  <span className="font-semibold text-[color:var(--text-dark)]">
+                    You may like {quizResult}.
+                  </span>{" "}
+                  Explore more options and talk to teachers for guidance.
+                </div>
+              </section>
+            </>
+          ) : null}
+
           <section className="mt-6 rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
             <div className="text-sm font-semibold text-[color:var(--text-dark)]">
               {resolvedJuniorConfig.roadmapTitle}
@@ -1609,710 +1783,189 @@ export function CutoffClient({
 
             </div>
 
-            <aside className="space-y-6">
-              <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
-                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                  <CalendarDays className="size-4 text-[color:var(--brand-primary)]" />
-                  Recommended Exams
-                </div>
-                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                  Critical deadlines tailored to your profile
-                </p>
-                <div className="mt-4 space-y-3">
-                  {examCards.map((exam) => (
-                    <div
-                      key={exam.title}
-                      className="rounded-xl border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(30,79,163,0.12)] text-[color:rgb(24,64,132)]">
-                          <BookOpen className="size-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-semibold text-[color:var(--text-dark)]">{exam.title}</div>
-                            <span className="rounded-full border border-[rgba(30,79,163,0.18)] bg-[rgba(30,79,163,0.1)] px-2 py-0.5 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
-                              {exam.tag}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-[color:var(--text-muted)]">
-                            Check official portal for dates and updates.
-                          </p>
-                          <div className="mt-2 flex items-center justify-between text-[11px] text-[color:rgb(24,64,132)]">
-                            <span>{exam.date}</span>
-                            <button
-                              type="button"
-                              className="rounded-full bg-[rgba(228,237,255,0.6)] px-3 py-1 text-[10px] font-semibold text-[color:var(--text-dark)]"
-                            >
-                              Portal <ArrowUpRight className="ml-1 inline size-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </aside>
           </div>
-
-          <section className="mt-6 rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-            <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-              <Info className="size-4 text-[color:var(--text-dark)]" />
-              Cutoff Awareness
-            </div>
-            <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-              Cutoff is the minimum mark you need to get admission in a good college.
-            </p>
-            <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-              <div className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.22)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Award className="size-4 text-[color:#8FB6FF]" />
-                  90% = Top college
-                </div>
-              </div>
-              <div className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.22)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <TrendingUp className="size-4 text-[color:#8FB6FF]" />
-                  80% = Good college
-                </div>
-              </div>
-              <div className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.22)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Target className="size-4 text-[color:#8FB6FF]" />
-                  60% = Average college
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-              <GraduationCap className="size-4 text-[color:var(--text-dark)]" />
-              Level System
-            </div>
-            <ul className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
-              <li className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.2)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Award className="size-4 text-[color:#8FB6FF]" />
-                  Level 10 = Top Performer
-                </div>
-              </li>
-              <li className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.2)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <TrendingUp className="size-4 text-[color:#8FB6FF]" />
-                  Level 8 = Very Good
-                </div>
-              </li>
-              <li className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.2)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Target className="size-4 text-[color:#8FB6FF]" />
-                  Level 6 = Good
-                </div>
-              </li>
-              <li className="rounded-xl border border-transparent bg-[#0B2A55] px-3 py-2 text-white shadow-[0_10px_24px_rgba(11,42,85,0.2)]">
-                <div className="flex items-center gap-2 font-semibold text-white">
-                  <Lightbulb className="size-4 text-[color:#8FB6FF]" />
-                  Level 4 = Needs Improvement
-                </div>
-              </li>
-            </ul>
-
-            <div className="mt-5 rounded-2xl border border-transparent bg-[#0B2A55] p-4 text-white shadow-[0_12px_28px_rgba(11,42,85,0.24)]">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <Lightbulb className="size-4 text-[color:#8FB6FF]" />
-                Motivation
-              </div>
-              <p className="mt-2 text-xs text-[rgba(255,255,255,0.8)]">
-                Cutoff becomes important in 11th and 12th. Focus on Maths and Science now to keep
-                your options open later.
-              </p>
-            </div>
-
-            <div className="mt-5">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                <Calculator className="size-4 text-[color:var(--text-dark)]" />
-                Try It Yourself
-              </div>
-              <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                Enter your current percentage to see your level and a small improvement tip.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
-                  <Calculator className="size-3.5 text-[color:var(--text-dark)]" />
-                  % Score
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    inputMode="numeric"
-                    value={scoreInput}
-                    onChange={(event) => setScoreInput(event.target.value)}
-                    placeholder="78"
-                    className="w-16 bg-transparent text-[color:var(--text-dark)] outline-none"
-                  />
-                </label>
-                <span className="rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.9)] px-3 py-1 text-[11px] font-semibold text-[color:var(--text-dark)]">
-                  Level {levelResult.level} - {levelResult.label}
-                </span>
-                <span className="text-[11px] text-[rgba(11,42,85,0.7)]">
-                  Tip: {levelResult.tip}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-              <Brain className="size-4 text-[color:var(--text-dark)]" />
-              Future Awareness
-            </div>
-            <div className="mt-2 grid gap-2 text-xs text-[color:var(--text-muted)] sm:grid-cols-3">
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] px-3 py-2 text-[color:var(--text-dark)]">
-                <BookOpen className="size-3.5 text-[color:var(--text-dark)]" />
-                Engineering -&gt; Maths + Science marks
-              </div>
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] px-3 py-2 text-[color:var(--text-dark)]">
-                <Stethoscope className="size-3.5 text-[color:var(--text-dark)]" />
-                Medical -&gt; NEET exam
-              </div>
-              <div className="flex items-center gap-2 rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] px-3 py-2 text-[color:var(--text-dark)]">
-                <Scale className="size-3.5 text-[color:var(--text-dark)]" />
-                Law -&gt; Entrance exams
-              </div>
-            </div>
-
-            {summaryDegree === "Engineering" ? (
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-[color:var(--text-dark)]">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Info className="size-4 text-[color:var(--text-dark)]" />
-                    About Engineering
-                  </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                    Engineering teaches how to design, build, and improve things using Maths and
-                    Science.
-                  </p>
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <TrendingUp className="size-4 text-[color:var(--text-dark)]" />
-                    How to Join Engineering?
-                  </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                    Do well in Maths and Science in school, then take engineering entrance exams in
-                    11th and 12th.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-[color:var(--text-dark)]">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Brain className="size-4 text-[color:var(--text-dark)]" />
-                    Skills Needed
-                  </div>
-                  <ul className="mt-2 space-y-2 text-xs text-[color:var(--text-muted)]">
-                    <li className="flex items-center gap-2">
-                      <Target className="size-3.5 text-[color:var(--text-dark)]" />
-                      Strong Maths
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Lightbulb className="size-3.5 text-[color:var(--text-dark)]" />
-                      Logical thinking
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <TrendingUp className="size-3.5 text-[color:var(--text-dark)]" />
-                      Problem solving
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <BookOpen className="size-3.5 text-[color:var(--text-dark)]" />
-                      Basic coding (optional)
-                    </li>
-                  </ul>
-
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <GraduationCap className="size-4 text-[color:var(--text-dark)]" />
-                    Popular Courses
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    {[
-                      "CSE (Computer Science)",
-                      "ECE (Electronics)",
-                      "Mechanical",
-                      "Civil",
-                      "IT",
-                      "AI & Data Science",
-                    ].map((course) => (
-                      <span
-                        key={course}
-                        className="rounded-full border border-[rgba(255,255,255,0.24)] bg-[rgba(228,237,255,0.9)] px-3 py-1 text-[10px] font-semibold text-[color:var(--text-dark)]"
-                      >
-                        {course}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-[1.05fr_1fr]">
-              <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                  <Target className="size-4 text-[color:var(--brand-primary)]" />
-                  Weekly Study Plan
-                </div>
-                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                  Simple daily goals to keep you consistent this week.
-                </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {studyPlan.map((item) => (
-                    <div
-                      key={item.title}
-                      className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
-                    >
-                      <div className="text-xs font-semibold text-[color:var(--text-dark)]">{item.title}</div>
-                      <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">{item.detail}</div>
-                      <div className="mt-2 text-[11px] font-semibold text-[color:var(--text-dark)]">
-                        {item.time}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                  <Brain className="size-4 text-[color:var(--brand-primary)]" />
-                  Subject Strength Meter
-                </div>
-                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                  Rate yourself from 1 to 5 and get a quick tip.
-                </p>
-                <div className="mt-4 space-y-3">
-                  {Object.entries(subjectRatings).map(([subject, rating]) => (
-                    <div key={subject} className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-semibold text-[color:var(--text-dark)]">{subject}</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() =>
-                                setSubjectRatings((prev) => ({ ...prev, [subject]: value }))
-                              }
-                              className={`h-7 w-7 rounded-full border text-[11px] font-semibold transition ${
-                                rating === value
-                                  ? "border-transparent bg-[color:var(--brand-primary)] text-white"
-                                  : "border-[rgba(255,255,255,0.2)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
-                              }`}
-                            >
-                              {value}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="mt-2 text-[11px] text-[color:var(--text-muted)]">{subjectTips[rating]}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            <section className="mt-6 rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-[rgba(248,252,255,0.9)] p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                <BookOpen className="size-4 text-[color:var(--brand-primary)]" />
-                Mini Career Quiz
-              </div>
-              <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                Pick the option that feels most like you.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                {["Q1", "Q2", "Q3"].map((label, index) => (
-                  <div key={label} className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-[color:var(--text-dark)]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
-                      {label}
-                    </div>
-                    <div className="mt-3 space-y-2 text-[11px] text-[color:var(--text-muted)]">
-                      {(quizOptionsByQuestion[index] || []).map((option, optionIndex) => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          onClick={() =>
-                            setQuizAnswers((prev) => {
-                              const next = [...prev];
-                              next[index] = optionIndex;
-                              return next;
-                            })
-                          }
-                          className={`w-full rounded-xl border px-3 py-2 text-left font-semibold transition ${
-                            quizAnswers[index] === optionIndex
-                              ? "border-transparent bg-[color:var(--brand-primary)] text-white ring-2 ring-[rgba(11,42,85,0.35)]"
-                              : "border-[rgba(255,255,255,0.24)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 rounded-2xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-xs text-[color:var(--text-muted)]">
-                Result:{" "}
-                <span className="font-semibold text-[color:var(--text-dark)]">
-                  You may like {quizResult}.
-                </span>{" "}
-                Explore more options and talk to teachers for guidance.
-              </div>
-            </section>
-
-            <section className="mt-6 rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                <CalendarDays className="size-4 text-[color:var(--brand-primary)]" />
-                Next Milestone
-              </div>
-              <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                In Class 11, these exams start mattering. Start exploring now so you are ready.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  { title: "Engineering", exams: "JEE Main, State Entrance" },
-                  { title: "Medical", exams: "NEET UG" },
-                  { title: "Arts & Science", exams: "CUET UG, State University Exams" },
-                  { title: "Law", exams: "CLAT, AILET" },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
-                  >
-                    <div className="text-xs font-semibold text-[color:var(--text-dark)]">{item.title}</div>
-                    <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">{item.exams}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </section>
         </div>
       </section>
     );
 
   return (
     <section
-      className="min-h-screen bg-white text-[color:var(--text-dark)]"
+      className="min-h-screen bg-[#f3f7ff] text-[color:var(--text-dark)]"
       style={
         {
-          "--brand-primary": "#3B82F6",
-          "--brand-primary-soft": "#60A5FA",
+          "--brand-primary": "#2563eb",
+          "--brand-primary-soft": "#3b82f6",
+          "--text-dark": "#0f172a",
+          "--text-muted": "rgba(15,23,42,0.66)",
         } as CSSProperties
       }
     >
       <Navbar />
-      <div className="page-container-full py-10 md:py-12">
-        <div className="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
-          <div className="space-y-6">
-            <section className="rounded-[1.6rem] border border-[rgba(30,79,163,0.16)] bg-[rgba(228,237,255,0.9)] p-6 shadow-[0_18px_40px_rgba(30,79,163,0.14)] md:p-7">
-              <div className="flex flex-wrap items-start justify-between gap-6">
-                <div>
-                  <span className="inline-flex rounded-full border border-[rgba(30,79,163,0.24)] bg-[rgba(30,79,163,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:rgb(24,64,132)]">
-                    Current Analysis
-                  </span>
-                  <h1 className="mt-4 text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">
-                    Level: <span className="text-[color:rgb(24,64,132)]">{summaryLevel}th Grade</span>
-                  </h1>
-                  <p className="mt-2 max-w-xl text-sm text-[color:var(--text-muted)] md:text-base">
-                    Based on your current academic scores and state-level standards, here is your predicted cutoff estimate for 2025.
-                  </p>
-                </div>
-                {summaryDegree !== "Medical" ? (
-                  <div className="min-w-[220px] rounded-2xl border border-[rgba(30,79,163,0.2)] bg-white p-4 text-center shadow-[0_14px_30px_rgba(30,79,163,0.12)]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
-                      Estimated Cutoff
-                    </p>
-                    <div className="mt-3 flex items-end justify-center gap-2">
-                      <span className="text-3xl font-bold text-[color:var(--text-dark)] md:text-4xl">
-                        {summaryCutoff}
-                      </span>
-                      <span className="text-sm font-semibold text-[color:var(--text-muted)]">
-                        / {cutoffMax}{summaryDegree === "Paramedical" ? " %" : ""}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs font-semibold text-[color:rgb(24,64,132)]">
-                      Top 15% Percentile
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
-            {summaryDegree === "Medical" ? (
-              <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
-                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                  <Stethoscope className="size-4 text-[color:var(--brand-primary)]" />
-                  Medical Admission Guidance
-                </div>
-                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                  Your matching colleges below are based on the selected course, category, and available cutoff ranges.
-                </p>
-                <div className="mt-4 space-y-2 text-sm text-[color:var(--text-muted)]">
-                  <p>1. NEET UG score is the primary eligibility for MBBS/BDS seats.</p>
-                  <p>2. Category cutoff ranges vary by college and counseling round.</p>
-                  <p>3. Government and private seats can have different cutoff bands.</p>
-                  <p>4. Use the suggested matches as safe options, and aim higher if you plan to improve.</p>
-                </div>
-              </section>
-            ) : null}
-
-            <section className="rounded-[1.6rem] border border-[rgba(31,108,78,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                  <Target className="size-4 text-[color:var(--brand-primary)]" />
-                  Suggested Matchings
-                </div>
-                <button
-                  type="button"
-                  className="rounded-full border border-[rgba(30,79,163,0.3)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(30,79,163,0.08)]"
-                >
-                  View All Matching
-                </button>
-              </div>
-              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                Colleges aligned with your current estimated score
+      <div className="page-container-full py-8 md:py-10">
+        <section className="overflow-hidden rounded-[2rem] border border-[rgba(37,99,235,0.12)] bg-[linear-gradient(135deg,#eef5ff_0%,#ecfeff_100%)] shadow-[0_24px_60px_rgba(37,99,235,0.12)]">
+          <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-[1.35fr_320px] lg:items-center">
+            <div>
+              <span className="inline-flex rounded-full border border-[rgba(37,99,235,0.12)] bg-[rgba(37,99,235,0.08)] px-3 py-1 text-[11px] font-semibold text-[color:var(--brand-primary)]">
+                Cutoff Results Level: {summaryLevel}th Grade
+              </span>
+              <h1 className="mt-5 max-w-3xl text-3xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)] md:text-5xl">
+                {seniorHeroTitle}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[color:var(--text-muted)] md:text-lg">
+                {seniorHeroSubtitle}
               </p>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
-                {matchingCards.length ? (
-                  matchingCards.map((college) => (
-                    <article
-                      key={college.id}
-                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_12px_26px_rgba(15,76,129,0.08)]"
-                    >
-                      <div className="relative h-32 w-full bg-[rgba(15,76,129,0.08)]">
-                        <Image
-                          src={college.image}
-                          alt={`${college.name} campus`}
-                          fill
-                          sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
-                          className="object-cover"
-                        />
-                        <div className="absolute right-3 top-3 rounded-full bg-[rgba(30,79,163,0.18)] px-2.5 py-1 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
-                          {college.match}
-                        </div>
-                      </div>
-                      <div className="flex h-full flex-col p-4">
-                        <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
-                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                          <MapPin className="size-3" />
-                          {college.location || "Location not listed"}
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {college.tags.map((tag, index) => (
-                            <span
-                              key={`${college.id}-${tag}-${index}`}
-                              className="rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--text-muted)]"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-auto flex items-center justify-between pt-4 text-[11px] text-[color:var(--text-muted)]">
-                          <span>
-                            Avg Cutoff{" "}
-                            <span className="font-semibold text-[color:var(--text-dark)]">{college.cutoff}</span>
-                          </span>
-                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
-                            Details <ArrowUpRight className="ml-1 inline size-3" />
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="text-sm text-[color:var(--text-muted)]">
-                    No matching colleges found for the selected course and cutoff.
-                  </p>
-                )}
+              <div className="mt-5 flex flex-wrap gap-3">
+                {[selectedCategory ? `Category: ${selectedCategory}` : "", selectedCollegeType ? `College Type: ${selectedCollegeType}` : "", summaryCourse !== "-" ? summaryCourse : ""]
+                  .filter(Boolean)
+                  .map((item) => (
+                    <span key={item} className="rounded-full border border-[rgba(37,99,235,0.12)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--text-dark)]">
+                      {item}
+                    </span>
+                  ))}
               </div>
-            </section>
-
-            {summaryLevel === "11" ? (
-              <section className="rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-[rgba(228,237,255,0.7)] p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(30,79,163,0.12)]">
-                        <Target className="size-4 text-[color:rgb(30,79,163)]" />
-                      </div>
-                      Aim Higher: Tier 1 Targets
-                    </div>
-                    <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                      Boost your marks to unlock these premium institutions
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
-                  >
-                    Get Study Roadmap
-                  </button>
-                </div>
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  {aimHigherCards.length ? (
-                    aimHigherCards.map((college) => (
-                      <article
-                        key={college.id}
-                        className="rounded-2xl border border-[rgba(15,76,129,0.1)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
-                            <Image
-                              src={college.image}
-                              alt={college.name}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
-                            <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                              <MapPin className="size-3" />
-                              {college.location || "Location not listed"}
-                            </div>
-                            <span className="mt-2 inline-flex rounded-full bg-[rgba(30,79,163,0.14)] px-2.5 py-1 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
-                              {college.require}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between text-[11px] text-[color:var(--text-muted)]">
-                          <span className="font-semibold text-[color:var(--text-dark)]">Need {college.need}</span>
-                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
-                            Preparation Guide
-                          </Link>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <p className="text-sm text-[color:var(--text-muted)]">
-                      You are already in range for the top colleges listed for your selection.
-                    </p>
-                  )}
-                </div>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
-                      <Image src="/student.png" alt="Mentor" fill sizes="40px" className="object-cover" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-[color:var(--text-dark)]">Academic Improvement Plan</div>
-                      <div className="text-xs text-[color:var(--text-muted)]">
-                        {closestAimGapText
-                          ? `Our mentors can help you bridge the ${closestAimGapText} mark gap.`
-                          : "Our mentors can help you set a goal-based improvement plan."}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
-                  >
-                    Get Study Roadmap
-                  </button>
-                </div>
-              </section>
-            ) : null}
+            </div>
+            <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.14)] bg-white p-5 shadow-[0_18px_42px_rgba(37,99,235,0.14)]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">Your Final Cutoff</div>
+              <div className="mt-3 flex items-end gap-2">
+                <span className="text-5xl font-bold tracking-[-0.04em] text-[color:var(--brand-primary)]">{summaryCutoff}</span>
+                <span className="pb-2 text-base font-semibold text-[color:var(--text-muted)]">/ {cutoffMax}</span>
+              </div>
+              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[color:var(--text-muted)]">
+                <span>Admission Confidence</span>
+                <span>{seniorConfidence}%</span>
+              </div>
+              <div className="mt-2 h-3 overflow-hidden rounded-full bg-[rgba(37,99,235,0.12)]">
+                <div className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb,#38bdf8)]" style={{ width: `${seniorConfidence}%` }} />
+              </div>
+            </div>
           </div>
+        </section>
 
-          <aside className="space-y-6">
-            <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
-              <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                <CalendarDays className="size-4 text-[color:var(--brand-primary)]" />
-                Recommended Exams
+        <section className="mt-8 grid gap-6 lg:grid-cols-[250px_1fr]">
+          <aside className="space-y-4">
+            <div className="rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                  <SlidersHorizontal className="size-4 text-[color:var(--brand-primary)]" />
+                  Filters
+                </div>
+                <button type="button" className="text-[11px] font-semibold text-[color:var(--text-muted)]">Clear All</button>
               </div>
-              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                Critical deadlines tailored to your profile
-              </p>
-              <div className="mt-4 space-y-3">
-                {examCards.map((exam) => (
-                  <div
-                    key={exam.title}
-                    className="rounded-xl border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(30,79,163,0.12)] text-[color:rgb(24,64,132)]">
-                        <BookOpen className="size-4" />
+              <div className="mt-6 space-y-6">
+                <div>
+                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">College Type</div>
+                  <div className="mt-3 space-y-2">
+                    {["Government", "Autonomous", "Private"].map((type) => (
+                      <label key={type} className="flex items-center gap-2 text-xs text-[color:var(--text-dark)]">
+                        <input type="checkbox" checked={!selectedCollegeType || normalizeText(selectedCollegeType) === normalizeText(type)} readOnly className="h-3.5 w-3.5 rounded border-[rgba(37,99,235,0.24)] text-[color:var(--brand-primary)]" />
+                        {type}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">Fees Range</div>
+                  <div className="mt-4 h-1.5 rounded-full bg-[rgba(37,99,235,0.12)]"><div className="relative h-full w-[42%] rounded-full bg-[linear-gradient(90deg,#2563eb,#60a5fa)]"><span className="absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white bg-[color:var(--brand-primary)]" /></div></div>
+                  <div className="mt-2 flex justify-between text-[11px] font-semibold text-[color:var(--text-muted)]"><span>Rs10k</span><span>Rs5L+</span></div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">Preferred Location</div>
+                  <div className="mt-3 space-y-2">
+                    {(seniorLocations.length ? seniorLocations : ["Chennai", "Coimbatore", "Madurai", "Trichy", "Salem"]).map((location) => (
+                      <label key={location} className="flex items-center gap-2 text-xs text-[color:var(--text-dark)]">
+                        <input type="checkbox" checked readOnly className="h-3.5 w-3.5 rounded border-[rgba(37,99,235,0.24)] text-[color:var(--brand-primary)]" />
+                        {location}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_100%)] p-4 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
+              <div className="text-sm font-semibold text-[color:var(--brand-primary)]">Expert Guidance</div>
+              <p className="mt-2 text-xs leading-6 text-[color:var(--text-muted)]">Talk to our counselors and shortlist colleges faster for your cutoff range.</p>
+              <button type="button" className="mt-4 w-full rounded-xl border border-[rgba(37,99,235,0.14)] bg-white px-4 py-2 text-xs font-semibold text-[color:var(--brand-primary)]">Request Callback</button>
+            </div>
+          </aside>
+
+          <div>
+            <div className="flex flex-col gap-4 rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">Showing {seniorDisplayCards.length} Recommended Colleges</h2>
+                  <span className="rounded-full bg-[rgba(37,99,235,0.08)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">Verified</span>
+                </div>
+                <p className="mt-1 text-sm text-[color:var(--text-muted)]">Matches based on your selected course, category, and academic profile.</p>
+              </div>
+              <label className="flex items-center gap-2 rounded-xl border border-[rgba(37,99,235,0.12)] bg-[rgba(243,247,255,0.8)] px-4 py-3 text-sm text-[color:var(--text-muted)] md:min-w-[280px]">
+                <Search className="size-4 text-[color:var(--brand-primary)]" />
+                <input type="text" readOnly value="" placeholder="Filter results by name..." className="w-full bg-transparent outline-none placeholder:text-[color:var(--text-muted)]" />
+              </label>
+            </div>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              {seniorDisplayCards.length ? seniorDisplayCards.map((college, index) => {
+                const cardScore = Number.parseInt(college.match, 10) || college.score || 80;
+                const feeLabel = seniorFeeEstimates[index] || seniorFeeEstimates[seniorFeeEstimates.length - 1];
+                const ownershipBadge = index === 0 ? "Government" : college.tags.find((tag) => /government|autonomous|private/i.test(tag)) || "Autonomous";
+                return (
+                  <article key={college.id} className="overflow-hidden rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
+                    <div className="relative h-44 bg-[rgba(37,99,235,0.08)]">
+                      <Image src={college.image} alt={`${college.name} campus`} fill sizes="(min-width: 1024px) 420px, 100vw" className="object-cover" />
+                      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-[color:var(--brand-primary)] px-3 py-1 text-[10px] font-semibold text-white">{ownershipBadge}</span>
+                        {index < 2 ? <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">{index === 0 ? "Top 1%" : "Top Pick"}</span> : null}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-sm font-semibold text-[color:var(--text-dark)]">{exam.title}</div>
-                          <span className="rounded-full border border-[rgba(30,79,163,0.18)] bg-[rgba(30,79,163,0.1)] px-2 py-0.5 text-[10px] font-semibold text-[color:rgb(24,64,132)]">
-                            {exam.tag}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-[color:var(--text-muted)]">Check official portal for dates</p>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-[color:rgb(24,64,132)]">
-                          <span>{exam.date}</span>
-                          <button type="button" className="font-semibold text-[color:var(--brand-primary)]">
-                            Portal <ArrowUpRight className="ml-1 inline size-3" />
-                          </button>
-                        </div>
+                    </div>
+                    <div className="p-4 md:p-5">
+                      <h3 className="text-2xl font-bold tracking-[-0.02em] text-[color:var(--text-dark)]">{college.name}</h3>
+                      <div className="mt-2 flex items-center gap-1 text-sm text-[color:var(--text-muted)]"><MapPin className="size-4" />{college.location || "Tamil Nadu"}</div>
+                      <div className="mt-4 rounded-2xl border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.78)] p-4">
+                        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]"><span>Your Score vs Cutoff</span><span className="text-[color:var(--brand-primary)]">{cardScore >= 90 ? "Reach Target" : "Likely Admission"}</span></div>
+                        <div className="mt-3 h-2 rounded-full bg-[rgba(37,99,235,0.12)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb,#38bdf8)]" style={{ width: `${Math.max(32, Math.min(cardScore, 100))}%` }} /></div>
+                        <div className="mt-2 flex justify-between text-[10px] font-semibold text-[color:var(--text-muted)]"><span>Start: {summaryCutoff || "0"}</span><span>End: {college.cutoff}</span></div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">{college.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-lg border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.7)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--text-muted)]">{tag}</span>)}</div>
+                      <div className="mt-4 border-t border-dashed border-[rgba(37,99,235,0.14)] pt-4"><div className="flex items-center justify-between gap-3 text-sm"><span className="text-[color:var(--text-muted)]">Estimated Fees:</span><span className="font-semibold text-[color:var(--text-dark)]">{feeLabel}</span></div></div>
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <Link href={college.href} className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-white px-4 py-3 text-center text-sm font-semibold text-[color:var(--text-dark)]">Brochure</Link>
+                        <Link href={college.href} className="rounded-xl bg-[linear-gradient(90deg,#2563eb,#3b82f6)] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)]">Apply Now <ArrowUpRight className="ml-1 inline size-4" /></Link>
+                      </div>
+                    </div>
+                  </article>
+                );
+              }) : <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white p-6 text-sm text-[color:var(--text-muted)] shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:col-span-2">No matching colleges found for the selected course and cutoff.</div>}
+            </div>
+
+            <div className="mt-6 rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-[color:var(--text-muted)]">You have viewed the high-probability matches for your score.</p>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--text-dark)]">Modify Marks</button>
+                  <button type="button" className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-[rgba(243,247,255,0.8)] px-4 py-2.5 text-sm font-semibold text-[color:var(--text-dark)]">See Nearby States</button>
+                </div>
+              </div>
+            </div>
+
+            <section className="mt-8 rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:p-6">
+              <div className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">Recommended Competitive Exams</div>
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {seniorExamCards.map((exam, index) => (
+                  <div key={exam.title} className="rounded-[1.3rem] border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.8)] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#60a5fa)] text-white"><GraduationCap className="size-5" /></div>
+                      <div>
+                        <div className="text-base font-semibold text-[color:var(--text-dark)]">{exam.title}</div>
+                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">{index === 0 ? "May 2024" : index === 1 ? "April 2024" : "June 2024"}</div>
+                        <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">{index === 0 ? "Registration Open" : index === 1 ? "Coming Soon" : "Active"}</div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="mt-4 rounded-xl border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-[color:var(--text-dark)]">Exclusive Workshop</div>
-                    <p className="mt-1 text-xs text-[color:var(--text-muted)]">
-                      Join our &quot;Mastering JEE 2025&quot; webinar this weekend with IIT Madras alumni.
-                    </p>
-                  </div>
-                  <Award className="size-6 text-[rgba(15,76,129,0.2)]" />
-                </div>
-                <button
-                  type="button"
-                  className="mt-3 w-full rounded-full border border-[rgba(15,76,129,0.12)] px-4 py-2 text-xs font-semibold text-[color:var(--text-dark)]"
-                >
-                  Register For Free
-                </button>
-              </div>
             </section>
-
-            <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_18px_40px_rgba(15,76,129,0.08)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
-                Academic Tools
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: "Mock Tests", icon: BookOpen },
-                  { label: "Past Papers", icon: FileText },
-                  { label: "Syllabus Tracker", icon: Target },
-                  { label: "Campus Tours", icon: MapPin },
-                ].map((tool) => (
-                  <button
-                    key={tool.label}
-                    type="button"
-                    className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[rgba(15,76,129,0.1)] bg-white px-3 py-4 text-[11px] font-semibold text-[color:var(--text-dark)] shadow-[0_8px_18px_rgba(15,76,129,0.05)] transition hover:border-[rgba(47,174,99,0.3)]"
-                  >
-                    <tool.icon className="size-4 text-[color:var(--brand-primary)]" />
-                    {tool.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-[1.6rem] border border-[rgba(15,76,129,0.18)] bg-[color:#0f172a] p-6 text-white shadow-[0_18px_40px_rgba(15,76,129,0.16)]">
-              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-[rgba(255,255,255,0.6)]">
-                Summary Report
-              </div>
-              <p className="mt-3 text-sm text-[rgba(255,255,255,0.8)]">
-                Download a detailed 12-page PDF analysis of your 11th grade standing and college prospects.
-              </p>
-              <button
-                type="button"
-                className="mt-5 w-full rounded-full bg-white px-4 py-2 text-xs font-semibold text-[color:#0f172a]"
-              >
-                Download Analysis PDF
-              </button>
-            </section>
-          </aside>
-        </div>
+          </div>
+        </section>
       </div>
     </section>
   );
