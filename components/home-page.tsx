@@ -381,7 +381,7 @@ export function HomePage({
         label: college.name,
         href: `/college/${college.id}`,
         type: "college",
-        keywords: [college.district, college.state, college.ownershipType, ...(college.tags || [])],
+        keywords: [college.district, college.state, college.ownershipType, ...(college.courseTags || [])],
       });
       pushValue({
         label: college.district,
