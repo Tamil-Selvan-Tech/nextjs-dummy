@@ -202,15 +202,6 @@ export function Navbar() {
     { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms & Conditions", href: "/terms" },
   ];
-  const movingNavLinks = [
-    { label: "About Us", href: "/about-us" },
-    { label: "Services", href: "/services" },
-    { label: "Careers", href: "/careers" },
-    { label: "Contact Us", href: "/contact" },
-    { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Terms & Conditions", href: "/terms" },
-  ];
-
   return (
     <header className="page-container-full relative z-30 pt-4 pb-2 text-[color:var(--text-dark)] md:pt-6 md:pb-0">
       {!hideBackButton ? <div className="mb-3"><PageBackButton /></div> : null}
@@ -352,28 +343,7 @@ export function Navbar() {
         >
           All Courses
         </button>
-        {pathname === "/" ? (
-          <div className="hidden min-w-0 flex-1 md:block" aria-hidden="true" />
-        ) : (
-          <div className="relative z-20 min-w-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white/70 px-3 py-2 shadow-[0_10px_24px_rgba(22,50,79,0.04)] transition duration-300 md:block md:py-1.5">
-            <div className="scrollbar-hide relative z-30 flex w-full items-center gap-x-1 gap-y-1 overflow-x-auto whitespace-nowrap py-1 text-xs font-semibold md:flex-wrap md:justify-center md:py-0">
-              {movingNavLinks.map((item, index) => (
-                <span key={item.label} className="inline-flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => goTo(item.href)}
-                    className="rounded-full px-2.5 py-1 font-[family:var(--font-display)] text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.05)] hover:text-[color:var(--brand-primary)]"
-                  >
-                    {item.label}
-                  </button>
-                  {index < movingNavLinks.length - 1 ? (
-                    <span className="px-1.5 text-[color:var(--brand-accent)]">|</span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="hidden min-w-0 flex-1 md:block" aria-hidden="true" />
       </nav>
       {showBackUnderNav ? (
         <div className="mt-3 flex justify-start">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { ArrowRight, BarChart3, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
@@ -136,27 +136,51 @@ export default function FindPage() {
     const total = Number(arch12thConverted) + nata;
     return total.toFixed(0);
   }, [arch12thConverted, archNataMarks, isArch, isSeniorLevel]);
+  const inputClass =
+    "h-11 w-full rounded-[0.95rem] border border-[rgba(37,99,235,0.26)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(37,99,235,0.09)] transition-all duration-200 placeholder:text-[color:var(--text-muted)] hover:border-[rgba(37,99,235,0.64)] hover:shadow-[0_18px_36px_rgba(37,99,235,0.18)] focus:border-[#1d4ed8] focus:shadow-[0_0_0_4px_rgba(96,165,250,0.38)]";
+  const selectClass =
+    "h-11 w-full rounded-[0.95rem] border border-[rgba(37,99,235,0.26)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(37,99,235,0.09)] transition-all duration-200 hover:border-[rgba(37,99,235,0.64)] hover:shadow-[0_18px_36px_rgba(37,99,235,0.18)] focus:border-[#1d4ed8] focus:shadow-[0_0_0_4px_rgba(96,165,250,0.38)]";
+  const fieldWrapClass =
+    "block rounded-[1.05rem] border border-[rgba(37,99,235,0.2)] bg-[linear-gradient(180deg,#ffffff,rgba(239,246,255,0.84))] p-2.5 transition-all duration-200 hover:border-[rgba(37,99,235,0.44)] hover:shadow-[0_16px_30px_rgba(37,99,235,0.15)]";
 
   return (
-    <section className="min-h-screen bg-[linear-gradient(180deg,#eef4fb_0%,#e7eef8_100%)] text-[color:var(--text-dark)]">
+    <section className="min-h-screen bg-[linear-gradient(180deg,#edf5ff_0%,#f6fbff_36%,#eef4fb_100%)] text-[color:var(--text-dark)]">
       <Navbar />
 
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute left-[-4rem] top-8 h-56 w-56 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
-          <div className="absolute right-[-3rem] top-20 h-48 w-48 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
+          <div className="absolute left-[-4rem] top-8 h-56 w-56 rounded-full bg-[rgba(60,126,182,0.14)] blur-3xl" />
+          <div className="absolute right-[-3rem] top-20 h-48 w-48 rounded-full bg-[rgba(255,138,61,0.16)] blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-56 w-56 rounded-full bg-[rgba(14,165,233,0.12)] blur-3xl" />
         </div>
         <div className="page-container-full relative z-10 py-8 md:py-10">
           <div className="mx-auto max-w-none">
-          <p className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.06)] px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
-            College Finder
-          </p>
-          <h1 className="mt-4 max-w-3xl text-xl font-bold leading-tight md:text-3xl">
-            Find colleges based on your level, degree, course and cutoff
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--text-muted)] md:text-[15px]">
-            Fill in your details below and click Find Colleges.
-          </p>
+          <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr] lg:items-stretch">
+            <div className="rounded-[1.6rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(130deg,rgba(255,255,255,0.98),rgba(239,246,255,0.98)_58%,rgba(219,234,254,0.96))] p-5 text-[color:var(--text-dark)] shadow-[0_24px_54px_rgba(29,78,216,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_30px_64px_rgba(29,78,216,0.22)] md:p-6">
+              <p className="inline-flex rounded-full border border-[rgba(29,78,216,0.2)] bg-white px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+                Cutoff Finder
+              </p>
+              <h1 className="mt-4 max-w-3xl text-2xl font-bold leading-tight md:text-4xl">
+                Predict Your Cutoff and Find the Right Colleges
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--text-muted)] md:text-[15px]">
+                Fill your marks and profile details to get cutoff-based college matches in one streamlined flow.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(29,78,216,0.2)] bg-white px-3 py-1 text-[#1d4ed8]"><Sparkles className="size-3.5" />Instant match</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(29,78,216,0.2)] bg-white px-3 py-1 text-[#1d4ed8]"><BarChart3 className="size-3.5" />Cutoff insight</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(29,78,216,0.2)] bg-white px-3 py-1 text-[#1d4ed8]"><ShieldCheck className="size-3.5" />Student-first flow</span>
+              </div>
+            </div>
+            <div className="rounded-[1.6rem] border border-[rgba(29,78,216,0.16)] bg-white/95 p-5 shadow-[0_24px_54px_rgba(15,76,129,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_58px_rgba(29,78,216,0.16)] md:p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">How It Works</p>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-[rgba(239,246,255,0.92)] px-3 py-2.5 text-sm font-medium text-[color:var(--text-dark)] transition-all duration-200 hover:translate-x-1">1. Select level, degree, and course</div>
+                <div className="rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-[rgba(239,246,255,0.92)] px-3 py-2.5 text-sm font-medium text-[color:var(--text-dark)] transition-all duration-200 hover:translate-x-1">2. Enter marks and category details</div>
+                <div className="rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-[rgba(239,246,255,0.92)] px-3 py-2.5 text-sm font-medium text-[color:var(--text-dark)] transition-all duration-200 hover:translate-x-1">3. View cutoff-based college results</div>
+              </div>
+            </div>
+          </div>
 
           <form
             onSubmit={(event) => {
@@ -221,34 +245,38 @@ export default function FindPage() {
               }
               router.push(`/cutoff?${params.toString()}`);
             }}
-            className="mt-7 rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] p-5 shadow-[0_24px_56px_rgba(22,50,79,0.08)] md:p-6"
+            className="mt-7 rounded-[1.8rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(239,246,255,0.98))] p-5 shadow-[0_28px_62px_rgba(29,78,216,0.16)] transition-all duration-300 hover:border-[rgba(29,78,216,0.34)] hover:shadow-[0_34px_70px_rgba(29,78,216,0.24)] md:p-6"
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
+              <label className={fieldWrapClass}>
                 <input
                   type="text"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Name"
                   aria-label="Name"
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                  className={inputClass}
                   required
                 />
               </label>
 
-              <label className="block">
+              <label className={fieldWrapClass}>
                 <input
-                  type="tel"
+                  type="text"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
+                  onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="Phone No"
                   aria-label="Phone number"
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                  className={inputClass}
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  minLength={10}
                   required
                 />
               </label>
 
-              <label className="block">
+              <label className={fieldWrapClass}>
                 <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Select Level</span>
                 <select
                   value={selectedLevel}
@@ -288,7 +316,7 @@ export default function FindPage() {
                       setBiologyMarks("");
                     }
                   }}
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                  className={selectClass}
                   required
                 >
                   <option value="">Choose level</option>
@@ -301,12 +329,12 @@ export default function FindPage() {
               </label>
 
               {isSeniorLevel ? (
-                <label className="block">
+                <label className={fieldWrapClass}>
                   <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Category</span>
                   <select
                     value={selectedCategory}
                     onChange={(event) => setSelectedCategory(event.target.value)}
-                    className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                    className={selectClass}
                     required
                   >
                     <option value="">Select category</option>
@@ -321,7 +349,7 @@ export default function FindPage() {
                 </label>
               ) : null}
 
-              <label className="block">
+              <label className={fieldWrapClass}>
                 <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Select Degree</span>
                 <select
                   value={selectedDegree}
@@ -362,7 +390,7 @@ export default function FindPage() {
                       setArchNataMarks("");
                     }
                   }}
-                  className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                  className={selectClass}
                   required
                 >
                   <option value="">Choose degree</option>
@@ -377,7 +405,7 @@ export default function FindPage() {
               {selectedDegree === "Engineering" && isSeniorLevel ? (
                 <>
                   {isEngineeringLevel12 ? (
-                    <label className="block">
+                    <label className={fieldWrapClass}>
                       <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                         Admission Type
                       </span>
@@ -393,7 +421,7 @@ export default function FindPage() {
                             setMathsMarks("");
                           }
                         }}
-                        className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                        className={selectClass}
                         required
                       >
                         <option value="">Select admission type</option>
@@ -404,14 +432,14 @@ export default function FindPage() {
                     </label>
                   ) : null}
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Select Course
                     </span>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Choose course</option>
@@ -424,7 +452,7 @@ export default function FindPage() {
                   </label>
 
                   {isEngineeringLevel12 && isJeeSelected ? (
-                    <label className="block">
+                    <label className={fieldWrapClass}>
                       <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                         Enter Mark/Percentile
                       </span>
@@ -437,7 +465,7 @@ export default function FindPage() {
                         onChange={(event) => setJeeMarks(event.target.value)}
                         placeholder="Enter mark or percentile"
                         aria-label="JEE mark or percentile"
-                        className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                        className={inputClass}
                         required
                       />
                     </label>
@@ -445,7 +473,7 @@ export default function FindPage() {
 
                   {isTneaSelected ? (
                     <>
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Physics</span>
                         <input
                           type="number"
@@ -456,12 +484,12 @@ export default function FindPage() {
                           onChange={(event) => setPhysicsMarks(event.target.value)}
                           placeholder="Enter your marks"
                           aria-label="Physics marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Chemistry</span>
                         <input
                           type="number"
@@ -472,12 +500,12 @@ export default function FindPage() {
                           onChange={(event) => setChemistryMarks(event.target.value)}
                           placeholder="Enter your marks"
                           aria-label="Chemistry marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Maths</span>
                         <input
                           type="number"
@@ -488,13 +516,13 @@ export default function FindPage() {
                           onChange={(event) => setMathsMarks(event.target.value)}
                           placeholder="Enter your marks"
                           aria-label="Maths marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
                       <div className="md:col-span-2">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(255,255,255,0.8)] px-4 py-3 text-xs text-[color:var(--text-muted)]">
+                        <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
                             Cutoff Calculation
                           </div>
@@ -512,14 +540,14 @@ export default function FindPage() {
               ) : null}
 
               {selectedDegree === "Medical" && isSeniorLevel ? (
-                <label className="block">
+                <label className={fieldWrapClass}>
                   <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                     Select Course
                   </span>
                   <select
                     value={selectedCourse}
                     onChange={(event) => setSelectedCourse(event.target.value)}
-                    className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                    className={selectClass}
                     required
                   >
                     <option value="">Choose course</option>
@@ -534,14 +562,14 @@ export default function FindPage() {
 
               {isLaw && isSeniorLevel ? (
                 <>
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Select Course
                     </span>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Choose course</option>
@@ -553,7 +581,7 @@ export default function FindPage() {
                     </select>
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Admission Type
                     </span>
@@ -567,7 +595,7 @@ export default function FindPage() {
                         setLawSubjectTwo("");
                         setLawSubjectThree("");
                       }}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Select admission type</option>
@@ -577,7 +605,7 @@ export default function FindPage() {
                   </label>
 
                   {isLawClat ? (
-                    <label className="block">
+                    <label className={fieldWrapClass}>
                       <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                         Enter Rank
                       </span>
@@ -589,7 +617,7 @@ export default function FindPage() {
                         onChange={(event) => setLawRank(event.target.value)}
                         placeholder="Enter CLAT rank"
                         aria-label="CLAT rank"
-                        className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                        className={inputClass}
                         required
                       />
                     </label>
@@ -597,7 +625,7 @@ export default function FindPage() {
 
                   {isLawMarkBased ? (
                     <>
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           Best Subject 1
                         </span>
@@ -610,12 +638,12 @@ export default function FindPage() {
                           onChange={(event) => setLawSubjectOne(event.target.value)}
                           placeholder="Eg: Tamil"
                           aria-label="Best subject one"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           Best Subject 2
                         </span>
@@ -628,12 +656,12 @@ export default function FindPage() {
                           onChange={(event) => setLawSubjectTwo(event.target.value)}
                           placeholder="Eg: English"
                           aria-label="Best subject two"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           Best Subject 3
                         </span>
@@ -646,13 +674,13 @@ export default function FindPage() {
                           onChange={(event) => setLawSubjectThree(event.target.value)}
                           placeholder="Eg: History / Commerce"
                           aria-label="Best subject three"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
                       <div className="md:col-span-2">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(255,255,255,0.8)] px-4 py-3 text-xs text-[color:var(--text-muted)]">
+                        <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
                             Law Cutoff (Best 3 Subjects)
                           </div>
@@ -669,14 +697,14 @@ export default function FindPage() {
 
               {isAgriculture && isSeniorLevel ? (
                 <>
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Select Course
                     </span>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Choose course</option>
@@ -688,7 +716,7 @@ export default function FindPage() {
                     </select>
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Admission Type
                     </span>
@@ -701,7 +729,7 @@ export default function FindPage() {
                         setMathsMarks("");
                         setBiologyMarks("");
                       }}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Select 12th PCB / PCM</option>
@@ -712,7 +740,7 @@ export default function FindPage() {
 
                   {selectedAgricultureStream ? (
                     <>
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           Physics
                         </span>
@@ -725,12 +753,12 @@ export default function FindPage() {
                           onChange={(event) => setPhysicsMarks(event.target.value)}
                           placeholder="Enter your marks"
                           aria-label="Physics marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           Chemistry
                         </span>
@@ -743,12 +771,12 @@ export default function FindPage() {
                           onChange={(event) => setChemistryMarks(event.target.value)}
                           placeholder="Enter your marks"
                           aria-label="Chemistry marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
-                      <label className="block">
+                      <label className={fieldWrapClass}>
                         <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                           {selectedAgricultureStream === "PCB" ? "Biology" : "Maths"}
                         </span>
@@ -765,13 +793,13 @@ export default function FindPage() {
                           }
                           placeholder="Enter your marks"
                           aria-label="Biology or Maths marks"
-                          className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                          className={inputClass}
                           required
                         />
                       </label>
 
                       <div className="md:col-span-2">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(255,255,255,0.8)] px-4 py-3 text-xs text-[color:var(--text-muted)]">
+                        <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
                             Cutoff Calculation (TN)
                           </div>
@@ -792,14 +820,14 @@ export default function FindPage() {
               ) : null}
 
               {selectedDegree === "Medical" && isSeniorLevel ? (
-                <label className="block">
+                <label className={fieldWrapClass}>
                   <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                     Select College Type
                   </span>
                   <select
                     value={selectedCollegeType}
                     onChange={(event) => setSelectedCollegeType(event.target.value)}
-                    className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                    className={selectClass}
                     required
                   >
                     <option value="">Choose college type</option>
@@ -811,14 +839,14 @@ export default function FindPage() {
 
               {selectedDegree === "Paramedical" && isSeniorLevel ? (
                 <>
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       Select Course
                     </span>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none focus:border-[color:var(--brand-primary-soft)]"
+                      className={selectClass}
                       required
                     >
                       <option value="">Choose course</option>
@@ -830,7 +858,7 @@ export default function FindPage() {
                     </select>
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Physics</span>
                     <input
                       type="number"
@@ -841,12 +869,12 @@ export default function FindPage() {
                       onChange={(event) => setPhysicsMarks(event.target.value)}
                       placeholder="Enter your marks"
                       aria-label="Physics marks"
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      className={inputClass}
                       required
                     />
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Chemistry</span>
                     <input
                       type="number"
@@ -857,12 +885,12 @@ export default function FindPage() {
                       onChange={(event) => setChemistryMarks(event.target.value)}
                       placeholder="Enter your marks"
                       aria-label="Chemistry marks"
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      className={inputClass}
                       required
                     />
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Biology</span>
                     <input
                       type="number"
@@ -873,13 +901,13 @@ export default function FindPage() {
                       onChange={(event) => setBiologyMarks(event.target.value)}
                       placeholder="Enter your marks"
                       aria-label="Biology marks"
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      className={inputClass}
                       required
                     />
                   </label>
 
                   <div className="md:col-span-2">
-                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(255,255,255,0.8)] px-4 py-3 text-xs text-[color:var(--text-muted)]">
+                    <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
                         Cutoff Calculation
                       </div>
@@ -898,7 +926,7 @@ export default function FindPage() {
 
               {isArch && isSeniorLevel ? (
                 <>
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       12th Marks (Out of 600)
                     </span>
@@ -911,12 +939,12 @@ export default function FindPage() {
                       onChange={(event) => setArch12thMarks(event.target.value)}
                       placeholder="Enter your 12th total"
                       aria-label="12th total marks"
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      className={inputClass}
                       required
                     />
                   </label>
 
-                  <label className="block">
+                  <label className={fieldWrapClass}>
                     <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">
                       NATA Score (Out of 200)
                     </span>
@@ -929,13 +957,13 @@ export default function FindPage() {
                       onChange={(event) => setArchNataMarks(event.target.value)}
                       placeholder="Enter your NATA score"
                       aria-label="NATA marks"
-                      className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                      className={inputClass}
                       required
                     />
                   </label>
 
                   <div className="md:col-span-2">
-                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-[rgba(255,255,255,0.8)] px-4 py-3 text-xs text-[color:var(--text-muted)]">
+                    <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
                         B.Arch Combined Score
                       </div>
@@ -954,7 +982,7 @@ export default function FindPage() {
               ) : null}
 
               {selectedDegree === "Medical" && isMedicalMarksLevel ? (
-                <label className="block">
+                <label className={fieldWrapClass}>
                   <span className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]">Enter your mark</span>
                   <input
                     type="number"
@@ -965,7 +993,7 @@ export default function FindPage() {
                     onChange={(event) => setMedicalMarks(event.target.value)}
                     placeholder="Enter your marks"
                     aria-label="Medical marks"
-                    className="h-11 w-full rounded-[1rem] border border-[rgba(15,76,129,0.1)] bg-white px-3 text-sm text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brand-primary-soft)]"
+                    className={inputClass}
                     required
                   />
                 </label>
@@ -974,10 +1002,11 @@ export default function FindPage() {
 
             <button
               type="submit"
-              className="shine-button mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-[1rem] bg-[color:var(--brand-primary)] px-6 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+              className="shine-button mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-[1rem] bg-[linear-gradient(120deg,#1d4ed8,#60a5fa)] px-6 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(29,78,216,0.3)] transition hover:-translate-y-0.5 hover:bg-[linear-gradient(120deg,#1e40af,#3b82f6)] hover:shadow-[0_20px_36px_rgba(29,78,216,0.38)]"
             >
               <Search className="size-4" />
-              Find Colleges
+              Predict College
+              <ArrowRight className="size-4" />
             </button>
           </form>
           </div>
@@ -986,3 +1015,6 @@ export default function FindPage() {
     </section>
   );
 }
+
+
+

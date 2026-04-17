@@ -21,10 +21,74 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { Navbar } from "@/components/navbar";
 import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
 
+// Custom hook for scroll animations
+function useScrollAnimation() {
+  useEffect(() => {
+    const elements = document.querySelectorAll('[data-scroll-animate]');
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px',
+    });
+
+    elements.forEach((el) => {
+      observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+}
+
 const SEARCH_FLOW_ITEMS = [
   "Search for college",
   "Search for exams",
   "Search for course",
+];
+const HERO_EXAM_NAMES = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
+const TOP_EXAM_CARDS = [
+  {
+    name: "JEE Main",
+    slug: "jee-main",
+    logo: "/exams/jee-main.svg",
+    mode: "Online Exam",
+    participatingColleges: "2031",
+    examDate: "April 02, 2026",
+    examLevel: "National",
+  },
+  {
+    name: "JEE Advanced",
+    slug: "jee-advanced",
+    logo: "/exams/jee-advanced.svg",
+    mode: "Online Exam",
+    participatingColleges: "73",
+    examDate: "May 17, 2026",
+    examLevel: "National",
+  },
+  {
+    name: "CUET",
+    slug: "cuet",
+    logo: "/exams/cuet.svg",
+    mode: "Offline Exam",
+    participatingColleges: "584",
+    examDate: "May 11, 2026",
+    examLevel: "National",
+  },
+  {
+    name: "NEET",
+    slug: "neet",
+    logo: "/exams/neet.svg",
+    mode: "Offline Exam",
+    participatingColleges: "612",
+    examDate: "May 05, 2026",
+    examLevel: "National",
+  },
 ];
 
 type HomePageProps = {
@@ -45,6 +109,7 @@ export function HomePage({
   const [activeAction, setActiveAction] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
   const [typedSearchText, setTypedSearchText] = useState("");
+  const [isHeroSearchFocused, setIsHeroSearchFocused] = useState(false);
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const collegesScrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -284,44 +349,99 @@ export function HomePage({
       icon: BadgeCheck,
     },
   ];
-  const topExamCards = [
-    {
-      name: "JEE Main",
-      slug: "jee-main",
-      logo: "/exams/jee-main.svg",
-      mode: "Online Exam",
-      participatingColleges: "2031",
-      examDate: "April 02, 2026",
-      examLevel: "National",
-    },
-    {
-      name: "JEE Advanced",
-      slug: "jee-advanced",
-      logo: "/exams/jee-advanced.svg",
-      mode: "Online Exam",
-      participatingColleges: "73",
-      examDate: "May 17, 2026",
-      examLevel: "National",
-    },
-    {
-      name: "CUET",
-      slug: "cuet",
-      logo: "/exams/cuet.svg",
-      mode: "Offline Exam",
-      participatingColleges: "584",
-      examDate: "May 11, 2026",
-      examLevel: "National",
-    },
-    {
-      name: "NEET",
-      slug: "neet",
-      logo: "/exams/neet.svg",
-      mode: "Offline Exam",
-      participatingColleges: "612",
-      examDate: "May 05, 2026",
-      examLevel: "National",
-    },
-  ];
+  const topExamCards = TOP_EXAM_CARDS;
+  const heroSearchPool = useMemo(() => {
+    const unique = new Map<string, { id: string; label: string; href: string; type: string; keywords: string[] }>();
+    const pushValue = ({
+      label,
+      href,
+      type,
+      keywords = [],
+    }: {
+      label: string;
+      href: string;
+      type: "college" | "course" | "exam" | "city";
+      keywords?: string[];
+    }) => {
+      const trimmed = String(label || "").trim();
+      if (!trimmed || !href) return;
+      const key = `${type}:${trimmed.toLowerCase()}`;
+      if (unique.has(key)) return;
+      unique.set(key, {
+        id: key,
+        label: trimmed,
+        href,
+        type,
+        keywords: keywords.filter(Boolean).map((item) => item.toLowerCase()),
+      });
+    };
+
+    collegesData.forEach((college) => {
+      pushValue({
+        label: college.name,
+        href: `/college/${college.id}`,
+        type: "college",
+        keywords: [college.district, college.state, college.type, ...(college.tags || [])],
+      });
+      pushValue({
+        label: college.district,
+        href: `/explore?view=colleges&city=${encodeURIComponent(college.district)}`,
+        type: "city",
+        keywords: [college.state],
+      });
+    });
+
+    coursesData.forEach((course) => {
+      pushValue({
+        label: course.course,
+        href: `/explore/course/${encodeURIComponent(course.course)}`,
+        type: "course",
+        keywords: [course.specialization, course.courseType, course.stream],
+      });
+      pushValue({
+        label: course.specialization,
+        href: `/explore/course/${encodeURIComponent(course.course)}`,
+        type: "course",
+        keywords: [course.course, course.stream],
+      });
+    });
+
+    TOP_EXAM_CARDS.forEach((exam) => {
+      pushValue({
+        label: exam.name,
+        href: `/exams/${exam.slug}`,
+        type: "exam",
+        keywords: [exam.mode, exam.examLevel, exam.examDate],
+      });
+    });
+
+    HERO_EXAM_NAMES.forEach((exam) =>
+      pushValue({
+        label: exam,
+        href: `/exams/${exam.toLowerCase().replace(/\s+/g, "-")}`,
+        type: "exam",
+      }),
+    );
+
+    return [...unique.values()];
+  }, [collegesData, coursesData]);
+
+  const heroSearchSuggestions = useMemo(() => {
+    const query = heroSearchInput.trim().toLowerCase();
+    if (!query) {
+      return heroSearchPool.slice(0, 6);
+    }
+
+    const matched = heroSearchPool
+      .filter((item) => {
+        if (item.label.toLowerCase().includes(query)) return true;
+        return item.keywords.some((keyword) => keyword.includes(query));
+      })
+      .slice(0, 8);
+    const resolved = matched.length ? matched : heroSearchPool.slice(0, 6);
+
+    return resolved;
+  }, [heroSearchInput, heroSearchPool]);
   const featureMarqueeItems = useMemo(() => [...featureCards, ...featureCards], [featureCards]);
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter(
@@ -407,10 +527,29 @@ export function HomePage({
     return () => clearTimeout(timeoutId);
   }, []);
 
+  // Initialize scroll animations
+  useScrollAnimation();
+
   const handleHeroSearch = () => {
     const query = heroSearchInput.trim();
-    router.push(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
+    if (!query) return;
+    const exactMatch = heroSearchPool.find((item) => item.label.toLowerCase() === query.toLowerCase());
+    if (exactMatch) {
+      router.push(exactMatch.href);
+    } else if (heroSearchSuggestions.length > 0) {
+      router.push(heroSearchSuggestions[0].href);
+    } else {
+      return;
+    }
     setHeroSearchInput("");
+    setIsHeroSearchFocused(false);
+  };
+
+  const handleHeroSuggestionSelect = (value: { label: string; href: string }) => {
+    if (!value.href) return;
+    router.push(value.href);
+    setHeroSearchInput(value.label);
+    setIsHeroSearchFocused(false);
   };
 
   const homeThemeStyles: ThemeStyleVars = {
@@ -468,31 +607,48 @@ export function HomePage({
                       <input
                         type="text"
                         value={heroSearchInput}
-                        onChange={(event) => setHeroSearchInput(event.target.value)}
-                        onFocus={() =>
-                          router.push(
-                            heroSearchInput.trim()
-                              ? `/search?q=${encodeURIComponent(heroSearchInput.trim())}`
-                              : "/search",
-                          )
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            handleHeroSearch();
-                          }
+                        onChange={(event) => {
+                          setHeroSearchInput(event.target.value);
+                          setIsHeroSearchFocused(true);
+                        }}
+                        onFocus={() => setIsHeroSearchFocused(true)}
+                        onBlur={() => {
+                          window.setTimeout(() => setIsHeroSearchFocused(false), 120);
                         }}
                         placeholder=""
-                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(30,78,121,0.3)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,250,255,0.96))] pl-14 pr-5 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_10px_24px_rgba(30,78,121,0.22)] ring-1 ring-[rgba(239,68,68,0.18)] sm:h-[3.85rem] sm:text-sm"
+                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(30,78,121,0.24)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.98))] pl-14 pr-32 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_14px_34px_rgba(30,78,121,0.2)] ring-1 ring-[rgba(96,165,250,0.26)] transition-all duration-300 focus:border-[rgba(29,78,216,0.4)] focus:outline focus:outline-2 focus:outline-[rgba(96,165,250,0.48)] focus:shadow-[0_18px_38px_rgba(29,78,216,0.24)] sm:h-[3.85rem] sm:text-sm"
                       />
+                      <button
+                        type="button"
+                        onClick={handleHeroSearch}
+                        className="absolute right-2 top-1/2 z-[4] inline-flex -translate-y-1/2 items-center rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.26)] transition hover:-translate-y-[53%] hover:bg-[#2563eb] sm:px-5 sm:text-sm"
+                      >
+                        Quick Find
+                      </button>
+                      {(isHeroSearchFocused || heroSearchInput.trim().length > 0) && heroSearchSuggestions.length > 0 ? (
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80] overflow-hidden rounded-[1.1rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.2)] backdrop-blur-sm">
+                          {heroSearchSuggestions.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                handleHeroSuggestionSelect(item);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-[0.85rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition duration-200 hover:translate-x-0.5 hover:bg-[rgba(29,78,216,0.09)]"
+                            >
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
+                                <Search className="size-3.5" />
+                              </span>
+                              <span className="flex-1">{item.label}</span>
+                              <span className="rounded-full bg-[rgba(29,78,216,0.1)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--brand-primary)]">
+                                {item.type}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/find")}
-                      className="shine-button w-full rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(30,78,121,0.28)] transition hover:scale-[1.01] hover:brightness-105 md:w-auto md:px-8"
-                    >
-                      Cutoff Match
-                    </button>
                   </div>
 
                   <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:mx-auto md:w-[68%] md:flex-nowrap md:justify-center md:overflow-x-auto md:scrollbar-hide md:text-sm">
@@ -536,12 +692,47 @@ export function HomePage({
                       })}
                     </div>
                   </div>
+
+                  <div className="mt-6">
+                    <article className="relative overflow-hidden rounded-[2rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(132deg,rgba(255,255,255,0.98),rgba(239,246,255,0.98)_52%,rgba(219,234,254,0.98))] p-6 text-[color:var(--text-dark)] shadow-[0_24px_54px_rgba(30,64,175,0.16)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_62px_rgba(30,64,175,0.22)] md:p-8 scroll-fade-in" data-scroll-animate>
+                      <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.22)] blur-3xl" />
+                      <div className="pointer-events-none absolute -bottom-14 right-0 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.18)] blur-3xl" />
+                      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="max-w-2xl">
+                          <span className="inline-flex rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#3b82f6]">
+                            Cutoff Zone
+                          </span>
+                          <h3 className="mt-4 text-2xl font-bold leading-tight md:text-3xl">
+                            Predict Smarter, Apply Better
+                          </h3>
+                          <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--text-muted)] md:text-base">
+                            Enter marks, choose your degree, and instantly view cutoff-based college matches with confidence.
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[color:var(--brand-primary)]">
+                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Fast prediction</span>
+                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Category-wise fit</span>
+                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">One form flow</span>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => router.push("/find")}
+                            className="inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.28)] transition hover:bg-[#2563eb] hover:shadow-[0_14px_34px_rgba(37,99,235,0.32)]"
+                          >
+                            Go To Cutoff Form
+                            <ArrowRight className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
                 </div>
               </div>
 
-              <div className="mx-auto w-full max-w-[1260px]">
+              <div className="mx-auto w-full max-w-none">
                 <div className="reveal-up delay-3 mt-8 pt-3 grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
+                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in" data-scroll-animate>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
                       Best College Flow
@@ -653,7 +844,7 @@ export function HomePage({
                   </div>
                 </div>
 
-                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6">
+                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in scroll-delay-2" data-scroll-animate>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
                       Trending Courses
@@ -709,7 +900,7 @@ export function HomePage({
       <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
+            <div className="scroll-fade-in" data-scroll-animate>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Discover Pathways
               </p>
@@ -720,7 +911,8 @@ export function HomePage({
             <button
               type="button"
               onClick={() => router.push("/explore")}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+              className="scroll-fade-in scroll-delay-2 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+              data-scroll-animate
             >
               View all courses
               <ArrowRight className="size-4" />
@@ -735,10 +927,13 @@ export function HomePage({
               }
               className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
             >
-              {exploreCourseCards.slice(0, 10).map((course) => (
+              {exploreCourseCards.slice(0, 10).map((course, index) => {
+                const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3', 'scroll-delay-4'];
+                return (
                 <article
                   key={course.id}
-                  className="luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem]"
+                  className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
+                  data-scroll-animate
                 >
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
@@ -765,13 +960,14 @@ export function HomePage({
                   <button
                     type="button"
                     onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
-                    className="mt-auto inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                    className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
                   >
                     Course Overview
                     <ArrowRight className="size-4" />
                   </button>
                 </article>
-              ))}
+                );
+              })}
             </div>
 
             {showLeftArrow ? (
@@ -796,12 +992,14 @@ export function HomePage({
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featureCards.map((item) => {
+            {featureCards.map((item, index) => {
               const Icon = item.icon;
+              const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3'];
               return (
                 <article
                   key={item.title}
-                  className="luxe-card flex flex-col gap-3 p-5"
+                  className={`luxe-card flex flex-col gap-3 p-5 scroll-fade-in ${delays[Math.min(index, 3)]}`}
+                  data-scroll-animate
                 >
                   <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
                     <Icon className="size-5 text-[color:var(--brand-primary)]" />
@@ -813,7 +1011,7 @@ export function HomePage({
             })}
           </div>
 
-          <div className="mt-12">
+          <div className="mt-12 w-full scroll-fade-in" data-scroll-animate>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">Top Exams</h2>
               <button
@@ -826,12 +1024,15 @@ export function HomePage({
               </button>
             </div>
 
-            <div className="mt-5 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {topExamCards.map((exam) => (
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {topExamCards.map((exam, index) => {
+                const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3', 'scroll-delay-4'];
+                return (
                 <article
                   key={exam.name}
                   onClick={() => router.push(`/exams/${exam.slug}`)}
-                  className="luxe-card relative flex h-[17.5rem] w-[13.5rem] shrink-0 flex-col gap-3 p-4 sm:h-[18rem] sm:w-[14.5rem] lg:h-[18.5rem] lg:w-[15rem]"
+                  className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
+                  data-scroll-animate
                 >
                   <span
                     className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
@@ -898,7 +1099,8 @@ export function HomePage({
                     </button>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1018,17 +1220,17 @@ export function HomePage({
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">
-          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 scroll-scale-in" data-scroll-animate>
             <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
             <div className="relative z-10 mx-auto max-w-2xl text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] scroll-fade-in" data-scroll-animate>
                 Newsletter
               </p>
-              <h2 className="section-title mt-3 text-balance">
+              <h2 className="section-title mt-3 text-balance scroll-fade-in scroll-delay-1" data-scroll-animate>
                 Get sharper updates on colleges, exams, and opportunities.
               </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
+              <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base scroll-fade-in scroll-delay-2" data-scroll-animate>
                 A cleaner form, stronger contrast, and a more premium finish so the last section feels as polished as the hero.
               </p>
             </div>
@@ -1069,7 +1271,7 @@ export function HomePage({
               <div className="flex items-stretch sm:col-span-2 md:col-span-1">
                 <button
                   type="submit"
-                  className="shine-button w-full rounded-[1.4rem] bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] px-6 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(30,78,121,0.32),0_10px_22px_rgba(239,68,68,0.2)] transition hover:translate-y-[-1px] hover:brightness-105"
+                  className="shine-button w-full rounded-[1.4rem] border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.24)] transition hover:bg-[#2563eb] hover:shadow-[0_18px_36px_rgba(37,99,235,0.3)]"
                 >
                   Join Updates
                 </button>

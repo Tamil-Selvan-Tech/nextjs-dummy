@@ -579,6 +579,146 @@ button,
   }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes blurFadeIn {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.scroll-fade-in {
+  opacity: 0;
+  transform: translateY(32px);
+}
+
+.scroll-fade-in.in-view {
+  animation: fadeInUp 0.8s ease both;
+}
+
+.scroll-fade-in-down {
+  opacity: 0;
+  transform: translateY(-32px);
+}
+
+.scroll-fade-in-down.in-view {
+  animation: fadeInDown 0.8s ease both;
+}
+
+.scroll-slide-left {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+.scroll-slide-left.in-view {
+  animation: slideInLeft 0.8s ease both;
+}
+
+.scroll-slide-right {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+.scroll-slide-right.in-view {
+  animation: slideInRight 0.8s ease both;
+}
+
+.scroll-scale-in {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.scroll-scale-in.in-view {
+  animation: scaleIn 0.8s ease both;
+}
+
+.scroll-blur-in {
+  opacity: 0;
+  filter: blur(8px);
+}
+
+.scroll-blur-in.in-view {
+  animation: blurFadeIn 0.8s ease both;
+}
+
+.scroll-delay-1 {
+  animation-delay: 0.15s;
+}
+
+.scroll-delay-2 {
+  animation-delay: 0.3s;
+}
+
+.scroll-delay-3 {
+  animation-delay: 0.45s;
+}
+
+.scroll-delay-4 {
+  animation-delay: 0.6s;
+}
+
+.scroll-delay-5 {
+  animation-delay: 0.75s;
+}
+
 @media (min-width: 768px) {
   .page-container {
     padding-inline: 1.5rem;

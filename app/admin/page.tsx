@@ -3559,7 +3559,7 @@ export default function AdminPage() {
                           hostelRules: String(hostelData.rules || ""),
                         });
                         }}
-                        className={`${solidBlueButtonClass} w-[132px] justify-center px-3 py-1.5 text-xs`}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
                       >
                         <PencilLine className="size-4" />
                         Edit
@@ -3573,7 +3573,7 @@ export default function AdminPage() {
                             await loadAdminData(token, currentUser);
                           })
                         }
-                        className="inline-flex w-[132px] items-center justify-center gap-2 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
                       >
                         <Trash2 className="size-4" />
                         Delete

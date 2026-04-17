@@ -11,11 +11,10 @@ import {
   CalendarDays,
   FileText,
   GraduationCap,
+  Info,
   Lightbulb,
   MapPin,
   Scale,
-  Search,
-  SlidersHorizontal,
   Stethoscope,
   Target,
   TrendingUp,
@@ -71,6 +70,39 @@ type JuniorConfig = {
   ctaButton: string;
 };
 
+const LEVEL11_EXAMS_BY_DEGREE: Record<string, string[]> = {
+  Engineering: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE", "TNEA Counseling"],
+  Medical: ["NEET UG", "AIIMS (via NEET)", "JIPMER (via NEET)", "State Medical Counseling"],
+  "Arts & Science": ["CUET UG", "State University Entrance", "TANCET (PG)"],
+  Law: ["CLAT", "AILET", "SLAT"],
+  Agriculture: ["ICAR AIEEA (UG)", "State Agriculture Entrance", "University Counseling"],
+  Nursing: ["NEET UG (B.Sc Nursing)", "State Nursing Entrance", "Nursing Counseling"],
+  Paramedical: ["State Paramedical Entrance", "Health Science Counseling", "Institute Entrance Tests"],
+  "B.Arch": ["NATA", "JEE Main (Paper 2)", "State Architecture Counseling"],
+};
+
+const GENERAL_EXAMS_BY_DEGREE: Record<string, string[]> = {
+  Engineering: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE", "TNEA Counseling"],
+  Medical: ["NEET UG", "State Medical Counseling"],
+  "Arts & Science": ["CUET UG", "State University Admission"],
+  Law: ["CLAT", "AILET", "SLAT"],
+  Agriculture: ["ICAR AIEEA (UG)", "State Agriculture Counseling"],
+  Nursing: ["NEET UG (B.Sc Nursing)", "State Nursing Counseling"],
+  Paramedical: ["State Paramedical Entrance", "Health Science Counseling"],
+  "B.Arch": ["NATA", "JEE Main (Paper 2)"],
+};
+
+const DEGREE_STREAM_MAP: Record<string, string[]> = {
+  Engineering: ["Engineering"],
+  Medical: ["Medical", "Paramedical"],
+  "Arts & Science": ["Science", "Arts", "Computer Science", "Management"],
+  Law: ["Law"],
+  Agriculture: ["Agriculture", "Agri"],
+  Nursing: ["Nursing", "Medical"],
+  Paramedical: ["Paramedical", "Medical"],
+  "B.Arch": ["Architecture", "Design"],
+};
+
 export function CutoffClient({
   selectedLevel,
   selectedDegree,
@@ -87,7 +119,19 @@ export function CutoffClient({
   const summaryDegree = selectedDegree || "Engineering";
   const summaryCourse = selectedCourse || "-";
   const summarySpecialization = selectedSpecialization || "-";
-  const summaryCutoff = enteredCutoff || (summaryDegree === "Law" ? "0" : "184.5");
+  
+  // Get marks from URL query parameter (if provided)
+  const [userMarks] = useState<number | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const marksParam = params.get("marks");
+      return marksParam ? Number(marksParam) : null;
+    }
+    return null;
+  });
+  
+  // Use userMarks if available, otherwise use enteredCutoff
+  const summaryCutoff = userMarks !== null ? String(userMarks) : enteredCutoff || (summaryDegree === "Law" ? "0" : "184.5");
   const cutoffMax =
     summaryDegree === "Medical"
       ? 720
@@ -99,26 +143,6 @@ export function CutoffClient({
             : 300
           : 200;
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(summaryLevel);
-  const examsByDegree: Record<string, string[]> = {
-    Engineering: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE", "TNEA Counseling"],
-    Medical: ["NEET UG", "AIIMS (via NEET)", "JIPMER (via NEET)", "State Medical Counseling"],
-    "Arts & Science": ["CUET UG", "State University Entrance", "TANCET (PG)"],
-    Law: ["CLAT", "AILET", "SLAT"],
-    Agriculture: ["ICAR AIEEA (UG)", "State Agriculture Entrance", "University Counseling"],
-    Nursing: ["NEET UG (B.Sc Nursing)", "State Nursing Entrance", "Nursing Counseling"],
-    Paramedical: ["State Paramedical Entrance", "Health Science Counseling", "Institute Entrance Tests"],
-    "B.Arch": ["NATA", "JEE Main (Paper 2)", "State Architecture Counseling"],
-  };
-  const degreeStreamMap: Record<string, string[]> = {
-    Engineering: ["Engineering"],
-    Medical: ["Medical", "Paramedical"],
-    "Arts & Science": ["Science", "Arts", "Computer Science", "Management"],
-    Law: ["Law"],
-    Agriculture: ["Agriculture", "Agri"],
-    Nursing: ["Nursing", "Medical"],
-    Paramedical: ["Paramedical", "Medical"],
-    "B.Arch": ["Architecture", "Design"],
-  };
   const resolveCategoryKey = (value: string) => {
     const normalized = normalizeText(value);
     if (!normalized) return "";
@@ -146,14 +170,17 @@ export function CutoffClient({
       lowerStreams.some((stream) => stream.includes(target.toLowerCase())),
     );
   };
-  const degreeTargets = degreeStreamMap[summaryDegree] || [];
+  const degreeTargets = DEGREE_STREAM_MAP[summaryDegree] || [];
   const availableColleges = colleges || [];
   const matchingColleges = degreeTargets.length
     ? availableColleges.filter((college) => streamMatches(college.streams, degreeTargets))
     : availableColleges;
   const topColleges = matchingColleges.filter((college) => college.isBestCollege).slice(0, 6);
   const otherColleges = matchingColleges.filter((college) => !college.isBestCollege).slice(0, 10);
-  const examsForDegree = examsByDegree[summaryDegree] || [];
+  const examsForDegree =
+    summaryLevel === "11"
+      ? LEVEL11_EXAMS_BY_DEGREE[summaryDegree] || []
+      : GENERAL_EXAMS_BY_DEGREE[summaryDegree] || [];
   const examCards = (examsForDegree.length ? examsForDegree : ["Explore entrance exams for this degree"]).map(
     (exam) => ({
       title: exam,
@@ -934,6 +961,10 @@ export function CutoffClient({
     .filter(([key]) => key !== "__index")
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Engineering";
   const [scoreInput, setScoreInput] = useState("");
+  const [showAllMatching, setShowAllMatching] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [locationSearchInput, setLocationSearchInput] = useState("");
+  const [selectedCollegeTypeFilter, setSelectedCollegeTypeFilter] = useState<"all" | "government" | "private">("all");
   const scoreValue = Number(scoreInput);
   const resolvedScore = Number.isFinite(scoreValue) ? scoreValue : NaN;
   const levelResult = useMemo(() => {
@@ -947,7 +978,7 @@ export function CutoffClient({
     return { level: "4", label: "Needs Improvement", tip: "Ask for help and revise fundamentals." };
   }, [resolvedScore]);
 
-  const { matchingCards } = useMemo(() => {
+  const { matchingCards, aimHigherCards } = useMemo(() => {
     if (!courses.length || !colleges.length) {
       return { matchingCards: [], aimHigherCards: [] };
     }
@@ -984,8 +1015,9 @@ export function CutoffClient({
       selectedSpecialization || selectedCourseSpecialization,
     );
     const userCutoff = parseCutoffValue(enteredCutoff);
-    const userScore = userCutoff ? Math.max(userCutoff.start, userCutoff.end) : null;
-    const degreeTokens = (degreeTargets.length ? degreeTargets : [summaryDegree]).map((value) =>
+    const userScore = userMarks !== null ? userMarks : userCutoff ? Math.max(userCutoff.start, userCutoff.end) : null;
+    const localDegreeTargets = DEGREE_STREAM_MAP[summaryDegree] || [];
+    const degreeTokens = (localDegreeTargets.length ? localDegreeTargets : [summaryDegree]).map((value) =>
       normalizeText(value),
     );
     const formatGap = (value: number) => {
@@ -1087,7 +1119,10 @@ export function CutoffClient({
     courses.forEach((course) => {
       const courseSelectionMatch = matchesCourseSelection(course);
       const degreeMatch = matchesDegree(course);
-      if (!courseSelectionMatch && !degreeMatch) return;
+      // If a specific course is selected, it must match that course
+      if (normalizedCourseSearch && !courseSelectionMatch) return;
+      // Otherwise, check degree match
+      if (!degreeMatch) return;
       const courseDetails =
         course.collegeDetails && course.collegeDetails.length > 0
           ? course.collegeDetails
@@ -1129,27 +1164,33 @@ export function CutoffClient({
             ? String(rawCutoff)
             : "N/A";
 
-        if (userScore !== null && parsedCutoff && userScore < parsedCutoff.start) {
-          if (college.isBestCollege) {
-            const gap = parsedCutoff.start - userScore;
-            const requireText = categoryKey
-              ? `Requires ${categoryKey} ${cutoffLabel} Cutoff`
-              : `Requires ${cutoffLabel} Cutoff`;
-            const needText = `+${formatGap(gap)} marks`;
-            const existingTarget = aimHigherMap.get(college.id);
-            if (!existingTarget || gap < existingTarget.gap) {
-              aimHigherMap.set(college.id, {
-                id: college.id,
-                name: college.name,
-                location: [college.district, college.state].filter(Boolean).join(", "),
-                require: requireText,
-                need: needText,
-                image: college.image,
-                href: `/college/${college.id}`,
-                gap,
-              });
-            }
+        const aimHigherTarget =
+          parsedCutoff && college.isBestCollege
+            ? Math.max(parsedCutoff.start, parsedCutoff.end)
+            : null;
+
+        if (userScore !== null && aimHigherTarget !== null && userScore < aimHigherTarget) {
+          const gap = aimHigherTarget - userScore;
+          const requireText = categoryKey
+            ? `Best college target: ${categoryKey} ${cutoffLabel}`
+            : `Best college target: ${cutoffLabel}`;
+          const needText = `+${formatGap(gap)} marks`;
+          const existingTarget = aimHigherMap.get(college.id);
+          if (!existingTarget || gap < existingTarget.gap) {
+            aimHigherMap.set(college.id, {
+              id: college.id,
+              name: college.name,
+              location: [college.district, college.state].filter(Boolean).join(", "),
+              require: requireText,
+              need: needText,
+              image: college.image,
+              href: `/college/${college.id}`,
+              gap,
+            });
           }
+        }
+
+        if (userScore !== null && parsedCutoff && userScore < parsedCutoff.start) {
           return;
         }
 
@@ -1168,7 +1209,7 @@ export function CutoffClient({
 
         const existing = matchingMap.get(college.id);
         if (!existing || score > existing.score) {
-          matchingMap.set(college.id, {
+          const cardData: any = {
             id: college.id,
             name: college.name,
             location: [college.district, college.state].filter(Boolean).join(", "),
@@ -1178,7 +1219,9 @@ export function CutoffClient({
             tags,
             href: `/college/${college.id}`,
             score,
-          });
+            isBestCollege: (college as any).isBestCollege,
+          };
+          matchingMap.set(college.id, cardData);
         }
       });
     });
@@ -1200,55 +1243,86 @@ export function CutoffClient({
     selectedCourse,
     selectedSpecialization,
     summaryDegree,
+    userMarks,
   ]);
-  const seniorParsedCutoff = parseCutoffValue(summaryCutoff);
-  const seniorCutoffScore = seniorParsedCutoff
-    ? Math.max(seniorParsedCutoff.start, seniorParsedCutoff.end)
-    : 0;
-  const seniorConfidence = cutoffMax
-    ? Math.max(55, Math.min(98, Math.round((seniorCutoffScore / cutoffMax) * 100)))
-    : 0;
-  const seniorDisplayCards = matchingCards.length
-    ? matchingCards
-    : topColleges.slice(0, 5).map((college, index) => ({
-        id: college.id,
-        name: college.name,
-        location: [college.district, college.state].filter(Boolean).join(", "),
-        cutoff: ["195.5 - 199", "192 - 197.5", "188.5 - 194", "185 - 191.5", "182 - 190"][index] || "180 - 190",
-        match: `${92 - index * 4}% Match`,
-        image: college.image,
-        tags: [college.ownershipType || "Engineering", college.accreditation, college.ranking]
-          .filter(Boolean)
-          .slice(0, 3),
-        href: `/college/${college.id}`,
-        score: 92 - index * 4,
-      }));
-  const seniorLocations = Array.from(
+  const closestAimGap = aimHigherCards[0]?.gap;
+  const closestAimGapText =
+    typeof closestAimGap === "number" && Number.isFinite(closestAimGap)
+      ? `${Math.round(closestAimGap * 10) / 10}`
+      : "";
+
+  // Get unique locations from colleges
+  const uniqueLocations = Array.from(
     new Set(
-      seniorDisplayCards
-        .map((college) => (college.location || "").split(",")[0]?.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, 5);
-  const seniorFeeEstimates = [
-    "Rs25,000 / year",
-    "Rs1.5L - 2.5L / year",
-    "Rs2.0L - 3.0L / year",
-    "Rs45,000 - 80,000 / year",
-    "Rs3.5L+ / year",
-    "Contact college",
-  ];
-  const seniorExamCards = examCards.slice(0, 3);
-  const seniorHeroTitle =
-    normalizeText(summaryDegree) === "engineering"
-      ? `Top ${summaryCourse !== "-" ? summaryCourse : "B.E / B.Tech"} Matches for You`
-      : `Top ${summaryDegree} Matches for You`;
-  const seniorHeroSubtitle = [
-    `Based on your aggregate of ${summaryCutoff || "0"}, we identified colleges where you have a strong chance of admission in Tamil Nadu.`,
-    summarySpecialization !== "-" ? `Specialization focus: ${summarySpecialization}.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+      colleges
+        .map((c) => c.district)
+        .filter(Boolean)
+        .map((d) => String(d).trim())
+    )
+  ).sort();
+
+  // Filter colleges by selected location
+  const nearbyColleges = useMemo(() => {
+    if (!selectedLocation) return [];
+    let filtered = matchingCards.filter(
+      (college: any) =>
+        college.location.toLowerCase().includes(selectedLocation.toLowerCase()) ||
+        colleges.find((c) => c.id === college.id)?.district?.toLowerCase() === selectedLocation.toLowerCase()
+    );
+
+    // Filter by college type
+    if (selectedCollegeTypeFilter !== "all") {
+      filtered = filtered.filter((college: any) => {
+        const collegeData = colleges.find((c) => c.id === college.id);
+        const ownership = collegeData?.ownershipType?.toLowerCase() || "";
+        if (selectedCollegeTypeFilter === "government") {
+          return ownership.includes("government") || ownership.includes("govt");
+        } else if (selectedCollegeTypeFilter === "private") {
+          return ownership.includes("private");
+        }
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [matchingCards, selectedLocation, selectedCollegeTypeFilter, colleges]);
+
+  // Filter locations based on search input
+  const filteredLocations = useMemo(() => {
+    const searchLower = locationSearchInput.toLowerCase();
+    return uniqueLocations.filter((loc) => loc.toLowerCase().includes(searchLower));
+  }, [locationSearchInput, uniqueLocations]);
+
+  // Apply location and college type filtering to matching colleges
+  const filteredMatchingCards = useMemo(() => {
+    let filtered = matchingCards;
+
+    // Apply location filter
+    if (selectedLocation) {
+      filtered = filtered.filter(
+        (college: any) =>
+          college.location.toLowerCase().includes(selectedLocation.toLowerCase()) ||
+          colleges.find((c) => c.id === college.id)?.district?.toLowerCase() === selectedLocation.toLowerCase()
+      );
+    }
+
+    // Apply college type filter
+    if (selectedCollegeTypeFilter !== "all" && selectedLocation) {
+      filtered = filtered.filter((college: any) => {
+        const collegeData = colleges.find((c) => c.id === college.id);
+        const ownership = collegeData?.ownershipType?.toLowerCase() || "";
+        if (selectedCollegeTypeFilter === "government") {
+          return ownership.includes("government") || ownership.includes("govt");
+        } else if (selectedCollegeTypeFilter === "private") {
+          return ownership.includes("private");
+        }
+        return true;
+      });
+    }
+
+    // Remove duplicates by ID
+    return Array.from(new Map(filtered.map((c: any) => [c.id, c])).values());
+  }, [matchingCards, selectedLocation, selectedCollegeTypeFilter, colleges]);
 
   if (isJuniorLevel) {
     return (
@@ -1256,16 +1330,17 @@ export function CutoffClient({
         className="min-h-screen bg-[#f5f8ff] text-[color:var(--text-dark)]"
         style={
           {
-            "--brand-primary": "#1d4ed8",
-            "--brand-primary-soft": "#3b82f6",
+            "--brand-primary": "#5FA0E6",
+            "--brand-primary-soft": "#7bb3f0",
             "--text-dark": "#0f172a",
             "--text-muted": "rgba(15,23,42,0.64)",
           } as CSSProperties
         }
       >
         <Navbar />
-        <div className="page-container-full py-10 md:py-12">
-          <section className="rounded-[1.8rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(29,78,216,0.12)] md:p-8">
+        <div className="page-container-full py-8 md:py-10">
+          <h2 className="mb-8 text-4xl font-bold text-[color:var(--text-dark)]">Career Guidance</h2>
+          <section className="rounded-[1.8rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(95,160,230,0.12)] md:p-8">
             <div className="grid items-center gap-6 lg:grid-cols-[1.45fr_1fr]">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary)]">
@@ -1281,7 +1356,7 @@ export function CutoffClient({
                   {resolvedJuniorConfig.chips.map((item) => (
                     <div
                       key={item.label}
-                      className="flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-[rgba(29,78,216,0.08)] px-3 py-2 text-xs font-semibold text-[color:var(--text-dark)]"
+                      className="flex items-center gap-2 rounded-full border border-[rgba(95,160,230,0.16)] bg-[rgba(95,160,230,0.08)] px-3 py-2 text-xs font-semibold text-[color:var(--text-dark)]"
                     >
                       <item.icon className="size-3.5 text-[color:var(--brand-primary)]" />
                       {item.label}
@@ -1289,7 +1364,7 @@ export function CutoffClient({
                   ))}
                 </div>
               </div>
-              <div className="relative h-56 overflow-hidden rounded-3xl border border-[rgba(29,78,216,0.12)] bg-[rgba(29,78,216,0.06)] md:h-64 lg:h-72">
+              <div className="relative h-56 overflow-hidden rounded-3xl border border-[rgba(95,160,230,0.12)] bg-[rgba(95,160,230,0.06)] md:h-64 lg:h-72">
                 <Image
                   src={resolvedJuniorConfig.heroImage}
                   alt={resolvedJuniorConfig.heroTitle}
@@ -1301,7 +1376,7 @@ export function CutoffClient({
             </div>
           </section>
 
-          <section className="mt-6 rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+          <section className="mt-6 rounded-[1.6rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(95,160,230,0.08)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
                 <Target className="size-4 text-[color:var(--brand-primary)]" />
@@ -1315,9 +1390,9 @@ export function CutoffClient({
               {resolvedTopColleges.map((college) => (
                 <article
                   key={college.name}
-                  className="min-w-[260px] snap-start overflow-hidden rounded-2xl border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_12px_24px_rgba(15,76,129,0.08)] sm:min-w-[300px] lg:min-w-[320px]"
+                  className="min-w-[260px] snap-start overflow-hidden rounded-2xl border border-[rgba(95,160,230,0.12)] bg-white shadow-[0_12px_24px_rgba(95,160,230,0.08)] sm:min-w-[300px] lg:min-w-[320px]"
                 >
-                  <div className="relative h-36 w-full bg-[rgba(15,76,129,0.08)]">
+                  <div className="relative h-36 w-full bg-[rgba(95,160,230,0.08)]">
                     <Image
                       src={college.image}
                       alt={college.name}
@@ -1325,7 +1400,7 @@ export function CutoffClient({
                       sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
                       className="object-cover"
                     />
-                    <span className="absolute left-3 top-3 rounded-full bg-[rgba(29,78,216,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">
+                    <span className="absolute left-3 top-3 rounded-full bg-[rgba(95,160,230,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">
                       {college.badge}
                     </span>
                   </div>
@@ -1341,7 +1416,7 @@ export function CutoffClient({
             </div>
           </section>
 
-          <section className="mt-6 rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+          <section className="mt-6 rounded-[1.6rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(95,160,230,0.08)]">
             <div className="text-sm font-semibold text-[color:var(--text-dark)]">
               {resolvedJuniorConfig.otherSectionTitle}
             </div>
@@ -1349,9 +1424,9 @@ export function CutoffClient({
               {resolvedOtherColleges.map((college) => (
                 <article
                   key={college.name}
-                  className="min-w-[240px] snap-start overflow-hidden rounded-2xl border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_10px_20px_rgba(15,76,129,0.06)] sm:min-w-[280px] lg:min-w-[300px]"
+                  className="min-w-[240px] snap-start overflow-hidden rounded-2xl border border-[rgba(95,160,230,0.12)] bg-white shadow-[0_10px_20px_rgba(95,160,230,0.06)] sm:min-w-[280px] lg:min-w-[300px]"
                 >
-                  <div className="relative h-28 w-full bg-[rgba(15,76,129,0.08)]">
+                  <div className="relative h-28 w-full bg-[rgba(95,160,230,0.08)]">
                     <Image
                       src={college.image}
                       alt={college.name}
@@ -1370,7 +1445,7 @@ export function CutoffClient({
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+            <div className="rounded-[1.6rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(95,160,230,0.08)]">
               <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
                 <Award className="size-4 text-[color:var(--brand-primary)]" />
                 {resolvedJuniorConfig.engagementTitle}
@@ -1382,7 +1457,7 @@ export function CutoffClient({
                 {resolvedJuniorConfig.engagementItems.map((item) => (
                   <div
                     key={item}
-                    className="flex items-center gap-3 rounded-xl border border-[rgba(29,78,216,0.12)] bg-[rgba(29,78,216,0.06)] px-3 py-2"
+                    className="flex items-center gap-3 rounded-xl border border-[rgba(95,160,230,0.12)] bg-[rgba(95,160,230,0.06)] px-3 py-2"
                   >
                     <Target className="size-4 text-[color:var(--brand-primary)]" />
                     {item}
@@ -1391,7 +1466,7 @@ export function CutoffClient({
               </div>
             </div>
 
-            <div className="rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+            <div className="rounded-[1.6rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(95,160,230,0.08)]">
               <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
                 <TrendingUp className="size-4 text-[color:var(--brand-primary)]" />
                 {resolvedJuniorConfig.cutoffTitle}
@@ -1403,13 +1478,13 @@ export function CutoffClient({
                 {resolvedJuniorConfig.cutoffBands.map((band) => (
                   <div
                     key={band.label}
-                    className="rounded-xl border border-[rgba(29,78,216,0.12)] bg-[rgba(29,78,216,0.06)] p-3"
+                    className="rounded-xl border border-[rgba(95,160,230,0.12)] bg-[rgba(95,160,230,0.06)] p-3"
                   >
                     <div className="flex items-center justify-between text-xs font-semibold text-[color:var(--text-dark)]">
                       <span>{band.label}</span>
                       <span>{band.score}</span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-[rgba(29,78,216,0.12)]">
+                    <div className="mt-2 h-2 rounded-full bg-[rgba(95,160,230,0.12)]">
                       <div
                         className="h-2 rounded-full bg-[color:var(--brand-primary)]"
                         style={{ width: band.progress }}
@@ -1418,10 +1493,10 @@ export function CutoffClient({
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-xl border border-[rgba(29,78,216,0.14)] bg-white p-3 text-xs text-[color:var(--text-muted)]">
+              <div className="mt-4 rounded-xl border border-[rgba(95,160,230,0.14)] bg-white p-3 text-xs text-[color:var(--text-muted)]">
                 Enter your latest school % to see your level:
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.14)] bg-[rgba(29,78,216,0.06)] px-3 py-2 text-xs text-[color:var(--text-dark)]">
+                  <label className="flex items-center gap-2 rounded-full border border-[rgba(95,160,230,0.14)] bg-[rgba(95,160,230,0.06)] px-3 py-2 text-xs text-[color:var(--text-dark)]">
                     <Calculator className="size-3.5 text-[color:var(--brand-primary)]" />
                     %
                     <input
@@ -1435,7 +1510,7 @@ export function CutoffClient({
                       className="w-14 bg-transparent text-[color:var(--text-dark)] outline-none"
                     />
                   </label>
-                  <span className="rounded-full bg-[rgba(29,78,216,0.12)] px-3 py-1 text-[11px] font-semibold text-[color:var(--text-dark)]">
+                  <span className="rounded-full bg-[rgba(95,160,230,0.12)] px-3 py-1 text-[11px] font-semibold text-[color:var(--text-dark)]">
                     Level {levelResult.level} - {levelResult.label}
                   </span>
                 </div>
@@ -1444,7 +1519,7 @@ export function CutoffClient({
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+            <div className="rounded-[1.6rem] border border-[rgba(95,160,230,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(95,160,230,0.08)]">
               <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
                 <GraduationCap className="size-4 text-[color:var(--brand-primary)]" />
                 {resolvedJuniorConfig.careerTitle}
@@ -1517,136 +1592,6 @@ export function CutoffClient({
             ))}
           </section>
 
-          {normalizeText(summaryDegree) === "engineering" ? (
-            <>
-              <div className="mt-6 grid gap-4 lg:grid-cols-[1.05fr_1fr]">
-                <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Target className="size-4 text-[color:var(--brand-primary)]" />
-                    Weekly Study Plan
-                  </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                    Simple daily goals to keep you consistent this week.
-                  </p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {studyPlan.map((item) => (
-                      <div
-                        key={item.title}
-                        className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
-                      >
-                        <div className="text-xs font-semibold text-[color:var(--text-dark)]">
-                          {item.title}
-                        </div>
-                        <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
-                          {item.detail}
-                        </div>
-                        <div className="mt-2 text-[11px] font-semibold text-[color:var(--text-dark)]">
-                          {item.time}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-white p-5 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    <Brain className="size-4 text-[color:var(--brand-primary)]" />
-                    Subject Strength Meter
-                  </div>
-                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                    Rate yourself from 1 to 5 and get a quick tip.
-                  </p>
-                  <div className="mt-4 space-y-3">
-                    {Object.entries(subjectRatings).map(([subject, rating]) => (
-                      <div
-                        key={subject}
-                        className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-3 text-[color:var(--text-dark)]"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-semibold text-[color:var(--text-dark)]">
-                            {subject}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((value) => (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() =>
-                                  setSubjectRatings((prev) => ({ ...prev, [subject]: value }))
-                                }
-                                className={`h-7 w-7 rounded-full border text-[11px] font-semibold transition ${
-                                  rating === value
-                                    ? "border-transparent bg-[color:var(--brand-primary)] text-white"
-                                    : "border-[rgba(255,255,255,0.2)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
-                                }`}
-                              >
-                                {value}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="mt-2 text-[11px] text-[color:var(--text-muted)]">
-                          {subjectTips[rating]}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              <section className="mt-6 rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-[rgba(248,252,255,0.9)] p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                  <BookOpen className="size-4 text-[color:var(--brand-primary)]" />
-                  Mini Career Quiz
-                </div>
-                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-                  Pick the option that feels most like you.
-                </p>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  {["Q1", "Q2", "Q3"].map((label, index) => (
-                    <div
-                      key={label}
-                      className="rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-[color:var(--text-dark)]"
-                    >
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
-                        {label}
-                      </div>
-                      <div className="mt-3 space-y-2 text-[11px] text-[color:var(--text-muted)]">
-                        {(quizOptionsByQuestion[index] || []).map((option, optionIndex) => (
-                          <button
-                            key={option.label}
-                            type="button"
-                            onClick={() =>
-                              setQuizAnswers((prev) => {
-                                const next = [...prev];
-                                next[index] = optionIndex;
-                                return next;
-                              })
-                            }
-                            className={`w-full rounded-xl border px-3 py-2 text-left font-semibold transition ${
-                              quizAnswers[index] === optionIndex
-                                ? "border-transparent bg-[color:var(--brand-primary)] text-white ring-2 ring-[rgba(11,42,85,0.35)]"
-                                : "border-[rgba(255,255,255,0.24)] bg-[rgba(228,237,255,0.6)] text-[color:var(--text-dark)]"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 rounded-2xl border border-[rgba(15,76,129,0.12)] bg-[rgba(228,237,255,0.6)] p-4 text-xs text-[color:var(--text-muted)]">
-                  Result:{" "}
-                  <span className="font-semibold text-[color:var(--text-dark)]">
-                    You may like {quizResult}.
-                  </span>{" "}
-                  Explore more options and talk to teachers for guidance.
-                </div>
-              </section>
-            </>
-          ) : null}
-
           <section className="mt-6 rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
             <div className="text-sm font-semibold text-[color:var(--text-dark)]">
               {resolvedJuniorConfig.roadmapTitle}
@@ -1689,283 +1634,510 @@ export function CutoffClient({
     );
   }
 
-    return (
-        <section
-        className="min-h-screen bg-white text-[color:var(--text-dark)]"
-        style={
-          {
-            "--brand-primary": "#0B2A55",
-            "--brand-primary-soft": "#153B75",
-          } as CSSProperties
-        }
-      >
-        <Navbar />
-        <div className="page-container-full py-10 md:py-12">
-          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-            <div className="space-y-6">
-              <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.14)] bg-[linear-gradient(135deg,rgba(79,141,187,0.08),rgba(255,255,255,0.95))] p-6 shadow-[0_20px_44px_rgba(79,141,187,0.12)] md:p-7">
-                <span className="inline-flex rounded-full border border-[rgba(79,141,187,0.2)] bg-[rgba(79,141,187,0.08)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">
-                  Career Guidance
-                </span>
-                <h1 className="mt-4 text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">
-                  Level {summaryLevel} - {summaryDegree}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm text-[color:var(--text-muted)] md:text-base">
-                  Based on your selected degree, here are suggested exams and colleges to explore.
-                </p>
-              </section>
-
-              <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                  <Target className="size-4 text-[color:var(--brand-primary)]" />
-                  Top Colleges
-                </div>
-                <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-                  {topColleges.length ? (
-                    topColleges.map((college) => (
-                      <Link
-                        key={college.id}
-                        href={`/college/${college.id}`}
-                        className="group min-w-[240px] rounded-2xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-4 transition hover:-translate-y-0.5 hover:border-[rgba(79,141,187,0.28)] hover:shadow-[0_18px_36px_rgba(79,141,187,0.16)]"
-                      >
-                        <div className="overflow-hidden rounded-xl border border-[rgba(79,141,187,0.12)] bg-white">
-                          <img
-                            src={college.image}
-                            alt={college.name}
-                            className="h-32 w-full object-cover transition group-hover:scale-[1.02]"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="mt-3 text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
-                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">
-                          {college.district}, {college.state}
-                        </div>
-                        <div className="mt-2 text-xs font-semibold text-[color:var(--brand-primary)]">
-                          {college.accreditation}
-                        </div>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="text-sm text-[color:var(--text-muted)]">No top colleges found for this degree.</p>
-                  )}
-                </div>
-              </section>
-
-              <section className="rounded-[1.6rem] border border-[rgba(79,141,187,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(79,141,187,0.08)]">
-                <div className="text-sm font-semibold text-[color:var(--text-dark)]">Other Colleges</div>
-                <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-                  {otherColleges.length ? (
-                    otherColleges.map((college) => (
-                      <Link
-                        key={college.id}
-                        href={`/college/${college.id}`}
-                        className="group min-w-[240px] rounded-2xl border border-[rgba(79,141,187,0.12)] bg-[rgba(248,252,255,0.9)] p-4 transition hover:-translate-y-0.5 hover:border-[rgba(79,141,187,0.28)] hover:shadow-[0_18px_36px_rgba(79,141,187,0.16)]"
-                      >
-                        <div className="overflow-hidden rounded-xl border border-[rgba(79,141,187,0.12)] bg-white">
-                          <img
-                            src={college.image}
-                            alt={college.name}
-                            className="h-32 w-full object-cover transition group-hover:scale-[1.02]"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="mt-3 text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
-                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">
-                          {college.district}, {college.state}
-                        </div>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="text-xs text-[color:var(--text-muted)]">No other colleges found.</p>
-                  )}
-                </div>
-              </section>
-
-            </div>
-
-          </div>
-        </div>
-      </section>
-    );
-
   return (
     <section
-      className="min-h-screen bg-[#f3f7ff] text-[color:var(--text-dark)]"
+      className="min-h-screen bg-white text-[color:var(--text-dark)]"
       style={
         {
-          "--brand-primary": "#2563eb",
-          "--brand-primary-soft": "#3b82f6",
-          "--text-dark": "#0f172a",
-          "--text-muted": "rgba(15,23,42,0.66)",
+          "--brand-primary": "#3B82F6",
+          "--brand-primary-soft": "#60A5FA",
         } as CSSProperties
       }
     >
       <Navbar />
-      <div className="page-container-full py-8 md:py-10">
-        <section className="overflow-hidden rounded-[2rem] border border-[rgba(37,99,235,0.12)] bg-[linear-gradient(135deg,#eef5ff_0%,#ecfeff_100%)] shadow-[0_24px_60px_rgba(37,99,235,0.12)]">
-          <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-[1.35fr_320px] lg:items-center">
-            <div>
-              <span className="inline-flex rounded-full border border-[rgba(37,99,235,0.12)] bg-[rgba(37,99,235,0.08)] px-3 py-1 text-[11px] font-semibold text-[color:var(--brand-primary)]">
-                Cutoff Results Level: {summaryLevel}th Grade
-              </span>
-              <h1 className="mt-5 max-w-3xl text-3xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)] md:text-5xl">
-                {seniorHeroTitle}
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[color:var(--text-muted)] md:text-lg">
-                {seniorHeroSubtitle}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                {[selectedCategory ? `Category: ${selectedCategory}` : "", selectedCollegeType ? `College Type: ${selectedCollegeType}` : "", summaryCourse !== "-" ? summaryCourse : ""]
-                  .filter(Boolean)
-                  .map((item) => (
-                    <span key={item} className="rounded-full border border-[rgba(37,99,235,0.12)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--text-dark)]">
-                      {item}
-                    </span>
+      <div className="page-container-full py-10 md:py-12">
+        <div className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              {/* Important Exams Section */}
+              <section className="rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
+                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                  <CalendarDays className="size-4 text-[#3B82F6]" />
+                  Important Exams
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                  Entrance exams and admissions to track.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {examsForDegree.map((exam) => (
+                    <div
+                      key={exam}
+                      className="rounded-xl border border-[rgba(29,78,216,0.12)] bg-[rgba(29,78,216,0.04)] p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-[color:var(--text-dark)]">{exam}</div>
+                        <span className="rounded-full bg-[rgba(29,78,216,0.12)] px-2 py-0.5 text-[10px] font-semibold text-[#3B82F6]">
+                          Recommended
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-[color:var(--text-muted)]">Check official portal</div>
+                    </div>
                   ))}
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.14)] bg-white p-5 shadow-[0_18px_42px_rgba(37,99,235,0.14)]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">Your Final Cutoff</div>
-              <div className="mt-3 flex items-end gap-2">
-                <span className="text-5xl font-bold tracking-[-0.04em] text-[color:var(--brand-primary)]">{summaryCutoff}</span>
-                <span className="pb-2 text-base font-semibold text-[color:var(--text-muted)]">/ {cutoffMax}</span>
-              </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[color:var(--text-muted)]">
-                <span>Admission Confidence</span>
-                <span>{seniorConfidence}%</span>
-              </div>
-              <div className="mt-2 h-3 overflow-hidden rounded-full bg-[rgba(37,99,235,0.12)]">
-                <div className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb,#38bdf8)]" style={{ width: `${seniorConfidence}%` }} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 grid gap-6 lg:grid-cols-[250px_1fr]">
-          <aside className="space-y-4">
-            <div className="rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                  <SlidersHorizontal className="size-4 text-[color:var(--brand-primary)]" />
-                  Filters
                 </div>
-                <button type="button" className="text-[11px] font-semibold text-[color:var(--text-muted)]">Clear All</button>
+              </section>
+
+              <section className="rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
+                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                  <Target className="size-4 text-[color:var(--brand-primary)]" />
+                  Counselling Steps
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                  Follow these steps to secure your college seat
+                </p>
+
+                <div className="mt-6 space-y-4">
+                  {[
+                    { step: 1, title: "Register for Counselling", desc: "Sign up with your exam score and category on official portal" },
+                    { step: 2, title: "Fill College Choices", desc: "Select colleges in your preferred order of merit" },
+                    { step: 3, title: "Lock Preferences", desc: "Confirm and lock your college choice order" },
+                    { step: 4, title: "Seat Allotment", desc: "Check allotment results based on cutoff and merit" },
+                    { step: 5, title: "Report to College", desc: "Complete verification and report at allotted college" },
+                  ].map((item) => (
+                    <div key={item.step} className="flex gap-4">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3B82F6,#60A5FA)] text-sm font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.3)]">
+                        {item.step}
+                      </div>
+                      <div className="flex-1 py-1">
+                        <div className="text-sm font-semibold text-[color:var(--text-dark)]">{item.title}</div>
+                        <p className="mt-1 text-xs text-[color:var(--text-muted)]">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-[rgba(30,79,163,0.12)] bg-[rgba(59,130,246,0.05)] p-4">
+                  <p className="text-xs font-semibold text-[color:var(--text-dark)]">
+                    ℹ️ Time Management Tip
+                  </p>
+                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                    Plan ahead! Counselling rounds typically happen within 2-4 weeks of exam results. Keep your documents ready.
+                  </p>
+                </div>
+              </section>
+            </div>
+
+            <section className="rounded-[1.6rem] border border-[rgba(59,130,246,0.12)] bg-gradient-to-br from-[rgba(59,130,246,0.05)] to-[rgba(37,99,235,0.05)] p-6 shadow-[0_18px_40px_rgba(59,130,246,0.08)]">
+              <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                <MapPin className="size-4 text-[#3B82F6]" />
+                Find Colleges By Location
               </div>
-              <div className="mt-6 space-y-6">
-                <div>
-                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">College Type</div>
-                  <div className="mt-3 space-y-2">
-                    {["Government", "Autonomous", "Private"].map((type) => (
-                      <label key={type} className="flex items-center gap-2 text-xs text-[color:var(--text-dark)]">
-                        <input type="checkbox" checked={!selectedCollegeType || normalizeText(selectedCollegeType) === normalizeText(type)} readOnly className="h-3.5 w-3.5 rounded border-[rgba(37,99,235,0.24)] text-[color:var(--brand-primary)]" />
-                        {type}
-                      </label>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                Search and select a location to discover colleges near you
+              </p>
+
+              {/* Location Search Input */}
+              <div className="mt-4">
+                <input
+                  type="text"
+                  placeholder="Search locations..."
+                  value={locationSearchInput}
+                  onChange={(e) => setLocationSearchInput(e.target.value)}
+                  className="w-full rounded-2xl border-2 border-[rgba(59,130,246,0.2)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--text-dark)] placeholder-[color:var(--text-muted)] transition focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
+                />
+              </div>
+
+              {/* Location Buttons */}
+              <div className="mt-4 grid gap-2 md:grid-cols-4">
+                {filteredLocations.length > 0 ? (
+                  filteredLocations.map((location) => (
+                    <button
+                      key={location}
+                      onClick={() => setSelectedLocation(selectedLocation === location ? "" : location)}
+                      className={`rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                        selectedLocation === location
+                          ? "border-[#3B82F6] bg-[#3B82F6] text-white shadow-[0_4px_12px_rgba(59,130,246,0.4)]"
+                          : "border-[rgba(59,130,246,0.2)] bg-white text-[color:var(--text-dark)] hover:border-[#3B82F6] hover:bg-[rgba(59,130,246,0.05)]"
+                      }`}
+                    >
+                      <MapPin className="mb-1 inline size-3" /> {location}
+                    </button>
+                  ))
+                ) : (
+                  <p className="col-span-full text-center text-sm text-[color:var(--text-muted)]">
+                    No locations found matching "{locationSearchInput}"
+                  </p>
+                )}
+              </div>
+
+              {/* College Type Filter */}
+              {selectedLocation && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+                    Filter by College Type
+                  </p>
+                  <div className="flex gap-2">
+                    {(["all", "government", "private"] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedCollegeTypeFilter(type)}
+                        className={`rounded-full px-4 py-2 text-xs font-semibold transition capitalize ${
+                          selectedCollegeTypeFilter === type
+                            ? "bg-[#3B82F6] text-white shadow-[0_4px_12px_rgba(59,130,246,0.4)]"
+                            : "border border-[rgba(59,130,246,0.2)] bg-white text-[color:var(--text-dark)] hover:border-[#3B82F6] hover:bg-[rgba(59,130,246,0.05)]"
+                        }`}
+                      >
+                        {type === "all" ? "All Colleges" : `${type} Colleges`}
+                      </button>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">Fees Range</div>
-                  <div className="mt-4 h-1.5 rounded-full bg-[rgba(37,99,235,0.12)]"><div className="relative h-full w-[42%] rounded-full bg-[linear-gradient(90deg,#2563eb,#60a5fa)]"><span className="absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white bg-[color:var(--brand-primary)]" /></div></div>
-                  <div className="mt-2 flex justify-between text-[11px] font-semibold text-[color:var(--text-muted)]"><span>Rs10k</span><span>Rs5L+</span></div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-[color:var(--text-dark)]">Preferred Location</div>
-                  <div className="mt-3 space-y-2">
-                    {(seniorLocations.length ? seniorLocations : ["Chennai", "Coimbatore", "Madurai", "Trichy", "Salem"]).map((location) => (
-                      <label key={location} className="flex items-center gap-2 text-xs text-[color:var(--text-dark)]">
-                        <input type="checkbox" checked readOnly className="h-3.5 w-3.5 rounded border-[rgba(37,99,235,0.24)] text-[color:var(--brand-primary)]" />
-                        {location}
-                      </label>
-                    ))}
+              )}
+            </section>
+
+            {selectedLocation && nearbyColleges.length > 0 && (
+              <section className="rounded-[1.6rem] border border-[rgba(59,130,246,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(59,130,246,0.08)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                    <MapPin className="size-4 text-[#3B82F6]" />
+                    Colleges Near {selectedLocation}
                   </div>
                 </div>
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_100%)] p-4 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
-              <div className="text-sm font-semibold text-[color:var(--brand-primary)]">Expert Guidance</div>
-              <p className="mt-2 text-xs leading-6 text-[color:var(--text-muted)]">Talk to our counselors and shortlist colleges faster for your cutoff range.</p>
-              <button type="button" className="mt-4 w-full rounded-xl border border-[rgba(37,99,235,0.14)] bg-white px-4 py-2 text-xs font-semibold text-[color:var(--brand-primary)]">Request Callback</button>
-            </div>
-          </aside>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                  {nearbyColleges.length} matching college{nearbyColleges.length !== 1 ? "s" : ""} in {selectedLocation}
+                </p>
 
-          <div>
-            <div className="flex flex-col gap-4 rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">Showing {seniorDisplayCards.length} Recommended Colleges</h2>
-                  <span className="rounded-full bg-[rgba(37,99,235,0.08)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">Verified</span>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {nearbyColleges.map((college: any) => (
+                    <article
+                      key={college.id}
+                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(59,130,246,0.12)] bg-gradient-to-br from-white to-[rgba(59,130,246,0.02)] shadow-[0_12px_26px_rgba(59,130,246,0.1)] transition hover:shadow-[0_18px_40px_rgba(59,130,246,0.15)]"
+                    >
+                      <div className="relative h-[190px] w-full bg-[rgba(59,130,246,0.08)]">
+                        <Image
+                          src={college.image}
+                          alt={`${college.name} campus`}
+                          fill
+                          sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
+                          className="object-cover"
+                        />
+                        <div className="absolute right-2 top-2 rounded-full bg-[linear-gradient(135deg,#3B82F6,#2563EB)] px-3 py-1.5 text-xs font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.4)] border border-[rgba(255,255,255,0.3)]">
+                          {college.match}
+                        </div>
+                      </div>
+                      <div className="flex h-full flex-col p-4">
+                        <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                          <MapPin className="size-3 text-[#3B82F6]" />
+                          {college.location || "Location not listed"}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {college.tags.map((tag: string, index: number) => (
+                            <span
+                              key={`${college.id}-${tag}-${index}`}
+                              className="rounded-full border border-[rgba(59,130,246,0.12)] bg-[rgba(59,130,246,0.04)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--text-muted)]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-auto flex items-center justify-between pt-4 text-[11px] text-[color:var(--text-muted)]">
+                          <span>
+                            Avg Cutoff{" "}
+                            <span className="font-semibold text-[color:var(--text-dark)]">{college.cutoff}</span>
+                          </span>
+                          <Link href={college.href} className="font-semibold text-[#3B82F6]">
+                            Details <ArrowUpRight className="ml-1 inline size-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-                <p className="mt-1 text-sm text-[color:var(--text-muted)]">Matches based on your selected course, category, and academic profile.</p>
-              </div>
-              <label className="flex items-center gap-2 rounded-xl border border-[rgba(37,99,235,0.12)] bg-[rgba(243,247,255,0.8)] px-4 py-3 text-sm text-[color:var(--text-muted)] md:min-w-[280px]">
-                <Search className="size-4 text-[color:var(--brand-primary)]" />
-                <input type="text" readOnly value="" placeholder="Filter results by name..." className="w-full bg-transparent outline-none placeholder:text-[color:var(--text-muted)]" />
-              </label>
-            </div>
+              </section>
+            )}
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              {seniorDisplayCards.length ? seniorDisplayCards.map((college, index) => {
-                const cardScore = Number.parseInt(college.match, 10) || college.score || 80;
-                const feeLabel = seniorFeeEstimates[index] || seniorFeeEstimates[seniorFeeEstimates.length - 1];
-                const ownershipBadge = index === 0 ? "Government" : college.tags.find((tag) => /government|autonomous|private/i.test(tag)) || "Autonomous";
-                return (
-                  <article key={college.id} className="overflow-hidden rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
-                    <div className="relative h-44 bg-[rgba(37,99,235,0.08)]">
-                      <Image src={college.image} alt={`${college.name} campus`} fill sizes="(min-width: 1024px) 420px, 100vw" className="object-cover" />
-                      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-[color:var(--brand-primary)] px-3 py-1 text-[10px] font-semibold text-white">{ownershipBadge}</span>
-                        {index < 2 ? <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[color:var(--brand-primary)]">{index === 0 ? "Top 1%" : "Top Pick"}</span> : null}
-                      </div>
-                    </div>
-                    <div className="p-4 md:p-5">
-                      <h3 className="text-2xl font-bold tracking-[-0.02em] text-[color:var(--text-dark)]">{college.name}</h3>
-                      <div className="mt-2 flex items-center gap-1 text-sm text-[color:var(--text-muted)]"><MapPin className="size-4" />{college.location || "Tamil Nadu"}</div>
-                      <div className="mt-4 rounded-2xl border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.78)] p-4">
-                        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]"><span>Your Score vs Cutoff</span><span className="text-[color:var(--brand-primary)]">{cardScore >= 90 ? "Reach Target" : "Likely Admission"}</span></div>
-                        <div className="mt-3 h-2 rounded-full bg-[rgba(37,99,235,0.12)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb,#38bdf8)]" style={{ width: `${Math.max(32, Math.min(cardScore, 100))}%` }} /></div>
-                        <div className="mt-2 flex justify-between text-[10px] font-semibold text-[color:var(--text-muted)]"><span>Start: {summaryCutoff || "0"}</span><span>End: {college.cutoff}</span></div>
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-2">{college.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-lg border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.7)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--text-muted)]">{tag}</span>)}</div>
-                      <div className="mt-4 border-t border-dashed border-[rgba(37,99,235,0.14)] pt-4"><div className="flex items-center justify-between gap-3 text-sm"><span className="text-[color:var(--text-muted)]">Estimated Fees:</span><span className="font-semibold text-[color:var(--text-dark)]">{feeLabel}</span></div></div>
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-                        <Link href={college.href} className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-white px-4 py-3 text-center text-sm font-semibold text-[color:var(--text-dark)]">Brochure</Link>
-                        <Link href={college.href} className="rounded-xl bg-[linear-gradient(90deg,#2563eb,#3b82f6)] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)]">Apply Now <ArrowUpRight className="ml-1 inline size-4" /></Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              }) : <div className="rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white p-6 text-sm text-[color:var(--text-muted)] shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:col-span-2">No matching colleges found for the selected course and cutoff.</div>}
-            </div>
+            {selectedLocation && nearbyColleges.length === 0 && (
+              <section className="rounded-[1.6rem] border border-[rgba(59,130,246,0.12)] bg-white p-6 text-center shadow-[0_18px_40px_rgba(59,130,246,0.08)]">
+                <MapPin className="mx-auto mb-3 size-8 text-[rgba(59,130,246,0.4)]" />
+                <h3 className="text-base font-semibold text-[color:var(--text-dark)]">
+                  No colleges found in {selectedLocation}
+                </h3>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                  {selectedCollegeType !== "all"
+                    ? `No ${selectedCollegeType} colleges found in this location with your cutoff score.`
+                    : "No colleges found in this location with your cutoff score."}
+                </p>
+              </section>
+            )}
 
-            <div className="mt-6 rounded-[1.5rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)]">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-[color:var(--text-muted)]">You have viewed the high-probability matches for your score.</p>
-                <div className="flex flex-wrap gap-3">
-                  <button type="button" className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--text-dark)]">Modify Marks</button>
-                  <button type="button" className="rounded-xl border border-[rgba(37,99,235,0.12)] bg-[rgba(243,247,255,0.8)] px-4 py-2.5 text-sm font-semibold text-[color:var(--text-dark)]">See Nearby States</button>
+            <section className="mt-10 rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                  <Target className="size-4 text-[color:var(--brand-primary)]" />
+                  {selectedLocation
+                    ? `Colleges Matching Your Cutoff in ${selectedLocation}`
+                    : "Colleges Matching Your Cutoff"}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAllMatching(!showAllMatching)}
+                  className="rounded-full border border-[rgba(30,79,163,0.3)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(30,79,163,0.08)]"
+                >
+                  {showAllMatching ? "Show Less" : "View All Matching"}
+                </button>
               </div>
-            </div>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                {selectedLocation
+                  ? `Colleges aligned with your cutoff in ${selectedLocation}`
+                  : "Colleges aligned with your current estimated score"}
+              </p>
 
-            <section className="mt-8 rounded-[1.75rem] border border-[rgba(37,99,235,0.1)] bg-white p-5 shadow-[0_18px_40px_rgba(37,99,235,0.08)] md:p-6">
-              <div className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">Recommended Competitive Exams</div>
               <div className="mt-5 grid gap-4 md:grid-cols-3">
-                {seniorExamCards.map((exam, index) => (
-                  <div key={exam.title} className="rounded-[1.3rem] border border-[rgba(37,99,235,0.1)] bg-[rgba(243,247,255,0.8)] p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#60a5fa)] text-white"><GraduationCap className="size-5" /></div>
-                      <div>
-                        <div className="text-base font-semibold text-[color:var(--text-dark)]">{exam.title}</div>
-                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">{index === 0 ? "May 2024" : index === 1 ? "April 2024" : "June 2024"}</div>
-                        <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">{index === 0 ? "Registration Open" : index === 1 ? "Coming Soon" : "Active"}</div>
+                {(showAllMatching ? filteredMatchingCards : filteredMatchingCards.slice(0, 3)).length ? (
+                  (showAllMatching ? filteredMatchingCards : filteredMatchingCards.slice(0, 3)).map((college) => (
+                    <article
+                      key={college.id}
+                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_12px_26px_rgba(15,76,129,0.08)]"
+                    >
+                      <div className="relative h-[190px] w-full bg-[rgba(15,76,129,0.08)]">
+                        <Image
+                          src={college.image}
+                          alt={`${college.name} campus`}
+                          fill
+                          sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
+                          className="object-cover"
+                        />
+                        <div className="absolute right-2 top-2 rounded-full bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-1.5 text-xs font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.4)] border border-[rgba(255,255,255,0.3)]">
+                          {college.match}
+                        </div>
                       </div>
+                      <div className="flex h-full flex-col p-4">
+                        <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                          <MapPin className="size-3" />
+                          {college.location || "Location not listed"}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {college.tags.map((tag: string, index: number) => (
+                            <span
+                              key={`${college.id}-${tag}-${index}`}
+                              className="rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--text-muted)]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-auto flex items-center justify-between pt-4 text-[11px] text-[color:var(--text-muted)]">
+                          <span>
+                            Avg Cutoff{" "}
+                            <span className="font-semibold text-[color:var(--text-dark)]">{college.cutoff}</span>
+                          </span>
+                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
+                            Details <ArrowUpRight className="ml-1 inline size-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : selectedLocation ? (
+                  <div className="col-span-full rounded-2xl border-2 border-dashed border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.05)] p-8 text-center">
+                    <MapPin className="mx-auto mb-3 size-8 text-[rgba(59,130,246,0.4)]" />
+                    <h3 className="text-base font-semibold text-[color:var(--text-dark)]">
+                      No colleges found in {selectedLocation}
+                    </h3>
+                    <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                      No colleges found in this location for your cutoff score.{" "}
+                      {selectedCollegeTypeFilter !== "all" && `Try selecting "All Colleges" instead of just ${selectedCollegeTypeFilter} colleges.`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="col-span-full text-center text-sm text-[color:var(--text-muted)]">
+                    No matching colleges found for the selected course and cutoff.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="mt-10 rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
+              <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                <Award className="size-4 text-[color:var(--brand-primary)]" />
+                Best Picks For You
+              </div>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                Top recommended colleges based on your cutoff score
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {(() => {
+                  const bestMarkedColleges = matchingCards.filter((college: any) => college.isBestCollege);
+                  const displayCards = bestMarkedColleges.length > 0 ? bestMarkedColleges : matchingCards.slice(0, 3);
+                  return displayCards.length ? (
+                    displayCards.map((college: any) => (
+                    <article
+                      key={college.id}
+                      className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(95,160,230,0.16)] bg-gradient-to-br from-white to-[rgba(95,160,230,0.04)] shadow-[0_12px_26px_rgba(95,160,230,0.12)]"
+                    >
+                      <div className="absolute -right-2 -top-2 rounded-full bg-[linear-gradient(135deg,#fbbf24,#f97316)] px-3 py-1 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(251,191,36,0.3)]">
+                        ⭐ Best
+                      </div>
+                      <div className="relative h-[190px] w-full bg-[rgba(30,79,163,0.08)]">
+                        <Image
+                          src={college.image}
+                          alt={`${college.name} campus`}
+                          fill
+                          sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex h-full flex-col p-4">
+                        <h3 className="pr-6 text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                          <MapPin className="size-3" />
+                          {college.location || "Location not listed"}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {college.tags.slice(0, 2).map((tag: string, index: number) => (
+                            <span
+                              key={`${college.id}-${tag}-${index}`}
+                              className="rounded-full border border-[rgba(95,160,230,0.16)] bg-[rgba(95,160,230,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--brand-primary)]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-auto flex items-center justify-between border-t border-[rgba(30,79,163,0.08)] pt-3 text-[11px] text-[color:var(--text-muted)]">
+                          <span className="font-semibold text-[color:var(--text-dark)]">{college.match}</span>
+                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
+                            View <ArrowUpRight className="ml-1 inline size-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                    ))
+                  ) : (
+                    <p className="col-span-full text-sm text-[color:var(--text-muted)]">
+                      No colleges yet. Enter your cutoff to see recommendations.
+                    </p>
+                  );
+                })()}
+              </div>
+            </section>
+
+            <section className="hidden mt-10 rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
+              <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                <Target className="size-4 text-[color:var(--brand-primary)]" />
+                Counselling Steps
+              </div>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                Follow these steps to secure your college seat
+              </p>
+
+              <div className="mt-6 space-y-4">
+                {[
+                  { step: 1, title: "Register for Counselling", desc: "Sign up with your exam score and category on official portal" },
+                  { step: 2, title: "Fill College Choices", desc: "Select colleges in your preferred order of merit" },
+                  { step: 3, title: "Lock Preferences", desc: "Confirm and lock your college choice order" },
+                  { step: 4, title: "Seat Allotment", desc: "Check allotment results based on cutoff and merit" },
+                  { step: 5, title: "Report to College", desc: "Complete verification and report at allotted college" },
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3B82F6,#60A5FA)] text-sm font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.3)]">
+                      {item.step}
+                    </div>
+                    <div className="flex-1 py-1">
+                      <div className="text-sm font-semibold text-[color:var(--text-dark)]">{item.title}</div>
+                      <p className="mt-1 text-xs text-[color:var(--text-muted)]">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
+
+              <div className="mt-6 rounded-2xl border border-[rgba(30,79,163,0.12)] bg-[rgba(59,130,246,0.05)] p-4">
+                <p className="text-xs font-semibold text-[color:var(--text-dark)]">
+                  ℹ️ Time Management Tip
+                </p>
+                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                  Plan ahead! Counselling rounds typically happen within 2-4 weeks of exam results. Keep your documents ready.
+                </p>
+              </div>
             </section>
-          </div>
-        </section>
+
+            {summaryLevel === "11" ? (
+              <section className="rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-[rgba(228,237,255,0.7)] p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(30,79,163,0.12)]">
+                        <Target className="size-4 text-[color:rgb(30,79,163)]" />
+                      </div>
+                      Aim Higher: Tier 1 Targets
+                    </div>
+                    <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                      Boost your marks to unlock these premium institutions
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                  >
+                    Get Study Roadmap
+                  </button>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {aimHigherCards.length ? (
+                    aimHigherCards.map((college) => (
+                      <article
+                        key={college.id}
+                        className="rounded-2xl border border-[rgba(15,76,129,0.1)] bg-white p-4 shadow-[0_10px_24px_rgba(15,76,129,0.06)]"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
+                            <Image
+                              src={college.image}
+                              alt={college.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</div>
+                            <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                              <MapPin className="size-3" />
+                              {college.location || "Location not listed"}
+                            </div>
+                            <span className="mt-2 inline-flex rounded-full bg-[rgba(30,79,163,0.14)] px-2.5 py-1 text-[10px] font-semibold text-[color:#5FA0E6]">
+                              {college.require}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between text-[11px] text-[color:var(--text-muted)]">
+                          <span className="font-semibold text-[color:var(--text-dark)]">Need {college.need}</span>
+                          <Link href={college.href} className="font-semibold text-[color:var(--brand-primary)]">
+                            Preparation Guide
+                          </Link>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[color:var(--text-muted)]">
+                      You are already in range for the top colleges listed for your selection.
+                    </p>
+                  )}
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.08)]">
+                      <Image src="/student.png" alt="Mentor" fill sizes="40px" className="object-cover" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-[color:var(--text-dark)]">Academic Improvement Plan</div>
+                      <div className="text-xs text-[color:var(--text-muted)]">
+                        {closestAimGapText
+                          ? `Our mentors can help you bridge the ${closestAimGapText} mark gap.`
+                          : "Our mentors can help you set a goal-based improvement plan."}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full bg-[color:var(--brand-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
+                  >
+                    Get Study Roadmap
+                  </button>
+                </div>
+              </section>
+            ) : null}
+        </div>
       </div>
     </section>
   );
