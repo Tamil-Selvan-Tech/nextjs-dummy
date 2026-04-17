@@ -396,13 +396,13 @@ export function HomePage({
         label: course.course,
         href: `/explore/course/${encodeURIComponent(course.course)}`,
         type: "course",
-        keywords: [course.specialization, course.courseType, course.stream],
+        keywords: [course.specialization, course.courseType, course.stream ?? ''],
       });
       pushValue({
         label: course.specialization,
         href: `/explore/course/${encodeURIComponent(course.course)}`,
         type: "course",
-        keywords: [course.course, course.stream],
+        keywords: [course.course, course.stream ?? ''],
       });
     });
 
