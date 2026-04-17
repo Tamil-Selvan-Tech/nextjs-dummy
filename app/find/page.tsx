@@ -68,7 +68,7 @@ export default function FindPage() {
     }
     const cutoff = maths + physics / 2 + chemistry / 2;
     return cutoff.toFixed(1);
-  }, [chemistryMarks, isSeniorLevel, mathsMarks, physicsMarks, selectedDegree]);
+  }, [chemistryMarks, isSeniorLevel, isTneaSelected, mathsMarks, physicsMarks, selectedDegree]);
   const paramedicalTotal = useMemo(() => {
     if (!isParamedical || !isSeniorLevel) return "";
     const physics = Number(physicsMarks);
@@ -80,13 +80,20 @@ export default function FindPage() {
     const total = physics + chemistry + biology;
     return total.toFixed(0);
   }, [biologyMarks, chemistryMarks, isParamedical, isSeniorLevel, physicsMarks]);
-  const paramedicalCutoffPercent = useMemo(() => {
+  const paramedicalCutoff = useMemo(() => {
     if (!paramedicalTotal) return "";
     const total = Number(paramedicalTotal);
     if (!Number.isFinite(total)) return "";
-    const percent = (total / 300) * 100;
-    return percent.toFixed(1);
+    const cutoff = total / 2;
+    return cutoff.toFixed(1);
   }, [paramedicalTotal]);
+  const paramedicalCutoffPercent = useMemo(() => {
+    if (!paramedicalCutoff) return "";
+    const cutoff = Number(paramedicalCutoff);
+    if (!Number.isFinite(cutoff)) return "";
+    const percent = (cutoff / 200) * 100;
+    return percent.toFixed(1);
+  }, [paramedicalCutoff]);
   const lawBestThreeTotal = useMemo(() => {
     if (!isLaw || !isSeniorLevel || !isLawMarkBased) return "0";
     const first = Number(lawSubjectOne);
@@ -235,7 +242,7 @@ export default function FindPage() {
                 if (physicsMarks) params.set("physics", physicsMarks);
                 if (chemistryMarks) params.set("chemistry", chemistryMarks);
                 if (biologyMarks) params.set("biology", biologyMarks);
-                if (paramedicalCutoffPercent) params.set("cutoff", paramedicalCutoffPercent);
+                if (paramedicalCutoff) params.set("cutoff", paramedicalCutoff);
               }
               if (selectedDegree === "B.Arch" && isSeniorLevel) {
                 if (arch12thMarks) params.set("marks12th", arch12thMarks);
@@ -909,15 +916,34 @@ export default function FindPage() {
                   <div className="md:col-span-2">
                     <div className="rounded-[1rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(239,246,255,0.88))] px-4 py-3 text-xs text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(29,78,216,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(29,78,216,0.14)]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-dark)]">
-                        Cutoff Calculation
+                        Paramedical Cutoff Calculation (Tamil Nadu)
                       </div>
-                      <div className="mt-2">
-                        Cutoff Percentage = (Physics + Chemistry + Biology) / 300 × 100
+                      <div className="mt-2">Step 1: Add Physics, Chemistry, and Biology marks (Total out of 300)</div>
+                      <div className="mt-1">Step 2: Divide the total by 2</div>
+                      <div className="mt-2">Formula: Cutoff = (Physics + Chemistry + Biology) / 2</div>
+                      <div className="mt-3 rounded-xl border border-[rgba(29,78,216,0.14)] bg-white/80 px-3 py-2">
+                        <div className="text-sm font-semibold text-[color:var(--brand-primary)]">
+                          {paramedicalTotal
+                            ? `Total Marks: ${paramedicalTotal} / 300`
+                            : "Total Marks: ___ / 300"}
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-[color:var(--brand-primary)]">
+                          {paramedicalCutoff
+                            ? `Cutoff Mark: ${paramedicalCutoff} / 200`
+                            : "Cutoff Mark: ___ / 200"}
+                        </div>
+                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">
+                          {paramedicalCutoffPercent
+                            ? `Percentage: ${paramedicalCutoffPercent}%`
+                            : "Percentage: (Cutoff / 200) × 100"}
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm font-semibold text-[color:var(--brand-primary)]">
-                        {paramedicalCutoffPercent
-                          ? `Calculated Cutoff: ${paramedicalCutoffPercent}%`
-                          : "Enter marks to calculate"}
+                      <div className="mt-3 rounded-xl border border-dashed border-[rgba(15,76,129,0.16)] bg-[rgba(255,255,255,0.72)] px-3 py-2 text-[11px] leading-5 text-[color:var(--text-muted)]">
+                        Example: Physics = 100, Chemistry = 100, Biology = 100
+                        <br />
+                        Total = 300 / 300
+                        <br />
+                        Cutoff = 150 / 200
                       </div>
                     </div>
                   </div>

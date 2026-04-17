@@ -12,6 +12,7 @@ import {
   FileText,
   GraduationCap,
   Info,
+  Landmark,
   Lightbulb,
   MapPin,
   Scale,
@@ -70,6 +71,23 @@ type JuniorConfig = {
   ctaButton: string;
 };
 
+const getCutoffScale = (degree: string, admissionType: string) => {
+  if (degree === "Medical") return 720;
+  if (degree === "B.Arch") return 400;
+  if (degree === "Law") {
+    return admissionType === "CLAT" ? 125 : 300;
+  }
+  if (degree === "Engineering") return 200;
+  if (degree === "Agriculture") return 200;
+  if (degree === "Paramedical") return 200;
+  return 200;
+};
+
+const formatScoreDisplay = (value: number) => {
+  if (!Number.isFinite(value)) return "";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+};
+
 const LEVEL11_EXAMS_BY_DEGREE: Record<string, string[]> = {
   Engineering: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE", "TNEA Counseling"],
   Medical: ["NEET UG", "AIIMS (via NEET)", "JIPMER (via NEET)", "State Medical Counseling"],
@@ -103,6 +121,301 @@ const DEGREE_STREAM_MAP: Record<string, string[]> = {
   "B.Arch": ["Architecture", "Design"],
 };
 
+type DegreeOption = {
+  name: "Engineering" | "Medical" | "Law" | "B.Arch" | "Arts & Science" | "Agriculture" | "Paramedical";
+  accent: string;
+  accentSoft: string;
+  border: string;
+  icon: LucideIcon;
+  exam: string;
+  highlight: string;
+};
+
+type EligibilitySection = {
+  title: string;
+  icon: LucideIcon;
+  points: string[];
+};
+
+type EligibilityConfig = {
+  degree: DegreeOption["name"];
+  accent: string;
+  accentSoft: string;
+  border: string;
+  icon: LucideIcon;
+  headline: string;
+  summary: string;
+  exams: string[];
+  highlight: string;
+  levelMessage: string;
+  levelLabel: string;
+  sections: EligibilitySection[];
+};
+
+type MatchingCollegeCard = {
+  id: string;
+  name: string;
+  location: string;
+  cutoff: string;
+  match: string;
+  image: string;
+  tags: string[];
+  href: string;
+  score: number;
+  isBestCollege?: boolean;
+};
+
+const DEGREE_OPTIONS: DegreeOption[] = [
+  {
+    name: "Engineering",
+    accent: "#2563eb",
+    accentSoft: "rgba(37,99,235,0.1)",
+    border: "rgba(37,99,235,0.22)",
+    icon: Brain,
+    exam: "JEE Track",
+    highlight: "JEE Main + JEE Advanced pathway",
+  },
+  {
+    name: "Medical",
+    accent: "#dc2626",
+    accentSoft: "rgba(220,38,38,0.1)",
+    border: "rgba(220,38,38,0.22)",
+    icon: Stethoscope,
+    exam: "NEET Track",
+    highlight: "NEET-UG mandatory eligibility",
+  },
+  {
+    name: "Law",
+    accent: "#7c3aed",
+    accentSoft: "rgba(124,58,237,0.1)",
+    border: "rgba(124,58,237,0.22)",
+    icon: Scale,
+    exam: "CLAT Track",
+    highlight: "CLAT roadmap for 5-year LLB",
+  },
+  {
+    name: "B.Arch",
+    accent: "#ea580c",
+    accentSoft: "rgba(234,88,12,0.1)",
+    border: "rgba(234,88,12,0.22)",
+    icon: Landmark,
+    exam: "NATA Track",
+    highlight: "NATA and JEE Paper 2 options",
+  },
+  {
+    name: "Arts & Science",
+    accent: "#0f766e",
+    accentSoft: "rgba(15,118,110,0.1)",
+    border: "rgba(15,118,110,0.22)",
+    icon: BookOpen,
+    exam: "CUET Track",
+    highlight: "CUET and university admission pathway",
+  },
+  {
+    name: "Agriculture",
+    accent: "#15803d",
+    accentSoft: "rgba(21,128,61,0.1)",
+    border: "rgba(21,128,61,0.22)",
+    icon: Target,
+    exam: "ICAR Track",
+    highlight: "ICAR and state agriculture counseling route",
+  },
+  {
+    name: "Paramedical",
+    accent: "#0891b2",
+    accentSoft: "rgba(8,145,178,0.1)",
+    border: "rgba(8,145,178,0.22)",
+    icon: Stethoscope,
+    exam: "Allied Health Track",
+    highlight: "State counseling and allied health entrance route",
+  },
+];
+
+const ELIGIBILITY_CONTENT: Record<DegreeOption["name"], Omit<EligibilityConfig, "levelMessage" | "levelLabel">> = {
+  Engineering: {
+    degree: "Engineering",
+    accent: "#2563eb",
+    accentSoft: "rgba(37,99,235,0.1)",
+    border: "rgba(37,99,235,0.22)",
+    icon: Brain,
+    headline: "Engineering eligibility roadmap",
+    summary: "Choose PCM in senior secondary and track both JEE Main and JEE Advanced if IITs are your target.",
+    exams: ["JEE Main", "JEE Advanced", "IIT", "NIT"],
+    highlight: "Top-performing JEE Main students unlock the IIT route through JEE Advanced.",
+    sections: [
+      {
+        title: "JEE Main",
+        icon: FileText,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream requirement: Physics + Chemistry + Mathematics (PCM) compulsory",
+          "Minimum marks: No fixed percentage required, passing 12th is enough",
+          "Age limit: No strict upper age limit as per NTA rules",
+          "Purpose: Admission into NITs, IIITs, GFTIs, and other engineering colleges",
+        ],
+      },
+      {
+        title: "JEE Advanced",
+        icon: Award,
+        points: [
+          "Eligibility: Must qualify JEE Main first",
+          "Rank requirement: Top ~2.5 lakh JEE Main rank holders become eligible",
+          "Stream requirement: PCM compulsory in 12th",
+          "Purpose: Admission into IITs",
+          "Note: Only top-performing students in JEE Main can attempt this exam",
+        ],
+      },
+    ],
+  },
+  Medical: {
+    degree: "Medical",
+    accent: "#dc2626",
+    accentSoft: "rgba(220,38,38,0.1)",
+    border: "rgba(220,38,38,0.22)",
+    icon: Stethoscope,
+    headline: "Medical eligibility roadmap",
+    summary: "Medical admissions revolve around PCB subjects, NEET qualification, and category-based minimum marks.",
+    exams: ["NEET", "MBBS", "BDS", "AIQ"],
+    highlight: "NEET-UG qualification is the key gateway for MBBS, BDS, and allied medical admissions.",
+    sections: [
+      {
+        title: "NEET Eligibility",
+        icon: Stethoscope,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream requirement: Physics + Chemistry + Biology (PCB) compulsory",
+          "Minimum marks: General 50% in PCB, OBC/SC/ST 40%, PwD 45%",
+          "Age requirement: Minimum 17 years, currently no upper age limit",
+          "Exam requirement: NEET-UG qualification is mandatory for medical admission",
+          "Courses eligible: MBBS, BDS, BAMS / BHMS, and selected veterinary seats",
+        ],
+      },
+    ],
+  },
+  Law: {
+    degree: "Law",
+    accent: "#7c3aed",
+    accentSoft: "rgba(124,58,237,0.1)",
+    border: "rgba(124,58,237,0.22)",
+    icon: Scale,
+    headline: "Law eligibility roadmap",
+    summary: "Law aspirants can come from any stream, but CLAT readiness and strong language aptitude matter most.",
+    exams: ["CLAT", "NLUs", "5-Year LLB", "AILET"],
+    highlight: "Students from Science, Commerce, or Arts can all aim for CLAT and NLU admissions.",
+    sections: [
+      {
+        title: "CLAT Eligibility",
+        icon: Scale,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream: Any stream allowed - Science, Commerce, or Arts",
+          "Minimum marks: General around 45% in 12th, SC/ST around 40%",
+          "Age limit: No upper age limit",
+          "Purpose: Admission into National Law Universities (NLUs)",
+          "Courses: 5-year integrated LLB programs",
+        ],
+      },
+    ],
+  },
+  "B.Arch": {
+    degree: "B.Arch",
+    accent: "#ea580c",
+    accentSoft: "rgba(234,88,12,0.1)",
+    border: "rgba(234,88,12,0.22)",
+    icon: Landmark,
+    headline: "Architecture eligibility roadmap",
+    summary: "Architecture admissions usually expect Mathematics in 12th and NATA or JEE Paper 2 performance.",
+    exams: ["NATA", "JEE Paper 2", "B.Arch", "Design Aptitude"],
+    highlight: "Many B.Arch colleges accept NATA, while some also consider JEE Main Paper 2.",
+    sections: [
+      {
+        title: "NATA Eligibility",
+        icon: Landmark,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream: Maths is compulsory, with PCM or PM group preferred",
+          "Minimum marks: Around 50% in 12th, varies by college",
+          "Age limit: No strict age restriction",
+          "Purpose: Admission into B.Arch programs",
+          "Note: Some colleges may also consider JEE Paper 2 instead of NATA",
+        ],
+      },
+    ],
+  },
+  "Arts & Science": {
+    degree: "Arts & Science",
+    accent: "#0f766e",
+    accentSoft: "rgba(15,118,110,0.1)",
+    border: "rgba(15,118,110,0.22)",
+    icon: BookOpen,
+    headline: "Arts & Science eligibility roadmap",
+    summary: "Admissions are typically based on 12th marks, CUET scores, and college-specific cutoffs by course.",
+    exams: ["CUET UG", "State University Admissions", "Merit Quota", "Subject-Based Selection"],
+    highlight: "Choose your core subjects early and build strong marks in Class 11 and 12 for top admissions.",
+    sections: [
+      {
+        title: "CUET / Merit Eligibility",
+        icon: BookOpen,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream: Science, Commerce, and Arts streams are all eligible based on course",
+          "Minimum marks: Usually 40% to 60% depending on university and reservation category",
+          "Exam route: CUET UG for central universities; many state colleges follow 12th merit",
+          "Purpose: Admission into BA, BSc, BCom, BBA, BCA, and related UG courses",
+        ],
+      },
+    ],
+  },
+  Agriculture: {
+    degree: "Agriculture",
+    accent: "#15803d",
+    accentSoft: "rgba(21,128,61,0.1)",
+    border: "rgba(21,128,61,0.22)",
+    icon: Target,
+    headline: "Agriculture eligibility roadmap",
+    summary: "Agriculture admissions prefer PCB/PCM backgrounds and are usually routed through ICAR or state counseling.",
+    exams: ["ICAR AIEEA", "State Agri Entrance", "University Counseling", "BSc Agriculture"],
+    highlight: "ICAR and state quotas open pathways into top agriculture universities and allied domains.",
+    sections: [
+      {
+        title: "Agriculture Entrance Eligibility",
+        icon: Target,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream: PCB or PCM accepted in most institutions",
+          "Minimum marks: Typically around 50% aggregate, varies by category and institute",
+          "Exam route: ICAR AIEEA (UG) and state agriculture entrance or counseling",
+          "Courses eligible: BSc Agriculture, Horticulture, Forestry, and Agri Engineering tracks",
+        ],
+      },
+    ],
+  },
+  Paramedical: {
+    degree: "Paramedical",
+    accent: "#0891b2",
+    accentSoft: "rgba(8,145,178,0.1)",
+    border: "rgba(8,145,178,0.22)",
+    icon: Stethoscope,
+    headline: "Paramedical eligibility roadmap",
+    summary: "Paramedical admissions are based on PCB/PCM in 12th plus state-level counseling or institute entrance rules.",
+    exams: ["State Paramedical Entrance", "Allied Health Counseling", "Merit Admission", "BSc Allied Health"],
+    highlight: "Strong biology and chemistry scores improve admission chances in top allied health programs.",
+    sections: [
+      {
+        title: "Paramedical Admission Eligibility",
+        icon: Stethoscope,
+        points: [
+          "Eligibility: 12th pass / appearing students",
+          "Stream: PCB is preferred; some programs also accept PCM",
+          "Minimum marks: Usually 45% to 50% depending on course and category",
+          "Exam route: State paramedical entrance, counseling, or direct merit process",
+          "Courses eligible: BPT, BOT, BMLT, Radiology, and other allied health sciences",
+        ],
+      },
+    ],
+  },
+};
+
 export function CutoffClient({
   selectedLevel,
   selectedDegree,
@@ -116,7 +429,8 @@ export function CutoffClient({
   courses,
 }: CutoffClientProps) {
   const summaryLevel = selectedLevel || "11";
-  const summaryDegree = selectedDegree || "Engineering";
+  const summaryDegree =
+    (DEGREE_OPTIONS.find((option) => option.name === selectedDegree)?.name as DegreeOption["name"]) || "Engineering";
   const summaryCourse = selectedCourse || "-";
   const summarySpecialization = selectedSpecialization || "-";
   
@@ -131,17 +445,29 @@ export function CutoffClient({
   });
   
   // Use userMarks if available, otherwise use enteredCutoff
-  const summaryCutoff = userMarks !== null ? String(userMarks) : enteredCutoff || (summaryDegree === "Law" ? "0" : "184.5");
-  const cutoffMax =
-    summaryDegree === "Medical"
-      ? 720
-      : summaryDegree === "Paramedical"
-        ? 100
-        : summaryDegree === "Law"
-          ? selectedAdmissionType === "CLAT"
-            ? 120
-            : 300
-          : 200;
+  const summaryCutoff =
+    userMarks !== null ? String(userMarks) : enteredCutoff || (summaryDegree === "Law" ? "0" : "184.5");
+  const cutoffMax = getCutoffScale(summaryDegree, selectedAdmissionType);
+  const parsedSummaryCutoff = parseCutoffValue(summaryCutoff);
+  const estimatedCutoffValue =
+    userMarks ??
+    (parsedSummaryCutoff
+      ? Math.max(parsedSummaryCutoff.start, parsedSummaryCutoff.end)
+      : Number(summaryCutoff));
+  const normalizedEstimatedCutoff = Number.isFinite(estimatedCutoffValue)
+    ? Math.max(0, Math.min(estimatedCutoffValue, cutoffMax))
+    : NaN;
+  const estimatedCutoffDisplay = Number.isFinite(normalizedEstimatedCutoff)
+    ? formatScoreDisplay(normalizedEstimatedCutoff)
+    : "--";
+  const levelBadgeLabel =
+    summaryLevel === "11" ? "11th Grade" : summaryLevel === "12" ? "12th Grade" : `Level ${summaryLevel}`;
+  const percentileTag = useMemo(() => {
+    if (!Number.isFinite(normalizedEstimatedCutoff) || cutoffMax <= 0) return "";
+    const ratio = normalizedEstimatedCutoff / cutoffMax;
+    const topPercent = Math.max(1, Math.min(99, Math.round((1 - ratio) * 100)));
+    return `Top ${topPercent}% Percentile`;
+  }, [cutoffMax, normalizedEstimatedCutoff]);
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(summaryLevel);
   const resolveCategoryKey = (value: string) => {
     const normalized = normalizeText(value);
@@ -1088,20 +1414,7 @@ export function CutoffClient({
       return false;
     };
 
-    const matchingMap = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        location: string;
-        cutoff: string;
-        match: string;
-        image: string;
-        tags: string[];
-        href: string;
-        score: number;
-      }
-    >();
+    const matchingMap = new Map<string, MatchingCollegeCard>();
     const aimHigherMap = new Map<
       string,
       {
@@ -1209,7 +1522,7 @@ export function CutoffClient({
 
         const existing = matchingMap.get(college.id);
         if (!existing || score > existing.score) {
-          const cardData: any = {
+          const cardData = {
             id: college.id,
             name: college.name,
             location: [college.district, college.state].filter(Boolean).join(", "),
@@ -1219,7 +1532,7 @@ export function CutoffClient({
             tags,
             href: `/college/${college.id}`,
             score,
-            isBestCollege: (college as any).isBestCollege,
+            isBestCollege: Boolean(college.isBestCollege),
           };
           matchingMap.set(college.id, cardData);
         }
@@ -1261,37 +1574,23 @@ export function CutoffClient({
     )
   ).sort();
 
-  // Filter colleges by selected location
-  const nearbyColleges = useMemo(() => {
-    if (!selectedLocation) return [];
-    let filtered = matchingCards.filter(
-      (college: any) =>
-        college.location.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-        colleges.find((c) => c.id === college.id)?.district?.toLowerCase() === selectedLocation.toLowerCase()
-    );
-
-    // Filter by college type
-    if (selectedCollegeTypeFilter !== "all") {
-      filtered = filtered.filter((college: any) => {
-        const collegeData = colleges.find((c) => c.id === college.id);
-        const ownership = collegeData?.ownershipType?.toLowerCase() || "";
-        if (selectedCollegeTypeFilter === "government") {
-          return ownership.includes("government") || ownership.includes("govt");
-        } else if (selectedCollegeTypeFilter === "private") {
-          return ownership.includes("private");
-        }
-        return true;
-      });
-    }
-
-    return filtered;
-  }, [matchingCards, selectedLocation, selectedCollegeTypeFilter, colleges]);
-
   // Filter locations based on search input
   const filteredLocations = useMemo(() => {
     const searchLower = locationSearchInput.toLowerCase();
     return uniqueLocations.filter((loc) => loc.toLowerCase().includes(searchLower));
   }, [locationSearchInput, uniqueLocations]);
+
+  const activeDegreeOption =
+    DEGREE_OPTIONS.find((option) => option.name === summaryDegree) || DEGREE_OPTIONS[0];
+  const activeEligibility = useMemo<EligibilityConfig>(() => {
+    const baseConfig = ELIGIBILITY_CONTENT[summaryDegree as DegreeOption["name"]] || ELIGIBILITY_CONTENT.Engineering;
+    return {
+      ...baseConfig,
+      levelLabel: `Class ${summaryLevel} guidance`,
+      levelMessage: `For Class ${summaryLevel}, this degree-specific exam eligibility roadmap highlights the right entrance path and preparation focus.`,
+    };
+  }, [summaryDegree, summaryLevel]);
+  const ActiveEligibilityIcon = activeEligibility.icon;
 
   // Apply location and college type filtering to matching colleges
   const filteredMatchingCards = useMemo(() => {
@@ -1300,7 +1599,7 @@ export function CutoffClient({
     // Apply location filter
     if (selectedLocation) {
       filtered = filtered.filter(
-        (college: any) =>
+        (college: MatchingCollegeCard) =>
           college.location.toLowerCase().includes(selectedLocation.toLowerCase()) ||
           colleges.find((c) => c.id === college.id)?.district?.toLowerCase() === selectedLocation.toLowerCase()
       );
@@ -1308,7 +1607,7 @@ export function CutoffClient({
 
     // Apply college type filter
     if (selectedCollegeTypeFilter !== "all" && selectedLocation) {
-      filtered = filtered.filter((college: any) => {
+      filtered = filtered.filter((college: MatchingCollegeCard) => {
         const collegeData = colleges.find((c) => c.id === college.id);
         const ownership = collegeData?.ownershipType?.toLowerCase() || "";
         if (selectedCollegeTypeFilter === "government") {
@@ -1321,7 +1620,7 @@ export function CutoffClient({
     }
 
     // Remove duplicates by ID
-    return Array.from(new Map(filtered.map((c: any) => [c.id, c])).values());
+    return Array.from(new Map(filtered.map((c: MatchingCollegeCard) => [c.id, c])).values());
   }, [matchingCards, selectedLocation, selectedCollegeTypeFilter, colleges]);
 
   if (isJuniorLevel) {
@@ -1372,6 +1671,90 @@ export function CutoffClient({
                   sizes="(min-width: 1024px) 420px, 100vw"
                   className="object-cover"
                 />
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-6 overflow-hidden rounded-[1.7rem] border p-5 shadow-[0_18px_38px_rgba(15,76,129,0.08)] transition duration-300 md:p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)] shadow-[0_10px_22px_rgba(15,76,129,0.06)]">
+                  <Lightbulb className="size-3.5" />
+                  Exam Eligibility
+                </div>
+                <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">
+                  {summaryDegree} exam eligibility
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)]">
+                  This section shows exam eligibility details mapped to the degree selected in the cutoff form.
+                </p>
+              </div>
+              <div
+                className="rounded-full px-4 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,76,129,0.08)]"
+                style={{
+                  color: activeDegreeOption.accent,
+                  backgroundColor: activeDegreeOption.accentSoft,
+                }}
+              >
+                {activeEligibility.levelLabel}
+              </div>
+            </div>
+
+            <div
+              className="mt-5 overflow-hidden rounded-[1.5rem] border p-5 shadow-[0_14px_28px_rgba(15,76,129,0.08)]"
+              style={{
+                borderColor: activeEligibility.border,
+                background: `linear-gradient(180deg, ${activeEligibility.accentSoft}, rgba(255,255,255,0.98))`,
+              }}
+            >
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-3xl">
+                  <div
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                    style={{ backgroundColor: "#fff", color: activeEligibility.accent }}
+                  >
+                    <ActiveEligibilityIcon className="size-3.5" />
+                    {activeEligibility.degree} Eligibility Panel
+                  </div>
+                  <h3 className="mt-3 text-xl font-bold tracking-[-0.02em] text-[color:var(--text-dark)]">
+                    {activeEligibility.headline}
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-[color:var(--text-muted)]">{activeEligibility.summary}</p>
+                  <p className="mt-3 rounded-[1.1rem] bg-white/80 px-4 py-3 text-sm font-medium text-[color:var(--text-dark)]">
+                    {activeEligibility.levelMessage}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {activeEligibility.exams.map((exam) => (
+                      <span
+                        key={exam}
+                        className="rounded-full border px-3 py-1.5 text-[11px] font-semibold"
+                        style={{
+                          color: activeEligibility.accent,
+                          borderColor: activeEligibility.border,
+                          backgroundColor: "#fff",
+                        }}
+                      >
+                        {exam}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="w-full max-w-sm rounded-[1.2rem] border border-white/70 bg-white/85 p-4 shadow-[0_14px_28px_rgba(15,76,129,0.06)]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                    <Info className="size-4" style={{ color: activeEligibility.accent }} />
+                    Quick Snapshot
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-[color:var(--text-muted)]">{activeEligibility.highlight}</p>
+                  <div className="mt-4 space-y-2">
+                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,250,252,0.95)] px-3 py-2.5 text-xs font-semibold text-[color:var(--text-dark)]">
+                      Class Focus: Foundation + stream awareness
+                    </div>
+                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,250,252,0.95)] px-3 py-2.5 text-xs font-semibold text-[color:var(--text-dark)]">
+                      Target Exam: {activeDegreeOption.exam}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -1486,7 +1869,7 @@ export function CutoffClient({
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-[rgba(95,160,230,0.12)]">
                       <div
-                        className="h-2 rounded-full bg-[color:var(--brand-primary)]"
+                        className="h-2 rounded-full bg-[linear-gradient(90deg,#22c55e,#16a34a)]"
                         style={{ width: band.progress }}
                       />
                     </div>
@@ -1647,6 +2030,166 @@ export function CutoffClient({
       <Navbar />
       <div className="page-container-full py-10 md:py-12">
         <div className="space-y-6">
+            <section className="relative overflow-hidden rounded-[2.4rem] border border-[rgba(147,197,253,0.7)] bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.95)_0%,rgba(56,189,248,0.9)_26%,rgba(37,99,235,0.96)_68%,rgba(29,78,216,1)_100%)] p-6 text-white shadow-[0_28px_70px_rgba(59,130,246,0.22)] md:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.04)_34%,rgba(255,255,255,0)_55%)]" />
+              <div className="pointer-events-none absolute -left-24 top-10 h-56 w-56 rounded-full bg-[rgba(255,255,255,0.18)] blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 right-40 h-56 w-56 rounded-full bg-[rgba(147,197,253,0.22)] blur-3xl" />
+              <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="max-w-2xl">
+                  <span className="inline-flex rounded-full border border-[rgba(147,197,253,0.45)] bg-[linear-gradient(135deg,rgba(217,249,157,0.9),rgba(187,247,208,0.84))] px-4 py-1.5 text-[13px] font-semibold text-[#163d6b] shadow-[0_8px_18px_rgba(15,23,42,0.12)]">
+                    Current Analysis
+                  </span>
+                  <div className="mt-6 text-4xl font-black tracking-[-0.04em] text-white drop-shadow-[0_6px_18px_rgba(15,23,42,0.26)] md:text-6xl">
+                    Level: <span className="italic text-white">{levelBadgeLabel}</span>
+                  </div>
+                  <div className="mt-6 h-px w-full max-w-3xl bg-[linear-gradient(90deg,rgba(255,255,255,0.32),rgba(255,255,255,0.08))]" />
+                  <p className="mt-6 max-w-2xl text-base leading-8 text-[rgba(255,255,255,0.92)] md:text-[1.05rem]">
+                    Based on your selected degree and current score, here is your estimated cutoff view for 2026.
+                  </p>
+                </div>
+
+                <div className="min-w-[290px] rounded-[2rem] border border-[rgba(255,255,255,0.62)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(239,246,255,0.88))] p-6 text-center text-[color:var(--text-dark)] shadow-[0_22px_42px_rgba(15,23,42,0.18)] backdrop-blur">
+                  <div className="text-[14px] font-medium uppercase tracking-[0.22em] text-[#2c5ea7]">
+                    Estimated Cutoff
+                  </div>
+                  <div className="mx-auto mt-4 h-px w-full bg-[linear-gradient(90deg,rgba(59,130,246,0),rgba(59,130,246,0.18),rgba(59,130,246,0))]" />
+                  <div className="mt-6 text-5xl font-black leading-none tracking-[-0.05em] text-[#225ea8] md:text-6xl">
+                    {estimatedCutoffDisplay}
+                    <span className="ml-2 text-2xl font-bold text-[#204d8f] md:text-3xl">/ {cutoffMax}</span>
+                  </div>
+                  {percentileTag ? (
+                    <div className="mt-6 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#2f7df6,#1d4ed8)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.28)]">
+                      <TrendingUp className="mr-2 size-4" />
+                      {percentileTag}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-5 shadow-[0_22px_48px_rgba(15,76,129,0.08)] md:p-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)] shadow-[0_10px_22px_rgba(15,76,129,0.06)]">
+                    <Lightbulb className="size-3.5" />
+                    Exam Eligibility
+                  </div>
+                  <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">
+                    {summaryDegree} exam eligibility
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)]">
+                    This section shows the eligibility path for your selected degree from the cutoff form.
+                  </p>
+                </div>
+                <div
+                  className="rounded-full px-4 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,76,129,0.08)]"
+                  style={{
+                    color: activeDegreeOption.accent,
+                    backgroundColor: activeDegreeOption.accentSoft,
+                  }}
+                >
+                  {activeEligibility.levelLabel}
+                </div>
+              </div>
+
+              <div
+                className="mt-5 overflow-hidden rounded-[1.7rem] border p-5 shadow-[0_18px_38px_rgba(15,76,129,0.08)] transition duration-300"
+                style={{
+                  borderColor: activeEligibility.border,
+                  background: `linear-gradient(180deg, ${activeEligibility.accentSoft}, rgba(255,255,255,0.98))`,
+                }}
+              >
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="max-w-3xl">
+                    <div
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                      style={{ backgroundColor: "#fff", color: activeEligibility.accent }}
+                    >
+                      <ActiveEligibilityIcon className="size-3.5" />
+                      {activeEligibility.degree} Eligibility Panel
+                    </div>
+                    <h3 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[color:var(--text-dark)]">
+                      {activeEligibility.headline}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-[color:var(--text-muted)]">{activeEligibility.summary}</p>
+                    <p className="mt-3 rounded-[1.2rem] bg-white/80 px-4 py-3 text-sm font-medium text-[color:var(--text-dark)]">
+                      {activeEligibility.levelMessage}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {activeEligibility.exams.map((exam) => (
+                        <span
+                          key={exam}
+                          className="rounded-full border px-3 py-1.5 text-[11px] font-semibold"
+                          style={{
+                            color: activeEligibility.accent,
+                            borderColor: activeEligibility.border,
+                            backgroundColor: "#fff",
+                          }}
+                        >
+                          {exam}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-sm rounded-[1.4rem] border border-white/70 bg-white/85 p-4 shadow-[0_14px_28px_rgba(15,76,129,0.06)]">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                      <Info className="size-4" style={{ color: activeEligibility.accent }} />
+                      Quick Snapshot
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-[color:var(--text-muted)]">{activeEligibility.highlight}</p>
+                    <div className="mt-4 space-y-2">
+                      <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,250,252,0.95)] px-3 py-2.5 text-xs font-semibold text-[color:var(--text-dark)]">
+                        Class Focus: {summaryLevel === "11" || summaryLevel === "12" ? "Subject alignment + exam strategy" : "Foundation + stream awareness"}
+                      </div>
+                      <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,250,252,0.95)] px-3 py-2.5 text-xs font-semibold text-[color:var(--text-dark)]">
+                        Target Exam: {activeDegreeOption.exam}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  {activeEligibility.sections.map((section) => {
+                    const SectionIcon = section.icon;
+                    return (
+                      <article
+                        key={section.title}
+                        className="rounded-[1.4rem] border bg-white/90 p-5 shadow-[0_16px_30px_rgba(15,76,129,0.06)]"
+                        style={{ borderColor: activeEligibility.border }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                            style={{ backgroundColor: activeEligibility.accentSoft, color: activeEligibility.accent }}
+                          >
+                            <SectionIcon className="size-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-[color:var(--text-dark)]">{section.title}</h4>
+                            <p className="text-xs text-[color:var(--text-muted)]">Eligibility essentials</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 space-y-2.5">
+                          {section.points.map((point) => (
+                            <div
+                              key={point}
+                              className="flex gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,250,252,0.92)] px-3 py-2.5"
+                            >
+                              <span
+                                className="mt-1 block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                                style={{ backgroundColor: activeEligibility.accent }}
+                              />
+                              <p className="text-sm leading-6 text-[color:var(--text-dark)]">{point}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               {/* Important Exams Section */}
               <section className="rounded-[1.6rem] border border-[rgba(29,78,216,0.12)] bg-white p-6 shadow-[0_16px_32px_rgba(29,78,216,0.08)]">
@@ -1737,6 +2280,17 @@ export function CutoffClient({
 
               {/* Location Buttons */}
               <div className="mt-4 grid gap-2 md:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocation("")}
+                  className={`rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                    !selectedLocation
+                      ? "border-[#3B82F6] bg-[#3B82F6] text-white shadow-[0_4px_12px_rgba(59,130,246,0.4)]"
+                      : "border-[rgba(59,130,246,0.2)] bg-white text-[color:var(--text-dark)] hover:border-[#3B82F6] hover:bg-[rgba(59,130,246,0.05)]"
+                  }`}
+                >
+                  All Colleges
+                </button>
                 {filteredLocations.length > 0 ? (
                   filteredLocations.map((location) => (
                     <button
@@ -1751,11 +2305,11 @@ export function CutoffClient({
                       <MapPin className="mb-1 inline size-3" /> {location}
                     </button>
                   ))
-                ) : (
+                ) : locationSearchInput ? (
                   <p className="col-span-full text-center text-sm text-[color:var(--text-muted)]">
-                    No locations found matching "{locationSearchInput}"
+                    No locations found matching &quot;{locationSearchInput}&quot;
                   </p>
-                )}
+                ) : null}
               </div>
 
               {/* College Type Filter */}
@@ -1782,82 +2336,6 @@ export function CutoffClient({
                 </div>
               )}
             </section>
-
-            {selectedLocation && nearbyColleges.length > 0 && (
-              <section className="rounded-[1.6rem] border border-[rgba(59,130,246,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(59,130,246,0.08)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-dark)]">
-                    <MapPin className="size-4 text-[#3B82F6]" />
-                    Colleges Near {selectedLocation}
-                  </div>
-                </div>
-                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                  {nearbyColleges.length} matching college{nearbyColleges.length !== 1 ? "s" : ""} in {selectedLocation}
-                </p>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                  {nearbyColleges.map((college: any) => (
-                    <article
-                      key={college.id}
-                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(59,130,246,0.12)] bg-gradient-to-br from-white to-[rgba(59,130,246,0.02)] shadow-[0_12px_26px_rgba(59,130,246,0.1)] transition hover:shadow-[0_18px_40px_rgba(59,130,246,0.15)]"
-                    >
-                      <div className="relative h-[190px] w-full bg-[rgba(59,130,246,0.08)]">
-                        <Image
-                          src={college.image}
-                          alt={`${college.name} campus`}
-                          fill
-                          sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
-                          className="object-cover"
-                        />
-                        <div className="absolute right-2 top-2 rounded-full bg-[linear-gradient(135deg,#3B82F6,#2563EB)] px-3 py-1.5 text-xs font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.4)] border border-[rgba(255,255,255,0.3)]">
-                          {college.match}
-                        </div>
-                      </div>
-                      <div className="flex h-full flex-col p-4">
-                        <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
-                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                          <MapPin className="size-3 text-[#3B82F6]" />
-                          {college.location || "Location not listed"}
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {college.tags.map((tag: string, index: number) => (
-                            <span
-                              key={`${college.id}-${tag}-${index}`}
-                              className="rounded-full border border-[rgba(59,130,246,0.12)] bg-[rgba(59,130,246,0.04)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--text-muted)]"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-auto flex items-center justify-between pt-4 text-[11px] text-[color:var(--text-muted)]">
-                          <span>
-                            Avg Cutoff{" "}
-                            <span className="font-semibold text-[color:var(--text-dark)]">{college.cutoff}</span>
-                          </span>
-                          <Link href={college.href} className="font-semibold text-[#3B82F6]">
-                            Details <ArrowUpRight className="ml-1 inline size-3" />
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {selectedLocation && nearbyColleges.length === 0 && (
-              <section className="rounded-[1.6rem] border border-[rgba(59,130,246,0.12)] bg-white p-6 text-center shadow-[0_18px_40px_rgba(59,130,246,0.08)]">
-                <MapPin className="mx-auto mb-3 size-8 text-[rgba(59,130,246,0.4)]" />
-                <h3 className="text-base font-semibold text-[color:var(--text-dark)]">
-                  No colleges found in {selectedLocation}
-                </h3>
-                <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                  {selectedCollegeType !== "all"
-                    ? `No ${selectedCollegeType} colleges found in this location with your cutoff score.`
-                    : "No colleges found in this location with your cutoff score."}
-                </p>
-              </section>
-            )}
 
             <section className="mt-10 rounded-[1.6rem] border border-[rgba(30,79,163,0.12)] bg-white p-6 shadow-[0_18px_40px_rgba(30,79,163,0.08)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1896,15 +2374,26 @@ export function CutoffClient({
                           sizes="(min-width: 1024px) 300px, (min-width: 768px) 30vw, 100vw"
                           className="object-cover"
                         />
-                        <div className="absolute right-2 top-2 rounded-full bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-1.5 text-xs font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.4)] border border-[rgba(255,255,255,0.3)]">
-                          {college.match}
-                        </div>
                       </div>
                       <div className="flex h-full flex-col p-4">
-                        <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
-                        <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
-                          <MapPin className="size-3" />
-                          {college.location || "Location not listed"}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold text-[color:var(--text-dark)]">{college.name}</h3>
+                            <div className="mt-1 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                              <MapPin className="size-3" />
+                              {college.location || "Location not listed"}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {college.isBestCollege ? (
+                              <span className="rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2.5 py-1 text-[10px] font-bold text-white shadow-[0_8px_16px_rgba(249,115,22,0.22)]">
+                                Best College
+                              </span>
+                            ) : null}
+                            <span className="rounded-full bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-1 text-[10px] font-bold text-white shadow-[0_8px_16px_rgba(16,185,129,0.22)]">
+                              {college.match}
+                            </span>
+                          </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {college.tags.map((tag: string, index: number) => (
@@ -1958,10 +2447,13 @@ export function CutoffClient({
 
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 {(() => {
-                  const bestMarkedColleges = matchingCards.filter((college: any) => college.isBestCollege);
-                  const displayCards = bestMarkedColleges.length > 0 ? bestMarkedColleges : matchingCards.slice(0, 3);
+                  const bestMarkedColleges = matchingCards.filter((college: MatchingCollegeCard) => college.isBestCollege);
+                  const displayCards =
+                    bestMarkedColleges.length > 0
+                      ? bestMarkedColleges.slice(0, 3)
+                      : matchingCards.slice(0, 3);
                   return displayCards.length ? (
-                    displayCards.map((college: any) => (
+                    displayCards.map((college: MatchingCollegeCard) => (
                     <article
                       key={college.id}
                       className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(95,160,230,0.16)] bg-gradient-to-br from-white to-[rgba(95,160,230,0.04)] shadow-[0_12px_26px_rgba(95,160,230,0.12)]"

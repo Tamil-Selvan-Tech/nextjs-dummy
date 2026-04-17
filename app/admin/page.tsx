@@ -237,7 +237,7 @@ const formSectionClass = "grid gap-2 md:grid-cols-2 xl:grid-cols-3";
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
-const streamOptions = ["Engineering", "Computer / IT", "Science", "Medical / Health", "Paramedical", "Commerce", "Management", "Arts", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
+const streamOptions = ["Engineering", "Architecture", "Computer / IT", "Science", "Medical / Health", "Paramedical", "Commerce", "Management", "Arts", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
 const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
 const qualificationLabelMap: Record<string, string> = {
   "10th": "Secondary School (10th)",
@@ -276,6 +276,7 @@ const courseCatalog: CourseCatalogItem[] = [
   { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Electronics Engineering", degreeType: "Diploma" },
   { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Automobile Engineering", degreeType: "Diploma" },
   { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Information Technology", degreeType: "Diploma" },
+  { stream: "Architecture", courseType: "B.Arch (Bachelor of Architecture)", specialization: "Architecture", degreeType: "UG" },
   { stream: "Computer / IT", courseType: "BCA", specialization: "General", degreeType: "UG" },
   { stream: "Computer / IT", courseType: "BCA", specialization: "Data Science", degreeType: "UG" },
   { stream: "Computer / IT", courseType: "BCA", specialization: "Artificial Intelligence", degreeType: "UG" },
@@ -404,6 +405,7 @@ const defaultDurationByDegreeType: Record<string, string> = {
 };
 const streamDurationByDegreeType: Record<string, Partial<Record<string, string>>> = {
   Engineering: { UG: "4 Years", PG: "2 Years", Diploma: "3 Years", Certificate: "6 Months", Doctorate: "3 Years" },
+  Architecture: { UG: "5 Years", PG: "2 Years", Diploma: "3 Years", Certificate: "6 Months", Doctorate: "3 Years" },
   Medical: { UG: "5.5 Years", PG: "3 Years", Diploma: "2 Years", Certificate: "1 Year", Doctorate: "3 Years" },
   Law: { UG: "3 Years", PG: "2 Years", Diploma: "1 Year", Certificate: "6 Months", Doctorate: "3 Years" },
   Design: { UG: "4 Years", PG: "2 Years", Diploma: "2 Years", Certificate: "6 Months", Doctorate: "3 Years" },
@@ -413,6 +415,7 @@ const streamDurationByDegreeType: Record<string, Partial<Record<string, string>>
 };
 const streamCourseNameByDegreeType: Record<string, Partial<Record<string, string>>> = {
   Engineering: { UG: "B.E", PG: "M.E", Diploma: "Diploma in Engineering", Certificate: "Certificate in Engineering", Doctorate: "Ph.D" },
+  Architecture: { UG: "B.Arch (Bachelor of Architecture)", PG: "M.Arch", Diploma: "Diploma in Architecture", Certificate: "Certificate in Architecture", Doctorate: "Ph.D" },
   Management: { UG: "BBA", PG: "MBA", Diploma: "Diploma in Management", Certificate: "Certificate in Management", Doctorate: "Ph.D" },
   Arts: { UG: "B.A", PG: "M.A", Diploma: "Diploma in Arts", Certificate: "Certificate in Arts", Doctorate: "Ph.D" },
   Science: { UG: "B.Sc", PG: "M.Sc", Diploma: "Diploma in Science", Certificate: "Certificate in Science", Doctorate: "Ph.D" },
