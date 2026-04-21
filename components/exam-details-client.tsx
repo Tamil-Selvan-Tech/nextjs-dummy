@@ -237,10 +237,10 @@ function GovernmentPortalHeader({ details }: { details: ExamDetails }) {
             <div className="border-b border-[#d08a12] px-4 py-3 font-semibold">{paperLabel} {details.date} Paper 1</div>
             <div className="px-4 py-3 font-semibold">{paperLabel} {details.date} Paper 2</div>
           </div>
-          <div className="overflow-hidden bg-[#123a7a] px-4 py-3 text-[0.98rem] font-medium text-white/95">
-            <div className="animate-scroll inline-block whitespace-nowrap">
+          <div className="bg-[#123a7a] px-4 py-3 text-[0.98rem] font-medium text-white/95">
+            <marquee behavior="scroll" direction="left" scrollamount="5">
               {examName} 2026 updates and official notices are available on the portal.
-            </div>
+            </marquee>
           </div>
         </div>
       </div>

@@ -654,28 +654,28 @@ export function HomePage({
     return (
       <div
         className={`overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_18px_40px_rgba(15,76,129,0.11)] ${
-          isHeroCard ? "flex h-full min-h-[13.5rem] p-3.5 sm:min-h-[14.5rem] sm:p-4" : "p-4"
+          isHeroCard ? "flex h-full min-h-[11.75rem] p-3 sm:min-h-[12.5rem] sm:p-3.5" : "p-4"
         }`}
       >
         {isHeroCard ? (
           <>
-            <div className="flex w-full flex-1 items-center gap-3 sm:gap-4">
+            <div className="flex w-full flex-1 items-center gap-2.5 sm:gap-3.5">
               <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
-                <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)]">
-                  <Icon className="size-4.5" />
+                <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] sm:h-[2.125rem] sm:w-[2.125rem]">
+                  <Icon className="size-4" />
                 </div>
-                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[1.15rem] leading-tight sm:text-[1.3rem]">
+                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[1.02rem] leading-tight sm:text-[1.15rem]">
                   {feature.title}
                 </h3>
-                <p className="mt-2 max-w-[10.5rem] leading-5 text-[color:var(--text-muted)] text-[11px] sm:max-w-[11.5rem] sm:text-[12px]">
+                <p className="mt-1.5 max-w-[10rem] text-[10px] leading-[1.15rem] text-[color:var(--text-muted)] sm:max-w-[11rem] sm:text-[11px]">
                   {feature.description}
                 </p>
               </div>
-              <div className="relative w-[48%] shrink-0 overflow-hidden rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(255,255,255,0.92))] p-2.5 sm:w-[46%]">
+              <div className="relative w-[46%] shrink-0 overflow-hidden rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(255,255,255,0.92))] p-2 sm:w-[44%]">
                 <img
                   src={feature.imageSrc}
                   alt={feature.title}
-                  className="mx-auto h-[8.2rem] w-full max-w-[11.8rem] object-contain sm:h-[9rem] sm:max-w-[12.8rem]"
+                  className="mx-auto h-[6.9rem] w-full max-w-[10.25rem] object-contain sm:h-[7.4rem] sm:max-w-[10.9rem]"
                   loading="lazy"
                 />
               </div>
@@ -730,7 +730,7 @@ export function HomePage({
                   <div className="relative space-y-1 ">
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.82fr)] lg:items-start">
                       <div className="flex h-full flex-col justify-start space-y-3">
-                        <div className="max-w-[36rem] py-3">
+                        <div className="mx-auto max-w-[38rem] py-3 text-center lg:mx-auto">
                           <h1 className="text-[2.05rem] font-black leading-[0.98] tracking-[-0.05em] text-[#163761] sm:text-[2.55rem] lg:text-[2.95rem]">
                             Find Your{" "}
                             <span className="text-[#2563eb]">
@@ -738,7 +738,7 @@ export function HomePage({
                             </span>{" "}
                             Smartly.
                           </h1>
-                          <p className="mt-3 max-w-[32rem] text-[13px] leading-6 text-[color:var(--text-muted)] sm:text-[14px]">
+                          <p className="mx-auto mt-3 max-w-[34rem] text-[13px] leading-6 text-[color:var(--text-muted)] sm:text-[14px]">
                             Discover colleges, courses, exams, and cities from one premium search flow built to help you shortlist faster and decide with more confidence.
                           </p>
                         </div>
@@ -748,12 +748,12 @@ export function HomePage({
                           <div key={`${activeFeature.title}-${activeFeatureCard}`} className="feature-pop-card absolute inset-0">
                             {renderFeatureCard(activeFeature, "hero")}
                           </div>
-                          <div className="min-h-[16.5rem] sm:min-h-[10.25rem]" />
+                          <div className="min-h-[12.75rem] sm:min-h-[9rem]" />
                         </div>
                       </div>
 
                       {/* Top colleges flow */}
-                      <div className="lg:ml-auto lg:w-full lg:max-w-[26rem]">
+                      <div className="lg:ml-auto lg:w-full lg:max-w-[33rem]">
                         <div className="flex h-full flex-col rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)]">
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
@@ -852,16 +852,16 @@ export function HomePage({
                     </div>
 
                     {/* Search bar */}
-                    <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-[58rem] px-8 py-4">
-                      <div className="hero-search-input relative z-[2] overflow-hidden rounded-[1.45rem] border border-[rgba(255,138,61,0.22)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] p-1 shadow-[0_18px_36px_rgba(22,50,79,0.11)] ring-1 ring-[rgba(255,138,61,0.08)]">
+                    <div className="hero-search-shell group relative z-[70] mx-auto mt-5 w-full max-w-none px-0 py-5 sm:mt-6">
+                      <div className="hero-search-input relative z-[2] overflow-hidden rounded-[1.65rem] border border-[rgba(255,138,61,0.22)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] p-1.5 shadow-[0_18px_36px_rgba(22,50,79,0.11)] ring-1 ring-[rgba(255,138,61,0.08)]">
                         <div className="grid gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-0">
-                          <div className="relative min-w-0 px-4 py-2 md:border-r md:border-[rgba(15,76,129,0.1)]">
-                            <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
-                              <Search className="size-3.5" />
+                          <div className="relative min-w-0 px-5 py-3 md:border-r md:border-[rgba(15,76,129,0.1)]">
+                            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                              <Search className="size-4" />
                               Search Colleges
                             </div>
                             {!heroSearchInput ? (
-                              <div className="pointer-events-none absolute inset-x-4 bottom-2 flex items-center overflow-hidden text-[14px] text-[color:var(--text-muted)]">
+                              <div className="pointer-events-none absolute inset-x-5 bottom-3 flex items-center overflow-hidden text-[16px] text-[color:var(--text-muted)]">
                                 {typedSearchText}
                                 <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">|</span>
                               </div>
@@ -887,20 +887,20 @@ export function HomePage({
                                 }
                               }}
                               placeholder=""
-                              className="w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[14px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                              className="min-h-[2rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[16px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
                             />
                           </div>
 
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            className="flex min-h-[4.1rem] items-center gap-3 rounded-[1.15rem] bg-white px-5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
-                              <MapPin className="size-4" />
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
+                              <MapPin className="size-[1.1rem]" />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13px] font-medium text-[color:var(--text-dark)]">
+                              <span className="block truncate text-[14px] font-medium text-[color:var(--text-dark)]">
                                 Location · Tamil Nadu, Chennai
                               </span>
                             </span>
@@ -909,13 +909,13 @@ export function HomePage({
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            className="flex min-h-[4.1rem] items-center gap-3 rounded-[1.15rem] bg-white px-5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
-                              <CourseIcon className="size-4" />
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
+                              <CourseIcon className="size-[1.1rem]" />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13px] font-medium text-[color:var(--text-dark)]">
+                              <span className="block truncate text-[14px] font-medium text-[color:var(--text-dark)]">
                                 Course · B.Tech, MBA, Design
                               </span>
                             </span>
@@ -924,10 +924,10 @@ export function HomePage({
                           <button
                             type="button"
                             onClick={handleHeroSearch}
-                            className="inline-flex h-10 min-h-[2.6rem] w-full  items-center justify-center gap-2 rounded-[0.95rem] bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_52%,#38bdf8_100%)] px-4 text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.24)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)] md:mx-2 md:min-w-[6.25rem] md:w-auto"
+                            className="inline-flex h-12 min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-[1.05rem] bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_52%,#38bdf8_100%)] px-5 text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.24)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)] md:mx-2 md:min-w-[7.5rem] md:w-auto"
                           >
                             Find
-                            <Search className="size-4" />
+                            <Search className="size-[1.1rem]" />
                           </button>
                         </div>
                       </div>
