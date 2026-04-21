@@ -30,6 +30,10 @@ import { PageBackButton } from "@/components/global-back-button";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import type { College, Course } from "@/lib/site-data";
 import { EnquiryForm } from "@/components/enquiry-form";
+import {
+  formatCompactIndianCurrency,
+  formatCompactIndianCurrencyRange,
+} from "@/lib/currency-format";
 
 type CollegeDetailsViewProps = { college: College; relatedCourses: Course[] };
 const tabs = [
@@ -59,7 +63,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const cutoffs = relatedCourses.map((course) => course.cutoff);
   const courseCount = relatedCourses.length;
   const courseCategories = [...new Set(relatedCourses.map((course) => course.courseCategory).filter(Boolean))];
-  const feesRange = fees.length ? `Rs. ${Math.min(...fees).toLocaleString()} - ${Math.max(...fees).toLocaleString()}` : "Not available";
+  const feesRange = fees.length ? formatCompactIndianCurrencyRange(Math.min(...fees), Math.max(...fees)) : "Not available";
   const cutoffRange = cutoffs.length ? `${Math.min(...cutoffs)} - ${Math.max(...cutoffs)}` : "Not available";
   const websiteUrl =
     college.website?.trim() ||
@@ -108,13 +112,8 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     if (typeof value !== "string" && typeof value !== "number") {
       return "Not available";
     }
-
-    const raw = String(value ?? "").replace(/[₹,\s]/g, "").trim();
-    const numeric = Number(raw);
-    if (raw && Number.isFinite(numeric)) {
-      return `₹${numeric.toLocaleString()}`;
-    }
-    return raw || "Not available";
+    const formatted = formatCompactIndianCurrency(value);
+    return formatted === "-" ? "Not available" : formatted;
   };
   const formatCutoffDetails = (course: Course) => {
     if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
@@ -241,7 +240,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       `Fees Range: ${feesRange}`,
       `Cutoff Range: ${cutoffRange}`,
       "",
-      ...relatedCourses.map((course) => `${course.course} | ${course.specialization} | ${course.duration} | Rs. ${course.totalFees.toLocaleString()} | ${course.cutoff}`),
+      ...relatedCourses.map((course) => `${course.course} | ${course.specialization} | ${course.duration} | ${formatCompactIndianCurrency(course.totalFees)} | ${course.cutoff}`),
     ].join("\n");
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -774,7 +773,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     {(showAllCourses ? groupedCourses : groupedCourses.slice(0, 10)).map((group) => {
                       const totalFeesText =
                         group.minFees !== null
-                          ? `Rs. ${group.minFees.toLocaleString()} - ${group.maxFees?.toLocaleString()}`
+                          ? formatCompactIndianCurrencyRange(group.minFees, group.maxFees)
                           : adminFeeRange || "Not available";
                       return (
                         <div key={group.key} className="border-b border-[rgba(15,76,129,0.08)] last:border-b-0">
@@ -1035,13 +1034,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         {course.minimumQualification || "-"}
                       </div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {course.semesterFees ? `Rs. ${course.semesterFees.toLocaleString()}` : "-"}
+                        {formatCompactIndianCurrency(course.semesterFees)}
                       </div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {course.totalFees ? `Rs. ${course.totalFees.toLocaleString()}` : "-"}
+                        {formatCompactIndianCurrency(course.totalFees)}
                       </div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}
+                        {formatCompactIndianCurrency(course.applicationFee)}
                       </div>
                       {course.description ? (
                         <div className="col-span-full border-t border-[rgba(15,76,129,0.2)] bg-[rgba(15,76,129,0.02)] px-3 py-3 text-xs text-[color:var(--text-muted)]">
@@ -1113,9 +1112,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   {(groupedCourses.find((group) => group.key === expandedFeeKey)?.courses || []).map((course) => (
                     <div key={`fee-modal-${course.id}`} className="grid grid-cols-12 gap-0 divide-x divide-[rgba(15,76,129,0.08)] bg-white text-sm text-[color:var(--text-dark)]">
                       <div className="col-span-6 px-4 py-3 font-semibold">{getCourseTitle(course)}</div>
-                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{course.semesterFees ? `Rs. ${course.semesterFees.toLocaleString()}` : "-"}</div>
-                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{course.totalFees ? `Rs. ${course.totalFees.toLocaleString()}` : "-"}</div>
-                      <div className="col-span-2 px-4 py-3 text-right text-xs text-[color:var(--text-muted)]">{course.applicationFee ? `Rs. ${course.applicationFee.toLocaleString()}` : "-"}</div>
+                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.semesterFees)}</div>
+                      <div className="col-span-2 px-4 py-3 text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.totalFees)}</div>
+                      <div className="col-span-2 px-4 py-3 text-right text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.applicationFee)}</div>
                     </div>
                   ))}
                 </div>

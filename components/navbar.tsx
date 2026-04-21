@@ -203,7 +203,7 @@ export function Navbar() {
     { label: "Terms & Conditions", href: "/terms" },
   ];
   return (
-    <header className="page-container-full relative z-30 pt-4 pb-2 text-[color:var(--text-dark)] md:pt-6 md:pb-0">
+    <header className="page-container-full relative z-30 pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0">
       {!hideBackButton ? <div className="mb-3"><PageBackButton /></div> : null}
       <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-white px-3 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4">
         <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">

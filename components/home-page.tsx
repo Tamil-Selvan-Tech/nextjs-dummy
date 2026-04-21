@@ -2,16 +2,19 @@
 
 import {
   ArrowRight,
-  BadgeCheck,
   BriefcaseBusiness,
+  Building2,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Cpu,
+  Gavel,
+  Globe2,
   GraduationCap as CourseIcon,
   Mail,
   MapPin,
+  Medal,
   Phone,
-  Scale,
   Search,
   Sparkles,
   Stethoscope,
@@ -20,12 +23,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
+import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 
 // Custom hook for scroll animations
 function useScrollAnimation() {
   useEffect(() => {
     const elements = document.querySelectorAll('[data-scroll-animate]');
-    
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -98,6 +102,59 @@ type HomePageProps = {
 };
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
+type HeroSearchItem = {
+  id: string;
+  label: string;
+  href: string;
+  type: "college" | "course" | "exam" | "city";
+  keywords: string[];
+  imageSrc?: string;
+};
+type FeatureCardItem = {
+  title: string;
+  description: string;
+  icon: typeof Search;
+  imageSrc: string;
+};
+
+const FEATURE_CARDS: FeatureCardItem[] = [
+  {
+    title: "Smart Search",
+    description: "Search colleges, courses, exams, and cities from one flow.",
+    icon: Search,
+    imageSrc: "/features/features-img-6.png",
+  },
+  {
+    title: "College Compare",
+    description: "Compare top colleges side by side before you shortlist.",
+    icon: Building2,
+    imageSrc: "/features/features-img-1.png",
+  },
+  {
+    title: "Course Explorer",
+    description: "Browse course fees, duration, and cutoff faster.",
+    icon: BookOpen,
+    imageSrc: "/features/features-img-2.png",
+  },
+  {
+    title: "Cutoff Calculation",
+    description: "Cutoff calculation insights to shortlist colleges faster.",
+    icon: Medal,
+    imageSrc: "/features/features-img-3.png",
+  },
+  {
+    title: "Verified Profiles",
+    description: "See approved college details, fees, facilities, and rankings in one place.",
+    icon: CourseIcon,
+    imageSrc: "/features/features-img-5.png",
+  },
+  {
+    title: "Ranking View",
+    description: "See college rankings in a clean range format directly on detail pages.",
+    icon: Globe2,
+    imageSrc: "/features/features-img-4.png",
+  },
+];
 
 export function HomePage({
   collegesData = fallbackColleges,
@@ -105,12 +162,16 @@ export function HomePage({
   heroImageUrl = "",
 }: HomePageProps) {
   const router = useRouter();
+  const featureCards = FEATURE_CARDS;
   const [heroSearchInput, setHeroSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
+  const [activeFeatureCard, setActiveFeatureCard] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
   const [typedSearchText, setTypedSearchText] = useState("");
   const [isHeroSearchFocused, setIsHeroSearchFocused] = useState(false);
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
+  const [brokenHeroSuggestionImages, setBrokenHeroSuggestionImages] = useState<Record<string, boolean>>({});
+  const [showHeroNoMatch, setShowHeroNoMatch] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const collegesScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -119,6 +180,19 @@ export function HomePage({
   const [showRightArrowColleges, setShowRightArrowColleges] = useState(true);
 
   const exploreCourseCards = useMemo(() => {
+    const iconMap = {
+      "B.Tech": Cpu,
+      MBA: BriefcaseBusiness,
+      MBBS: Stethoscope,
+      MCA: CourseIcon,
+      "B.Sc": Sparkles,
+      "B.Com": BriefcaseBusiness,
+      BBA: BriefcaseBusiness,
+      BCA: CourseIcon,
+      "M.Tech": Cpu,
+      Law: Gavel,
+    } as const;
+
     const grouped = new Map<string, Course[]>();
 
     coursesData.forEach((item) => {
@@ -140,12 +214,11 @@ export function HomePage({
         id: courseName,
         course: courseName,
         duration: durations.join(", ") || "-",
-        feesRange:
-          minFees === maxFees
-            ? `Rs. ${minFees.toLocaleString()}`
-            : `Rs. ${minFees.toLocaleString()} - ${maxFees.toLocaleString()}`,
+        feesRange: formatCompactIndianCurrencyRange(minFees, maxFees),
         cutoffRange: minCutoff === maxCutoff ? `${minCutoff}` : `${minCutoff} - ${maxCutoff}`,
         isTopCourse: rows.some((row) => row.isTopCourse),
+        icon: iconMap[courseName as keyof typeof iconMap] ?? CourseIcon,
+        href: `/explore/course/${encodeURIComponent(courseName)}`,
       };
     });
   }, [coursesData]);
@@ -193,7 +266,7 @@ export function HomePage({
       BBA: BriefcaseBusiness,
       BCA: CourseIcon,
       "M.Tech": Cpu,
-      Law: Scale,
+      Law: Gavel,
     } as const;
 
     const subtitleMap: Record<string, string> = {
@@ -317,51 +390,21 @@ export function HomePage({
     return items.slice(0, 6);
   }, [topCourseChips]);
 
-  const featureCards = [
-    {
-      title: "Smart Search",
-      description: "Search colleges, courses, exams, and cities from one flow.",
-      icon: Search,
-    },
-    {
-      title: "College Compare",
-      description: "Compare top colleges side by side before you shortlist.",
-      icon: Scale,
-    },
-    {
-      title: "Course Explorer",
-      description: "Browse course fees, duration, and cutoff faster.",
-      icon: CourseIcon,
-    },
-    {
-      title: "Cutoff Calculation",
-      description: "Cutoff calculation insights to shortlist colleges faster.",
-      icon: Sparkles,
-    },
-    {
-      title: "Verified Profiles",
-      description: "See approved college details, fees, facilities, and rankings in one place.",
-      icon: BadgeCheck,
-    },
-    {
-      title: "Ranking View",
-      description: "See college rankings in a clean range format directly on detail pages.",
-      icon: BadgeCheck,
-    },
-  ];
   const topExamCards = TOP_EXAM_CARDS;
   const heroSearchPool = useMemo(() => {
-    const unique = new Map<string, { id: string; label: string; href: string; type: string; keywords: string[] }>();
+    const unique = new Map<string, HeroSearchItem>();
     const pushValue = ({
       label,
       href,
       type,
       keywords = [],
+      imageSrc,
     }: {
       label: string;
       href: string;
       type: "college" | "course" | "exam" | "city";
       keywords?: string[];
+      imageSrc?: string;
     }) => {
       const trimmed = String(label || "").trim();
       if (!trimmed || !href) return;
@@ -373,6 +416,7 @@ export function HomePage({
         href,
         type,
         keywords: keywords.filter(Boolean).map((item) => item.toLowerCase()),
+        imageSrc: imageSrc ? String(imageSrc).trim() : undefined,
       });
     };
 
@@ -382,6 +426,7 @@ export function HomePage({
         href: `/college/${college.id}`,
         type: "college",
         keywords: [college.district, college.state, college.ownershipType ?? '', ...(college.courseTags || [])],
+        imageSrc: college.logo || college.image,
       });
       pushValue({
         label: college.district,
@@ -428,21 +473,15 @@ export function HomePage({
 
   const heroSearchSuggestions = useMemo(() => {
     const query = heroSearchInput.trim().toLowerCase();
-    if (!query) {
-      return heroSearchPool.slice(0, 6);
-    }
+    if (!query) return [];
 
-    const matched = heroSearchPool
+    return heroSearchPool
       .filter((item) => {
         if (item.label.toLowerCase().includes(query)) return true;
         return item.keywords.some((keyword) => keyword.includes(query));
       })
       .slice(0, 8);
-    const resolved = matched.length ? matched : heroSearchPool.slice(0, 6);
-
-    return resolved;
   }, [heroSearchInput, heroSearchPool]);
-  const featureMarqueeItems = useMemo(() => [...featureCards, ...featureCards], [featureCards]);
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter(
       (college) => college.isBestCollege || college.isTopCollege,
@@ -455,7 +494,35 @@ export function HomePage({
   const activeCollege = spotlightColleges[activeAction] ?? spotlightColleges[0];
   const getSpotlightImage = (college: College) =>
     String(college.image || college.logo || "").trim();
-
+  const heroStatCards = useMemo(
+    () => [
+      {
+        value: `${collegesData.length}+`,
+        label: "Colleges Listed",
+        icon: Building2,
+        iconClassName: "bg-[rgba(255,138,61,0.12)] text-[#ff8a3d]",
+      },
+      {
+        value: `${exploreCourseCards.length}+`,
+        label: "Course Paths",
+        icon: BookOpen,
+        iconClassName: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
+      },
+      {
+        value: `${topExamCards.length}+`,
+        label: "Exam Tracks",
+        icon: Medal,
+        iconClassName: "bg-[rgba(251,146,60,0.14)] text-[#fb923c]",
+      },
+      {
+        value: `${new Set(collegesData.map((college) => college.state).filter(Boolean)).size}+`,
+        label: "States Covered",
+        icon: Globe2,
+        iconClassName: "bg-[rgba(236,72,153,0.12)] text-[#ec4899]",
+      },
+    ],
+    [collegesData, exploreCourseCards, topExamCards],
+  );
   const syncScrollIndicators = (
     element: HTMLDivElement | null,
     setLeft: (value: boolean) => void,
@@ -484,6 +551,14 @@ export function HomePage({
 
     return () => window.clearInterval(timer);
   }, [isSpotlightPaused, spotlightColleges.length]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveFeatureCard((current) => (current + 1) % featureCards.length);
+    }, 3300);
+
+    return () => window.clearInterval(timer);
+  }, [featureCards.length]);
 
 
   useEffect(() => {
@@ -535,10 +610,14 @@ export function HomePage({
     if (!query) return;
     const exactMatch = heroSearchPool.find((item) => item.label.toLowerCase() === query.toLowerCase());
     if (exactMatch) {
+      setShowHeroNoMatch(false);
       router.push(exactMatch.href);
     } else if (heroSearchSuggestions.length > 0) {
+      setShowHeroNoMatch(false);
       router.push(heroSearchSuggestions[0].href);
     } else {
+      setShowHeroNoMatch(true);
+      setIsHeroSearchFocused(true);
       return;
     }
     setHeroSearchInput("");
@@ -547,6 +626,7 @@ export function HomePage({
 
   const handleHeroSuggestionSelect = (value: { label: string; href: string }) => {
     if (!value.href) return;
+    setShowHeroNoMatch(false);
     router.push(value.href);
     setHeroSearchInput(value.label);
     setIsHeroSearchFocused(false);
@@ -566,6 +646,61 @@ export function HomePage({
     "--text-muted": "#475569",
   };
   const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
+  const activeFeature = featureCards[activeFeatureCard] ?? featureCards[0];
+  const renderFeatureCard = (feature: FeatureCardItem, variant: "hero" | "grid" = "grid") => {
+    const isHeroCard = variant === "hero";
+    const Icon = feature.icon;
+
+    return (
+      <div
+        className={`overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_18px_40px_rgba(15,76,129,0.11)] ${
+          isHeroCard ? "flex h-full min-h-[13.5rem] p-3.5 sm:min-h-[14.5rem] sm:p-4" : "p-4"
+        }`}
+      >
+        {isHeroCard ? (
+          <>
+            <div className="flex w-full flex-1 items-center gap-3 sm:gap-4">
+              <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
+                <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)]">
+                  <Icon className="size-4.5" />
+                </div>
+                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[1.15rem] leading-tight sm:text-[1.3rem]">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 max-w-[10.5rem] leading-5 text-[color:var(--text-muted)] text-[11px] sm:max-w-[11.5rem] sm:text-[12px]">
+                  {feature.description}
+                </p>
+              </div>
+              <div className="relative w-[48%] shrink-0 overflow-hidden rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(255,255,255,0.92))] p-2.5 sm:w-[46%]">
+                <img
+                  src={feature.imageSrc}
+                  alt={feature.title}
+                  className="mx-auto h-[8.2rem] w-full max-w-[11.8rem] object-contain sm:h-[9rem] sm:max-w-[12.8rem]"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex shrink-0 items-center justify-center rounded-[0.75rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] p-2.5 text-[color:var(--brand-primary)]">
+                <Icon className="size-5" />
+              </div>
+              <div className="flex flex-1 flex-col justify-start">
+                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[0.95rem]">
+                  {feature.title}
+                </h3>
+                <p className="mt-1 leading-5 text-[color:var(--text-muted)] text-[12px]">
+                  {feature.description}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="home-theme bg-white" style={homeThemeStyles}>
@@ -581,317 +716,384 @@ export function HomePage({
         <div className="relative z-10">
           <Navbar />
 
-          <div className="page-container-full pb-20 pt-8 md:pb-24 md:pt-10">
-            <div className="space-y-4">
-              <div className="reveal-up w-full" />
-
-              <div className="reveal-up mx-auto -mt-1 mb-3 w-full px-2">
-                <div className="relative py-6 sm:py-8">
+          {/* feature cards flow */}
+          
+          <div className="page-container-full pb-[4.5rem]  pt-0 md:pb-[5.5rem]  md:pt-1">
+            <div className="space-y-2 py-2">
+              {/* hero content */}
+              <div className="reveal-up mx-auto mb-1 w-full px-2">
+                <div className="relative py-0.5 sm:py-1">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
-                  <div className="pointer-events-none absolute -right-10 top-6 h-28 w-28 rounded-full bg-[rgba(239,68,68,0.18)] blur-3xl" />
-                  <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-center">
-                    <div className="hero-search-shell group relative w-full md:w-[68%] md:flex-none">
-                      <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.8),transparent_60%)] opacity-70" />
-                      <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-[3] flex items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,68,68,0.18),rgba(255,255,255,0.94))] px-3 text-[color:var(--brand-primary)] transition group-focus-within:scale-105">
-                        <Search className="size-4" />
-                      </div>
+                  <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
+                  <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.14)] blur-3xl" />
 
-                      {!heroSearchInput ? (
-                        <div className="pointer-events-none absolute inset-y-0 left-14 right-5 z-[2] flex items-center overflow-hidden">
-                          <div className="text-[13px] font-medium text-[color:var(--text-muted)] sm:text-sm md:text-[15px]">
-                            {typedSearchText}
-                            <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">|</span>
-                          </div>
-                        </div>
-                      ) : null}
-                      <input
-                        type="text"
-                        value={heroSearchInput}
-                        onChange={(event) => {
-                          setHeroSearchInput(event.target.value);
-                          setIsHeroSearchFocused(true);
-                        }}
-                        onFocus={() => setIsHeroSearchFocused(true)}
-                        onBlur={() => {
-                          window.setTimeout(() => setIsHeroSearchFocused(false), 120);
-                        }}
-                        placeholder=""
-                        className="hero-search-input h-[3.4rem] w-full rounded-full border border-[rgba(30,78,121,0.24)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.98))] pl-14 pr-32 text-[13px] text-[color:var(--text-dark)] outline-none shadow-[0_14px_34px_rgba(30,78,121,0.2)] ring-1 ring-[rgba(96,165,250,0.26)] transition-all duration-300 focus:border-[rgba(29,78,216,0.4)] focus:outline focus:outline-2 focus:outline-[rgba(96,165,250,0.48)] focus:shadow-[0_18px_38px_rgba(29,78,216,0.24)] sm:h-[3.85rem] sm:text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleHeroSearch}
-                        className="absolute right-2 top-1/2 z-[4] inline-flex -translate-y-1/2 items-center rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.26)] transition hover:-translate-y-[53%] hover:bg-[#2563eb] sm:px-5 sm:text-sm"
-                      >
-                        Quick Find
-                      </button>
-                      {(isHeroSearchFocused || heroSearchInput.trim().length > 0) && heroSearchSuggestions.length > 0 ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80] overflow-hidden rounded-[1.1rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.2)] backdrop-blur-sm">
-                          {heroSearchSuggestions.map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                handleHeroSuggestionSelect(item);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-[0.85rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition duration-200 hover:translate-x-0.5 hover:bg-[rgba(29,78,216,0.09)]"
-                            >
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
-                                <Search className="size-3.5" />
-                              </span>
-                              <span className="flex-1">{item.label}</span>
-                              <span className="rounded-full bg-[rgba(29,78,216,0.1)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--brand-primary)]">
-                                {item.type}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)] sm:text-xs md:mx-auto md:w-[68%] md:flex-nowrap md:justify-center md:overflow-x-auto md:scrollbar-hide md:text-sm">
-                    <span className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 font-semibold text-[color:var(--brand-primary)]">
-                      Live search flow
-                    </span>
-                    {[
-                      { label: "Top Engineering Colleges", href: "/search-results?q=best%20engineering%20colleges" },
-                      { label: "MBA Programs", href: "/search-results?q=MBA%20programs" },
-                      { label: "Medical Admissions", href: "/search-results?q=best%20medical%20colleges" },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => router.push(item.href)}
-                        className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 transition hover:border-[rgba(15,76,129,0.2)] hover:bg-[rgba(15,76,129,0.04)]"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="feature-marquee mt-5 w-full md:mx-auto md:w-[94%] lg:w-[98%]">
-                    <div className="marquee-track">
-                      {featureMarqueeItems.map((item, index) => {
-                        const Icon = item.icon;
-                        return (
-                          <div
-                            key={`${item.title}-${index}`}
-                            className="feature-pill marquee-item border  border-[rgba(15,76,129,0.14)] bg-white/80"
-                          >
-                            <span className="feature-pill-icon">
-                              <Icon className="size-4" />
-                            </span>
-                            <div>
-                              <p className="feature-pill-title">{item.title}</p>
-                              <p className="feature-pill-desc">{item.description}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <article className="relative overflow-hidden rounded-[2rem] border border-[rgba(29,78,216,0.2)] bg-[linear-gradient(132deg,rgba(255,255,255,0.98),rgba(239,246,255,0.98)_52%,rgba(219,234,254,0.98))] p-6 text-[color:var(--text-dark)] shadow-[0_24px_54px_rgba(30,64,175,0.16)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_62px_rgba(30,64,175,0.22)] md:p-8 scroll-fade-in" data-scroll-animate>
-                      <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.22)] blur-3xl" />
-                      <div className="pointer-events-none absolute -bottom-14 right-0 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.18)] blur-3xl" />
-                      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="max-w-2xl">
-                          <span className="inline-flex rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#3b82f6]">
-                            Cutoff Zone
-                          </span>
-                          <h3 className="mt-4 text-2xl font-bold leading-tight md:text-3xl">
-                            Predict Smarter, Apply Better
-                          </h3>
-                          <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--text-muted)] md:text-base">
-                            Enter marks, choose your degree, and instantly view cutoff-based college matches with confidence.
+                  <div className="relative space-y-1 ">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.82fr)] lg:items-start">
+                      <div className="flex h-full flex-col justify-start space-y-3">
+                        <div className="max-w-[36rem] py-3">
+                          <h1 className="text-[2.05rem] font-black leading-[0.98] tracking-[-0.05em] text-[#163761] sm:text-[2.55rem] lg:text-[2.95rem]">
+                            Find Your{" "}
+                            <span className="text-[#2563eb]">
+                              Future College
+                            </span>{" "}
+                            Smartly.
+                          </h1>
+                          <p className="mt-3 max-w-[32rem] text-[13px] leading-6 text-[color:var(--text-muted)] sm:text-[14px]">
+                            Discover colleges, courses, exams, and cities from one premium search flow built to help you shortlist faster and decide with more confidence.
                           </p>
-                          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[color:var(--brand-primary)]">
-                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Fast prediction</span>
-                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Category-wise fit</span>
-                            <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">One form flow</span>
-                          </div>
                         </div>
-                        <div className="shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => router.push("/find")}
-                            className="inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.28)] transition hover:bg-[#2563eb] hover:shadow-[0_14px_34px_rgba(37,99,235,0.32)]"
-                          >
-                            Go To Cutoff Form
-                            <ArrowRight className="size-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  </div>
-                </div>
-              </div>
+                        {/* Features card pop */}
 
-              <div className="mx-auto w-full max-w-none">
-                <div className="reveal-up delay-3 mt-8 pt-3 grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in" data-scroll-animate>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
-                      Best College Flow
-                    </p>
-                    <div className="flex gap-1.5">
-                      {spotlightColleges.map((college, index) => (
-                        <span
-                          key={college.id}
-                          className={`h-1.5 rounded-full transition-all ${
-                            index === activeAction ? "w-6 bg-[color:var(--brand-primary)]" : "w-2 bg-[rgba(15,76,129,0.18)]"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-4 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(15,76,129,0.05),rgba(239,68,68,0.08))] p-4">
-                    <div
-                      className="relative h-40 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-44"
-                      onMouseEnter={() => setIsSpotlightPaused(true)}
-                      onMouseLeave={() => setIsSpotlightPaused(false)}
-                    >
-                      <div
-                        className="flex h-full w-full transition-transform duration-700 ease-out"
-                        style={{ transform: `translateX(-${activeAction * 100}%)` }}
-                      >
-                        {spotlightColleges.map((college) => (
-                          <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
-                            {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
-                              <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
-                                <div>
-                                  <p className="text-sm font-semibold text-white">{college.name}</p>
-                                  <p className="mt-1 text-[11px] text-white/80">
-                                    {college.district}, {college.state}
-                                  </p>
-                                </div>
-                              </div>
-                            ) : (
-                              <img
-                                src={getSpotlightImage(college)}
-                                alt={college.name}
-                                className="h-full w-full object-cover"
-                                onError={() =>
-                                  setBrokenCollegeImages((current) => ({
-                                    ...current,
-                                    [college.id]: true,
-                                  }))
-                                }
-                              />
-                            )}
-                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
-                            <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                              Best College
+                        <div className="relative mx-auto w-full max-w-[15.5rem] sm:max-w-[17rem] lg:max-w-[30rem]">
+                          <div key={`${activeFeature.title}-${activeFeatureCard}`} className="feature-pop-card absolute inset-0">
+                            {renderFeatureCard(activeFeature, "hero")}
+                          </div>
+                          <div className="min-h-[16.5rem] sm:min-h-[10.25rem]" />
+                        </div>
+                      </div>
+
+                      {/* Top colleges flow */}
+                      <div className="lg:ml-auto lg:w-full lg:max-w-[26rem]">
+                        <div className="flex h-full flex-col rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)]">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
+                              Top College Flow
+                            </p>
+                            <div className="flex gap-1.5">
+                              {spotlightColleges.map((college, index) => (
+                                <span
+                                  key={college.id}
+                                  className={`h-1.5 rounded-full transition-all ${index === activeAction ? "w-6 bg-[color:var(--brand-primary)]" : "w-2 bg-[rgba(15,76,129,0.18)]"
+                                    }`}
+                                />
+                              ))}
                             </div>
-                            <div className="absolute bottom-3 left-3 right-3">
-                              <div>
-                                <p className="text-sm font-semibold text-white">{college.name}</p>
+                          </div>
+
+                          <div
+                            className="relative mt-3 h-36 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-40"
+                            onMouseEnter={() => setIsSpotlightPaused(true)}
+                            onMouseLeave={() => setIsSpotlightPaused(false)}
+                          >
+                            <div
+                              className="flex h-full w-full transition-transform duration-700 ease-out"
+                              style={{ transform: `translateX(-${activeAction * 100}%)` }}
+                            >
+                              {spotlightColleges.map((college) => (
+                                <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
+                                  {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
+                                    <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
+                                      <div>
+                                        <p className="text-[15px] font-semibold text-white">{college.name}</p>
+                                        <p className="mt-1 text-[11px] text-white/80">
+                                          {college.district}, {college.state}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={getSpotlightImage(college)}
+                                      alt={college.name}
+                                      className="h-full w-full object-cover"
+                                      onError={() =>
+                                        setBrokenCollegeImages((current) => ({
+                                          ...current,
+                                          [college.id]: true,
+                                        }))
+                                      }
+                                    />
+                                  )}
+                                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
+                                  <div className="absolute bottom-3 left-3 right-3">
+                                    <p className="text-[15px] font-semibold text-white">{college.name}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
+                            <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
+                              {activeCollege?.name || "Top College"}
+                            </p>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[color:var(--text-muted)]">
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="size-3" />
+                                {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
+                              </span>
+                            </div>
+                            <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                              <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-2.5">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-primary-soft)]">
+                                  Placement
+                                </p>
+                                <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
+                                  {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
+                                </p>
+                                <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+                                  Recent placement performance
+                                </p>
+                              </div>
+                              <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.18)] bg-[rgba(239,68,68,0.06)] p-2.5">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-accent-deep)]">
+                                  Accreditation
+                                </p>
+                                <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
+                                  {activeCollege?.accreditation || "-"}
+                                </p>
+                                <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+                                  Latest approved accreditation status
+                                </p>
                               </div>
                             </div>
                           </div>
-                        ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[color:var(--text-dark)]">
-                          {activeCollege?.name || "Best College"}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-muted)]">
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin className="size-3.5" />
-                            {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
-                          </span>
+
+                    {/* Search bar */}
+                    <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-[58rem] px-8 py-4">
+                      <div className="hero-search-input relative z-[2] overflow-hidden rounded-[1.45rem] border border-[rgba(255,138,61,0.22)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] p-1 shadow-[0_18px_36px_rgba(22,50,79,0.11)] ring-1 ring-[rgba(255,138,61,0.08)]">
+                        <div className="grid gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-0">
+                          <div className="relative min-w-0 px-4 py-2 md:border-r md:border-[rgba(15,76,129,0.1)]">
+                            <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                              <Search className="size-3.5" />
+                              Search Colleges
+                            </div>
+                            {!heroSearchInput ? (
+                              <div className="pointer-events-none absolute inset-x-4 bottom-2 flex items-center overflow-hidden text-[14px] text-[color:var(--text-muted)]">
+                                {typedSearchText}
+                                <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">|</span>
+                              </div>
+                            ) : null}
+                            <input
+                              type="text"
+                              value={heroSearchInput}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setHeroSearchInput(nextValue);
+                                if (showHeroNoMatch) {
+                                  setShowHeroNoMatch(false);
+                                }
+                              }}
+                              onFocus={() => setIsHeroSearchFocused(true)}
+                              onBlur={() => {
+                                window.setTimeout(() => setIsHeroSearchFocused(false), 120);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  handleHeroSearch();
+                                }
+                              }}
+                              placeholder=""
+                              className="w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[14px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                            />
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="rounded-full bg-[color:var(--brand-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_16px_rgba(30,78,121,0.26)] transition hover:bg-[color:var(--brand-primary-soft)]"
+                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
-                            Browse Colleges
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
+                              <MapPin className="size-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[13px] font-medium text-[color:var(--text-dark)]">
+                                Location · Tamil Nadu, Chennai
+                              </span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => router.push("/explore")}
+                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                          >
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
+                              <CourseIcon className="size-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[13px] font-medium text-[color:var(--text-dark)]">
+                                Course · B.Tech, MBA, Design
+                              </span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleHeroSearch}
+                            className="inline-flex h-10 min-h-[2.6rem] w-full  items-center justify-center gap-2 rounded-[0.95rem] bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_52%,#38bdf8_100%)] px-4 text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.24)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)] md:mx-2 md:min-w-[6.25rem] md:w-auto"
+                          >
+                            Find
+                            <Search className="size-4" />
                           </button>
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-3 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
-                            Placement
-                          </p>
-                          <p className="mt-2 text-lg font-bold text-[color:var(--text-dark)]">
-                            {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
-                          </p>
-                          <p className="mt-1 text-xs text-[color:var(--text-muted)]">
-                            Recent placement performance
-                          </p>
+
+                      {isHeroSearchFocused &&
+                      heroSearchInput.trim().length > 0 &&
+                      (heroSearchSuggestions.length > 0 || showHeroNoMatch) ? (
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] overflow-hidden rounded-[1.2rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.16)] backdrop-blur-sm">
+                          {heroSearchSuggestions.length > 0 ? (
+                            heroSearchSuggestions.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  handleHeroSuggestionSelect(item);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-[0.9rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
+                              >
+                                {item.type === "college" && item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
+                                  <span className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
+                                    <img
+                                      src={item.imageSrc}
+                                      alt={item.label}
+                                      className="h-full w-full object-cover"
+                                      onError={() =>
+                                        setBrokenHeroSuggestionImages((current) => ({
+                                          ...current,
+                                          [item.id]: true,
+                                        }))
+                                      }
+                                    />
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
+                                    <Search className="size-4" />
+                                  </span>
+                                )}
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate font-medium">{item.label}</span>
+                                  <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+                                    {item.type}
+                                  </span>
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="rounded-[0.9rem] px-4 py-4 text-left">
+                              <p className="text-sm font-semibold text-[color:var(--text-dark)]">Not found</p>
+                              <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
+                                No matching college, course, location, or exam found for {heroSearchInput.trim()}.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.22)] bg-[rgba(239,68,68,0.08)] p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-accent-deep)]">
-                            Accreditation
+                      ) : null}
+                    </div>
+
+                    <div className="mx-auto grid w-[80%] max-w-[69rem] grid-cols-4 gap-2.5">
+                      {heroStatCards.map((item) => (
+                        <div key={item.label} className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-3 py-3 shadow-[0_10px_20px_rgba(15,76,129,0.06)]">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${item.iconClassName}`}>
+                              <item.icon className="size-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[1.15rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
+                              <p className="mt-1 text-[11px] font-medium leading-4 text-[color:var(--text-muted)]">{item.label}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                  </div>
+                  {/* cutoff banner */}
+
+                  <div className="mx-auto w-full max-w-none">
+                    <div className="mt-6">
+                      <article className="relative overflow-hidden rounded-[2rem] border border-[rgba(37,99,235,0.2)] bg-[linear-gradient(132deg,rgba(255,255,255,0.98),rgba(239,246,255,0.98)_52%,rgba(219,234,254,0.98))] p-6 text-[color:var(--text-dark)] shadow-[0_24px_54px_rgba(30,64,175,0.16)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_62px_rgba(30,64,175,0.22)] md:p-8 scroll-fade-in" data-scroll-animate>
+                        <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.22)] blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-14 right-0 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.18)] blur-3xl" />
+                        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="max-w-2xl">
+                            <span className="inline-flex rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#3b82f6]">
+                              Cutoff Zone
+                            </span>
+                            <h3 className="mt-4 text-2xl font-bold leading-tight md:text-3xl">
+                              Predict Smarter, Apply Better
+                            </h3>
+                            <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--text-muted)] md:text-base">
+                              Enter marks, choose your degree, and instantly view cutoff-based college matches with confidence.
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[color:var(--brand-primary)]">
+                              <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Fast prediction</span>
+                              <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">Category-wise fit</span>
+                              <span className="rounded-full border border-[rgba(29,78,216,0.2)] bg-white/95 px-3 py-1">One form flow</span>
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => router.push("/find")}
+                              className="inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.28)] transition hover:bg-[#2563eb] hover:shadow-[0_14px_34px_rgba(37,99,235,0.32)]"
+                            >
+                              Go To Cutoff Form
+                              <ArrowRight className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+
+                    <div className="reveal-up delay-3 mt-8 pt-3">
+                      <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in scroll-delay-2" data-scroll-animate>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
+                            Trending Courses
                           </p>
-                          <p className="mt-2 text-lg font-bold text-[color:var(--text-dark)]">
-                            {activeCollege?.accreditation || "-"}
-                          </p>
-                          <p className="mt-1 text-xs text-[color:var(--text-muted)]">
-                            Latest approved accreditation status
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/explore")}
+                            className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--brand-primary)]"
+                          >
+                            View all
+                            <ArrowRight className="size-3.5" />
+                          </button>
+                        </div>
+                        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                          {trendingCourseCards.map((course) => {
+                            const Icon = course.icon;
+                            return (
+                              <button
+                                key={course.id}
+                                type="button"
+                                onClick={() => router.push(course.href)}
+                                className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(239,68,68,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
+                                    <Icon className="size-[13px]" />
+                                  </div>
+                                </div>
+                                <div className="mt-3">
+                                  <p className="font-[family:var(--font-display)] text-[1.05rem] leading-none text-[color:var(--text-dark)]">
+                                    {course.course}
+                                  </p>
+                                  <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+                                    {course.subtitle}
+                                  </p>
+                                </div>
+                                <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--brand-primary)]">
+                                  Explore Course
+                                  <ArrowRight className="size-[13px] text-[color:var(--brand-accent)] transition group-hover:translate-x-0.5" />
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                  <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in scroll-delay-2" data-scroll-animate>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
-                      Trending Courses
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/explore")}
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--brand-primary)]"
-                    >
-                      View all
-                      <ArrowRight className="size-3.5" />
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                    {trendingCourseCards.map((course) => {
-                      const Icon = course.icon;
-                      return (
-                        <button
-                          key={course.id}
-                          type="button"
-                          onClick={() => router.push(course.href)}
-                          className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(239,68,68,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
-                              <Icon className="size-[13px]" />
-                            </div>
-                          </div>
-                          <div className="mt-3">
-                            <p className="font-[family:var(--font-display)] text-[1.05rem] leading-none text-[color:var(--text-dark)]">
-                              {course.course}
-                            </p>
-                            <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
-                              {course.subtitle}
-                            </p>
-                          </div>
-                          <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--brand-primary)]">
-                            Explore Course
-                            <ArrowRight className="size-[13px] text-[color:var(--brand-accent)] transition group-hover:translate-x-0.5" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -928,44 +1130,44 @@ export function HomePage({
               className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
             >
               {exploreCourseCards.slice(0, 10).map((course, index) => {
-                const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3', 'scroll-delay-4'];
+                const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
                 return (
-                <article
-                  key={course.id}
-                  className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
-                  data-scroll-animate
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                      {course.isTopCourse ? "Top Course" : "Course"}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
-                    {course.course}
-                  </h3>
-                  <dl className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
-                      <dt className="text-slate-500">Duration</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
-                      <dt className="text-slate-500">Total Fees</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.feesRange}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <dt className="text-slate-500">Cutoff</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
-                    className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
+                  <article
+                    key={course.id}
+                    className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
+                    data-scroll-animate
                   >
-                    Course Overview
-                    <ArrowRight className="size-4" />
-                  </button>
-                </article>
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                        {course.isTopCourse ? "Top Course" : "Course"}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
+                      {course.course}
+                    </h3>
+                    <dl className="mt-4 space-y-2 text-sm">
+                      <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
+                        <dt className="text-slate-500">Duration</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
+                        <dt className="text-slate-500">Total Fees</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.feesRange}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-slate-500">Cutoff</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
+                      </div>
+                    </dl>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
+                      className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
+                    >
+                      Course Overview
+                      <ArrowRight className="size-4" />
+                    </button>
+                  </article>
                 );
               })}
             </div>
@@ -994,7 +1196,7 @@ export function HomePage({
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featureCards.map((item, index) => {
               const Icon = item.icon;
-              const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3'];
+              const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3"];
               return (
                 <article
                   key={item.title}
@@ -1026,79 +1228,79 @@ export function HomePage({
 
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {topExamCards.map((exam, index) => {
-                const delays = ['', 'scroll-delay-1', 'scroll-delay-2', 'scroll-delay-3', 'scroll-delay-4'];
+                const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
                 return (
-                <article
-                  key={exam.name}
-                  onClick={() => router.push(`/exams/${exam.slug}`)}
-                  className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
-                  data-scroll-animate
-                >
-                  <span
-                    className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
-                      exam.mode === "Online Exam"
-                        ? "bg-[rgba(34,197,94,0.14)] text-[rgb(21,128,61)]"
-                        : "bg-[rgba(249,115,22,0.14)] text-[rgb(194,65,12)]"
-                    }`}
+                  <article
+                    key={exam.name}
+                    onClick={() => router.push(`/exams/${exam.slug}`)}
+                    className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
+                    data-scroll-animate
                   >
-                    {exam.mode}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
-                      <img
-                        src={exam.logo}
-                        alt={`${exam.name} logo`}
-                        className="h-full w-full object-contain p-1"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
-                        {exam.name}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <dl className="space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
-                      <dt className="text-[color:var(--text-muted)]">Colleges</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
-                      <dt className="text-[color:var(--text-muted)]">Exam Date</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <dt className="text-[color:var(--text-muted)]">Level</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</dd>
-                    </div>
-                  </dl>
-
-                  <div className="mt-auto space-y-1.5 border-t border-[rgba(20,32,51,0.08)] pt-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        router.push(`/exams/${exam.slug}`);
-                      }}
-                      className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                    <span
+                      className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
+                        exam.mode === "Online Exam"
+                          ? "bg-[rgba(34,197,94,0.14)] text-[rgb(21,128,61)]"
+                          : "bg-[rgba(249,115,22,0.14)] text-[rgb(194,65,12)]"
+                      }`}
                     >
-                      Application Process
-                      <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        router.push(`/exams/${exam.slug}`);
-                      }}
-                      className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
-                    >
-                      Exam Info
-                      <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
-                    </button>
-                  </div>
-                </article>
+                      {exam.mode}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
+                        <img
+                          src={exam.logo}
+                          alt={`${exam.name} logo`}
+                          className="h-full w-full object-contain p-1"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
+                          {exam.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <dl className="space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                        <dt className="text-[color:var(--text-muted)]">Colleges</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                        <dt className="text-[color:var(--text-muted)]">Exam Date</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <dt className="text-[color:var(--text-muted)]">Level</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-auto space-y-1.5 border-t border-[rgba(20,32,51,0.08)] pt-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          router.push(`/exams/${exam.slug}`);
+                        }}
+                        className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                      >
+                        Application Process
+                        <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          router.push(`/exams/${exam.slug}`);
+                        }}
+                        className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                      >
+                        Exam Info
+                        <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                      </button>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -1107,116 +1309,116 @@ export function HomePage({
       </section>
 
       {false && (
-      <section className="section-shell page-section bg-[#f6f1e7] text-slate-800">
-        <div className="page-container relative z-10">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
-                Spotlight Institutions
-              </p>
-              <h2 className="section-title mt-3">Top colleges presented with more trust, texture, and clarity.</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push("/explore")}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
-            >
-              Browse colleges
-              <ArrowRight className="size-4" />
-            </button>
-          </div>
-
-          <div className="relative mt-8">
-            <div
-              ref={collegesScrollContainerRef}
-              onScroll={() =>
-                syncScrollIndicators(
-                  collegesScrollContainerRef.current,
-                  setShowLeftArrowColleges,
-                  setShowRightArrowColleges,
-                )
-              }
-              className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
-            >
-              {collegesData
-                .filter((college) => college.isBestCollege)
-                .slice(0, 10)
-                .map((college) => (
-                  <article
-                    key={college.id}
-                    onClick={() => router.push(`/college/${college.id}`)}
-                    className="luxe-card group min-w-[17rem] cursor-pointer overflow-hidden sm:min-w-[20rem]"
-                  >
-                    <div className="relative h-44 overflow-hidden">
-                      <img
-                        src={college.image}
-                        alt={college.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#09111d] via-[#09111d]/65 to-transparent" />
-                      <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
-                        Best College
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="font-[family:var(--font-display)] text-[1.75rem] leading-none text-[color:var(--text-dark)]">
-                            {college.name}
-                          </h3>
-                          <p className="mt-1.5 text-xs text-slate-500">{college.university}</p>
-                        </div>
-                        <div className="rounded-2xl bg-[rgba(16,37,78,0.08)] px-3 py-2 text-right">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Placement</p>
-                          <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p>
-                        </div>
-                      </div>
-
-                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{college.description}</p>
-
-                      <div className="mt-4 flex items-center justify-between">
-                        <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                          <MapPin className="size-3.5" />
-                          {college.district}, {college.state}
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-accent-deep)]">
-                          Details
-                          <ArrowRight className="size-4" />
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-            </div>
-
-            {showLeftArrowColleges ? (
+        <section className="section-shell page-section bg-[#f6f1e7] text-slate-800">
+          <div className="page-container relative z-10">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+                  Spotlight Institutions
+                </p>
+                <h2 className="section-title mt-3">Top colleges presented with more trust, texture, and clarity.</h2>
+              </div>
               <button
                 type="button"
-                onClick={() =>
-                  collegesScrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })
-                }
-                className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                onClick={() => router.push("/explore")}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
               >
-                <ChevronLeft className="size-5" />
+                Browse colleges
+                <ArrowRight className="size-4" />
               </button>
-            ) : null}
+            </div>
 
-            {showRightArrowColleges ? (
-              <button
-                type="button"
-                onClick={() =>
-                  collegesScrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })
+            <div className="relative mt-8">
+              <div
+                ref={collegesScrollContainerRef}
+                onScroll={() =>
+                  syncScrollIndicators(
+                    collegesScrollContainerRef.current,
+                    setShowLeftArrowColleges,
+                    setShowRightArrowColleges,
+                  )
                 }
-                className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
               >
-                <ChevronRight className="size-5" />
-              </button>
-            ) : null}
+                {collegesData
+                  .filter((college) => college.isBestCollege)
+                  .slice(0, 10)
+                  .map((college) => (
+                    <article
+                      key={college.id}
+                      onClick={() => router.push(`/college/${college.id}`)}
+                      className="luxe-card group min-w-[17rem] cursor-pointer overflow-hidden sm:min-w-[20rem]"
+                    >
+                      <div className="relative h-44 overflow-hidden">
+                        <img
+                          src={college.image}
+                          alt={college.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#09111d] via-[#09111d]/65 to-transparent" />
+                        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
+                          Best College
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="font-[family:var(--font-display)] text-[1.75rem] leading-none text-[color:var(--text-dark)]">
+                              {college.name}
+                            </h3>
+                            <p className="mt-1.5 text-xs text-slate-500">{college.university}</p>
+                          </div>
+                          <div className="rounded-2xl bg-[rgba(16,37,78,0.08)] px-3 py-2 text-right">
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Placement</p>
+                            <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p>
+                          </div>
+                        </div>
+
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{college.description}</p>
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            <MapPin className="size-3.5" />
+                            {college.district}, {college.state}
+                          </p>
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-accent-deep)]">
+                            Details
+                            <ArrowRight className="size-4" />
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+              </div>
+
+              {showLeftArrowColleges ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    collegesScrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })
+                  }
+                  className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
+              ) : null}
+
+              {showRightArrowColleges ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    collegesScrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })
+                  }
+                  className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                >
+                  <ChevronRight className="size-5" />
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       )}
-      
+
 
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">

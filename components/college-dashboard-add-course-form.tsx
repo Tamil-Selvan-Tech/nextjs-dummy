@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SafeAuthUser } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
@@ -75,11 +75,19 @@ export function CollegeDashboardAddCourseForm({
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   useStatusToast(status);
 
+  useEffect(() => {
+    const nextUniversity = String(college?.university || "");
+    setForm((previous) =>
+      previous.university === nextUniversity
+        ? previous
+        : { ...previous, university: previous.university || nextUniversity },
+    );
+  }, [college?.university]);
+
   const coursePreview = useMemo(
     () => [form.courseType, form.stream, form.specialization].filter(Boolean).join(" - "),
     [form.courseType, form.stream, form.specialization],
   );
-
   const setField = <K extends keyof CourseForm>(key: K, value: CourseForm[K]) => {
     setForm((previous) => ({ ...previous, [key]: value }));
   };

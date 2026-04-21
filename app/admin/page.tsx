@@ -35,6 +35,7 @@ import {
   formatCutoffForSave,
   isValidCutoffValue,
   normalizeCutoffInput,
+  parseCutoffValue,
 } from "@/lib/cutoff-utils";
 import {
   formatRankingRangeForDisplay,
@@ -43,6 +44,10 @@ import {
   normalizeRankingRangeInput,
 } from "@/lib/ranking-utils";
 import { showToast } from "@/lib/toast";
+import {
+  formatCompactIndianCurrency,
+  formatCompactIndianCurrencyRange,
+} from "@/lib/currency-format";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
@@ -65,6 +70,7 @@ type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
 type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
 type CourseOption = { value: string; label: string };
+type CutoffRangeConfig = { max: number; scaleLabel: string; contextLabel: string };
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
@@ -185,8 +191,8 @@ const getNextEmbeddedCutoffSelection = (currentCategory: string, cutoffByCategor
   };
 };
 const emptyCourseDetail = (): CourseCollegeDetailForm => ({ semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "" });
-const emptyCourseForm: CourseForm = { courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university: "", admissionProcess: "", description: "", isTopCourse: false, entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} };
-const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
+const createEmptyCourseForm = (university = ""): CourseForm => ({ courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university, admissionProcess: "", description: "", isTopCourse: false, entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} });
+const createEmptyEmbeddedCourseDraft = (university = ""): EmbeddedCourseDraft => ({
   courseType: "",
   degreeType: "",
   stream: "",
@@ -196,7 +202,7 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   lateralEntryAvailable: false,
   lateralEntryDetails: "",
   minimumQualification: "",
-  university: "",
+  university,
   admissionProcess: "",
   description: "",
   isTopCourse: false,
@@ -211,6 +217,7 @@ const emptyEmbeddedCourseDraft = (): EmbeddedCourseDraft => ({
   applicationFee: "",
   entranceExams: [emptyCourseExam()],
 });
+const CUSTOM_STREAM_OPTION = "__custom_stream__";
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
 const normalizeIndianPhoneInput = (value: string) => {
   const digits = value.replace(/\D/g, "");
@@ -240,13 +247,18 @@ const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
 const streamOptions = ["Engineering", "Architecture", "Computer / IT", "Science", "Medical / Health", "Paramedical", "Commerce", "Management", "Arts", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
 const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
 const qualificationLabelMap: Record<string, string> = {
-  "10th": "Secondary School (10th)",
-  "10+2": "Higher Secondary (+2)",
+  "10th": "Secondary School (Grade 10)",
+  "Secondary School (10th)": "Secondary School (Grade 10)",
+  "Grade 10": "Secondary School (Grade 10)",
+  "10+2": "Higher Secondary (Grade 12)",
+  "12th": "Higher Secondary (Grade 12)",
+  "Higher Secondary (+2)": "Higher Secondary (Grade 12)",
+  "Grade 12": "Higher Secondary (Grade 12)",
   Diploma: "Diploma",
   Graduation: "Graduation",
   "Post Graduation": "Post Graduation",
 };
-const qualificationOptions = Object.values(qualificationLabelMap);
+const qualificationOptions = Array.from(new Set(Object.values(qualificationLabelMap)));
 const courseCatalog: CourseCatalogItem[] = [
   { stream: "Engineering", courseType: "B.E", specialization: "Computer Science Engineering", degreeType: "UG" },
   { stream: "Engineering", courseType: "B.E", specialization: "Information Science Engineering", degreeType: "UG" },
@@ -435,9 +447,80 @@ const getDefaultCourseName = (stream: string, degreeType: string) =>
 const getResolvedCourseName = (stream: string, degreeType: string, currentValue: string) =>
   getDefaultCourseName(stream, degreeType) || currentValue;
 const formatQualificationLabel = (value?: string) => qualificationLabelMap[String(value || "").trim()] || String(value || "").trim();
+const resolveCutoffRangeConfig = (
+  courseName: string,
+  degreeType: string,
+  stream: string,
+  minimumQualification: string,
+): CutoffRangeConfig => {
+  const normalizedCourse = String(courseName || "").trim().toUpperCase();
+  const normalizedDegreeType = String(degreeType || "").trim();
+  const normalizedStream = normalizeCourseStream(stream);
+  const normalizedQualification = String(minimumQualification || "").trim().toLowerCase();
+
+  if (normalizedStream === "Engineering") {
+    return { max: 200, scaleLabel: "out of 200", contextLabel: "Engineering" };
+  }
+  if (normalizedStream === "Architecture" || normalizedCourse.includes("B.ARCH")) {
+    return { max: 400, scaleLabel: "out of 400", contextLabel: "Architecture" };
+  }
+  if (normalizedStream === "Medical / Health") {
+    return { max: 600, scaleLabel: "out of 600", contextLabel: "Medical / Health" };
+  }
+  if (normalizedStream === "Paramedical") {
+    return { max: 200, scaleLabel: "out of 200", contextLabel: "Paramedical" };
+  }
+  if (normalizedStream === "Agriculture") {
+    return { max: 200, scaleLabel: "out of 200", contextLabel: "Agriculture" };
+  }
+  if (normalizedStream === "Law") {
+    return { max: 300, scaleLabel: "out of 300", contextLabel: "Law" };
+  }
+  if (normalizedQualification.includes("post graduation") || normalizedDegreeType === "Doctorate") {
+    return { max: 100, scaleLabel: "out of 100", contextLabel: "Post Graduation" };
+  }
+  if (
+    (normalizedQualification.includes("graduation") && !normalizedQualification.includes("post")) ||
+    normalizedDegreeType === "PG"
+  ) {
+    return { max: 100, scaleLabel: "out of 100", contextLabel: "Graduation" };
+  }
+  if (
+    normalizedQualification.includes("grade 10") ||
+    normalizedQualification.includes("10th") ||
+    normalizedDegreeType === "Diploma" ||
+    normalizedStream === "Diploma / ITI"
+  ) {
+    return { max: 500, scaleLabel: "out of 500", contextLabel: "Grade 10" };
+  }
+  return { max: 600, scaleLabel: "out of 600", contextLabel: normalizedStream || "this course" };
+};
+const getCutoffRangeHelperText = (config: CutoffRangeConfig) =>
+  `Allowed cutoff range: 0-${config.max} (${config.scaleLabel}).`;
+const isCutoffWithinRangeConfig = (
+  value: string | number | null | undefined,
+  config: CutoffRangeConfig,
+) => {
+  const parsed = parseCutoffValue(value);
+  if (!parsed) return false;
+  return parsed.start >= 0 && parsed.end >= 0 && parsed.start <= config.max && parsed.end <= config.max;
+};
+const getCutoffLimitWarning = (
+  value: string | number | null | undefined,
+  config: CutoffRangeConfig,
+) => {
+  const parsed = parseCutoffValue(value);
+  if (!parsed) return "";
+  if (parsed.start > config.max || parsed.end > config.max) {
+    return `Cutoff cannot be more than ${config.max} for ${config.contextLabel}.`;
+  }
+  return "";
+};
+const getCutoffValidationMessageForConfig = (config: CutoffRangeConfig) =>
+  `Enter cutoff like 190, 190.5, or a range like 190-195. ${config.contextLabel} cutoff must stay within 0-${config.max} (${config.scaleLabel}).`;
 const getDefaultMinimumQualification = (courseName: string, degreeType: string, stream: string) => {
   const normalizedCourse = courseName.trim().toUpperCase();
-  const normalizedStream = stream.trim();
+  const normalizedStream = normalizeCourseStream(stream);
 
   if (["MBA", "MCA", "M.E", "M.TECH", "M.SC", "M.COM", "M.A", "LLM", "MPT", "M.DES", "M.ED"].includes(normalizedCourse)) {
     return formatQualificationLabel("Graduation");
@@ -451,7 +534,7 @@ const getDefaultMinimumQualification = (courseName: string, degreeType: string, 
   if (degreeType === "PG") return formatQualificationLabel("Graduation");
   if (degreeType === "Doctorate") return formatQualificationLabel("Post Graduation");
   if (degreeType === "Diploma") return formatQualificationLabel("10th");
-  if (degreeType === "Certificate") return formatQualificationLabel(normalizedStream === "Medical" ? "10+2" : "10th");
+  if (degreeType === "Certificate") return formatQualificationLabel(normalizedStream === "Medical / Health" ? "10+2" : "10th");
   return formatQualificationLabel("10+2");
 };
 const getQualificationSuggestions = (courseName: string, degreeType: string, stream: string) => {
@@ -478,9 +561,9 @@ const calculateTotalFeesFromSemesterFees = (semesterFees: string, duration: stri
 };
 const shouldAutoShowEntranceExams = (courseName: string, degreeType: string, stream: string) => {
   const normalizedCourse = courseName.trim().toUpperCase();
-  const normalizedStream = stream.trim();
+  const normalizedStream = normalizeCourseStream(stream);
 
-  if (["Engineering", "Medical", "Law"].includes(normalizedStream)) return true;
+  if (["Engineering", "Medical / Health", "Law"].includes(normalizedStream)) return true;
   if (normalizedStream === "Management" && degreeType === "PG") return true;
   return ["B.E", "B.TECH", "M.E", "M.TECH", "MBBS", "M.D", "LLB", "LLM", "MBA", "MCA"].includes(normalizedCourse);
 };
@@ -556,10 +639,10 @@ export default function AdminPage() {
   const [brochureFile, setBrochureFile] = useState<File | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editCourseId, setEditCourseId] = useState("");
-  const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
+  const [courseForm, setCourseForm] = useState<CourseForm>(() => createEmptyCourseForm());
   const [selectedCourseCollegeId, setSelectedCourseCollegeId] = useState("");
   const [embeddedCourses, setEmbeddedCourses] = useState<EmbeddedCourseDraft[]>([]);
-  const [embeddedCourseForm, setEmbeddedCourseForm] = useState<EmbeddedCourseDraft>(emptyEmbeddedCourseDraft);
+  const [embeddedCourseForm, setEmbeddedCourseForm] = useState<EmbeddedCourseDraft>(() => createEmptyEmbeddedCourseDraft());
   const [showEmbeddedCourseEditor, setShowEmbeddedCourseEditor] = useState(false);
   const [editingEmbeddedCourseIndex, setEditingEmbeddedCourseIndex] = useState<number | null>(null);
   const [showSavedCourseList, setShowSavedCourseList] = useState(false);
@@ -618,6 +701,28 @@ export default function AdminPage() {
       })),
     [imageFiles],
   );
+  const embeddedStreamOptions = useMemo(() => {
+    const currentStream = String(embeddedCourseForm.stream || "").trim();
+    return currentStream && !streamOptions.includes(currentStream)
+      ? [currentStream, ...streamOptions]
+      : streamOptions;
+  }, [embeddedCourseForm.stream]);
+  const courseStreamOptionsForForm = useMemo(() => {
+    const currentStream = String(courseForm.stream || "").trim();
+    return currentStream && !streamOptions.includes(currentStream)
+      ? [currentStream, ...streamOptions]
+      : streamOptions;
+  }, [courseForm.stream]);
+  const embeddedStreamSelectValue = embeddedStreamOptions.includes(embeddedCourseForm.stream)
+    ? embeddedCourseForm.stream
+    : embeddedCourseForm.stream
+      ? CUSTOM_STREAM_OPTION
+      : "";
+  const courseStreamSelectValue = courseStreamOptionsForForm.includes(courseForm.stream)
+    ? courseForm.stream
+    : courseForm.stream
+      ? CUSTOM_STREAM_OPTION
+      : "";
   const getCourseTypeOptionsForSelection = useCallback(
     (stream: string, degreeType: string) => {
       const normalizedStream = normalizeCourseStream(stream);
@@ -713,6 +818,31 @@ export default function AdminPage() {
   const courseResolvedCourseName = useMemo(
     () => courseForm.courseType,
     [courseForm.courseType],
+  );
+  const embeddedCutoffRangeConfig = useMemo(
+    () =>
+      resolveCutoffRangeConfig(
+        embeddedResolvedCourseName,
+        embeddedCourseForm.degreeType,
+        embeddedCourseForm.stream,
+        embeddedCourseForm.minimumQualification,
+      ),
+    [
+      embeddedCourseForm.degreeType,
+      embeddedCourseForm.minimumQualification,
+      embeddedCourseForm.stream,
+      embeddedResolvedCourseName,
+    ],
+  );
+  const courseCutoffRangeConfig = useMemo(
+    () =>
+      resolveCutoffRangeConfig(
+        courseResolvedCourseName,
+        courseForm.degreeType,
+        courseForm.stream,
+        courseForm.minimumQualification,
+      ),
+    [courseForm.degreeType, courseForm.minimumQualification, courseForm.stream, courseResolvedCourseName],
   );
 
   const canAccess = useCallback(
@@ -889,6 +1019,16 @@ export default function AdminPage() {
     };
   }, [collegeImagePreviews, coverImageFile, coverImagePreviewUrl, homeHeroImageFile, homeHeroPreviewUrl, logoFile, logoPreviewUrl]);
 
+  useEffect(() => {
+    const nextUniversity = collegeForm.university.trim();
+    if (!nextUniversity) return;
+    setEmbeddedCourseForm((previous) =>
+      previous.university.trim()
+        ? previous
+        : { ...previous, university: nextUniversity },
+    );
+  }, [collegeForm.university]);
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     const params = new URLSearchParams(searchParams.toString());
@@ -974,7 +1114,7 @@ export default function AdminPage() {
       .map((course) => buildEmbeddedCourseDraft(course, collegeId));
 
   const resetEmbeddedCourseEditor = () => {
-    setEmbeddedCourseForm(emptyEmbeddedCourseDraft());
+    setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(collegeForm.university.trim()));
     setEditingEmbeddedCourseIndex(null);
     setShowEmbeddedCourseEditor(false);
   };
@@ -983,6 +1123,9 @@ export default function AdminPage() {
     const category = String(draft.cutoffCategory || "").trim().toUpperCase();
     const cutoffValue = formatCutoffForSave(draft.cutoffValue);
     if (!category || !cutoffValue || !isValidCutoffValue(cutoffValue)) {
+      return null;
+    }
+    if (!isCutoffWithinRangeConfig(cutoffValue, embeddedCutoffRangeConfig)) {
       return null;
     }
 
@@ -1041,6 +1184,10 @@ export default function AdminPage() {
     }
     if (!cutoffValue) {
       setStatusText(cutoffValidationMessage);
+      return;
+    }
+    if (!isCutoffWithinRangeConfig(cutoffValue, embeddedCutoffRangeConfig)) {
+      setStatusText(getCutoffValidationMessageForConfig(embeddedCutoffRangeConfig));
       return;
     }
 
@@ -1133,6 +1280,10 @@ export default function AdminPage() {
     }
     if (normalizedDraftCutoffs.some((item) => !isValidCutoffValue(item.cutoff))) {
       setStatusText(cutoffValidationMessage);
+      return;
+    }
+    if (normalizedDraftCutoffs.some((item) => !isCutoffWithinRangeConfig(item.cutoff, embeddedCutoffRangeConfig))) {
+      setStatusText(getCutoffValidationMessageForConfig(embeddedCutoffRangeConfig));
       return;
     }
     if (!embeddedCourseForm.intake.trim()) {
@@ -1479,7 +1630,7 @@ export default function AdminPage() {
     setShowCourseForm(false);
     setEditCourseId("");
     setSelectedCourseCollegeId("");
-    setCourseForm(emptyCourseForm);
+    setCourseForm(createEmptyCourseForm(collegeForm.university.trim()));
   };
 
   const saveCourse = async (event: React.FormEvent) => {
@@ -1518,6 +1669,15 @@ export default function AdminPage() {
         const collegeName =
           adminState.colleges.find((college) => college._id === collegeWithInvalidCutoff)?.name || "selected college";
         setStatusText(`${collegeName}: ${cutoffValidationMessage}`);
+        return;
+      }
+      const collegeWithOutOfRangeCutoff = selectedCollegeIds.find(
+        (collegeId) => !isCutoffWithinRangeConfig(courseForm.details[collegeId]?.cutoff || "", courseCutoffRangeConfig),
+      );
+      if (collegeWithOutOfRangeCutoff) {
+        const collegeName =
+          adminState.colleges.find((college) => college._id === collegeWithOutOfRangeCutoff)?.name || "selected college";
+        setStatusText(`${collegeName}: ${getCutoffValidationMessageForConfig(courseCutoffRangeConfig)}`);
         return;
       }
 
@@ -1834,7 +1994,7 @@ export default function AdminPage() {
   const pendingRequestNotifications = useMemo(
     () =>
       collegeChangeNotifications.map((item) => ({
-        id: `college-${item._id}`,
+        id: `college-${item._id}-${new Date(String(item.updatedAt || item.createdAt || "")).getTime() || 0}`,
         kind: "College Change",
         name: item.payload?.name || item.requesterName || "College update",
         email: item.requesterEmail || "-",
@@ -1887,6 +2047,23 @@ export default function AdminPage() {
             .toLowerCase()}`
         : "",
     [currentUser?.email, fallbackAdminEmail],
+  );
+  const persistSeenNotifications = useCallback(
+    (ids: string[], lastSeenAt: number) => {
+      if (!seenNotificationStorageKey) return;
+      try {
+        window.localStorage.setItem(
+          seenNotificationStorageKey,
+          JSON.stringify({
+            seenIds: ids,
+            lastSeenAt,
+          }),
+        );
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [seenNotificationStorageKey],
   );
   const markNotificationsAsSeen = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
@@ -1970,16 +2147,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (activeTab !== "college-notifications") return;
     if (unreadRequestNotifications.length === 0) return;
-    markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
+    markNotificationsAsSeen(unreadRequestNotifications.map((item) => item.id));
     setLastSeenNotificationAt((previous) => Math.max(previous, latestPendingNotificationAt));
   }, [
     activeTab,
     latestPendingNotificationAt,
     markNotificationsAsSeen,
-    pendingRequestNotifications,
+    unreadRequestNotifications,
     unreadRequestNotifications.length,
   ]);
   const embeddedCutoffRangeParts = getCutoffRangeParts(embeddedCourseForm.cutoffValue);
+  const embeddedCutoffWarning = getCutoffLimitWarning(embeddedCourseForm.cutoffValue, embeddedCutoffRangeConfig);
 
   return (
     <AdminPortalShell
@@ -2010,11 +2188,13 @@ export default function AdminPage() {
                 const nextOpen = !showRequestNotifications;
                 setShowRequestNotifications(nextOpen);
                 if (nextOpen) {
-                  markNotificationsAsSeen(pendingRequestNotifications.map((item) => item.id));
+                  const nextUnreadIds = unreadRequestNotifications.map((item) => item.id);
+                  const nextSeenIds = Array.from(new Set([...seenNotificationIds, ...nextUnreadIds]));
+                  markNotificationsAsSeen(nextUnreadIds);
                   if (unreadRequestNotifications.length > 0) {
-                    setLastSeenNotificationAt((previous) =>
-                      Math.max(previous, latestPendingNotificationAt),
-                    );
+                    const nextLastSeenAt = Math.max(lastSeenNotificationAt, latestPendingNotificationAt);
+                    setLastSeenNotificationAt(nextLastSeenAt);
+                    persistSeenNotifications(nextSeenIds, nextLastSeenAt);
                   }
                 }
               }}
@@ -2045,12 +2225,20 @@ export default function AdminPage() {
                   </button>
                 </div>
                 <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto">
-                  {pendingRequestNotifications.length > 0 ? (
-                    pendingRequestNotifications.map((item) => (
+                  {unreadRequestNotifications.length > 0 ? (
+                    unreadRequestNotifications.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => {
+                          const nextSeenIds = Array.from(new Set([...seenNotificationIds, item.id]));
+                          const nextLastSeenAt = Math.max(
+                            lastSeenNotificationAt,
+                            new Date(String(item.updatedAt || item.createdAt || "")).getTime() || 0,
+                          );
+                          markNotificationsAsSeen([item.id]);
+                          setLastSeenNotificationAt(nextLastSeenAt);
+                          persistSeenNotifications(nextSeenIds, nextLastSeenAt);
                           setShowRequestNotifications(false);
                           handleTabChange(item.tab);
                         }}
@@ -2065,7 +2253,7 @@ export default function AdminPage() {
                     ))
                   ) : (
                     <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
-                      No college change notifications.
+                      No new college notifications.
                     </div>
                   )}
                 </div>
@@ -2937,7 +3125,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setEmbeddedCourseForm(emptyEmbeddedCourseDraft());
+                      setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(collegeForm.university.trim()));
                       setEditingEmbeddedCourseIndex(null);
                       setShowEmbeddedCourseEditor(true);
                     }}
@@ -2995,13 +3183,19 @@ export default function AdminPage() {
                     </label>
                     <label>
                       <span className={labelClass}>Stream<span className={requiredMarkClass}>*</span></span>
-                      <input
+                      <select
                         className={inputClass}
-                        placeholder="Select or type stream"
-                        list="embedded-course-stream-options"
-                        value={embeddedCourseForm.stream}
+                        value={embeddedStreamSelectValue}
                         onChange={(event) =>
                           setEmbeddedCourseForm((prev) => {
+                            if (event.target.value === CUSTOM_STREAM_OPTION) {
+                              return {
+                                ...prev,
+                                stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
+                                courseType: "",
+                                specialization: "",
+                              };
+                            }
                             const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
                             const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
 
@@ -3014,13 +3208,38 @@ export default function AdminPage() {
                               minimumQualification:
                                 getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
                               entranceExamsEnabled:
-                              shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                                shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
                             };
                           })
                         }
                         required
-                      />
+                      >
+                        <option value="">Select stream</option>
+                        {embeddedStreamOptions.map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                        <option value={CUSTOM_STREAM_OPTION}>Custom stream</option>
+                      </select>
                     </label>
+                    {embeddedStreamSelectValue === CUSTOM_STREAM_OPTION ? (
+                      <label>
+                        <span className={labelClass}>Custom Stream<span className={requiredMarkClass}>*</span></span>
+                        <input
+                          className={inputClass}
+                          placeholder="Type custom stream"
+                          value={embeddedCourseForm.stream}
+                          onChange={(event) =>
+                            setEmbeddedCourseForm((prev) => ({
+                              ...prev,
+                              stream: event.target.value,
+                              courseType: "",
+                              specialization: "",
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                    ) : null}
                     <label>
                       <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
                       <input
@@ -3049,11 +3268,6 @@ export default function AdminPage() {
                         required
                       />
                     </label>
-                    <datalist id="embedded-course-stream-options">
-                      {streamOptions.map((item) => (
-                        <option key={item} value={item} />
-                      ))}
-                    </datalist>
                     <datalist id="embedded-course-specialization-options">
                       {embeddedSpecializationEntries.map((item) => (
                         <option key={item.label} value={item.value} />
@@ -3130,7 +3344,7 @@ export default function AdminPage() {
                     ) : null}
                     <label>
                       <span className={labelClass}>Minimum Qualification<span className={requiredMarkClass}>*</span></span>
-                      <input className={inputClass} list="embedded-qualification-options" placeholder="10+2 / Graduation" value={embeddedCourseForm.minimumQualification} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, minimumQualification: event.target.value }))} required />
+                      <input className={inputClass} list="embedded-qualification-options" placeholder="Grade 12 / Graduation" value={embeddedCourseForm.minimumQualification} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, minimumQualification: event.target.value }))} required />
                     </label>
                     <label>
                       <span className={labelClass}>University</span>
@@ -3204,6 +3418,12 @@ export default function AdminPage() {
                           Add Cutoff
                         </button>
                       </div>
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        {getCutoffRangeHelperText(embeddedCutoffRangeConfig)}
+                      </p>
+                      {embeddedCutoffWarning ? (
+                        <p className="mt-1 text-[11px] font-medium text-rose-600">{embeddedCutoffWarning}</p>
+                      ) : null}
                       {normalizeCategoryCutoffs(embeddedCourseForm.cutoffByCategory).length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {normalizeCategoryCutoffs(embeddedCourseForm.cutoffByCategory).map((item) => (
@@ -3449,7 +3669,9 @@ export default function AdminPage() {
                       <p className="mt-0.5 text-xs text-slate-500">{[college.district, college.state].filter(Boolean).join(", ")}</p>
                       {isExpanded ? (
                         <>
-                        <p className="mt-1 text-xs text-slate-500">Fees: {range.min || "-"} to {range.max || "-"}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Fees: {formatCompactIndianCurrencyRange(range.min, range.max)}
+                        </p>
                         <p className="mt-1 text-xs text-slate-500">Tags: {college.courseTags || "-"}</p>
                         <p className="mt-1 text-xs text-slate-500">Facilities: {Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || "-")}</p>
                         <p className="mt-1 text-xs text-slate-500">Placement: {String(college.placements?.placementRate || college.placementRate || "-")}</p>
@@ -3653,13 +3875,19 @@ export default function AdminPage() {
                   </label>
                   <label>
                     <span className={labelClass}>Stream<span className={requiredMarkClass}>*</span></span>
-                    <input
+                    <select
                       className={inputClass}
-                      placeholder="Select or type stream"
-                      list="course-stream-options"
-                      value={courseForm.stream}
+                      value={courseStreamSelectValue}
                       onChange={(event) =>
                         setCourseForm((prev) => {
+                          if (event.target.value === CUSTOM_STREAM_OPTION) {
+                            return {
+                              ...prev,
+                              stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
+                              courseType: "",
+                              specialization: "",
+                            };
+                          }
                           const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
                           const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
 
@@ -3677,8 +3905,33 @@ export default function AdminPage() {
                         })
                       }
                       required
-                    />
+                    >
+                      <option value="">Select stream</option>
+                      {courseStreamOptionsForForm.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                      <option value={CUSTOM_STREAM_OPTION}>Custom stream</option>
+                    </select>
                   </label>
+                  {courseStreamSelectValue === CUSTOM_STREAM_OPTION ? (
+                    <label>
+                      <span className={labelClass}>Custom Stream<span className={requiredMarkClass}>*</span></span>
+                      <input
+                        className={inputClass}
+                        placeholder="Type custom stream"
+                        value={courseForm.stream}
+                        onChange={(event) =>
+                          setCourseForm((prev) => ({
+                            ...prev,
+                            stream: event.target.value,
+                            courseType: "",
+                            specialization: "",
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+                  ) : null}
                   <label>
                     <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
                     <input
@@ -3707,11 +3960,6 @@ export default function AdminPage() {
                       required
                     />
                   </label>
-                  <datalist id="course-stream-options">
-                    {streamOptions.map((item) => (
-                      <option key={item} value={item} />
-                    ))}
-                  </datalist>
                   <datalist id="course-specialization-options">
                     {courseSpecializationEntries.map((item) => (
                       <option key={item.label} value={item.value} />
@@ -3797,7 +4045,7 @@ export default function AdminPage() {
                 <div className={formSectionClass}>
                   <label>
                     <span className={labelClass}>Minimum Qualification<span className={requiredMarkClass}>*</span></span>
-                    <input className={inputClass} list="course-qualification-options" placeholder="10+2 / Graduation" value={courseForm.minimumQualification} onChange={(event) => setCourseForm((prev) => ({ ...prev, minimumQualification: event.target.value }))} required />
+                    <input className={inputClass} list="course-qualification-options" placeholder="Grade 12 / Graduation" value={courseForm.minimumQualification} onChange={(event) => setCourseForm((prev) => ({ ...prev, minimumQualification: event.target.value }))} required />
                   </label>
                   <label>
                     <span className={labelClass}>University</span>
@@ -4041,7 +4289,14 @@ export default function AdminPage() {
                               maxLength={7}
                             />
                           </div>
-                          <span className="mt-1 block text-[11px] text-slate-500">Use values like 190, 190.5, or 190-195</span>
+                          <span className="mt-1 block text-[11px] text-slate-500">
+                            Use values like 190, 190.5, or 190-195. {getCutoffRangeHelperText(courseCutoffRangeConfig)}
+                          </span>
+                          {getCutoffLimitWarning(courseForm.details[collegeId]?.cutoff || "", courseCutoffRangeConfig) ? (
+                            <span className="mt-1 block text-[11px] font-medium text-rose-600">
+                              {getCutoffLimitWarning(courseForm.details[collegeId]?.cutoff || "", courseCutoffRangeConfig)}
+                            </span>
+                          ) : null}
                         </label>
                         <label>
                           <span className={labelClass}>Total Allotted Seats<span className={requiredMarkClass}>*</span></span>
@@ -4470,8 +4725,8 @@ export default function AdminPage() {
                         <td className="px-3 py-3 align-top">{item.stream || "-"}</td>
                         <td className="px-3 py-3 align-top whitespace-nowrap">{item.duration || "-"}</td>
                         <td className="px-3 py-3 align-top">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.semesterFees || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap font-semibold text-slate-900">{item.totalFees || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{formatCompactIndianCurrency(item.semesterFees)}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap font-semibold text-slate-900">{formatCompactIndianCurrency(item.totalFees)}</td>
                         <td className="px-3 py-3 align-top">
                           {normalizeCategoryCutoffs(item.cutoffByCategory).length > 0 ? (
                             <div className="space-y-1 text-[11px] text-slate-600">
@@ -4486,7 +4741,7 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 align-top whitespace-nowrap">{item.intake || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.applicationFee || "-"}</td>
+                        <td className="px-3 py-3 align-top whitespace-nowrap">{formatCompactIndianCurrency(item.applicationFee)}</td>
                         <td className="px-3 py-3 align-top">
                           {item.entranceExams.some((exam) => Object.values(exam).some(Boolean)) ? (
                             <div className="space-y-2">

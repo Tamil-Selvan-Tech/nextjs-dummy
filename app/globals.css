@@ -432,9 +432,13 @@ button,
   box-shadow: 0 10px 24px rgba(22, 50, 79, 0.05);
 }
 
+.feature-pop-card {
+  animation: featureCardPop 2.6s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
 .hero-search-shell {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 9999px;
   animation: searchShellFloat 6s ease-in-out infinite;
 }
@@ -538,6 +542,21 @@ button,
   100% {
     opacity: 0;
     transform: translate3d(0, 24px, 0);
+  }
+}
+
+@keyframes featureCardPop {
+  0% {
+    transform: translate3d(0, 16px, 0) scale(0.965);
+  }
+  55% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  82% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -838,7 +857,8 @@ button,
   .hero-orb,
   .reveal-up,
   .marquee-track,
-  [class*="floatCard"] {
+  [class*="floatCard"],
+  .feature-pop-card {
     animation: none !important;
   }
 }

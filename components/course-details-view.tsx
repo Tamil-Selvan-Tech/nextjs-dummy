@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import type { College, Course } from "@/lib/site-data";
+import {
+  formatCompactIndianCurrency,
+  formatCompactIndianCurrencyRange,
+} from "@/lib/currency-format";
 
 type Filters = {
   search: string;
@@ -158,7 +162,7 @@ export function CourseDetailsView({
                     { label: "Course Duration", value: durations.join(" / ") || "Not available", icon: GraduationCap },
                     {
                       label: "Fees Range",
-                      value: `Rs. ${Math.min(...feeValues).toLocaleString()} - ${Math.max(...feeValues).toLocaleString()}`,
+                      value: formatCompactIndianCurrencyRange(Math.min(...feeValues), Math.max(...feeValues)),
                       icon: Trophy,
                     },
                     { label: "Cutoff Range", value: `${Math.min(...cutoffValues)} - ${Math.max(...cutoffValues)}`, icon: BadgeCheck },
@@ -211,8 +215,8 @@ export function CourseDetailsView({
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { label: "Lowest Fees", value: `Rs. ${feeMin.toLocaleString()}` },
-              { label: "Highest Fees", value: `Rs. ${feeMax.toLocaleString()}` },
+              { label: "Lowest Fees", value: formatCompactIndianCurrency(feeMin) },
+              { label: "Highest Fees", value: formatCompactIndianCurrency(feeMax) },
               { label: "Lowest Cutoff", value: `${cutoffMin}` },
               { label: "Highest Cutoff", value: `${cutoffMax}` },
             ].map((item) => (
@@ -333,7 +337,7 @@ export function CourseDetailsView({
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Total Fees</p>
-                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">Rs. {course.totalFees.toLocaleString()}</p>
+                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">{formatCompactIndianCurrency(course.totalFees)}</p>
                         </div>
                         <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Cutoff</p>
