@@ -61,6 +61,7 @@ const TOP_EXAM_CARDS = [
   {
     name: "JEE Main",
     slug: "jee-main",
+    href: "/exams/jee-main",
     logo: "/exams/jee-main.svg",
     mode: "Online Exam",
     participatingColleges: "2031",
@@ -70,6 +71,7 @@ const TOP_EXAM_CARDS = [
   {
     name: "JEE Advanced",
     slug: "jee-advanced",
+    href: "/exams/jee-advanced",
     logo: "/exams/jee-advanced.svg",
     mode: "Online Exam",
     participatingColleges: "73",
@@ -79,6 +81,7 @@ const TOP_EXAM_CARDS = [
   {
     name: "CUET",
     slug: "cuet",
+    href: "/exams/cuet",
     logo: "/exams/cuet.svg",
     mode: "Offline Exam",
     participatingColleges: "584",
@@ -88,6 +91,7 @@ const TOP_EXAM_CARDS = [
   {
     name: "NEET",
     slug: "neet",
+    href: "/exams/neet",
     logo: "/exams/neet.svg",
     mode: "Offline Exam",
     participatingColleges: "612",
@@ -100,6 +104,19 @@ type HomePageProps = {
   collegesData?: College[];
   coursesData?: Course[];
   heroImageUrl?: string;
+  examSchedules?: Array<{
+    id?: string;
+    examName?: string;
+    applicationFees?: string;
+    startDateToApply?: string;
+    lastDateToApply?: string;
+    correctionDate?: string;
+    lastDateForFeePayment?: string;
+    admitCardRelease?: string;
+    examDate?: string;
+    resultDate?: string;
+    updatedAt?: string;
+  }>;
 };
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
@@ -230,6 +247,7 @@ export function HomePage({
   collegesData = fallbackColleges,
   coursesData = fallbackCourses,
   heroImageUrl = "",
+  examSchedules = [],
 }: HomePageProps) {
   const router = useRouter();
   const featureCards = FEATURE_CARDS;
@@ -460,7 +478,39 @@ export function HomePage({
     return items.slice(0, 6);
   }, [topCourseChips]);
 
-  const topExamCards = TOP_EXAM_CARDS;
+  const topExamCards = useMemo(() => {
+    const normalizeExamName = (value: string) =>
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+
+    const scheduleMap = new Map(
+      (Array.isArray(examSchedules) ? examSchedules : [])
+        .map((item, index) => ({
+          id: String(item?.id || `${index}`),
+          examName: String(item?.examName || "").trim(),
+          examDate: String(item?.examDate || "").trim(),
+          updatedAt: String(item?.updatedAt || "").trim(),
+        }))
+        .filter((item) => item.examName)
+        .sort(
+          (left, right) =>
+            new Date(right.updatedAt || 0).getTime() -
+            new Date(left.updatedAt || 0).getTime(),
+        )
+        .map((item) => [normalizeExamName(item.examName), item]),
+    );
+
+    return TOP_EXAM_CARDS.map((item) => {
+      const matchedSchedule = scheduleMap.get(normalizeExamName(item.name));
+      return {
+        ...item,
+        examDate: matchedSchedule?.examDate || item.examDate,
+      };
+    });
+  }, [examSchedules]);
   const heroSearchPool = useMemo(() => {
     const unique = new Map<string, HeroSearchItem>();
     const pushValue = ({
@@ -521,10 +571,10 @@ export function HomePage({
       });
     });
 
-    TOP_EXAM_CARDS.forEach((exam) => {
+    topExamCards.forEach((exam) => {
       pushValue({
         label: exam.name,
-        href: `/exams/${exam.slug}`,
+        href: exam.href,
         type: "exam",
         keywords: [exam.mode, exam.examLevel, exam.examDate],
       });
@@ -539,7 +589,7 @@ export function HomePage({
     );
 
     return [...unique.values()];
-  }, [collegesData, coursesData]);
+  }, [collegesData, coursesData, topExamCards]);
 
   const heroSearchSuggestions = useMemo(() => {
     const query = heroSearchInput.trim().toLowerCase();
@@ -807,6 +857,8 @@ export function HomePage({
                       >
                         <a
                           href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="breaking-news-link"
                           aria-label={`${item.title} page`}
                         >
@@ -1005,7 +1057,7 @@ export function HomePage({
 
                           <button
                             type="button"
-                            onClick={() => router.push("/explore?view=colleges&city=Chennai")}
+                            onClick={() => router.push("/search")}
                             className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
@@ -1020,7 +1072,7 @@ export function HomePage({
 
                           <button
                             type="button"
-                            onClick={() => router.push("/explore?view=courses")}
+                            onClick={() => router.push("/search")}
                             className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
@@ -1344,7 +1396,7 @@ export function HomePage({
                 return (
                   <article
                     key={exam.name}
-                    onClick={() => router.push(`/exams/${exam.slug}`)}
+                    onClick={() => router.push(exam.href)}
                     className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
                     data-scroll-animate
                   >
@@ -1359,12 +1411,18 @@ export function HomePage({
                     </span>
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
-                        <img
-                          src={exam.logo}
-                          alt={`${exam.name} logo`}
-                          className="h-full w-full object-contain p-1"
-                          loading="lazy"
-                        />
+                        {exam.logo ? (
+                          <img
+                            src={exam.logo}
+                            alt={`${exam.name} logo`}
+                            className="h-full w-full object-contain p-1"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Bell className="size-4 text-[color:var(--brand-primary)]" />
+                          </div>
+                        )}
                       </div>
                       <div>
                         <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
@@ -1393,7 +1451,7 @@ export function HomePage({
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          router.push(`/exams/${exam.slug}`);
+                          router.push(exam.href);
                         }}
                         className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
                       >
@@ -1404,7 +1462,7 @@ export function HomePage({
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          router.push(`/exams/${exam.slug}`);
+                          router.push(exam.href);
                         }}
                         className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
                       >

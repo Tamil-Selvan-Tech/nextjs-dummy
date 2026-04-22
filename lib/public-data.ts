@@ -175,8 +175,54 @@ type BackendCourse = {
 type BackendSiteSettings = {
   settings?: {
     homeHeroImageUrl?: string;
+    examSchedules?: Array<{
+      id?: string;
+      examName?: string;
+      applicationFees?: string;
+      startDateToApply?: string;
+      lastDateToApply?: string;
+      correctionDate?: string;
+      lastDateForFeePayment?: string;
+      admitCardRelease?: string;
+      examDate?: string;
+      resultDate?: string;
+      updatedAt?: string;
+    }>;
   };
 };
+
+export type PublicExamSchedule = {
+  id: string;
+  examName: string;
+  applicationFees: string;
+  startDateToApply: string;
+  lastDateToApply: string;
+  correctionDate: string;
+  lastDateForFeePayment: string;
+  admitCardRelease: string;
+  examDate: string;
+  resultDate: string;
+  updatedAt: string;
+};
+
+const mapExamSchedules = (siteSettingsData?: BackendSiteSettings): PublicExamSchedule[] =>
+  Array.isArray(siteSettingsData?.settings?.examSchedules)
+    ? siteSettingsData.settings.examSchedules
+        .map((item, index) => ({
+          id: String(item?.id || `${index}`),
+          examName: String(item?.examName || "").trim(),
+          applicationFees: String(item?.applicationFees || "").trim(),
+          startDateToApply: String(item?.startDateToApply || "").trim(),
+          lastDateToApply: String(item?.lastDateToApply || "").trim(),
+          correctionDate: String(item?.correctionDate || "").trim(),
+          lastDateForFeePayment: String(item?.lastDateForFeePayment || "").trim(),
+          admitCardRelease: String(item?.admitCardRelease || "").trim(),
+          examDate: String(item?.examDate || "").trim(),
+          resultDate: String(item?.resultDate || "").trim(),
+          updatedAt: String(item?.updatedAt || "").trim(),
+        }))
+        .filter((item) => item.examName)
+    : [];
 
 const mapCourses = (records: BackendCourse[]): Course[] =>
   records.map((item, index) => {
@@ -377,12 +423,23 @@ export async function fetchPublicPanelData() {
       colleges: mappedColleges.length ? mappedColleges : fallbackColleges,
       courses: mappedCourses.length ? mappedCourses : fallbackCourses,
       homeHeroImageUrl: String(siteSettingsData?.settings?.homeHeroImageUrl || "").trim(),
+      examSchedules: mapExamSchedules(siteSettingsData),
     };
   } catch {
     return {
       colleges: fallbackColleges,
       courses: fallbackCourses,
       homeHeroImageUrl: "",
+      examSchedules: [],
     };
+  }
+}
+
+export async function fetchPublicExamSchedules() {
+  try {
+    const siteSettingsData = await fetchJson<BackendSiteSettings>("/api/public/site-settings");
+    return mapExamSchedules(siteSettingsData);
+  } catch {
+    return [];
   }
 }

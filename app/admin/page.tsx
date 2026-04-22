@@ -60,13 +60,13 @@ type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; aft
 type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; createdAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; submittedPayload?: Record<string, unknown> | null; changeSummary?: ChangeSummaryItem[]; formAccessUsedAt?: string; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
-type SiteSettings = { homeHeroImageUrl?: string };
+type SiteSettings = { homeHeroImageUrl?: string; examSchedules?: SavedExamSchedule[] };
 type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
 type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
-type ExamScheduleForm = { examName: string; startDateToApply: string; lastDateToApply: string; lastDateForFeePayment: string; admitCardRelease: string; examDate: string; resultDate: string };
+type ExamScheduleForm = { examName: string; applicationFees: string; startDateToApply: string; lastDateToApply: string; correctionDate: string; lastDateForFeePayment: string; admitCardRelease: string; examDate: string; resultDate: string };
 type SavedExamSchedule = ExamScheduleForm & { id: string; updatedAt: string };
 type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
@@ -223,14 +223,22 @@ const CUSTOM_STREAM_OPTION = "__custom_stream__";
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
 const emptyExamScheduleForm: ExamScheduleForm = {
   examName: "",
+  applicationFees: "",
   startDateToApply: "",
   lastDateToApply: "",
+  correctionDate: "",
   lastDateForFeePayment: "",
   admitCardRelease: "",
   examDate: "",
   resultDate: "",
 };
-const examScheduleStorageKey = "collegehub_admin_exam_schedules";
+const examScheduleNameOptions = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
+const normalizeExamScheduleName = (value: string) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 const normalizeIndianPhoneInput = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
@@ -583,8 +591,64 @@ const shouldAutoShowEntranceExams = (courseName: string, degreeType: string, str
 
 const formatDate = (value?: string) =>
   value
-    ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    ? /^\d{2}-\d{2}-\d{4}$/.test(String(value).trim())
+      ? String(value).trim()
+      : new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
     : "-";
+
+const correctionDateRangePattern = /^\d{2}-\d{2}-\d{4}\s+to\s+\d{2}-\d{2}-\d{4}$/i;
+const parseDayMonthYearValue = (value: string) => {
+  const trimmedValue = String(value || "").trim();
+  const match = trimmedValue.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return null;
+
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.getUTCFullYear() !== year ||
+    parsedDate.getUTCMonth() !== month - 1 ||
+    parsedDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${yearText}-${monthText}-${dayText}`;
+};
+
+const parseExamDateValue = (value: string) => {
+  const trimmedValue = String(value || "").trim();
+  if (!trimmedValue) return null;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmedValue)) {
+    return parseDayMonthYearValue(trimmedValue);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)) {
+    const [yearText = "", monthText = "", dayText = ""] = trimmedValue.split("-");
+    return parseDayMonthYearValue(`${dayText}-${monthText}-${yearText}`);
+  }
+  return null;
+};
+
+const formatExamDateForInput = (value: string) => {
+  const parsedValue = parseExamDateValue(value);
+  return parsedValue || "";
+};
+
+const formatExamDateFromInput = (value: string) => {
+  const trimmedValue = String(value || "").trim();
+  if (!trimmedValue) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)) {
+    const [yearText = "", monthText = "", dayText = ""] = trimmedValue.split("-");
+    return `${dayText}-${monthText}-${yearText}`;
+  }
+  return trimmedValue;
+};
+
+const formatCorrectionDateRange = (value?: string) => String(value || "").trim() || "-";
 
 const renderChangeValue = (value: unknown) => {
   if (Array.isArray(value)) {
@@ -906,7 +970,6 @@ export default function AdminPage() {
     [adminState.colleges, showAllCollegeCards],
   );
   const hiddenCollegeCount = Math.max(adminState.colleges.length - visibleCollegeCards.length, 0);
-  const todayDate = useMemo(() => new Date().toISOString().split("T")[0], []);
   const loadAdminData = useCallback(async (authToken: string, fallbackUser?: AdminUser | null) => {
     try {
       setLoading(true);
@@ -961,22 +1024,14 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => {
-    try {
-      const storedSchedules = window.localStorage.getItem(examScheduleStorageKey);
-      if (!storedSchedules) return;
-      const parsedSchedules = JSON.parse(storedSchedules) as SavedExamSchedule[];
-      if (!Array.isArray(parsedSchedules)) return;
-      setSavedExams(
-        parsedSchedules.filter((item) => typeof item?.id === "string" && typeof item?.examName === "string"),
-      );
-    } catch {
-      window.localStorage.removeItem(examScheduleStorageKey);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(examScheduleStorageKey, JSON.stringify(savedExams));
-  }, [savedExams]);
+    setSavedExams(
+      Array.isArray(siteSettings.examSchedules)
+        ? siteSettings.examSchedules.filter(
+            (item) => typeof item?.id === "string" && typeof item?.examName === "string",
+          )
+        : [],
+    );
+  }, [siteSettings.examSchedules]);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -1976,10 +2031,46 @@ export default function AdminPage() {
     setEditExamId("");
   };
 
-  const saveExamSchedule = (event: React.FormEvent) => {
+  const persistExamSchedules = async (nextSchedules: SavedExamSchedule[]) => {
+    if (!token) {
+      throw new Error("Admin session not found");
+    }
+
+    let data;
+    try {
+      data = await request(
+        "/api/admin/site-settings/exam-schedules",
+        withAuth(token, {
+          method: "PUT",
+          body: JSON.stringify({ examSchedules: nextSchedules }),
+        }),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (!message.includes("route not found")) {
+        throw error;
+      }
+
+      data = await request(
+        "/api/admin/site-settings/exam-schedules",
+        withAuth(token, {
+          method: "POST",
+          body: JSON.stringify({ examSchedules: nextSchedules }),
+        }),
+      );
+    }
+
+    const nextSettings = (data as { settings?: SiteSettings })?.settings || {};
+    setSiteSettings(nextSettings);
+    setSavedExams(nextSettings.examSchedules || []);
+    return data;
+  };
+
+  const saveExamSchedule = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!examForm.examName.trim()) {
+    const normalizedExamName = examForm.examName.trim();
+    if (!normalizedExamName) {
       setStatusText("Exams: Exam name is required");
       return;
     }
@@ -1993,48 +2084,97 @@ export default function AdminPage() {
       { label: "Result Date", value: examForm.resultDate },
     ];
 
-    const pastDate = orderedDates.find((item) => item.value && item.value < todayDate);
-    if (pastDate) {
-      setStatusText(`Exams: ${pastDate.label} must be today or a future date`);
+    const normalizedOrderedDates = orderedDates.map((item) => ({
+      ...item,
+      parsedValue: item.value ? parseExamDateValue(item.value) : null,
+    }));
+
+    const invalidDate = normalizedOrderedDates.find((item) => item.value && !item.parsedValue);
+    if (invalidDate) {
+      setStatusText(`Exams: ${invalidDate.label} must be in DD-MM-YYYY format`);
       return;
     }
 
-    for (let index = 1; index < orderedDates.length; index += 1) {
-      const previous = orderedDates[index - 1];
-      const current = orderedDates[index];
-      if (previous.value && current.value && current.value < previous.value) {
+    for (let index = 1; index < normalizedOrderedDates.length; index += 1) {
+      const previous = normalizedOrderedDates[index - 1];
+      const current = normalizedOrderedDates[index];
+      if (previous.parsedValue && current.parsedValue && current.parsedValue < previous.parsedValue) {
         setStatusText(`Exams: ${current.label} should be after ${previous.label}`);
         return;
       }
     }
 
+    if (examForm.correctionDate.trim()) {
+      if (!correctionDateRangePattern.test(examForm.correctionDate.trim())) {
+        setStatusText("Exams: Correction Date must be in DD-MM-YYYY to DD-MM-YYYY format");
+        return;
+      }
+
+      const [correctionStart = "", correctionEnd = ""] = examForm.correctionDate.split(/\s+to\s+/i);
+      const parsedCorrectionStart = parseDayMonthYearValue(correctionStart);
+      const parsedCorrectionEnd = parseDayMonthYearValue(correctionEnd);
+
+      if (!parsedCorrectionStart || !parsedCorrectionEnd) {
+        setStatusText("Exams: Correction Date contains an invalid date");
+        return;
+      }
+
+      if (parsedCorrectionEnd < parsedCorrectionStart) {
+        setStatusText("Exams: Correction Date end should be after start date");
+        return;
+      }
+    }
+
+    const matchingExamId = savedExams.find(
+      (item) =>
+        item.id !== editExamId &&
+        normalizeExamScheduleName(item.examName) === normalizeExamScheduleName(normalizedExamName),
+    )?.id;
+    const resolvedExamId = editExamId || matchingExamId || `${Date.now()}`;
     const payload: SavedExamSchedule = {
-      id: editExamId || `${Date.now()}`,
+      id: resolvedExamId,
       updatedAt: new Date().toISOString(),
-      examName: examForm.examName.trim(),
+      examName: normalizedExamName,
+      applicationFees: examForm.applicationFees.trim(),
       startDateToApply: examForm.startDateToApply,
       lastDateToApply: examForm.lastDateToApply,
+      correctionDate: examForm.correctionDate.trim(),
       lastDateForFeePayment: examForm.lastDateForFeePayment,
       admitCardRelease: examForm.admitCardRelease,
       examDate: examForm.examDate,
       resultDate: examForm.resultDate,
     };
 
-    setSavedExams((prev) => (
-      editExamId
-        ? prev.map((item) => (item.id === editExamId ? payload : item))
-        : [payload, ...prev]
-    ));
-    setStatusText(editExamId ? "Exam schedule updated" : "Exam schedule saved");
-    resetExamForm();
+    const nextSchedules = (
+      editExamId || matchingExamId
+        ? savedExams.map((item) => (item.id === resolvedExamId ? payload : item))
+        : [payload, ...savedExams]
+    );
+
+    try {
+      const data = await persistExamSchedules(nextSchedules);
+      setStatusText(
+        (data as { message?: string })?.message ||
+          (editExamId || matchingExamId ? "Exam schedule updated" : "Exam schedule saved"),
+      );
+      resetExamForm();
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to save exam schedule");
+    }
   };
 
-  const removeExamSchedule = (examId: string) => {
-    setSavedExams((prev) => prev.filter((item) => item.id !== examId));
-    if (editExamId === examId) {
-      resetExamForm();
+  const removeExamSchedule = async (examId: string) => {
+    const nextSchedules = savedExams.filter((item) => item.id !== examId);
+
+    try {
+      const data = await persistExamSchedules(nextSchedules);
+      setStatusText((data as { message?: string })?.message || "Exam schedule deleted");
+      if (editExamId === examId) {
+        resetExamForm();
+      }
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to delete exam schedule");
     }
-    setStatusText("Exam schedule deleted");
   };
 
   const collegeChangeNotifications = useMemo(
@@ -4694,7 +4834,7 @@ export default function AdminPage() {
                   Add exam dates with future-ready date inputs
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Type exam details and pick dates from today or any upcoming date.
+                  Type exam details and enter dates in `dd-mm-yyyy` format.
                 </p>
               </div>
               <button
@@ -4709,32 +4849,60 @@ export default function AdminPage() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <label className="xl:col-span-3">
                 <span className={labelClass}>Exam Name<span className={requiredMarkClass}>*</span></span>
-                <input
+                <select
                   className={inputClass}
-                  placeholder="Type exam name"
                   value={examForm.examName}
                   onChange={(event) => setExamForm((prev) => ({ ...prev, examName: event.target.value }))}
                   required
+                >
+                  <option value="">Select exam name</option>
+                  {examScheduleNameOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                  {examForm.examName && !examScheduleNameOptions.includes(examForm.examName) ? (
+                    <option value={examForm.examName}>{examForm.examName}</option>
+                  ) : null}
+                </select>
+              </label>
+              <label>
+                <span className={labelClass}>Application Fees</span>
+                <input
+                  className={inputClass}
+                  placeholder="1220-1500"
+                  value={examForm.applicationFees}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, applicationFees: event.target.value }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">Enter a fee range like 500-1000 or 1220-1500</span>
               </label>
               <label>
                 <span className={labelClass}>Start Date to Apply</span>
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.startDateToApply}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, startDateToApply: event.target.value }))}
+                  value={formatExamDateForInput(examForm.startDateToApply)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, startDateToApply: formatExamDateFromInput(event.target.value) }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
               <label>
                 <span className={labelClass}>Last Date to Apply</span>
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.lastDateToApply}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateToApply: event.target.value }))}
+                  value={formatExamDateForInput(examForm.lastDateToApply)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateToApply: formatExamDateFromInput(event.target.value) }))}
+                />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
+              </label>
+              <label>
+                <span className={labelClass}>Correction Date</span>
+                <input
+                  className={inputClass}
+                  placeholder="05-04-2026 to 07-04-2026"
+                  value={examForm.correctionDate}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, correctionDate: event.target.value }))}
                 />
               </label>
               <label>
@@ -4742,40 +4910,40 @@ export default function AdminPage() {
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.lastDateForFeePayment}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateForFeePayment: event.target.value }))}
+                  value={formatExamDateForInput(examForm.lastDateForFeePayment)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateForFeePayment: formatExamDateFromInput(event.target.value) }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
               <label>
                 <span className={labelClass}>Admit Card Release</span>
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.admitCardRelease}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, admitCardRelease: event.target.value }))}
+                  value={formatExamDateForInput(examForm.admitCardRelease)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, admitCardRelease: formatExamDateFromInput(event.target.value) }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
               <label>
                 <span className={labelClass}>Exam Date</span>
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.examDate}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, examDate: event.target.value }))}
+                  value={formatExamDateForInput(examForm.examDate)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, examDate: formatExamDateFromInput(event.target.value) }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
               <label>
                 <span className={labelClass}>Result Date</span>
                 <input
                   className={inputClass}
                   type="date"
-                  min={todayDate}
-                  value={examForm.resultDate}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, resultDate: event.target.value }))}
+                  value={formatExamDateForInput(examForm.resultDate)}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, resultDate: formatExamDateFromInput(event.target.value) }))}
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
             </div>
 
@@ -4812,8 +4980,10 @@ export default function AdminPage() {
                         setEditExamId(item.id);
                         setExamForm({
                           examName: item.examName || "",
+                          applicationFees: item.applicationFees || "",
                           startDateToApply: item.startDateToApply || "",
                           lastDateToApply: item.lastDateToApply || "",
+                          correctionDate: item.correctionDate || "",
                           lastDateForFeePayment: item.lastDateForFeePayment || "",
                           admitCardRelease: item.admitCardRelease || "",
                           examDate: item.examDate || "",
@@ -4827,7 +4997,7 @@ export default function AdminPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => removeExamSchedule(item.id)}
+                      onClick={() => void removeExamSchedule(item.id)}
                       className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
                     >
                       Delete
@@ -4837,12 +5007,20 @@ export default function AdminPage() {
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Application Fees</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{item.applicationFees || "-"}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Start Date to Apply</p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.startDateToApply)}</p>
                   </div>
                   <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date to Apply</p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.lastDateToApply)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Correction Date</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatCorrectionDateRange(item.correctionDate)}</p>
                   </div>
                   <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date for Fee Payment</p>

@@ -26,6 +26,7 @@ import type {
   ExamDateRow,
   ExamDetails,
   ExamEligibilityRow,
+  ExamStudyLink,
   ExamScoreCalculation,
   ExamSection,
   ExamTableRow,
@@ -150,6 +151,38 @@ function getOverviewIcon(title: string) {
   return Atom;
 }
 
+function normalizeExamMetaLabel(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getExamApplicationFee(details: ExamDetails) {
+  if (String(details.applicationFees || "").trim()) {
+    return String(details.applicationFees || "").trim();
+  }
+
+  const rows: Array<{ label: string; value: string }> = [
+    ...details.highlightsTable.map((row) => ({ label: row.label, value: row.value })),
+    ...details.overviewCards.map((row) => ({ label: row.title, value: row.value })),
+    ...details.sections.flatMap((section) => [
+      ...(section.tableRows || []).map((row) => ({ label: row.key, value: row.value })),
+      ...(section.secondaryTableRows || []).map((row) => ({ label: row.key, value: row.value })),
+      ...(section.tertiaryTableRows || []).map((row) => ({ label: row.key, value: row.value })),
+    ]),
+  ];
+
+  return (
+    rows.find((row) =>
+      ["application fee", "application fees", "registration fee", "registration fees"].some(
+        (keyword) => normalizeExamMetaLabel(row.label).includes(keyword),
+      ),
+    )?.value || ""
+  );
+}
+
 function renderHighlightedText(text: string): ReactNode {
   const parts = text.split(highlightPattern);
 
@@ -165,6 +198,157 @@ function renderHighlightedText(text: string): ReactNode {
         ),
       )}
     </>
+  );
+}
+
+function StudyLinkGrid({
+  title,
+  summary,
+  links,
+  accentClass,
+}: {
+  title: string;
+  summary: string;
+  links: ExamStudyLink[];
+  accentClass: string;
+}) {
+  return (
+    <section className="rounded-[1.8rem] border border-[#edf1f6] bg-[linear-gradient(135deg,#f8fbff_0%,#fff8ef_100%)] p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${accentClass}`}>Official Resource Hub</p>
+          <h3 className="mt-2 text-[1.5rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
+          <p className="mt-3 max-w-3xl text-[0.98rem] leading-7 text-[#526071]">{summary}</p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {links.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            className="group rounded-[1.4rem] border border-[#dbe6f5] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[#bfd4f5] hover:shadow-[0_16px_34px_rgba(15,23,42,0.08)]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#2f6edb]">
+                <ExternalLink className="size-5" />
+              </div>
+              {link.meta ? (
+                <span className="rounded-full bg-[#fff4e8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#b45309]">
+                  {link.meta}
+                </span>
+              ) : null}
+            </div>
+            <h4 className="mt-4 text-[1.02rem] font-bold leading-7 text-[#172033]">{link.label}</h4>
+            <p className="mt-2 text-sm leading-6 text-[#607086]">{link.note}</p>
+            <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#2f6edb]">
+              Open official link
+              <ChevronRight className="size-4 transition group-hover:translate-x-0.5" />
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PreparationInfographic({
+  title,
+  items,
+}: {
+  title: string;
+  items: NonNullable<ExamSection["preparationVisualItems"]>;
+}) {
+  const icons = [BookOpenText, CalendarDays, Atom, FileText, RefreshCcw];
+  const badgeColors = ["bg-[#ff8a00]", "bg-[#f59e0b]", "bg-[#c2410c]", "bg-[#2563eb]", "bg-[#0ea5e9]"];
+
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-[#f1d4bd] bg-white">
+      <div className="bg-[linear-gradient(90deg,#bf4d00_0%,#d66609_100%)] px-6 py-5 text-center">
+        <h3 className="text-[2rem] font-bold tracking-[-0.03em] text-white">{title}</h3>
+      </div>
+      <div className="grid gap-6 px-6 py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-center">
+        <div className="relative mx-auto flex h-[240px] w-[240px] items-center justify-center rounded-full border-2 border-dashed border-[#26364d]">
+          <div className="flex h-[168px] w-[168px] items-center justify-center rounded-full bg-[radial-gradient(circle_at_center,#ffe6d4_0%,#fff4eb_70%,#ffffff_100%)] text-center shadow-[inset_0_0_0_10px_rgba(255,255,255,0.92)]">
+            <div>
+              <p className="text-[1rem] font-medium uppercase tracking-[0.08em] text-[#6b7280]">{title.replace(" Preparation Tips", "")}</p>
+              <p className="mt-1 text-[1.05rem] font-black uppercase leading-none text-[#f97316]">Preparation Tips</p>
+            </div>
+          </div>
+          {items.slice(0, 5).map((item, index) => {
+            const angle = [-90, -25, 10, 50, 125][index] ?? 0;
+            const radius = 120;
+            const x = Math.cos((angle * Math.PI) / 180) * radius;
+            const y = Math.sin((angle * Math.PI) / 180) * radius;
+            const Icon = icons[index] ?? BookOpenText;
+
+            return (
+              <div
+                key={item.title}
+                className={`absolute flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg ${badgeColors[index] ?? "bg-[#f97316]"}`}
+                style={{ transform: `translate(${x}px, ${y}px)` }}
+              >
+                <Icon className="size-5" />
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-5">
+          {items.map((item, index) => (
+            <div key={item.title} className="rounded-[1.35rem] border border-[#eef2f7] bg-[#fcfdff] px-5 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex items-start gap-4">
+                <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${badgeColors[index] ?? "bg-[#f97316]"}`}>
+                  {index + 1}
+                </div>
+                <div>
+                  <h4 className="text-[1.08rem] font-bold leading-8 text-[#172033]">{item.title}</h4>
+                  <p className="mt-1.5 text-[0.95rem] leading-7 text-[#556274]">{item.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RoutineTable({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: [string, string, string];
+  rows: NonNullable<ExamSection["routineTableRows"]>;
+}) {
+  return (
+    <section className="mt-8 overflow-hidden rounded-[2rem] border border-[#dbe5f5] bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+      <div className="bg-[linear-gradient(90deg,#eff6ff_0%,#fff7ed_100%)] px-6 py-5">
+        <h3 className="text-[1.6rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-[180px_minmax(300px,1.2fr)_minmax(320px,1fr)] bg-[#dfeafe] text-sm font-semibold text-[#172033]">
+            <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
+            <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[1]}</div>
+            <div className="px-5 py-4">{columns[2]}</div>
+          </div>
+          {rows.map((row) => (
+            <div
+              key={`${row.time}-${row.activity}`}
+              className="grid grid-cols-[180px_minmax(300px,1.2fr)_minmax(320px,1fr)] border-t border-[#e5edf8] text-sm text-[#425066]"
+            >
+              <div className="border-r border-[#e5edf8] bg-[#fbfdff] px-5 py-4 font-semibold text-[#172033]">{row.time}</div>
+              <div className="border-r border-[#e5edf8] px-5 py-4 leading-7">{row.activity}</div>
+              <div className="px-5 py-4 leading-7">{row.notes}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -596,9 +780,12 @@ function OverviewContent({ details, section }: { details: ExamDetails; section: 
   );
 }
 
-function GenericSectionContent({ section }: { section: ExamSection }) {
+function GenericSectionContent({ section, details }: { section: ExamSection; details: ExamDetails }) {
   const isExamPattern = section.id === "exam-pattern";
   const isRegistration = section.id === "registration";
+  const isQuestionPaper = section.id === "question-paper";
+  const isPreparation = section.id === "preparation";
+  const showStudyHub = (section.id === "question-paper" || section.id === "mock-test") && details.studyHub;
 
   return (
     <article className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
@@ -625,7 +812,9 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
       ) : null}
 
       <h2 className="mt-3 text-[2rem] font-bold leading-tight tracking-[-0.03em] text-[#172033]">{section.title}</h2>
-      <p className="mt-4 text-[1.02rem] leading-8 text-[#5a6678]">{renderHighlightedText(section.summary)}</p>
+      {!isQuestionPaper ? (
+        <p className="mt-4 text-[1.02rem] leading-8 text-[#5a6678]">{renderHighlightedText(section.summary)}</p>
+      ) : null}
 
       {isRegistration && section.liveLinkLabel && section.liveLinkHref ? (
         <div className="mt-6">
@@ -713,7 +902,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </section>
       ) : null}
 
-      {section.paragraphs?.length ? (
+      {section.paragraphs?.length && !isQuestionPaper ? (
         <div className="mt-6 space-y-4 text-[1rem] leading-8 text-[#526071]">
           {section.paragraphs.map((paragraph) => (
             <p key={paragraph}>{renderHighlightedText(paragraph)}</p>
@@ -721,7 +910,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </div>
       ) : null}
 
-      {section.bullets?.length ? (
+      {section.bullets?.length && !isQuestionPaper ? (
         <ul className="mt-6 list-disc space-y-3 pl-8 text-[1rem] leading-8 text-[#2f3d4f]">
           {section.bullets.map((item) => (
             <li key={item}>
@@ -763,7 +952,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </p>
       ) : null}
 
-      {!isExamPattern && section.highlights?.length ? (
+      {!isExamPattern && !isQuestionPaper && section.highlights?.length ? (
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {section.highlights.map((item) => (
             <div key={item} className="rounded-[1.25rem] border border-[#e8edf3] bg-[#fbfcff] px-5 py-4 text-[0.98rem] leading-7 text-[#334155]">
@@ -847,7 +1036,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </p>
       ) : null}
 
-      {!isRegistration && section.steps?.length ? (
+      {!isRegistration && !isQuestionPaper && section.steps?.length ? (
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {section.steps.map((step, index) => (
             <div key={step} className="rounded-[1.35rem] border border-[#e9edf4] bg-[#fffdf9] px-5 py-4">
@@ -860,7 +1049,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </div>
       ) : null}
 
-      {!isRegistration && section.blocks?.length ? (
+      {!isRegistration && !isQuestionPaper && section.blocks?.length ? (
         <div className="mt-6 space-y-4">
           {section.blocks.map((block) => {
             const styles = getBlockStyles(block.variant);
@@ -888,7 +1077,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </div>
       ) : null}
 
-      {section.resources?.length ? (
+      {section.resources?.length && !isQuestionPaper ? (
         <section className="mt-8 rounded-[1.7rem] border border-[#edf1f6] bg-[linear-gradient(135deg,#f5f9ff,#fff7ee)] p-5">
           <h3 className="text-[1.2rem] font-bold text-[#172033]">Refer Links</h3>
           <div className="mt-4 grid gap-3">
@@ -910,6 +1099,40 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
           </div>
         </section>
       ) : null}
+
+      {isPreparation && section.preparationVisualItems?.length ? (
+        <div className="mt-8">
+          <PreparationInfographic
+            title={section.preparationVisualTitle ?? `${details.title.replace(/\s+\d{4}$/, "")} Preparation Tips`}
+            items={section.preparationVisualItems}
+          />
+        </div>
+      ) : null}
+
+      {isPreparation && section.routineTableRows?.length && section.routineTableColumns ? (
+        <RoutineTable
+          title={section.routineTableTitle ?? "Daily Routine Structure"}
+          columns={section.routineTableColumns}
+          rows={section.routineTableRows}
+        />
+      ) : null}
+
+      {showStudyHub ? (
+        <div className="mt-8 space-y-6">
+          <StudyLinkGrid
+            title={details.studyHub?.previousYearPapersTitle ?? "Official Previous Year Question Papers"}
+            summary={details.studyHub?.previousYearPapersSummary ?? "Official paper links and archives."}
+            links={details.studyHub?.previousYearPapers ?? []}
+            accentClass="text-[#2f6edb]"
+          />
+          <StudyLinkGrid
+            title={details.studyHub?.practiceTitle ?? "Official Practice Links"}
+            summary={details.studyHub?.practiceSummary ?? "Official mock tests and practice links."}
+            links={details.studyHub?.practiceLinks ?? []}
+            accentClass="text-[#ea580c]"
+          />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -921,6 +1144,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
   const activeTabConfig = displayTabs.find((tab) => tab.id === activeTab) ?? displayTabs[0];
   const activeSection = getSection(details, activeTabConfig.sectionId);
   const moreExams = allExams.filter((exam) => exam.slug !== details.slug).slice(0, 3);
+  const applicationFee = getExamApplicationFee(details);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1027,7 +1251,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
               {activeSection.id === "overview" ? (
                 <OverviewContent details={details} section={activeSection} />
               ) : (
-                <GenericSectionContent section={activeSection} />
+                <GenericSectionContent section={activeSection} details={details} />
               )}
             </div>
 
@@ -1041,24 +1265,50 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
                     Download Free {details.title.replace(/\s+\d{4}$/, "")} Previous Year Papers with Solutions
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
-                >
-                  Free Download
-                  <Download className="size-5" />
-                </button>
+                {details.studyHub?.previousYearPapers?.[0] ? (
+                  <a
+                    href={details.studyHub.previousYearPapers[0].href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
+                    title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
+                  >
+                    Free Download
+                    <Download className="size-5" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
+                    title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
+                  >
+                    Free Download
+                    <Download className="size-5" />
+                  </button>
+                )}
               </section>
 
               <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
                 <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Get More Info About {details.title.replace(/\s+\d{4}$/, "")}</h3>
-                <button
-                  type="button"
-                  className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
-                >
-                  Download Sample Papers
-                  <Download className="size-5" />
-                </button>
+                {details.studyHub?.practiceLinks?.[0] ? (
+                  <a
+                    href={details.studyHub.practiceLinks[0].href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+                  >
+                    Download Sample Papers
+                    <Download className="size-5" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+                  >
+                    Download Sample Papers
+                    <Download className="size-5" />
+                  </button>
+                )}
               </section>
 
               <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">

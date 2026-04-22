@@ -1,7 +1,25 @@
+import type { PublicExamSchedule } from "@/lib/public-data";
+
 export type ExamResource = {
   label: string;
   href: string;
   note: string;
+};
+
+export type ExamStudyLink = {
+  label: string;
+  href: string;
+  note: string;
+  meta?: string;
+};
+
+export type ExamStudyHub = {
+  previousYearPapersTitle?: string;
+  previousYearPapersSummary?: string;
+  previousYearPapers: ExamStudyLink[];
+  practiceTitle?: string;
+  practiceSummary?: string;
+  practiceLinks: ExamStudyLink[];
 };
 
 export type ExamBlock = {
@@ -19,6 +37,17 @@ export type ExamTripleInfoRow = {
   first: string;
   second: string;
   third: string;
+};
+
+export type ExamPreparationVisualItem = {
+  title: string;
+  description: string;
+};
+
+export type ExamRoutineRow = {
+  time: string;
+  activity: string;
+  notes: string;
 };
 
 export type ExamTableRow = {
@@ -123,6 +152,11 @@ export type ExamSection = {
   quaternaryTableTitle?: string;
   quaternaryTableColumns?: [string, string, string];
   quaternaryTableRows?: ExamTripleInfoRow[];
+  preparationVisualTitle?: string;
+  preparationVisualItems?: ExamPreparationVisualItem[];
+  routineTableTitle?: string;
+  routineTableColumns?: [string, string, string];
+  routineTableRows?: ExamRoutineRow[];
 };
 
 export type ExamTimelineItem = {
@@ -148,6 +182,7 @@ export type ExamDetails = {
   seatsAvailable: string;
   applicationStart: string;
   applicationEnd: string;
+  applicationFees?: string;
   applicationStartLabel: string;
   applicationEndLabel: string;
   examDateISO: string;
@@ -166,6 +201,7 @@ export type ExamDetails = {
   relatedArticles?: string[];
   relatedQuestions?: string[];
   timeline: ExamTimelineItem[];
+  studyHub?: ExamStudyHub;
   sections: ExamSection[];
 };
 
@@ -181,6 +217,92 @@ const commonTabs = [
   "mock-test",
   "news",
 ] as const;
+
+const commonPreparationVisualItems: ExamPreparationVisualItem[] = [
+  {
+    title: "Know your syllabus and exam pattern",
+    description: "Study each chapter with clarity first. Concept purinjadhu apram targeted practice start pannunga.",
+  },
+  {
+    title: "Plan and prepare a study plan",
+    description: "Easy, medium, hard topics split pannitu daily slot assign pannunga so preparation random-a pogadhu.",
+  },
+  {
+    title: "Build your concept strongly",
+    description: "One chapter complete panna theory recap + formula sheet + core questions mandatory-a finish pannunga.",
+  },
+  {
+    title: "Practice previous year question papers",
+    description: "PYQ solve pannumbodhu paper pattern, repeat topics, and actual difficulty level clear-a puriyum.",
+  },
+  {
+    title: "Revision every day",
+    description: "Revision miss panna retention drop aagum. Daily short-note and formula recap fixed-aa vechukkonga.",
+  },
+];
+
+const commonPreparationRoutineRows: ExamRoutineRow[] = [
+  {
+    time: "5:30 - 6:00 am",
+    activity: "Wake up + Freshen up + 5-min light stretch / deep breathing",
+    notes: "No phone, no snooze",
+  },
+  {
+    time: "6:00 - 9:15 am",
+    activity: "Session-1 -> Subject 1 (Physics or Math - whichever is weaker)",
+    notes: "1 chapter theory (fast reading) + all formulas. Solve 80-100 previous year + coaching module questions of that chapter",
+  },
+  {
+    time: "9:15 - 9:45 am",
+    activity: "Breakfast + 10-min walk / outside air",
+    notes: "Eat heavy (oats, eggs, fruits, etc.)",
+  },
+  {
+    time: "9:45 - 1:15 pm",
+    activity: "Session-2 -> Subject 2 (Chemistry - fastest scoring)",
+    notes: "Inorganic / Organic / Physical - 1-2 chapters NCERT lines + 100-120 questions (N Awasthi / MS Chauhan level 1-2)",
+  },
+  {
+    time: "1:15 - 2:00 pm",
+    activity: "Lunch + 15-min power nap",
+    notes: "-",
+  },
+  {
+    time: "2:00 - 5:30 pm",
+    activity: "Session-3 -> Subject 3 (the remaining one - Math or Physics)",
+    notes: "Same pattern: theory revision + 100+ questions of 1-2 chapters",
+  },
+  {
+    time: "5:30 - 6:15 pm",
+    activity: "Break -> Tea + light exercise / walk + talk to family / friend (mandatory for mental health)",
+    notes: "No study, no phone scrolling",
+  },
+  {
+    time: "6:15 - 9:30 pm",
+    activity: "Session-4 -> FULL MOCK or Weak Topic Revision + PYQs",
+    notes: "Mon / Wed / Fri / Sun - Full 3-hour mock (exact NTA pattern). Tue / Thu / Sat - 2 weakest chapters (solve 200 questions each)",
+  },
+  {
+    time: "9:30 - 10:15 pm",
+    activity: "Dinner",
+    notes: "-",
+  },
+  {
+    time: "10:15 - 11:30 / 12:00 pm",
+    activity: "Mock Analysis (only on mock days) OR Formula / Short Notes Revision (on non-mock days)",
+    notes: "Mark silly mistakes in a separate notebook. Revise all formulas of the day's chapters",
+  },
+  {
+    time: "12:00 - 12:30 am",
+    activity: "Quick NCERT Chemistry one-liner revision (only last 30 days)",
+    notes: "-",
+  },
+  {
+    time: "12:30 am",
+    activity: "Sleep (7-7.5 hours compulsory)",
+    notes: "No all-nighters - marks drop after 3-4 days of less sleep",
+  },
+];
 
 function googleSearch(query: string) {
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
@@ -306,6 +428,52 @@ export const examContent: Record<string, ExamDetails> = {
       "How many sessions of JEE Main 2026 will be conducted?",
       "What is the difference between JEE Main Paper 2A and 2B?",
     ],
+    studyHub: {
+      previousYearPapersTitle: "Official Previous Year Question Papers",
+      previousYearPapersSummary: "Year-wise question paper, recorded response, and official answer-key references direct-a open panna use pannunga.",
+      previousYearPapers: [
+        {
+          label: "JEE Main official documents archive",
+          href: "https://jeemain.nta.nic.in/documents/",
+          note: "Official documents page-la recent year notices, answer keys, and paper references available.",
+          meta: "Year-wise official archive",
+        },
+        {
+          label: "JEE Main 2025 question paper and recorded response notices",
+          href: "https://jeemain.nta.nic.in/document-category/2025-public-notices/",
+          note: "2025 public notices section-la question paper and recorded response related links irukku.",
+          meta: "2025 official notice set",
+        },
+        {
+          label: "JEE Main official question paper challenge notice",
+          href: "https://jeemain.nta.nic.in/document/public-noticedisplay-of-provisional-answer-keys-and-question-paper-with-recorded-responses-for-answer-key-challenge-reg/",
+          note: "Official question paper with recorded responses reference notice.",
+          meta: "PDF / notice view",
+        },
+      ],
+      practiceTitle: "Official Model Papers And Daily Practice",
+      practiceSummary: "Manual upload illa. Official prep ecosystem-ku direct links mattum kuduthirukkom.",
+      practiceLinks: [
+        {
+          label: "NTA Abhyas mock tests",
+          href: "https://www.nta.ac.in/Abhyas",
+          note: "Daily practice, mock tests, and performance-based preparation platform.",
+          meta: "Mocks + progress flow",
+        },
+        {
+          label: "NTA Abhyas web app",
+          href: "https://abhyas.nta.ac.in/",
+          note: "Practice test launch page.",
+          meta: "Practice portal",
+        },
+        {
+          label: "NTA IIT-PAL lectures for JEE Main",
+          href: "https://www.nta.ac.in/LecturesContent",
+          note: "Physics, Chemistry, Mathematics concept lectures official-a available.",
+          meta: "Subject-wise concept support",
+        },
+      ],
+    },
     timeline: [
       { label: "Application Start", date: "2026-01-05T09:00:00+05:30", displayDate: "January 05, 2026", tone: "success" },
       { label: "Last Date", date: "2026-03-10T23:59:00+05:30", displayDate: "March 10, 2026", tone: "warning" },
@@ -366,15 +534,12 @@ export const examContent: Record<string, ExamDetails> = {
           { key: "JEE Main 2026 Exam Window", value: "April 02 to April 09, 2026" },
           { key: "Result Declaration", value: "April 19, 2026" },
         ],
-        tertiaryTitle: "JEE Main Registration 2026 Fees",
-        tertiarySummary: "JEE Main application fees depend on the paper combination and candidate category. Additional paper choices increase the payable amount.",
-        tertiaryTableTitle: "JEE Main 2026 Application Fee Structure",
-        tertiaryTableColumns: ["Category", "Fee Details"],
+        tertiaryTitle: "Application Fees Range",
+        tertiarySummary: "JEE Main application fees usually vary based on the selected paper combination and the latest NTA notification. Use this quick range as a planning reference before checking the live portal.",
+        tertiaryTableTitle: "JEE Main 2026 Application Fees Range",
+        tertiaryTableColumns: ["Exam", "Application Fees Range"],
         tertiaryTableRows: [
-          { key: "General / OBC", value: "Higher fee band as per NTA notification and selected paper combination" },
-          { key: "EWS / SC / ST / PwD", value: "Concessional fee band as notified by NTA" },
-          { key: "Paper Combination", value: "Paper 1 alone and Paper 1 + Paper 2 combinations carry different fees" },
-          { key: "Payment Mode", value: "Online payment through official NTA application portal" },
+          { key: "JEE Main", value: "₹500 - ₹1000+" },
         ],
         quaternaryTitle: "What Documents Do You Need While Filling the JEE Main Registration Form?",
         quaternarySummary: "To register for JEE Main, candidates must upload the required documents correctly because the submitted details are used for application verification, admit card generation, and result processing.\nIncorrect or mismatched uploads can lead to rejection or correction-window issues.\nAll uploaded documents should match the exact spelling, date of birth, and prescribed format mentioned in the official notification.",
@@ -448,16 +613,9 @@ export const examContent: Record<string, ExamDetails> = {
       {
         id: "question-paper",
         label: "Question Paper",
-        eyebrow: "PYQ Bank",
-        title: "Question paper and previous year practice",
-        summary: "Year-wise and shift-wise paper reference with solutions prepare pannrathukku curated pointers.",
-        blocks: [
-          { title: "What to collect", items: ["Previous year papers year-wise", "Shift-wise memory-based papers", "Video / PDF solutions for review"] },
-          { title: "How to use them", items: ["Time-bound practice", "Topic tagging with error notebook", "Easy vs tricky questions separate-a analyze pannunga"] },
-        ],
-        resources: [
-          { label: "Google: JEE Main previous year papers", href: googleSearch("JEE Main previous year papers with solutions pdf"), note: "Quick practice search." },
-        ],
+        eyebrow: "Official Paper Hub",
+        title: "Official previous year question papers",
+        summary: "JEE Main official archive, recorded responses, and answer-key notice links direct-a open panna use pannunga.",
       },
       {
         id: "cutoff",
@@ -493,14 +651,11 @@ export const examContent: Record<string, ExamDetails> = {
           "By attempting regular mocks and previous year papers, candidates can improve time management, reduce negative marking, and build exam temperament.",
           "Focus on the latest syllabus and official pattern because deleted topics or changed weightage should not consume unnecessary preparation time.",
         ],
-        blocks: [
-          { title: "Preparation focus", items: ["Practice numerical problems", "Strong formula revision", "Mock tests regularly", "Time management"] },
-          {
-            title: "Pro Tips",
-            variant: "highlight",
-            items: ["Consistency is key", "Analyze mock tests", "Revise regularly", "Stay healthy"],
-          },
-        ],
+        preparationVisualTitle: "JEE Main Preparation Tips",
+        preparationVisualItems: commonPreparationVisualItems,
+        routineTableTitle: "Daily Routine Structure",
+        routineTableColumns: ["Time", "Activity (Daily Fixed Routine)", "Notes / What to Do Exactly"],
+        routineTableRows: commonPreparationRoutineRows,
       },
       {
         id: "mock-test",
@@ -703,6 +858,46 @@ export const examContent: Record<string, ExamDetails> = {
       "If I passed Class 12 in 2025, am I eligible for JEE Advanced 2026 even if I dropped a year?",
       "If I reappear only in some subjects of Class 12, can I still use the Top 20 Percentile criterion?",
     ],
+    studyHub: {
+      previousYearPapersTitle: "Official JEE Advanced Paper Archive",
+      previousYearPapersSummary: "Paper 1, Paper 2, and archive downloads official JEE Advanced source-lendhu open aagum.",
+      previousYearPapers: [
+        {
+          label: "JEE Advanced archive question papers",
+          href: "https://jeeadv.ac.in/archive.html",
+          note: "2007 onward paper archive with download links official-a irukku.",
+          meta: "Year-wise archive",
+        },
+        {
+          label: "JEE Advanced 2025 question paper notice",
+          href: "https://www.jeeadv.ac.in/?l=Details+of+Examination",
+          note: "2025 question paper release notice official page-la available.",
+          meta: "Recent official notice",
+        },
+      ],
+      practiceTitle: "Official Practice Tests",
+      practiceSummary: "JEE Advanced resources menu and official practice test links direct-a connect pannirukkom.",
+      practiceLinks: [
+        {
+          label: "Paper 1 official practice test",
+          href: "https://cdn3.digialm.com//OnlineAssessment/index.html?32044%40%40M217=",
+          note: "Official JEE Advanced Paper 1 practice test link.",
+          meta: "Paper 1 simulation",
+        },
+        {
+          label: "Paper 2 official practice test",
+          href: "https://cdn3.digialm.com//OnlineAssessment/index.html?32044%40%40M219=",
+          note: "Official JEE Advanced Paper 2 practice test link.",
+          meta: "Paper 2 simulation",
+        },
+        {
+          label: "JEE Advanced official portal",
+          href: "https://jeeadv.ac.in/",
+          note: "Resources menu, notices, and brochure all in one official source.",
+          meta: "Official hub",
+        },
+      ],
+    },
     timeline: [
       { label: "Registration Start", date: "2026-04-23T10:00:00+05:30", displayDate: "April 23, 2026", tone: "success" },
       { label: "Last Date", date: "2026-05-02T23:59:00+05:30", displayDate: "May 02, 2026", tone: "warning" },
@@ -760,15 +955,12 @@ export const examContent: Record<string, ExamDetails> = {
           { key: "JEE Advanced 2026 Exam Date", value: "May 17, 2026" },
           { key: "Response Sheet Availability", value: "May 22, 2026" },
         ],
-        tertiaryTitle: "JEE Advanced Registration 2026 Fees",
-        tertiarySummary: "JEE Advanced fee structure changes by candidate category and nationality. Candidates should verify the latest official notification before payment.",
-        tertiaryTableTitle: "JEE Advanced 2026 Application Fee Structure",
-        tertiaryTableColumns: ["Category", "Fee Details"],
+        tertiaryTitle: "Application Fees Range",
+        tertiarySummary: "JEE Advanced fees can vary by category and candidate type, so the exact amount should still be confirmed on the official portal. This range helps students estimate the likely registration cost quickly.",
+        tertiaryTableTitle: "JEE Advanced 2026 Application Fees Range",
+        tertiaryTableColumns: ["Exam", "Application Fees Range"],
         tertiaryTableRows: [
-          { key: "General / OBC / EWS", value: "Standard registration fee band as notified on the official portal" },
-          { key: "SC / ST / PwD / Female Candidates", value: "Concessional fee band as per official notification" },
-          { key: "Foreign / OCI / PIO Candidates", value: "Separate fee structure notified by the conducting IIT" },
-          { key: "Payment Mode", value: "Online payment through the official JEE Advanced portal" },
+          { key: "JEE Advanced", value: "₹1600 - ₹3200" },
         ],
         quaternaryTitle: "What Documents Do You Need While Filling the JEE Advanced Registration Form?",
         quaternarySummary:
@@ -870,15 +1062,9 @@ export const examContent: Record<string, ExamDetails> = {
       {
         id: "question-paper",
         label: "Question Paper",
-        eyebrow: "Paper Bank",
-        title: "Previous papers and solutions",
-        summary: "IIT-level problem solving build panna previous year papers and solution review romba useful.",
-        blocks: [
-          { title: "Practice set", items: ["Previous year papers year-wise", "Subject-wise difficult problem collection", "Detailed text / video solutions"] },
-        ],
-        resources: [
-          { label: "Google: JEE Advanced previous papers", href: googleSearch("JEE Advanced previous year papers pdf with solution"), note: "Quick PYQ search." },
-        ],
+        eyebrow: "Official Paper Hub",
+        title: "Official previous year question papers",
+        summary: "JEE Advanced archive, Paper 1 / Paper 2 downloads, and official practice references direct-a open panna use pannunga.",
       },
       {
         id: "cutoff",
@@ -914,14 +1100,11 @@ export const examContent: Record<string, ExamDetails> = {
           "By attempting full Paper 1 and Paper 2 mocks regularly, candidates can improve stamina, time management, and accuracy under pressure.",
           "Focus on the latest syllabus and official paper behaviour because question types, marking style, and topic emphasis can shift from year to year.",
         ],
-        blocks: [
-          { title: "Preparation focus", items: ["Deep concept understanding", "Multi-concept problem solving", "Analytical thinking", "Advanced-level practice"] },
-          {
-            title: "Pro Tips",
-            variant: "highlight",
-            items: ["Consistency is key", "Analyze mock tests", "Revise regularly", "Stay healthy"],
-          },
-        ],
+        preparationVisualTitle: "JEE Advanced Preparation Tips",
+        preparationVisualItems: commonPreparationVisualItems,
+        routineTableTitle: "Daily Routine Structure",
+        routineTableColumns: ["Time", "Activity (Daily Fixed Routine)", "Notes / What to Do Exactly"],
+        routineTableRows: commonPreparationRoutineRows,
       },
       {
         id: "mock-test",
@@ -1111,6 +1294,52 @@ export const examContent: Record<string, ExamDetails> = {
       "Is the General Test compulsory for all CUET courses?",
       "How do universities use CUET scores differently for admission?",
     ],
+    studyHub: {
+      previousYearPapersTitle: "Official CUET Question Paper References",
+      previousYearPapersSummary: "CUET documents, 2025 archive, and official question-paper notice pages direct-a open panna mudiyum.",
+      previousYearPapers: [
+        {
+          label: "CUET official documents page",
+          href: "https://cuet.nta.nic.in/documents/",
+          note: "Official documents page-la current year notices and downloadable references irukku.",
+          meta: "Official documents",
+        },
+        {
+          label: "CUET 2025 archive",
+          href: "https://cuet.nta.nic.in/document-category/2025-archive/page/2/",
+          note: "2025 archive section-la question papers with recorded responses notice listed irukku.",
+          meta: "2025 archive",
+        },
+        {
+          label: "CUET official question paper notice",
+          href: "https://cuet.nta.nic.in/documents/page/3/",
+          note: "Question papers with recorded responses official notice listing.",
+          meta: "Question paper notice",
+        },
+      ],
+      practiceTitle: "Official Sample And Practice Links",
+      practiceSummary: "Subject-wise preparation and practice official portals-ku direct shortcuts.",
+      practiceLinks: [
+        {
+          label: "National Testing Abhyas",
+          href: "https://www.nta.ac.in/Abhyas",
+          note: "CUET site-lendhu linked official NTA practice platform.",
+          meta: "Mocks + daily practice",
+        },
+        {
+          label: "CUET official test page",
+          href: "https://cuet.nta.nic.in/test/",
+          note: "Official CUET site practice / test route reference.",
+          meta: "Official test route",
+        },
+        {
+          label: "CUET subject-wise syllabus",
+          href: "https://cuet.nta.nic.in/syllabus/",
+          note: "Domain, language, and general test preparation structure official-a verify panna use pannunga.",
+          meta: "Subject planning",
+        },
+      ],
+    },
     timeline: [
       { label: "Application Start", date: "2026-02-27T09:00:00+05:30", displayDate: "February 27, 2026", tone: "success" },
       { label: "Last Date", date: "2026-04-02T23:59:00+05:30", displayDate: "April 02, 2026", tone: "warning" },
@@ -1174,15 +1403,12 @@ export const examContent: Record<string, ExamDetails> = {
           { key: "CUET UG 2026 Exam Dates (Tentative)", value: "May 11 to May 31, 2026" },
           { key: "Result Declaration", value: "Expected June–July 2026" },
         ],
-        tertiaryTitle: "CUET Registration 2026 Fees",
-        tertiarySummary: "The CUET Application fees are calculated as per the category and the number of subjects selected by the candidate. The Minimum fees is for 3 subjects, and then an additional fee will be charged for each selected subject.",
-        tertiaryTableTitle: "CUET UG 2026 Application Fee Structure",
-        tertiaryTableColumns: ["Category", "Fee Details"],
+        tertiaryTitle: "Application Fees Range",
+        tertiarySummary: "CUET UG fees depend on the number of subjects selected and the latest NTA fee notification. This simplified range keeps the registration section easier to scan.",
+        tertiaryTableTitle: "CUET UG 2026 Application Fees Range",
+        tertiaryTableColumns: ["Exam", "Application Fees Range"],
         tertiaryTableRows: [
-          { key: "General (UR)", value: "₹1,000 (up to 3 subjects), ₹400 per additional subject" },
-          { key: "OBC-NCL / EWS", value: "₹900 (up to 3 subjects), ₹375 per additional subject" },
-          { key: "SC / ST / PwBD / Third Gender", value: "₹800 (up to 3 subjects), ₹350 per additional subject" },
-          { key: "Centres Outside India", value: "₹4,500 (up to 3 subjects), ₹1,800 per additional subject" },
+          { key: "CUET UG", value: "₹800 - ₹1000+" },
         ],
         quaternaryTitle: "What Documents Do You Need While Filling the CUET Registration Form?",
         quaternarySummary: "To register for CUET UG, you have to upload proper documents, as the information uploaded in this stage will be directly used for the verification of identity, generation of the admit card and result processing.\nAs per the UGC Guidelines, most of the applicants are rejected because of incorrect documents uploaded.\nAll the documents should match the exact spelling, date of birth, and specification of format as issued by the authorities.",
@@ -1238,15 +1464,9 @@ export const examContent: Record<string, ExamDetails> = {
       {
         id: "question-paper",
         label: "Question Paper",
-        eyebrow: "Paper Library",
-        title: "Question paper archive and solutions",
-        summary: "Domain-wise PYQs and solution review build panna use pannunga.",
-        blocks: [
-          { title: "Collect these", items: ["Subject-wise previous year papers", "Section-wise solutions", "Domain and language practice sets"] },
-        ],
-        resources: [
-          { label: "Google: CUET previous year papers", href: googleSearch("CUET UG previous year question papers with solutions"), note: "Quick PYQ search." },
-        ],
+        eyebrow: "Official Paper Hub",
+        title: "Official previous year question papers",
+        summary: "CUET official documents, archive pages, and recorded response references direct-a open panna use pannunga.",
       },
       {
         id: "cutoff",
@@ -1282,14 +1502,11 @@ export const examContent: Record<string, ExamDetails> = {
           "By attempting 25 to 35 full-length mock tests, candidates can improve time management and reduce the impact of negative marking.",
           "Focus on the latest syllabus pattern because deleted topics are excluded from the syllabus and should not take preparation time.",
         ],
-        blocks: [
-          { title: "Preparation focus", items: ["Focus on NCERT concepts", "Practice MCQs daily", "Improve speed & accuracy", "Revise domain subjects"] },
-          {
-            title: "Pro Tips",
-            variant: "highlight",
-            items: ["Consistency is key", "Analyze mock tests", "Revise regularly", "Stay healthy"],
-          },
-        ],
+        preparationVisualTitle: "CUET Preparation Tips",
+        preparationVisualItems: commonPreparationVisualItems,
+        routineTableTitle: "Daily Routine Structure",
+        routineTableColumns: ["Time", "Activity (Daily Fixed Routine)", "Notes / What to Do Exactly"],
+        routineTableRows: commonPreparationRoutineRows,
       },
       {
         id: "mock-test",
@@ -1488,6 +1705,52 @@ export const examContent: Record<string, ExamDetails> = {
       "Is NEET mandatory for all MBBS admissions in India?",
       "How does AIQ counselling differ from state quota counselling in NEET?",
     ],
+    studyHub: {
+      previousYearPapersTitle: "Official NEET Question Paper References",
+      previousYearPapersSummary: "Recorded responses, answer keys, and official documents page through direct NEET portal links.",
+      previousYearPapers: [
+        {
+          label: "NEET official documents page",
+          href: "https://neet.nta.nic.in/documents/",
+          note: "Official documents page-la recent year NEET notices and downloads available.",
+          meta: "Official documents",
+        },
+        {
+          label: "NEET 2025 OMR and recorded response notice",
+          href: "https://neet.nta.nic.in/document/challenge-of-provisional-answer-key-display-of-scanned-images-of-omr-answer-sheet-and-display-of-recorded-response-for-national-eligibility-cum-entrance-test-ug-2025-reg/",
+          note: "Question paper / OMR related official notice.",
+          meta: "2025 official notice",
+        },
+        {
+          label: "NEET 2025 answer key reference",
+          href: "https://neet.nta.nic.in/document/final-answer-keys-for-neetug-2025/",
+          note: "Official final answer key reference page.",
+          meta: "Official key PDF",
+        },
+      ],
+      practiceTitle: "Official Practice And Daily Revision",
+      practiceSummary: "Mock tests, daily practice, and concept lecture support official NTA ecosystem-lendhu.",
+      practiceLinks: [
+        {
+          label: "NTA Abhyas for medical prep",
+          href: "https://www.nta.ac.in/Abhyas",
+          note: "Daily practice and mock tests official NTA platform.",
+          meta: "Mocks + streak-style practice",
+        },
+        {
+          label: "NTA Abhyas web app",
+          href: "https://abhyas.nta.ac.in/",
+          note: "Practice platform launch page.",
+          meta: "Practice portal",
+        },
+        {
+          label: "NTA IIT-PAL lectures for NEET",
+          href: "https://www.nta.ac.in/LecturesContent",
+          note: "Physics, Chemistry, Biology lectures official-a available.",
+          meta: "Subject-wise revision",
+        },
+      ],
+    },
     timeline: [
       { label: "Application Start", date: "2026-02-09T09:00:00+05:30", displayDate: "February 09, 2026", tone: "success" },
       { label: "Last Date", date: "2026-03-15T23:59:00+05:30", displayDate: "March 15, 2026", tone: "warning" },
@@ -1542,15 +1805,12 @@ export const examContent: Record<string, ExamDetails> = {
           { key: "NEET UG 2026 Exam Date", value: "May 05, 2026" },
           { key: "Result Declaration", value: "June 14, 2026" },
         ],
-        tertiaryTitle: "NEET Registration 2026 Fees",
-        tertiarySummary: "NEET application fee varies by category and candidate profile. Final payable amount should always be verified through the official notification.",
-        tertiaryTableTitle: "NEET UG 2026 Application Fee Structure",
-        tertiaryTableColumns: ["Category", "Fee Details"],
+        tertiaryTitle: "Application Fees Range",
+        tertiarySummary: "NEET UG fees differ by category and current NTA notification, but students usually benefit from seeing a quick estimate instead of a long category table. Final payment should still be checked on the official form.",
+        tertiaryTableTitle: "NEET UG 2026 Application Fees Range",
+        tertiaryTableColumns: ["Exam", "Application Fees Range"],
         tertiaryTableRows: [
-          { key: "General", value: "Standard application fee band as notified by NTA" },
-          { key: "General-EWS / OBC-NCL", value: "Reduced fee band compared with General category" },
-          { key: "SC / ST / PwD / Third Gender", value: "Concessional fee band as per NEET notification" },
-          { key: "Outside India", value: "Separate international application fee if notified" },
+          { key: "NEET UG", value: "₹1000 - ₹1700" },
         ],
         quaternaryTitle: "What Documents Do You Need While Filling the NEET Registration Form?",
         quaternarySummary:
@@ -1608,15 +1868,9 @@ export const examContent: Record<string, ExamDetails> = {
       {
         id: "question-paper",
         label: "Question Paper",
-        eyebrow: "PYQ Library",
-        title: "Question paper and solution bank",
-        summary: "Biology-heavy revision-ku previous papers and detailed solutions useful-a irukkum.",
-        blocks: [
-          { title: "Collect these", items: ["Year-wise NEET papers", "Code-wise papers and solutions", "Physics / Chemistry / Biology topic mapping"] },
-        ],
-        resources: [
-          { label: "Google: NEET previous year papers", href: googleSearch("NEET UG previous year question paper with solutions pdf"), note: "Quick PYQ search." },
-        ],
+        eyebrow: "Official Paper Hub",
+        title: "Official previous year question papers",
+        summary: "NEET official documents, OMR / recorded response notices, and answer-key references direct-a open panna use pannunga.",
       },
       {
         id: "cutoff",
@@ -1652,15 +1906,11 @@ export const examContent: Record<string, ExamDetails> = {
           "By attempting 20 to 30 full-length mock tests with OMR practice, candidates can improve speed, accuracy, and time management.",
           "Focus on the latest syllabus and official pattern because deleted topics and updated chapter emphasis should not be mixed into revision unnecessarily.",
         ],
-        blocks: [
-          { title: "Subject-wise focus", items: ["Biology: NCERT line-by-line retention", "Chemistry: physical formula drills + inorganic revision", "Physics: concept plus numericals under time pressure"] },
-          { title: "Study plan", items: ["Daily MCQ practice", "Full syllabus mock tests", "Diagrams & facts revision", "Wrong-answer notebook compulsory"] },
-          {
-            title: "Pro Tips",
-            variant: "highlight",
-            items: ["Consistency is key", "Analyze mock tests", "Revise regularly", "Stay healthy"],
-          },
-        ],
+        preparationVisualTitle: "NEET Preparation Tips",
+        preparationVisualItems: commonPreparationVisualItems,
+        routineTableTitle: "Daily Routine Structure",
+        routineTableColumns: ["Time", "Activity (Daily Fixed Routine)", "Notes / What to Do Exactly"],
+        routineTableRows: commonPreparationRoutineRows,
       },
       {
         id: "mock-test",
@@ -1742,3 +1992,207 @@ export const examContent: Record<string, ExamDetails> = {
     ]),
   },
 };
+
+const normalizeExamLookup = (value: string) =>
+  String(value || "")
+    .replace(/\s+\d{4}$/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const replaceStringValues = (value: unknown, replacements: Map<string, string>): unknown => {
+  if (typeof value === "string") {
+    let nextValue = value;
+    replacements.forEach((replacement, searchValue) => {
+      if (!searchValue || !replacement || searchValue === replacement) return;
+      nextValue = nextValue.replaceAll(searchValue, replacement);
+    });
+    return nextValue;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceStringValues(item, replacements));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [
+        key,
+        replaceStringValues(entryValue, replacements),
+      ]),
+    );
+  }
+
+  return value;
+};
+
+const pushReplacement = (
+  replacements: Map<string, string>,
+  currentValue: string,
+  nextValue: string,
+) => {
+  const current = String(currentValue || "").trim();
+  const next = String(nextValue || "").trim();
+  if (!current || !next || current === next) return;
+  replacements.set(current, next);
+};
+
+const collectLabeledValues = (details: ExamDetails) => {
+  const values: Array<{ label: string; value: string }> = [];
+
+  details.highlightsTable.forEach((row) => {
+    values.push({ label: row.label, value: row.value });
+  });
+
+  details.overviewCards.forEach((card) => {
+    values.push({ label: card.title, value: card.value });
+  });
+
+  details.importantDatesTable.forEach((row) => {
+    values.push({ label: row.event, value: row.date });
+  });
+
+  details.timeline.forEach((row) => {
+    values.push({ label: row.label, value: row.displayDate || row.date });
+  });
+
+  details.sections.forEach((section) => {
+    (section.tableRows || []).forEach((row) => {
+      values.push({ label: row.key, value: row.value });
+    });
+    (section.secondaryTableRows || []).forEach((row) => {
+      values.push({ label: row.key, value: row.value });
+    });
+    (section.tertiaryTableRows || []).forEach((row) => {
+      values.push({ label: row.key, value: row.value });
+    });
+  });
+
+  return values.map((item) => ({
+    ...item,
+    normalizedLabel: normalizeExamLookup(item.label),
+  }));
+};
+
+const findValueByKeywords = (
+  labeledValues: Array<{ label: string; value: string; normalizedLabel: string }>,
+  keywords: string[],
+) =>
+  labeledValues.find((item) =>
+    keywords.some((keyword) => item.normalizedLabel.includes(normalizeExamLookup(keyword))),
+  )?.value || "";
+
+export function applyExamScheduleToDetails(
+  details: ExamDetails,
+  schedule?: PublicExamSchedule | null,
+) {
+  if (!schedule) return details;
+
+  const replacements = new Map<string, string>();
+  const labeledValues = collectLabeledValues(details);
+
+  pushReplacement(replacements, details.date, schedule.examDate);
+  pushReplacement(replacements, details.applicationStart, schedule.startDateToApply);
+  pushReplacement(replacements, details.applicationEnd, schedule.lastDateToApply);
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, [
+      "application fee",
+      "application fees",
+      "application fees range",
+      "registration fee",
+      "registration fees",
+    ]),
+    schedule.applicationFees,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, [
+      "application opens",
+      "applications open",
+      "registration opens",
+      "registration start",
+      "application start",
+      "start date to apply",
+    ]),
+    schedule.startDateToApply,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, [
+      "application deadline",
+      "last date to apply",
+      "registration deadline",
+      "application close",
+      "application closes",
+    ]),
+    schedule.lastDateToApply,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, ["correction window", "correction date", "correction"]),
+    schedule.correctionDate,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, [
+      "last date for fee payment",
+      "fee payment",
+      "fee payment deadline",
+    ]),
+    schedule.lastDateForFeePayment,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, ["admit card release", "admit card", "hall ticket"]),
+    schedule.admitCardRelease,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, ["exam date", "exam day"]),
+    schedule.examDate,
+  );
+  pushReplacement(
+    replacements,
+    findValueByKeywords(labeledValues, ["result date", "result declaration", "result"]),
+    schedule.resultDate,
+  );
+
+  const merged = replaceStringValues(details, replacements) as ExamDetails;
+
+  return {
+    ...merged,
+    date: schedule.examDate || merged.date,
+    applicationStart: schedule.startDateToApply || merged.applicationStart,
+    applicationEnd: schedule.lastDateToApply || merged.applicationEnd,
+    applicationFees: schedule.applicationFees || merged.applicationFees || "",
+  };
+}
+
+export function applyExamSchedulesToExamContent(
+  exams: Record<string, ExamDetails>,
+  schedules: PublicExamSchedule[],
+) {
+  const scheduleMap = new Map(
+    [...(Array.isArray(schedules) ? schedules : [])]
+      .filter((item) => String(item?.examName || "").trim())
+      .sort(
+        (left, right) =>
+          new Date(String(right.updatedAt || 0)).getTime() -
+          new Date(String(left.updatedAt || 0)).getTime(),
+      )
+      .map((item) => [normalizeExamLookup(item.examName), item]),
+  );
+
+  return Object.fromEntries(
+    Object.entries(exams).map(([slug, details]) => {
+      const matchedSchedule =
+        scheduleMap.get(normalizeExamLookup(details.title)) ||
+        scheduleMap.get(normalizeExamLookup(details.short)) ||
+        scheduleMap.get(normalizeExamLookup(slug));
+
+      return [slug, applyExamScheduleToDetails(details, matchedSchedule)];
+    }),
+  ) as Record<string, ExamDetails>;
+}

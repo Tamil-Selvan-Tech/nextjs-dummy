@@ -9,6 +9,7 @@ export default async function Page() {
       collegesData={panelData.colleges}
       coursesData={panelData.courses}
       heroImageUrl={panelData.homeHeroImageUrl}
+      examSchedules={panelData.examSchedules}
     />
   );
 }
