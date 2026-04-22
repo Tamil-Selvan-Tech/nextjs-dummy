@@ -230,7 +230,6 @@ button,
   color: var(--text-muted);
 }
 
-/* Breaking update ticker styles */
 .breaking-news-shell {
   display: flex;
   align-items: center;

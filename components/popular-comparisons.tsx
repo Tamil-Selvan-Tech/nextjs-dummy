@@ -17,18 +17,6 @@ const FacebookIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const TwitterIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M19.8 7.2c.01.14.01.28.01.42 0 4.33-3.3 9.33-9.33 9.33-1.85 0-3.57-.54-5.02-1.47.26.03.52.04.79.04 1.54 0 2.96-.52 4.09-1.4a3.29 3.29 0 0 1-3.07-2.28c.2.03.4.05.62.05.29 0 .58-.04.85-.11a3.28 3.28 0 0 1-2.63-3.22v-.04c.45.25.97.4 1.52.42a3.28 3.28 0 0 1-1.47-2.73c0-.6.16-1.16.44-1.64a9.3 9.3 0 0 0 6.76 3.43 3.71 3.71 0 0 1-.08-.75 3.28 3.28 0 0 1 5.67-2.24 6.47 6.47 0 0 0 2.08-.8 3.27 3.27 0 0 1-1.44 1.81 6.5 6.5 0 0 0 1.88-.5 7.04 7.04 0 0 1-1.64 1.7Z" />
-  </svg>
-);
-
-const LinkedInIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M6.94 9H4.3v11h2.64V9ZM5.62 4.5a1.53 1.53 0 1 0 0 3.06 1.53 1.53 0 0 0 0-3.06ZM20 13.6c0-2.53-1.35-3.7-3.16-3.7-1.46 0-2.1.8-2.46 1.36V9H11.8v11h2.64v-6.1c0-1.6.3-3.16 2.26-3.16 1.94 0 1.96 1.82 1.96 3.26V20H20v-6.4Z" />
-  </svg>
-);
-
 const MailIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
     <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z" />
@@ -46,11 +34,8 @@ export function PopularComparisons({
   colleges,
   onSelectComparison,
 }: PopularComparisonsProps) {
-  if (!selectedCollege) return null;
-
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [feedbackText, setFeedbackText] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
 
@@ -60,17 +45,19 @@ export function PopularComparisons({
     { label: "Email", icon: MailIcon, className: "bg-[#1f2937]" },
   ];
   const ratingLabels = ["Bad", "Poor", "Okay", "Very Good", "Excellent"];
-  const feedbackTags = ["Incorrect", "Irrelevant", "Insufficient", "Confusing"];
   const trimmedFeedback = feedbackText.trim();
   const wordCount = trimmedFeedback ? trimmedFeedback.split(/\s+/).length : 0;
   const canSubmit = wordCount > 0;
   const popularColleges = useMemo(() => {
+    if (!selectedCollege) return [];
     const fallback = colleges.filter((college) => college.id !== selectedCollege.id);
     return fallback
       .slice()
       .sort((left, right) => (right.placementRate || 0) - (left.placementRate || 0))
       .slice(0, 5);
-  }, [colleges, selectedCollege.id]);
+  }, [colleges, selectedCollege]);
+
+  if (!selectedCollege) return null;
 
   const getTopCourseInfo = (college: College) => {
     const courseList = getCoursesForCollege(college.name);
@@ -339,7 +326,6 @@ export function PopularComparisons({
                     onClick={() => {
                       setSubmitMessage("Submitted successfully.");
                       setFeedbackText("");
-                      setSelectedTags([]);
                       setSelectedRating(null);
                     }}
                     className="rounded-md bg-slate-400 px-6 py-2 text-sm font-semibold text-white transition hover:bg-slate-500"

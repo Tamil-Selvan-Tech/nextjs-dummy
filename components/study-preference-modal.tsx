@@ -79,7 +79,7 @@ export function StudyPreferenceModal({
     const query = cityQuery.trim().toLowerCase();
     if (!query) return unique;
     return unique.filter((city) => city.toLowerCase().includes(query));
-  }, [cityQuery]);
+  }, [availableColleges, cityQuery]);
 
   const cityColleges = useMemo(() => {
     if (!chosenCity) return [];
@@ -92,7 +92,7 @@ export function StudyPreferenceModal({
         return String(item.name || "").toLowerCase().includes(query);
       })
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-  }, [chosenCity, collegeQuery]);
+  }, [availableColleges, chosenCity, collegeQuery]);
 
   if (!isOpen) return null;
 
