@@ -28,6 +28,7 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("q") || "";
   const [keyword, setKeyword] = useState(initialKeyword);
+  const [brokenCollegeLogos, setBrokenCollegeLogos] = useState<Record<string, boolean>>({});
   const [searchData, setSearchData] = useState<SearchResultState>({
     courses,
     colleges,
@@ -371,11 +372,32 @@ export default function SearchPage() {
                             onClick={() => router.push(`/college/${college.id}`)}
                             className="group flex w-full items-start justify-between gap-3 rounded-[0.95rem] border border-[rgba(15,76,129,0.06)] bg-white px-3 py-2.5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.26)] hover:bg-[rgba(15,76,129,0.03)] sm:items-center sm:rounded-[1rem]"
                           >
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-medium leading-5 text-[color:var(--text-dark)] transition duration-200 group-hover:translate-x-1 sm:text-[13px]">
-                                {highlightText(college.name)}
-                              </p>
-                              <p className="mt-0.5 text-[10px] text-[color:var(--text-muted)]">{college.university}</p>
+                            <div className="flex min-w-0 items-center gap-3">
+                              {String(college.logo || college.image || "").trim() && !brokenCollegeLogos[college.id] ? (
+                                <span className="inline-flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_6px_16px_rgba(15,76,129,0.08)]">
+                                  <img
+                                    src={String(college.logo || college.image || "")}
+                                    alt={college.name}
+                                    className="h-full w-full object-cover"
+                                    onError={() =>
+                                      setBrokenCollegeLogos((current) => ({
+                                        ...current,
+                                        [college.id]: true,
+                                      }))
+                                    }
+                                  />
+                                </span>
+                              ) : (
+                                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
+                                  <GraduationCap className="size-4.5" />
+                                </span>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-medium leading-5 text-[color:var(--text-dark)] transition duration-200 group-hover:translate-x-1 sm:text-[13px]">
+                                  {highlightText(college.name)}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-[color:var(--text-muted)]">{college.university}</p>
+                              </div>
                             </div>
                             <ArrowRight className="mt-0.5 size-4 shrink-0 text-[color:var(--brand-primary-soft)] transition duration-200 group-hover:translate-x-1 group-hover:text-[color:var(--brand-accent)] sm:mt-0" />
                           </button>

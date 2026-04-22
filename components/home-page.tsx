@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  Bell,
   BriefcaseBusiness,
   Building2,
   BookOpen,
@@ -116,6 +117,12 @@ type FeatureCardItem = {
   icon: typeof Search;
   imageSrc: string;
 };
+type BreakingNewsItem = {
+  status: "LIVE" | "NEW" | "LAST DATE" | "ALERT";
+  title: string;
+  tone: "danger" | "success" | "warning" | "info";
+  href: string;
+};
 
 const FEATURE_CARDS: FeatureCardItem[] = [
   {
@@ -153,6 +160,69 @@ const FEATURE_CARDS: FeatureCardItem[] = [
     description: "See college rankings in a clean range format directly on detail pages.",
     icon: Globe2,
     imageSrc: "/features/features-img-4.png",
+  },
+];
+
+const BREAKING_NEWS_ITEMS: BreakingNewsItem[] = [
+  {
+    status: "LIVE",
+    title: "10th Result Date Announced",
+    tone: "danger",
+    href: "https://tnresults.nic.in/",
+  },
+  {
+    status: "LIVE",
+    title: "12th Result Date Announced",
+    tone: "danger",
+    href: "https://tnresults.nic.in/",
+  },
+  {
+    status: "NEW",
+    title: "TNEA Counseling Open",
+    tone: "success",
+    href: "https://www.tneaonline.org/",
+  },
+  {
+    status: "ALERT",
+    title: "NEET Updates & Counseling Alerts",
+    tone: "info",
+    href: "/exams/neet",
+  },
+  {
+    status: "NEW",
+    title: "JEE Main / Advanced Schedule",
+    tone: "success",
+    href: "https://jeemain.nta.nic.in/",
+  },
+  {
+    status: "NEW",
+    title: "CUET Updates & Registration",
+    tone: "success",
+    href: "/exams/cuet",
+  },
+  {
+    status: "ALERT",
+    title: "Polytechnic Admission Open",
+    tone: "info",
+    href: "https://www.tnpoly.in/registration",
+  },
+  {
+    status: "LAST DATE",
+    title: "Scholarship Apply Today",
+    tone: "warning",
+    href: "https://scholarships.gov.in/ApplicationForm/",
+  },
+  {
+    status: "NEW",
+    title: "Government Exam Notifications",
+    tone: "success",
+    href: "https://tnpsc.gov.in/english/notification.aspx",
+  },
+  {
+    status: "LAST DATE",
+    title: "College Admission Last Dates",
+    tone: "warning",
+    href: "/explore?view=colleges",
   },
 ];
 
@@ -716,6 +786,48 @@ export function HomePage({
         <div className="relative z-10">
           <Navbar />
 
+          <div className="page-container-full pt-2">
+            <div
+              className="breaking-news-shell reveal-up"
+              data-scroll-animate
+            >
+              <div className="breaking-news-label">
+                <Bell className="breaking-news-label-icon" />
+                Breaking Updates
+              </div>
+
+              <div className="breaking-news-viewport">
+                <div className="marquee-track breaking-news-track" aria-live="polite">
+                  {[0, 1].map((loopIndex) =>
+                    BREAKING_NEWS_ITEMS.map((item, itemIndex) => (
+                      <div
+                        key={`${loopIndex}-${item.status}-${item.title}`}
+                        className="marquee-item breaking-news-entry"
+                        aria-hidden={loopIndex === 1}
+                      >
+                        <a
+                          href={item.href}
+                          className="breaking-news-link"
+                          aria-label={`${item.title} page`}
+                        >
+                          <span className={`breaking-news-status breaking-news-status-${item.tone}`}>
+                            <span className="breaking-news-status-dot" />
+                            {item.status}
+                          </span>
+                          <span className="breaking-news-dash" aria-hidden="true">-</span>
+                          <span className="breaking-news-headline">{item.title}</span>
+                        </a>
+                        {itemIndex < BREAKING_NEWS_ITEMS.length - 1 || loopIndex === 0 ? (
+                          <span className="breaking-news-separator" aria-hidden="true" />
+                        ) : null}
+                      </div>
+                    )),
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* feature cards flow */}
           
           <div className="page-container-full pb-[4.5rem]  pt-0 md:pb-[5.5rem]  md:pt-1">
@@ -893,8 +1005,8 @@ export function HomePage({
 
                           <button
                             type="button"
-                            onClick={() => router.push("/explore")}
-                            className="flex min-h-[4.1rem] items-center gap-3 rounded-[1.15rem] bg-white px-5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            onClick={() => router.push("/explore?view=colleges&city=Chennai")}
+                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
                               <MapPin className="size-[1.1rem]" />
@@ -908,8 +1020,8 @@ export function HomePage({
 
                           <button
                             type="button"
-                            onClick={() => router.push("/explore")}
-                            className="flex min-h-[4.1rem] items-center gap-3 rounded-[1.15rem] bg-white px-5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            onClick={() => router.push("/explore?view=courses")}
+                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
                               <CourseIcon className="size-[1.1rem]" />

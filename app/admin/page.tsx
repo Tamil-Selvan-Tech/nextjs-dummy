@@ -66,6 +66,8 @@ type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: 
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
+type ExamScheduleForm = { examName: string; startDateToApply: string; lastDateToApply: string; lastDateForFeePayment: string; admitCardRelease: string; examDate: string; resultDate: string };
+type SavedExamSchedule = ExamScheduleForm & { id: string; updatedAt: string };
 type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
 type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
@@ -219,18 +221,29 @@ const createEmptyEmbeddedCourseDraft = (university = ""): EmbeddedCourseDraft =>
 });
 const CUSTOM_STREAM_OPTION = "__custom_stream__";
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
+const emptyExamScheduleForm: ExamScheduleForm = {
+  examName: "",
+  startDateToApply: "",
+  lastDateToApply: "",
+  lastDateForFeePayment: "",
+  admitCardRelease: "",
+  examDate: "",
+  resultDate: "",
+};
+const examScheduleStorageKey = "collegehub_admin_exam_schedules";
 const normalizeIndianPhoneInput = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
   return digits.slice(0, 10);
 };
 const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
-const adminModules = ["colleges", "college-requests", "users", "enquiries"];
+const adminModules = ["colleges", "college-requests", "users", "enquiries", "exams"];
 const adminModuleLabels: Record<string, string> = {
   colleges: "Colleges",
   "college-requests": "College Notifications",
   users: "Users",
   enquiries: "Enquiries",
+  exams: "Exams",
 };
 const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3.5 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:text-sm";
 const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500";
@@ -649,6 +662,9 @@ export default function AdminPage() {
   const [showSubAdminForm, setShowSubAdminForm] = useState(false);
   const [editSubAdminId, setEditSubAdminId] = useState("");
   const [subAdminForm, setSubAdminForm] = useState<SubAdminForm>(emptySubAdminForm);
+  const [examForm, setExamForm] = useState<ExamScheduleForm>(emptyExamScheduleForm);
+  const [savedExams, setSavedExams] = useState<SavedExamSchedule[]>([]);
+  const [editExamId, setEditExamId] = useState("");
   const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
   const [homeHeroImageFile, setHomeHeroImageFile] = useState<File | null>(null);
   const [isUploadingHomeHeroImage, setIsUploadingHomeHeroImage] = useState(false);
@@ -866,6 +882,9 @@ export default function AdminPage() {
       ...(canAccess("enquiries")
         ? [{ id: "enquiries", label: "Enquiries", icon: MailOpen }]
         : []),
+      ...(canAccess("exams")
+        ? [{ id: "exams", label: "Exams", icon: BadgeCheck }]
+        : []),
       ...(currentUser?.isSuperAdmin
         ? [{ id: "admin-access", label: "Admin Access", icon: KeyRound }]
         : []),
@@ -887,6 +906,7 @@ export default function AdminPage() {
     [adminState.colleges, showAllCollegeCards],
   );
   const hiddenCollegeCount = Math.max(adminState.colleges.length - visibleCollegeCards.length, 0);
+  const todayDate = useMemo(() => new Date().toISOString().split("T")[0], []);
   const loadAdminData = useCallback(async (authToken: string, fallbackUser?: AdminUser | null) => {
     try {
       setLoading(true);
@@ -939,6 +959,24 @@ export default function AdminPage() {
       setLoading(false);
     }
   }, [router]);
+
+  useEffect(() => {
+    try {
+      const storedSchedules = window.localStorage.getItem(examScheduleStorageKey);
+      if (!storedSchedules) return;
+      const parsedSchedules = JSON.parse(storedSchedules) as SavedExamSchedule[];
+      if (!Array.isArray(parsedSchedules)) return;
+      setSavedExams(
+        parsedSchedules.filter((item) => typeof item?.id === "string" && typeof item?.examName === "string"),
+      );
+    } catch {
+      window.localStorage.removeItem(examScheduleStorageKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(examScheduleStorageKey, JSON.stringify(savedExams));
+  }, [savedExams]);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -1931,6 +1969,72 @@ export default function AdminPage() {
       resetSubAdminForm();
       await loadAdminData(token, currentUser);
     });
+  };
+
+  const resetExamForm = () => {
+    setExamForm(emptyExamScheduleForm);
+    setEditExamId("");
+  };
+
+  const saveExamSchedule = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!examForm.examName.trim()) {
+      setStatusText("Exams: Exam name is required");
+      return;
+    }
+
+    const orderedDates = [
+      { label: "Start Date to Apply", value: examForm.startDateToApply },
+      { label: "Last Date to Apply", value: examForm.lastDateToApply },
+      { label: "Last Date for Fee Payment", value: examForm.lastDateForFeePayment },
+      { label: "Admit Card Release", value: examForm.admitCardRelease },
+      { label: "Exam Date", value: examForm.examDate },
+      { label: "Result Date", value: examForm.resultDate },
+    ];
+
+    const pastDate = orderedDates.find((item) => item.value && item.value < todayDate);
+    if (pastDate) {
+      setStatusText(`Exams: ${pastDate.label} must be today or a future date`);
+      return;
+    }
+
+    for (let index = 1; index < orderedDates.length; index += 1) {
+      const previous = orderedDates[index - 1];
+      const current = orderedDates[index];
+      if (previous.value && current.value && current.value < previous.value) {
+        setStatusText(`Exams: ${current.label} should be after ${previous.label}`);
+        return;
+      }
+    }
+
+    const payload: SavedExamSchedule = {
+      id: editExamId || `${Date.now()}`,
+      updatedAt: new Date().toISOString(),
+      examName: examForm.examName.trim(),
+      startDateToApply: examForm.startDateToApply,
+      lastDateToApply: examForm.lastDateToApply,
+      lastDateForFeePayment: examForm.lastDateForFeePayment,
+      admitCardRelease: examForm.admitCardRelease,
+      examDate: examForm.examDate,
+      resultDate: examForm.resultDate,
+    };
+
+    setSavedExams((prev) => (
+      editExamId
+        ? prev.map((item) => (item.id === editExamId ? payload : item))
+        : [payload, ...prev]
+    ));
+    setStatusText(editExamId ? "Exam schedule updated" : "Exam schedule saved");
+    resetExamForm();
+  };
+
+  const removeExamSchedule = (examId: string) => {
+    setSavedExams((prev) => prev.filter((item) => item.id !== examId));
+    if (editExamId === examId) {
+      resetExamForm();
+    }
+    setStatusText("Exam schedule deleted");
   };
 
   const collegeChangeNotifications = useMemo(
@@ -4575,6 +4679,195 @@ export default function AdminPage() {
               No field change notifications yet.
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {!loading && activeTab === "exams" ? (
+        <div className="space-y-4">
+          <form onSubmit={saveExamSchedule} className="luxe-card space-y-5 p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                  Exam Schedule
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">
+                  Add exam dates with future-ready date inputs
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Type exam details and pick dates from today or any upcoming date.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetExamForm}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <label className="xl:col-span-3">
+                <span className={labelClass}>Exam Name<span className={requiredMarkClass}>*</span></span>
+                <input
+                  className={inputClass}
+                  placeholder="Type exam name"
+                  value={examForm.examName}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, examName: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Start Date to Apply</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.startDateToApply}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, startDateToApply: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Last Date to Apply</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.lastDateToApply}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateToApply: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Last Date for Fee Payment</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.lastDateForFeePayment}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, lastDateForFeePayment: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Admit Card Release</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.admitCardRelease}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, admitCardRelease: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Exam Date</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.examDate}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, examDate: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Result Date</span>
+                <input
+                  className={inputClass}
+                  type="date"
+                  min={todayDate}
+                  value={examForm.resultDate}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, resultDate: event.target.value }))}
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                {editExamId ? "Update Exam" : "Save Exam"}
+              </button>
+              {editExamId ? (
+                <button
+                  type="button"
+                  onClick={resetExamForm}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  Cancel Edit
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          <div className="space-y-3">
+            {savedExams.length > 0 ? savedExams.map((item) => (
+              <article key={item.id} className="luxe-card space-y-4 p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">{item.examName || "Exam"}</h3>
+                    <p className="text-sm text-slate-500">
+                      Last updated {formatDate(item.updatedAt)}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditExamId(item.id);
+                        setExamForm({
+                          examName: item.examName || "",
+                          startDateToApply: item.startDateToApply || "",
+                          lastDateToApply: item.lastDateToApply || "",
+                          lastDateForFeePayment: item.lastDateForFeePayment || "",
+                          admitCardRelease: item.admitCardRelease || "",
+                          examDate: item.examDate || "",
+                          resultDate: item.resultDate || "",
+                        });
+                      }}
+                      className={solidBlueButtonClass}
+                    >
+                      <PencilLine className="size-4" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeExamSchedule(item.id)}
+                      className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Start Date to Apply</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.startDateToApply)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date to Apply</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.lastDateToApply)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date for Fee Payment</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.lastDateForFeePayment)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Admit Card Release</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.admitCardRelease)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Exam Date</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.examDate)}</p>
+                  </div>
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Result Date</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.resultDate)}</p>
+                  </div>
+                </div>
+              </article>
+            )) : (
+              <div className="rounded-[1rem] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                No exam schedules added yet.
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
 

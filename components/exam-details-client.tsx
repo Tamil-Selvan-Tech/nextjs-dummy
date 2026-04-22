@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Atom,
+  ArrowUp,
   BookOpenText,
   Building2,
   CalendarDays,
-  ChevronDown,
   ChevronRight,
   Download,
   ExternalLink,
@@ -26,6 +26,7 @@ import type {
   ExamDateRow,
   ExamDetails,
   ExamEligibilityRow,
+  ExamScoreCalculation,
   ExamSection,
   ExamTableRow,
 } from "@/lib/exam-content";
@@ -39,7 +40,6 @@ type DisplayTab = {
   id: string;
   label: string;
   sectionId: ExamSection["id"];
-  hasDropdown?: boolean;
 };
 
 type OverviewPalette = {
@@ -49,17 +49,11 @@ type OverviewPalette = {
 };
 
 const displayTabs: DisplayTab[] = [
-  { id: "overview", label: "Overview", sectionId: "overview", hasDropdown: true },
-  { id: "exam-date", label: "Exam Date", sectionId: "registration", hasDropdown: true },
-  { id: "exam-pattern", label: "Exam Pattern", sectionId: "exam-pattern", hasDropdown: true },
-  { id: "question-papers", label: "Question Papers", sectionId: "question-paper", hasDropdown: true },
-  { id: "prep", label: "Preparation Tips", sectionId: "preparation", hasDropdown: true },
-  { id: "results", label: "Results", sectionId: "answer-key", hasDropdown: true },
-  { id: "cutoff", label: "Cutoff", sectionId: "cutoff", hasDropdown: true },
-  { id: "mock-test", label: "Mock Test", sectionId: "mock-test" },
-  { id: "predictor", label: "College Predictor", sectionId: "overview" },
-  { id: "news", label: "News", sectionId: "news" },
-  { id: "colleges", label: "Participating Colleges", sectionId: "overview" },
+  { id: "overview", label: "Overview", sectionId: "overview" },
+  { id: "exam-pattern", label: "Exam Pattern", sectionId: "exam-pattern" },
+  { id: "question-papers", label: "Question Papers", sectionId: "question-paper" },
+  { id: "prep", label: "Preparation Tips", sectionId: "preparation" },
+  { id: "registration", label: "Registration", sectionId: "registration" },
 ];
 
 const overviewPalettes: OverviewPalette[] = [
@@ -224,7 +218,6 @@ function GovernmentPortalHeader({ details }: { details: ExamDetails }) {
               }`}
             >
               <span>{item.label}</span>
-              {item.dropdown ? <ChevronDown className="size-4" /> : null}
             </div>
           ))}
         </div>
@@ -237,10 +230,10 @@ function GovernmentPortalHeader({ details }: { details: ExamDetails }) {
             <div className="border-b border-[#d08a12] px-4 py-3 font-semibold">{paperLabel} {details.date} Paper 1</div>
             <div className="px-4 py-3 font-semibold">{paperLabel} {details.date} Paper 2</div>
           </div>
-          <div className="overflow-hidden bg-[#123a7a] px-4 py-3 text-[0.98rem] font-medium text-white/95">
-            <div className="animate-scroll inline-block whitespace-nowrap">
+          <div className="bg-[#123a7a] px-4 py-3 text-[0.98rem] font-medium text-white/95">
+            <marquee behavior="scroll" direction="left" scrollamount="5">
               {examName} 2026 updates and official notices are available on the portal.
-            </div>
+            </marquee>
           </div>
         </div>
       </div>
@@ -283,6 +276,61 @@ function TableSection({
   );
 }
 
+function getBlockStyles(variant?: "default" | "highlight") {
+  if (variant === "highlight") {
+    return {
+      sectionClass:
+        "rounded-[1.5rem] border border-[#fed7aa] bg-[linear-gradient(135deg,#fff7d6,#fff1e6)] p-5 shadow-[0_18px_36px_rgba(245,158,11,0.14)]",
+      titleClass: "text-[1.2rem] font-semibold text-[#9a3412]",
+      itemClass:
+        "rounded-[1.1rem] border border-[#fdba74] bg-white/80 px-4 py-3 text-[0.97rem] leading-7 text-[#7c2d12] shadow-[0_8px_24px_rgba(245,158,11,0.12)] backdrop-blur-sm",
+      listClass: "mt-4 list-disc space-y-3 pl-7 text-[0.99rem] leading-8 text-[#7c2d12]",
+    };
+  }
+
+  return {
+    sectionClass: "rounded-[1.5rem] border border-[#edf1f6] bg-[#fcfdff] p-5",
+    titleClass: "text-[1.2rem] font-semibold text-[#1f2937]",
+    itemClass: "rounded-[1.1rem] bg-white px-4 py-3 text-[0.97rem] leading-7 text-[#526071] shadow-[0_6px_20px_rgba(15,23,42,0.04)]",
+    listClass: "mt-4 list-disc space-y-3 pl-7 text-[0.99rem] leading-8 text-[#526071]",
+  };
+}
+
+function ScoreCalculationSection({ calculation }: { calculation: ExamScoreCalculation }) {
+  return (
+    <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+      <h3 className="text-[2rem] font-bold tracking-[-0.03em] text-[#172033]">{calculation.title}</h3>
+      <p className="mt-5 text-[1rem] leading-8 text-[#425066]">{renderHighlightedText(calculation.description)}</p>
+      <p className="mt-5 text-[1.05rem] font-bold italic leading-9 text-[#ff1f10]">{renderHighlightedText(calculation.highlight)}</p>
+
+      <div className="mt-7">
+        <p className="text-[1.1rem] font-bold text-[#172033]">{calculation.formulaLabel}</p>
+        <div className="mt-4 rounded-[1rem] border border-[#cfe0ff] bg-white px-5 py-4 text-center text-[1.15rem] font-medium text-[#ff1f10]">
+          {renderHighlightedText(calculation.formula)}
+        </div>
+      </div>
+
+      <div className="mt-7">
+        <p className="text-[1.8rem] font-bold italic text-[#374151]">{calculation.exampleLabel}</p>
+        <div className="mt-4 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+          <div className="grid grid-cols-2 bg-[#dfeafe] text-base font-semibold text-[#172033]">
+            <div className="border-r border-[#cfe0ff] px-5 py-4">Parameter</div>
+            <div className="px-5 py-4">Example Value</div>
+          </div>
+          {calculation.exampleRows.map((row) => (
+            <div key={`${row.label}-${row.value}`} className="grid grid-cols-2 border-t border-[#dbe5f5] bg-white text-[1rem] text-[#425066]">
+              <div className="border-r border-[#dbe5f5] px-5 py-4 font-medium">{renderHighlightedText(row.label)}</div>
+              <div className="px-5 py-4">{renderHighlightedText(row.value)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-7 text-[1.05rem] font-bold italic leading-9 text-[#ff1f10]">{renderHighlightedText(calculation.footer)}</p>
+    </section>
+  );
+}
+
 function renderOverviewTables(details: ExamDetails) {
   const highlightRows = details.highlightsTable.map((row: ExamTableRow) => ({
     key: row.label,
@@ -309,6 +357,7 @@ function renderOverviewTables(details: ExamDetails) {
           rows={eligibilityRows}
         />
       ) : null}
+      {details.scoreCalculation ? <ScoreCalculationSection calculation={details.scoreCalculation} /> : null}
     </>
   );
 }
@@ -325,14 +374,14 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-[#f4d6c4] bg-[radial-gradient(circle_at_top,#fffdf9_0%,#fff3ea_52%,#fffaf5_100%)] p-6 shadow-[0_24px_60px_rgba(223,92,74,0.08)] md:p-8">
+    <section className="relative overflow-hidden rounded-[2rem] border border-[#f4d6c4] bg-[radial-gradient(circle_at_top,#fffdf9_0%,#fff3ea_52%,#fffaf5_100%)] p-5 shadow-[0_24px_60px_rgba(223,92,74,0.08)] md:p-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_22%,rgba(251,146,60,0.14),transparent_22%),radial-gradient(circle_at_82%_30%,rgba(249,115,22,0.12),transparent_20%),radial-gradient(circle_at_55%_82%,rgba(245,158,11,0.1),transparent_18%)] opacity-70" />
-      <h3 className="text-center text-[1.8rem] font-bold tracking-[-0.03em] text-[#172033] md:text-[2.45rem]">
+      <h3 className="text-center text-[1.55rem] font-bold tracking-[-0.03em] text-[#172033] md:text-[2.1rem]">
         {examName} 2026 Overview
       </h3>
 
-      <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.18fr)_minmax(360px,0.88fr)] xl:items-center">
-        <div className="relative mx-auto hidden aspect-square w-full max-w-[640px] xl:block">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)] xl:items-center">
+        <div className="relative mx-auto hidden aspect-square w-full max-w-[560px] xl:block">
           <div className="absolute inset-[12%] rounded-full border border-[#f7d2bb] bg-[radial-gradient(circle,#fffaf6_0%,#fff1e7_68%,transparent_70%)] shadow-[0_0_70px_rgba(245,158,11,0.12)]" />
           <div className="absolute inset-[24%] rounded-full border border-[#f3cbb1]/80" />
           <div className="absolute inset-[36%] rounded-full border border-[#f3cbb1]/60" />
@@ -357,11 +406,11 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
             })}
           </svg>
 
-          <div className="absolute left-1/2 top-1/2 flex h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(255,232,214,0.7))] text-center shadow-[0_0_0_10px_rgba(255,255,255,0.35),0_24px_60px_rgba(248,146,32,0.18),inset_0_0_30px_rgba(255,255,255,0.7)] backdrop-blur-xl">
+          <div className="absolute left-1/2 top-1/2 flex h-[180px] w-[180px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(255,232,214,0.7))] text-center shadow-[0_0_0_10px_rgba(255,255,255,0.35),0_24px_60px_rgba(248,146,32,0.18),inset_0_0_30px_rgba(255,255,255,0.7)] backdrop-blur-xl">
             <div className="absolute inset-4 rounded-full border border-[#ffd7be]/80" />
             <div>
               <p className="text-[0.82rem] font-semibold uppercase tracking-[0.3em] text-[#f08b33]">Overview</p>
-              <p className="mt-3 px-6 text-[1.9rem] font-bold leading-tight tracking-[-0.04em] text-[#172033]">
+              <p className="mt-2 px-5 text-[1.6rem] font-bold leading-tight tracking-[-0.04em] text-[#172033]">
                 {details.title.replace(/\s+2026$/, "")}
               </p>
             </div>
@@ -374,7 +423,7 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
             return (
               <div
                 key={`${card.title}-${card.value}-orbit`}
-                className="absolute flex h-[116px] w-[116px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.88),rgba(255,243,234,0.68))] shadow-[0_0_0_8px_rgba(255,255,255,0.32),0_18px_34px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+                className="absolute flex h-[98px] w-[98px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.88),rgba(255,243,234,0.68))] shadow-[0_0_0_8px_rgba(255,255,255,0.32),0_18px_34px_rgba(15,23,42,0.14)] backdrop-blur-xl"
                 style={{
                   top: orbitPositions[index].top,
                   left: orbitPositions[index].left,
@@ -382,12 +431,12 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
                 }}
               >
                 <div
-                  className="flex h-[78px] w-[78px] items-center justify-center rounded-full border text-center"
+                  className="flex h-[66px] w-[66px] items-center justify-center rounded-full border text-center"
                   style={{ borderColor: `${palette.accent}66`, background: `linear-gradient(145deg, ${palette.soft}, #ffffff)` }}
                 >
                   <div className="flex flex-col items-center gap-1">
-                    <Icon className="size-5" style={{ color: palette.accent }} />
-                    <span className="text-sm font-bold" style={{ color: palette.accent }}>
+                    <Icon className="size-4" style={{ color: palette.accent }} />
+                    <span className="text-xs font-bold" style={{ color: palette.accent }}>
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
@@ -397,32 +446,32 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
           })}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {details.overviewCards.map((card, index) => {
             const palette = getOverviewPalette(index);
             const Icon = getOverviewIcon(card.title);
 
             return (
-              <div key={`${card.title}-${card.value}`} className="flex items-start gap-4 md:gap-5">
+              <div key={`${card.title}-${card.value}`} className="flex items-start gap-3 md:gap-4">
                 <div className="flex shrink-0 items-center gap-3">
                   <div
-                    className="relative flex h-12 w-12 items-center justify-center rounded-full border-[4px] bg-white text-base font-bold shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
+                    className="relative flex h-10 w-10 items-center justify-center rounded-full border-[3px] bg-white text-base font-bold shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
                     style={{ color: palette.accent, borderColor: palette.ring }}
                   >
-                    <Icon className="size-4" />
+                    <Icon className="size-3.5" />
                   </div>
-                  <div className="hidden h-[2px] w-12 rounded-full md:block" style={{ backgroundColor: palette.accent }} />
+                  <div className="hidden h-[2px] w-9 rounded-full md:block" style={{ backgroundColor: palette.accent }} />
                 </div>
                 <div
-                  className="min-w-0 flex-1 rounded-[1.35rem] border border-white/60 px-5 py-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur-xl"
+                  className="min-w-0 flex-1 rounded-[1.2rem] border border-white/60 px-4 py-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur-xl"
                   style={{
                     background: `linear-gradient(135deg, ${palette.soft}cc 0%, rgba(255,255,255,0.72) 100%)`,
                     borderColor: `${palette.accent}33`,
                     boxShadow: `0 10px 28px rgba(15,23,42,0.06), 0 0 22px ${palette.accent}14`,
                   }}
                 >
-                  <p className="text-[1.08rem] font-bold leading-6 text-[#172033]">{card.title}</p>
-                  <p className="mt-0.5 text-[0.98rem] leading-6 text-[#425066]">{card.value}</p>
+                  <p className="text-[1rem] font-bold leading-5 text-[#172033]">{card.title}</p>
+                  <p className="mt-0.5 text-[0.92rem] leading-5 text-[#425066]">{card.value}</p>
                 </div>
               </div>
             );
@@ -441,22 +490,18 @@ function OverviewContent({ details, section }: { details: ExamDetails; section: 
       <p className="mt-4 text-[1.02rem] leading-8 text-[#5a6678]">{renderHighlightedText(section.summary)}</p>
 
       {section.highlights?.length ? (
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
+        <div className="mt-6 space-y-4 text-[1rem] leading-8 text-[#526071]">
           {section.highlights.map((item) => (
-            <div key={item} className="rounded-[1.25rem] border border-[#e8edf3] bg-[#fbfcff] px-5 py-4 text-[0.98rem] leading-7 text-[#334155]">
-              {renderHighlightedText(item)}
-            </div>
+            <p key={item}>{renderHighlightedText(item)}</p>
           ))}
         </div>
       ) : null}
 
       <section className="mt-8 rounded-[1.8rem] border border-[#edf1f6] bg-[#fcfdff] p-6">
         <h3 className="text-[1.5rem] font-bold tracking-[-0.03em] text-[#172033]">Key Summary</h3>
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-4 text-[1rem] leading-8 text-[#4d5b6c]">
           {details.keySummary.map((item) => (
-            <div key={item} className="rounded-[1.2rem] bg-white px-4 py-3 text-[0.98rem] leading-7 text-[#4d5b6c] shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
-              {renderHighlightedText(item)}
-            </div>
+            <p key={item}>{renderHighlightedText(item)}</p>
           ))}
         </div>
       </section>
@@ -503,18 +548,21 @@ function OverviewContent({ details, section }: { details: ExamDetails; section: 
 
       {section.id !== "overview" && section.blocks?.length ? (
         <div className="mt-8 space-y-4">
-          {section.blocks.map((block) => (
-            <section key={block.title} className="rounded-[1.5rem] border border-[#edf1f6] bg-[#fcfdff] p-5">
-              <h3 className="text-[1.2rem] font-semibold text-[#1f2937]">{block.title}</h3>
+          {section.blocks.map((block) => {
+            const styles = getBlockStyles(block.variant);
+
+            return (
+            <section key={block.title} className={styles.sectionClass}>
+              <h3 className={styles.titleClass}>{block.title}</h3>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {block.items.map((item) => (
-                  <div key={item} className="rounded-[1.1rem] bg-white px-4 py-3 text-[0.97rem] leading-7 text-[#526071] shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
+                  <div key={item} className={styles.itemClass}>
                     {renderHighlightedText(item)}
                   </div>
                 ))}
               </div>
             </section>
-          ))}
+          )})}
         </div>
       ) : null}
 
@@ -546,6 +594,7 @@ function OverviewContent({ details, section }: { details: ExamDetails; section: 
 
 function GenericSectionContent({ section }: { section: ExamSection }) {
   const isExamPattern = section.id === "exam-pattern";
+  const isRegistration = section.id === "registration";
 
   return (
     <article className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
@@ -573,6 +622,92 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
 
       <h2 className="mt-3 text-[2rem] font-bold leading-tight tracking-[-0.03em] text-[#172033]">{section.title}</h2>
       <p className="mt-4 text-[1.02rem] leading-8 text-[#5a6678]">{renderHighlightedText(section.summary)}</p>
+
+      {isRegistration && section.liveLinkLabel && section.liveLinkHref ? (
+        <div className="mt-6">
+          <a
+            href={section.liveLinkHref}
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-[1rem] border border-[#cad7ee] bg-[#fbfdff] px-6 py-4 text-center text-[1.02rem] italic text-[#2563eb] transition hover:border-[#9fb8e8] hover:bg-white"
+          >
+            {renderHighlightedText(section.liveLinkLabel)}
+          </a>
+        </div>
+      ) : null}
+
+      {section.keySummaryItems?.length ? (
+        <section className="mt-8 rounded-[1.8rem] border border-[#edf1f6] bg-[#fcfdff] p-6">
+          <h3 className="text-[1.5rem] font-bold tracking-[-0.03em] text-[#172033]">{section.keySummaryTitle ?? "Key Summary"}</h3>
+          <div className="mt-4 space-y-4 text-[1rem] leading-8 text-[#4d5b6c]">
+            {section.keySummaryItems.map((item) => (
+              <p key={item}>{renderHighlightedText(item)}</p>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {isRegistration && section.secondaryTitle ? (
+        <section className="mt-8">
+          <h3 className="text-[1.75rem] font-bold tracking-[-0.03em] text-[#172033]">{section.secondaryTitle}</h3>
+          {section.secondarySummary ? (
+            <p className="mt-4 text-[1rem] leading-8 text-[#526071]">{renderHighlightedText(section.secondarySummary)}</p>
+          ) : null}
+          {section.secondaryTableRows?.length && section.secondaryTableColumns ? (
+            <div className="mt-6">
+              <TableSection
+                title={section.secondaryTableTitle ?? section.secondaryTitle}
+                columns={section.secondaryTableColumns}
+                rows={section.secondaryTableRows.map((row) => ({ key: row.key, value: row.value }))}
+              />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {isRegistration && section.tertiaryTitle ? (
+        <section className="mt-8">
+          <h3 className="text-[1.75rem] font-bold tracking-[-0.03em] text-[#172033]">{section.tertiaryTitle}</h3>
+          {section.tertiarySummary ? (
+            <p className="mt-4 text-[1rem] leading-8 text-[#526071]">{renderHighlightedText(section.tertiarySummary)}</p>
+          ) : null}
+          {section.tertiaryTableRows?.length && section.tertiaryTableColumns ? (
+            <div className="mt-6">
+              <TableSection
+                title={section.tertiaryTableTitle ?? section.tertiaryTitle}
+                columns={section.tertiaryTableColumns}
+                rows={section.tertiaryTableRows.map((row) => ({ key: row.key, value: row.value }))}
+              />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {isRegistration && section.quaternaryTitle ? (
+        <section className="mt-8">
+          <h3 className="text-[1.75rem] font-bold tracking-[-0.03em] text-[#172033]">{section.quaternaryTitle}</h3>
+          {section.quaternarySummary ? (
+            <div className="mt-4 space-y-4 text-[1rem] leading-8 text-[#526071]">
+              {section.quaternarySummary.split("\n").map((paragraph) => (
+                <p key={paragraph}>{renderHighlightedText(paragraph)}</p>
+              ))}
+            </div>
+          ) : null}
+          {section.quaternaryTableRows?.length && section.quaternaryTableColumns ? (
+            <div className="mt-6">
+              <TripleTableSection
+                title={section.quaternaryTableTitle ?? section.quaternaryTitle}
+                columns={section.quaternaryTableColumns}
+                rows={section.quaternaryTableRows.map((row) => ({
+                  first: row.first,
+                  second: row.second,
+                  third: row.third,
+                }))}
+              />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {section.paragraphs?.length ? (
         <div className="mt-6 space-y-4 text-[1rem] leading-8 text-[#526071]">
@@ -708,7 +843,7 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </p>
       ) : null}
 
-      {section.steps?.length ? (
+      {!isRegistration && section.steps?.length ? (
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {section.steps.map((step, index) => (
             <div key={step} className="rounded-[1.35rem] border border-[#e9edf4] bg-[#fffdf9] px-5 py-4">
@@ -721,13 +856,16 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
         </div>
       ) : null}
 
-      {section.blocks?.length ? (
+      {!isRegistration && section.blocks?.length ? (
         <div className="mt-6 space-y-4">
-          {section.blocks.map((block) => (
-            <section key={block.title} className="rounded-[1.5rem] border border-[#edf1f6] bg-[#fcfdff] p-5">
-              <h3 className="text-[1.2rem] font-semibold text-[#1f2937]">{block.title}</h3>
+          {section.blocks.map((block) => {
+            const styles = getBlockStyles(block.variant);
+
+            return (
+            <section key={block.title} className={styles.sectionClass}>
+              <h3 className={styles.titleClass}>{block.title}</h3>
               {isExamPattern ? (
-                <ul className="mt-4 list-disc space-y-3 pl-7 text-[0.99rem] leading-8 text-[#526071]">
+                <ul className={styles.listClass}>
                   {block.items.map((item) => (
                     <li key={item}>{renderHighlightedText(item)}</li>
                   ))}
@@ -735,14 +873,14 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
               ) : (
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {block.items.map((item) => (
-                    <div key={item} className="rounded-[1.1rem] bg-white px-4 py-3 text-[0.97rem] leading-7 text-[#526071] shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
+                    <div key={item} className={styles.itemClass}>
                       {renderHighlightedText(item)}
                     </div>
                   ))}
                 </div>
               )}
             </section>
-          ))}
+          )})}
         </div>
       ) : null}
 
@@ -774,16 +912,31 @@ function GenericSectionContent({ section }: { section: ExamSection }) {
 
 export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps) {
   const [activeTab, setActiveTab] = useState(displayTabs[0]?.id ?? "overview");
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const activeTabConfig = displayTabs.find((tab) => tab.id === activeTab) ?? displayTabs[0];
   const activeSection = getSection(details, activeTabConfig.sectionId);
   const moreExams = allExams.filter((exam) => exam.slug !== details.slug).slice(0, 3);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 240);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <section className="min-h-screen bg-[#f5f7fb] text-[#1f2a37]">
       <Navbar />
-      <div className="mx-auto w-full max-w-[1620px] px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-[1550px]">
+      <div className="page-container-full w-full px-4 py-6 sm:px-6 md:py-8">
           <div className="flex flex-wrap items-center gap-2 text-sm text-[#55708b]">
             <Home className="size-4 text-[#2f6edb]" />
             <Link href="/explore" className="text-[#2f6edb] hover:underline">
@@ -805,7 +958,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
           </section>
 
           <section className="overflow-x-auto border-b border-[#d8dee8] bg-white/70">
-            <div className="flex min-w-max items-stretch gap-1 px-1">
+            <div className="flex min-w-max items-stretch gap-6 px-2 py-3">
               {displayTabs.map((tab) => {
                 const isActive = tab.id === activeTab;
                 return (
@@ -813,22 +966,16 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex min-h-[86px] min-w-[132px] shrink-0 items-center justify-center gap-1 border-b-[3px] px-4 py-4 text-center text-[0.96rem] font-medium leading-7 transition ${
-                      isActive ? "border-[#2f6edb] text-[#2f6edb]" : "border-transparent text-[#334155] hover:text-[#2f6edb]"
+                    className={`flex min-h-[44px] shrink-0 items-center justify-center px-1 py-2 text-center text-[0.98rem] font-medium leading-6 transition ${
+                      isActive
+                        ? "bg-transparent text-[#2f6edb]"
+                        : "bg-transparent text-[#334155] hover:text-[#2f6edb]"
                     }`}
                   >
-                    <span className="max-w-[110px] text-balance">{tab.label}</span>
-                    {tab.hasDropdown ? <ChevronDown className="size-4" /> : null}
+                    <span className="whitespace-nowrap">{tab.label}</span>
                   </button>
                 );
               })}
-              <button
-                type="button"
-                aria-label="More tabs"
-                className="ml-2 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#d8dee8] bg-white text-[#475569]"
-              >
-                <ChevronRight className="size-5" />
-              </button>
             </div>
           </section>
 
@@ -880,7 +1027,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
               )}
             </div>
 
-            <aside className="space-y-5">
+            <aside className="space-y-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto xl:pr-2">
               <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
                 <div className="flex items-start gap-4">
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#fff4ec] text-[#ef4444]">
@@ -929,7 +1076,6 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
                     { label: "Exam Mode", value: details.examMode },
                     { label: "Authority", value: details.authority },
                     { label: "Courses Offered", value: details.coursesOffered },
-                    { label: "Participating Colleges", value: details.colleges },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.25rem] border border-[#edf1f6] px-4 py-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#7b8796]">{item.label}</p>
@@ -964,7 +1110,46 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
               </section>
             </aside>
           </section>
+      </div>
+      {showScrollTop ? (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-8 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-md border border-[#d7dbe2] bg-white text-[#4b5563] shadow-[0_10px_30px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:text-[#1f2937]"
+        >
+          <ArrowUp className="size-7" strokeWidth={1.75} />
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function TripleTableSection({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: [string, string, string];
+  rows: { first: string; second: string; third: string }[];
+}) {
+  return (
+    <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+      <h3 className="text-[2rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
+      <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+        <div className="grid grid-cols-3 bg-[#dfeafe] text-base font-semibold text-[#172033]">
+          <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
+          <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[1]}</div>
+          <div className="px-5 py-4">{columns[2]}</div>
         </div>
+        {rows.map((row) => (
+          <div key={`${row.first}-${row.second}-${row.third}`} className="grid grid-cols-3 border-t border-[#dbe5f5] bg-white text-[1rem] text-[#425066]">
+            <div className="border-r border-[#dbe5f5] px-5 py-4 font-medium">{renderHighlightedText(row.first)}</div>
+            <div className="border-r border-[#dbe5f5] px-5 py-4">{renderHighlightedText(row.second)}</div>
+            <div className="px-5 py-4">{renderHighlightedText(row.third)}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
