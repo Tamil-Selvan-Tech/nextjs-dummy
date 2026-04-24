@@ -786,6 +786,16 @@ function GenericSectionContent({ section, details }: { section: ExamSection; det
   const isQuestionPaper = section.id === "question-paper";
   const isPreparation = section.id === "preparation";
   const showStudyHub = (section.id === "question-paper" || section.id === "mock-test") && details.studyHub;
+  const registrationApplicationFee = isRegistration ? getExamApplicationFee(details) : "";
+  const registrationTertiaryRows =
+    isRegistration &&
+    registrationApplicationFee &&
+    normalizeExamMetaLabel(section.tertiaryTitle || "").includes("application fees")
+      ? (section.tertiaryTableRows || []).map((row) => ({
+          key: row.key,
+          value: registrationApplicationFee,
+        }))
+      : section.tertiaryTableRows || [];
 
   return (
     <article className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
@@ -864,12 +874,12 @@ function GenericSectionContent({ section, details }: { section: ExamSection; det
           {section.tertiarySummary ? (
             <p className="mt-4 text-[1rem] leading-8 text-[#526071]">{renderHighlightedText(section.tertiarySummary)}</p>
           ) : null}
-          {section.tertiaryTableRows?.length && section.tertiaryTableColumns ? (
+          {registrationTertiaryRows.length && section.tertiaryTableColumns ? (
             <div className="mt-6">
               <TableSection
                 title={section.tertiaryTableTitle ?? section.tertiaryTitle}
                 columns={section.tertiaryTableColumns}
-                rows={section.tertiaryTableRows.map((row) => ({ key: row.key, value: row.value }))}
+                rows={registrationTertiaryRows.map((row) => ({ key: row.key, value: row.value }))}
               />
             </div>
           ) : null}

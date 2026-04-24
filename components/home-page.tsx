@@ -21,7 +21,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
@@ -56,7 +56,6 @@ const SEARCH_FLOW_ITEMS = [
   "Search for exams",
   "Search for course",
 ];
-const HERO_EXAM_NAMES = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
 const TOP_EXAM_CARDS = [
   {
     name: "JEE Main",
@@ -120,14 +119,6 @@ type HomePageProps = {
 };
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
-type HeroSearchItem = {
-  id: string;
-  label: string;
-  href: string;
-  type: "college" | "course" | "exam" | "city";
-  keywords: string[];
-  imageSrc?: string;
-};
 type FeatureCardItem = {
   title: string;
   description: string;
@@ -251,21 +242,26 @@ export function HomePage({
 }: HomePageProps) {
   const router = useRouter();
   const featureCards = FEATURE_CARDS;
-  const [heroSearchInput, setHeroSearchInput] = useState("");
+  const [collegeSearchInput, setCollegeSearchInput] = useState("");
+  const [locationSearchInput, setLocationSearchInput] = useState("");
+  const [courseSearchInput, setCourseSearchInput] = useState("");
   const [activeAction, setActiveAction] = useState(0);
   const [activeFeatureCard, setActiveFeatureCard] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
   const [typedSearchText, setTypedSearchText] = useState("");
-  const [isHeroSearchFocused, setIsHeroSearchFocused] = useState(false);
+  const [activeSearchField, setActiveSearchField] = useState<"college" | "location" | "course" | null>(null);
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const [brokenHeroSuggestionImages, setBrokenHeroSuggestionImages] = useState<Record<string, boolean>>({});
-  const [showHeroNoMatch, setShowHeroNoMatch] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const trendingCoursesScrollRef = useRef<HTMLDivElement | null>(null);
   const collegesScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [showLeftArrowTrendingCourses, setShowLeftArrowTrendingCourses] = useState(false);
+  const [showRightArrowTrendingCourses, setShowRightArrowTrendingCourses] = useState(true);
   const [showLeftArrowColleges, setShowLeftArrowColleges] = useState(false);
   const [showRightArrowColleges, setShowRightArrowColleges] = useState(true);
+  const [activeTrendingCourseIndex, setActiveTrendingCourseIndex] = useState(0);
 
   const exploreCourseCards = useMemo(() => {
     const iconMap = {
@@ -511,97 +507,162 @@ export function HomePage({
       };
     });
   }, [examSchedules]);
-  const heroSearchPool = useMemo(() => {
-    const unique = new Map<string, HeroSearchItem>();
-    const pushValue = ({
-      label,
-      href,
-      type,
-      keywords = [],
-      imageSrc,
-    }: {
-      label: string;
-      href: string;
-      type: "college" | "course" | "exam" | "city";
-      keywords?: string[];
-      imageSrc?: string;
-    }) => {
-      const trimmed = String(label || "").trim();
-      if (!trimmed || !href) return;
-      const key = `${type}:${trimmed.toLowerCase()}`;
-      if (unique.has(key)) return;
-      unique.set(key, {
-        id: key,
-        label: trimmed,
-        href,
-        type,
-        keywords: keywords.filter(Boolean).map((item) => item.toLowerCase()),
-        imageSrc: imageSrc ? String(imageSrc).trim() : undefined,
-      });
-    };
-
+  const locationSuggestions = useMemo(() => {
+    const unique = new Map<string, { id: string; label: string; district: string; state: string }>();
     collegesData.forEach((college) => {
-      pushValue({
-        label: college.name,
-        href: `/college/${college.id}`,
-        type: "college",
-        keywords: [college.district, college.state, college.ownershipType ?? '', ...(college.courseTags || [])],
-        imageSrc: college.logo || college.image,
-      });
-      pushValue({
-        label: college.district,
-        href: `/explore?view=colleges&city=${encodeURIComponent(college.district)}`,
-        type: "city",
-        keywords: [college.state],
-      });
+      const district = String(college.district || "").trim();
+      const state = String(college.state || "").trim();
+      const label = [district, state].filter(Boolean).join(", ");
+      const key = label.toLowerCase();
+      if (!label || unique.has(key)) return;
+      unique.set(key, { id: `location:${key}`, label, district, state });
     });
 
+    const query = locationSearchInput.trim().toLowerCase();
+    return [...unique.values()]
+      .filter((item) => !query || item.label.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [collegesData, locationSearchInput]);
+  const courseSuggestions = useMemo(() => {
+    const unique = new Map<string, { id: string; label: string }>();
     coursesData.forEach((course) => {
-      pushValue({
-        label: course.course,
-        href: `/explore/course/${encodeURIComponent(course.course)}`,
-        type: "course",
-        keywords: [course.specialization, course.courseType, course.stream ?? ''],
-      });
-      pushValue({
-        label: course.specialization,
-        href: `/explore/course/${encodeURIComponent(course.course)}`,
-        type: "course",
-        keywords: [course.course, course.stream ?? ''],
+      [course.course, course.specialization, course.courseType].forEach((value) => {
+        const label = String(value || "").trim();
+        const key = label.toLowerCase();
+        if (!label || unique.has(key)) return;
+        unique.set(key, { id: `course:${key}`, label });
       });
     });
 
-    topExamCards.forEach((exam) => {
-      pushValue({
-        label: exam.name,
-        href: exam.href,
-        type: "exam",
-        keywords: [exam.mode, exam.examLevel, exam.examDate],
-      });
-    });
-
-    HERO_EXAM_NAMES.forEach((exam) =>
-      pushValue({
-        label: exam,
-        href: `/exams/${exam.toLowerCase().replace(/\s+/g, "-")}`,
-        type: "exam",
-      }),
-    );
-
-    return [...unique.values()];
-  }, [collegesData, coursesData, topExamCards]);
-
-  const heroSearchSuggestions = useMemo(() => {
-    const query = heroSearchInput.trim().toLowerCase();
+    const query = courseSearchInput.trim().toLowerCase();
+    return [...unique.values()]
+      .filter((item) => !query || item.label.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [courseSearchInput, coursesData]);
+  const collegeSuggestions = useMemo(() => {
+    const query = collegeSearchInput.trim().toLowerCase();
     if (!query) return [];
 
-    return heroSearchPool
-      .filter((item) => {
-        if (item.label.toLowerCase().includes(query)) return true;
-        return item.keywords.some((keyword) => keyword.includes(query));
+    return collegesData
+      .filter((college) => {
+        const keywords = [
+          college.name,
+          college.university,
+          college.district,
+          college.state,
+          ...(college.courseTags || []),
+        ]
+          .filter(Boolean)
+          .map((item) => String(item).toLowerCase());
+        return keywords.some((keyword) => keyword.includes(query));
       })
       .slice(0, 8);
-  }, [heroSearchInput, heroSearchPool]);
+  }, [collegeSearchInput, collegesData]);
+  const filteredHeroColleges = useMemo(() => {
+    const collegeQuery = collegeSearchInput.trim().toLowerCase();
+    const locationQuery = locationSearchInput.trim().toLowerCase();
+    const courseQuery = courseSearchInput.trim().toLowerCase();
+
+    const collegeCourseLookup = new Map<string, string[]>();
+    coursesData.forEach((course) => {
+      const keys = [String(course.collegeId || "").trim(), String(course.college || "").trim().toLowerCase()].filter(Boolean);
+      const values = [
+        course.course,
+        course.specialization,
+        course.courseType,
+        course.stream,
+        course.degreeType,
+      ]
+        .filter(Boolean)
+        .map((item) => String(item).toLowerCase());
+      keys.forEach((key) => {
+        const previous = collegeCourseLookup.get(key) || [];
+        collegeCourseLookup.set(key, [...previous, ...values]);
+      });
+    });
+
+    return collegesData.filter((college) => {
+      const collegeKeywords = [
+        college.name,
+        college.university,
+        college.district,
+        college.state,
+        ...(college.courseTags || []),
+        ...(college.streams || []),
+      ]
+        .filter(Boolean)
+        .map((item) => String(item).toLowerCase());
+      const courseKeywords = [
+        ...collegeKeywords,
+        ...(collegeCourseLookup.get(college.id) || []),
+        ...(collegeCourseLookup.get(String(college.name || "").trim().toLowerCase()) || []),
+      ];
+      const locationLabel = [college.district, college.state].filter(Boolean).join(", ").toLowerCase();
+
+      const matchesCollege = !collegeQuery || collegeKeywords.some((keyword) => keyword.includes(collegeQuery));
+      const matchesLocation =
+        !locationQuery ||
+        locationLabel.includes(locationQuery) ||
+        [college.district, college.state, college.city]
+          .filter(Boolean)
+          .map((item) => String(item).toLowerCase())
+          .some((keyword) => keyword.includes(locationQuery));
+      const matchesCourse = !courseQuery || courseKeywords.some((keyword) => keyword.includes(courseQuery));
+
+      return matchesCollege && matchesLocation && matchesCourse;
+    });
+  }, [collegeSearchInput, collegesData, courseSearchInput, coursesData, locationSearchInput]);
+  const activeSearchSuggestions = useMemo(() => {
+    if (activeSearchField === "college") {
+      return collegeSuggestions.map((item) => ({
+        id: item.id,
+        label: item.name,
+        meta: [item.district, item.state].filter(Boolean).join(", ") || item.university,
+        imageSrc: item.logo || item.image,
+        onSelect: () => {
+          setCollegeSearchInput(item.name);
+          setActiveSearchField(null);
+        },
+      }));
+    }
+    if (activeSearchField === "location") {
+      return locationSuggestions.map((item) => ({
+        id: item.id,
+        label: item.label,
+        meta: "Location",
+        imageSrc: "",
+        onSelect: () => {
+          setLocationSearchInput(item.label);
+          setActiveSearchField(null);
+        },
+      }));
+    }
+    if (activeSearchField === "course") {
+      return courseSuggestions.map((item) => ({
+        id: item.id,
+        label: item.label,
+        meta: "Course",
+        imageSrc: "",
+        onSelect: () => {
+          setCourseSearchInput(item.label);
+          setActiveSearchField(null);
+        },
+      }));
+    }
+    return [];
+  }, [activeSearchField, collegeSuggestions, courseSuggestions, locationSuggestions]);
+  const shouldShowHeroSearchPanel = useMemo(
+    () =>
+      (activeSearchField !== null && activeSearchSuggestions.length > 0) ||
+      Boolean(collegeSearchInput.trim() || locationSearchInput.trim() || courseSearchInput.trim()),
+    [
+      activeSearchField,
+      activeSearchSuggestions.length,
+      collegeSearchInput,
+      courseSearchInput,
+      locationSearchInput,
+    ],
+  );
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter(
       (college) => college.isBestCollege || college.isTopCollege,
@@ -654,14 +715,75 @@ export function HomePage({
     setRight(scrollLeft < scrollWidth - clientWidth - 10);
   };
 
+  const updateTrendingCoursesScrollState = useCallback(() => {
+    const element = trendingCoursesScrollRef.current;
+    if (!element) return;
+
+    syncScrollIndicators(
+      element,
+      setShowLeftArrowTrendingCourses,
+      setShowRightArrowTrendingCourses,
+    );
+
+    const cards = Array.from(element.children) as HTMLElement[];
+    if (!cards.length) {
+      setActiveTrendingCourseIndex(0);
+      return;
+    }
+
+    const nearestIndex = cards.reduce((closestIndex, card, index) => {
+      const currentDistance = Math.abs(card.offsetLeft - element.scrollLeft);
+      const closestDistance = Math.abs(cards[closestIndex].offsetLeft - element.scrollLeft);
+      return currentDistance < closestDistance ? index : closestIndex;
+    }, 0);
+
+    setActiveTrendingCourseIndex(nearestIndex);
+  }, []);
+
+  const scrollTrendingCoursesByCard = (direction: "left" | "right") => {
+    const element = trendingCoursesScrollRef.current;
+    if (!element) return;
+    const firstCard = element.firstElementChild as HTMLElement | null;
+    const step = firstCard ? firstCard.offsetWidth + 16 : 320;
+    element.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
+  };
+
+  const scrollTrendingCoursesToIndex = (index: number) => {
+    const element = trendingCoursesScrollRef.current;
+    if (!element) return;
+    const cards = Array.from(element.children) as HTMLElement[];
+    const target = cards[index];
+    if (!target) return;
+    element.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+  };
+
   useEffect(() => {
     syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow);
+    const animationFrame = window.requestAnimationFrame(() => {
+      updateTrendingCoursesScrollState();
+    });
     syncScrollIndicators(
       collegesScrollContainerRef.current,
       setShowLeftArrowColleges,
       setShowRightArrowColleges,
     );
-  }, []);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [updateTrendingCoursesScrollState]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow);
+      updateTrendingCoursesScrollState();
+      syncScrollIndicators(
+        collegesScrollContainerRef.current,
+        setShowLeftArrowColleges,
+        setShowRightArrowColleges,
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateTrendingCoursesScrollState]);
 
   useEffect(() => {
     if (isSpotlightPaused) return;
@@ -726,30 +848,7 @@ export function HomePage({
   useScrollAnimation();
 
   const handleHeroSearch = () => {
-    const query = heroSearchInput.trim();
-    if (!query) return;
-    const exactMatch = heroSearchPool.find((item) => item.label.toLowerCase() === query.toLowerCase());
-    if (exactMatch) {
-      setShowHeroNoMatch(false);
-      router.push(exactMatch.href);
-    } else if (heroSearchSuggestions.length > 0) {
-      setShowHeroNoMatch(false);
-      router.push(heroSearchSuggestions[0].href);
-    } else {
-      setShowHeroNoMatch(true);
-      setIsHeroSearchFocused(true);
-      return;
-    }
-    setHeroSearchInput("");
-    setIsHeroSearchFocused(false);
-  };
-
-  const handleHeroSuggestionSelect = (value: { label: string; href: string }) => {
-    if (!value.href) return;
-    setShowHeroNoMatch(false);
-    router.push(value.href);
-    setHeroSearchInput(value.label);
-    setIsHeroSearchFocused(false);
+    setActiveSearchField(null);
   };
 
   const homeThemeStyles: ThemeStyleVars = {
@@ -1024,7 +1123,7 @@ export function HomePage({
                               <Search className="size-4" />
                               Search Colleges
                             </div>
-                            {!heroSearchInput ? (
+                            {!collegeSearchInput ? (
                               <div className="pointer-events-none absolute inset-x-5 bottom-3 flex items-center overflow-hidden text-[16px] text-[color:var(--text-muted)]">
                                 {typedSearchText}
                                 <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">|</span>
@@ -1032,17 +1131,13 @@ export function HomePage({
                             ) : null}
                             <input
                               type="text"
-                              value={heroSearchInput}
+                              value={collegeSearchInput}
                               onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setHeroSearchInput(nextValue);
-                                if (showHeroNoMatch) {
-                                  setShowHeroNoMatch(false);
-                                }
+                                setCollegeSearchInput(event.target.value);
                               }}
-                              onFocus={() => setIsHeroSearchFocused(true)}
+                              onFocus={() => setActiveSearchField("college")}
                               onBlur={() => {
-                                window.setTimeout(() => setIsHeroSearchFocused(false), 120);
+                                window.setTimeout(() => setActiveSearchField(null), 120);
                               }}
                               onKeyDown={(event) => {
                                 if (event.key === "Enter") {
@@ -1055,10 +1150,56 @@ export function HomePage({
                             />
                           </div>
 
+                          <div className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
+                              <MapPin className="size-[1.1rem]" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                                Location
+                              </label>
+                              <input
+                                type="text"
+                                value={locationSearchInput}
+                                onChange={(event) => setLocationSearchInput(event.target.value)}
+                                onFocus={() => setActiveSearchField("location")}
+                                onBlur={() => {
+                                  window.setTimeout(() => setActiveSearchField(null), 120);
+                                }}
+                                aria-label="Location"
+                                placeholder="Type location"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
+                              <CourseIcon className="size-[1.1rem]" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                                Course
+                              </label>
+                              <input
+                                type="text"
+                                value={courseSearchInput}
+                                onChange={(event) => setCourseSearchInput(event.target.value)}
+                                onFocus={() => setActiveSearchField("course")}
+                                onBlur={() => {
+                                  window.setTimeout(() => setActiveSearchField(null), 120);
+                                }}
+                                aria-label="Course"
+                                placeholder="Type course"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                              />
+                            </div>
+                          </div>
+
                           <button
                             type="button"
-                            onClick={() => router.push("/search")}
-                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            onClick={() => setActiveSearchField("location")}
+                            className="hidden min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
                               <MapPin className="size-[1.1rem]" />
@@ -1072,8 +1213,8 @@ export function HomePage({
 
                           <button
                             type="button"
-                            onClick={() => router.push("/search")}
-                            className="flex min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
+                            onClick={() => setActiveSearchField("course")}
+                            className="hidden min-h-[3.2rem] items-center gap-3 rounded-[1.05rem] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:rounded-none md:border-r md:border-[rgba(15,76,129,0.1)] md:bg-transparent"
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent)]">
                               <CourseIcon className="size-[1.1rem]" />
@@ -1096,56 +1237,149 @@ export function HomePage({
                         </div>
                       </div>
 
-                      {isHeroSearchFocused &&
-                      heroSearchInput.trim().length > 0 &&
-                      (heroSearchSuggestions.length > 0 || showHeroNoMatch) ? (
+                      <div className="hidden mt-3 grid gap-2 md:grid-cols-3">
+                        <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 px-4 py-3">
+                          <input
+                            type="text"
+                            value={collegeSearchInput}
+                            onChange={(event) => setCollegeSearchInput(event.target.value)}
+                            onFocus={() => setActiveSearchField("college")}
+                            onBlur={() => {
+                              window.setTimeout(() => setActiveSearchField(null), 120);
+                            }}
+                            aria-label="Search colleges"
+                            placeholder="Search Colleges"
+                            className="w-full border-0 bg-transparent px-0 py-0 text-sm font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                          />
+                        </div>
+                        <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 px-4 py-3">
+                          <input
+                            type="text"
+                            value={locationSearchInput}
+                            onChange={(event) => setLocationSearchInput(event.target.value)}
+                            onFocus={() => setActiveSearchField("location")}
+                            onBlur={() => {
+                              window.setTimeout(() => setActiveSearchField(null), 120);
+                            }}
+                            aria-label="Location"
+                            placeholder="Location"
+                            className="w-full border-0 bg-transparent px-0 py-0 text-sm font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                          />
+                        </div>
+                        <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 px-4 py-3">
+                          <input
+                            type="text"
+                            value={courseSearchInput}
+                            onChange={(event) => setCourseSearchInput(event.target.value)}
+                            onFocus={() => setActiveSearchField("course")}
+                            onBlur={() => {
+                              window.setTimeout(() => setActiveSearchField(null), 120);
+                            }}
+                            aria-label="Course"
+                            placeholder="Course"
+                            className="w-full border-0 bg-transparent px-0 py-0 text-sm font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                          />
+                        </div>
+                      </div>
+
+                      {shouldShowHeroSearchPanel ? (
                         <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] overflow-hidden rounded-[1.2rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.16)] backdrop-blur-sm">
-                          {heroSearchSuggestions.length > 0 ? (
-                            heroSearchSuggestions.map((item) => (
-                              <button
-                                key={item.id}
-                                type="button"
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  handleHeroSuggestionSelect(item);
-                                }}
-                                className="flex w-full items-center gap-2 rounded-[0.9rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
-                              >
-                                {item.type === "college" && item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
-                                  <span className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
-                                    <img
-                                      src={item.imageSrc}
-                                      alt={item.label}
-                                      className="h-full w-full object-cover"
-                                      onError={() =>
-                                        setBrokenHeroSuggestionImages((current) => ({
-                                          ...current,
-                                          [item.id]: true,
-                                        }))
-                                      }
-                                    />
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
-                                    <Search className="size-4" />
-                                  </span>
-                                )}
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate font-medium">{item.label}</span>
-                                  <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
-                                    {item.type}
-                                  </span>
-                                </span>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="rounded-[0.9rem] px-4 py-4 text-left">
-                              <p className="text-sm font-semibold text-[color:var(--text-dark)]">Not found</p>
-                              <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
-                                No matching college, course, location, or exam found for {heroSearchInput.trim()}.
+                          {activeSearchField && activeSearchSuggestions.length > 0 ? (
+                            <div className="border-b border-[rgba(29,78,216,0.08)] px-2 pb-2">
+                              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
+                                Related {activeSearchField}
                               </p>
+                              {activeSearchSuggestions.map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    item.onSelect();
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-[0.9rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
+                                >
+                                  {item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
+                                    <span className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
+                                      <img
+                                        src={item.imageSrc}
+                                        alt={item.label}
+                                        className="h-full w-full object-cover"
+                                        onError={() =>
+                                          setBrokenHeroSuggestionImages((current) => ({
+                                            ...current,
+                                            [item.id]: true,
+                                          }))
+                                        }
+                                      />
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
+                                      {activeSearchField === "location" ? (
+                                        <MapPin className="size-4" />
+                                      ) : activeSearchField === "course" ? (
+                                        <CourseIcon className="size-4" />
+                                      ) : (
+                                        <Search className="size-4" />
+                                      )}
+                                    </span>
+                                  )}
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-medium">{item.label}</span>
+                                    <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+                                      {item.meta}
+                                    </span>
+                                  </span>
+                                </button>
+                              ))}
                             </div>
-                          )}
+                          ) : null}
+
+                          <div className="px-2 pb-2 pt-3">
+                            <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
+                              Matching Colleges
+                            </p>
+                            {filteredHeroColleges.length > 0 ? (
+                              filteredHeroColleges.slice(0, 6).map((college) => (
+                                <button
+                                  key={college.id}
+                                  type="button"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    router.push(`/college/${college.id}`);
+                                  }}
+                                  className="flex w-full items-center gap-3 rounded-[0.9rem] px-3 py-3 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
+                                >
+                                  <span className="inline-flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
+                                    {college.logo || college.image ? (
+                                      <img
+                                        src={college.logo || college.image}
+                                        alt={college.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex h-full w-full items-center justify-center">
+                                        <Building2 className="size-4 text-[color:var(--brand-primary)]" />
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-medium">{college.name}</span>
+                                    <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+                                      {[college.district, college.state].filter(Boolean).join(", ")}
+                                    </span>
+                                  </span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="rounded-[0.9rem] px-4 py-4 text-left">
+                                <p className="text-sm font-semibold text-[color:var(--text-dark)]">No matching colleges</p>
+                                <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
+                                  Search colleges, location, and course combine pannina matching colleges inga kaatum.
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ) : null}
                     </div>
@@ -1205,22 +1439,127 @@ export function HomePage({
                       </article>
                     </div>
 
+                    <div className="mt-12 w-full scroll-fade-in" data-scroll-animate>
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">Top Exams</h2>
+                        <button
+                          type="button"
+                          onClick={() => router.push("/search?type=exam")}
+                          className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+                        >
+                          Explore all
+                          <ArrowRight className="size-4" />
+                        </button>
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {topExamCards.map((exam, index) => {
+                          const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
+                          return (
+                            <article
+                              key={exam.name}
+                              onClick={() => router.push(exam.href)}
+                              className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
+                              data-scroll-animate
+                            >
+                              <span
+                                className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
+                                  exam.mode === "Online Exam"
+                                    ? "bg-[rgba(34,197,94,0.14)] text-[rgb(21,128,61)]"
+                                    : "bg-[rgba(249,115,22,0.14)] text-[rgb(194,65,12)]"
+                                }`}
+                              >
+                                {exam.mode}
+                              </span>
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
+                                  {exam.logo ? (
+                                    <img
+                                      src={exam.logo}
+                                      alt={`${exam.name} logo`}
+                                      className="h-full w-full object-contain p-1"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                      <Bell className="size-4 text-[color:var(--brand-primary)]" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
+                                    {exam.name}
+                                  </h3>
+                                </div>
+                              </div>
+
+                              <dl className="space-y-1.5 text-xs">
+                                <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                                  <dt className="text-[color:var(--text-muted)]">Colleges</dt>
+                                  <dd className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</dd>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
+                                  <dt className="text-[color:var(--text-muted)]">Exam Date</dt>
+                                  <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</dd>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <dt className="text-[color:var(--text-muted)]">Level</dt>
+                                  <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</dd>
+                                </div>
+                              </dl>
+
+                              <div className="mt-auto space-y-1.5 border-t border-[rgba(20,32,51,0.08)] pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(exam.href);
+                                  }}
+                                  className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                                >
+                                  Application Process
+                                  <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(exam.href);
+                                  }}
+                                  className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
+                                >
+                                  Exam Info
+                                  <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className="reveal-up delay-3 mt-8 pt-3">
-                      <div className="rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,#ffffff,#f5faff)] p-5 shadow-[0_22px_50px_rgba(22,50,79,0.08)] md:p-6 scroll-fade-in scroll-delay-2" data-scroll-animate>
+                      <div className="relative px-0 py-2 scroll-fade-in scroll-delay-2" data-scroll-animate>
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
+                          <p className="text-[1.05rem] font-semibold uppercase tracking-[0.24em] text-[#132a6b]">
                             Trending Courses
                           </p>
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--brand-primary)]"
+                            className="inline-flex items-center gap-2 text-lg font-medium text-[#1d4ed8]"
                           >
                             View all
-                            <ArrowRight className="size-3.5" />
+                            <ArrowRight className="size-5" />
                           </button>
                         </div>
-                        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+
+                        <div className="relative mt-8">
+                          <div
+                            ref={trendingCoursesScrollRef}
+                            onScroll={updateTrendingCoursesScrollState}
+                            className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 scroll-smooth scrollbar-hide"
+                          >
                           {trendingCourseCards.map((course) => {
                             const Icon = course.icon;
                             return (
@@ -1228,28 +1567,67 @@ export function HomePage({
                                 key={course.id}
                                 type="button"
                                 onClick={() => router.push(course.href)}
-                                className="group rounded-[1.05rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] px-3 py-2.5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.07)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.35)] hover:shadow-[0_18px_32px_rgba(22,50,79,0.12)]"
+                                className="group flex min-h-[20rem] w-[14.75rem] shrink-0 snap-start flex-col rounded-[1.7rem] border border-[rgba(220,230,248,0.95)] bg-white px-6 py-7 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.5rem] lg:w-[17rem]"
                               >
                                 <div className="flex items-center justify-between gap-3">
-                                  <div className="rounded-[0.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(239,68,68,0.14),rgba(255,255,255,0.94))] p-1.5 text-[color:var(--brand-accent-deep)] transition group-hover:scale-[1.03]">
-                                    <Icon className="size-[13px]" />
+                                  <div className="flex h-[5.3rem] w-[5.3rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
+                                    <Icon className="size-8 stroke-[1.8]" />
                                   </div>
                                 </div>
-                                <div className="mt-3">
-                                  <p className="font-[family:var(--font-display)] text-[1.05rem] leading-none text-[color:var(--text-dark)]">
+                                <div className="mt-8">
+                                  <p className="font-[family:var(--font-display)] text-[1.35rem] leading-[1.28] text-[#0f1738]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+                                  <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--brand-primary)]">
+                                <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8]">
                                   Explore Course
-                                  <ArrowRight className="size-[13px] text-[color:var(--brand-accent)] transition group-hover:translate-x-0.5" />
+                                  <ArrowRight className="size-5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
                                 </div>
                               </button>
                             );
                           })}
+                          </div>
+
+                          {showLeftArrowTrendingCourses ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTrendingCoursesByCard("left")}
+                              className="absolute left-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll trending courses left"
+                            >
+                              <ChevronLeft className="size-7" />
+                            </button>
+                          ) : null}
+
+                          {showRightArrowTrendingCourses ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTrendingCoursesByCard("right")}
+                              className="absolute right-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll trending courses right"
+                            >
+                              <ChevronRight className="size-7" />
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-5 flex items-center justify-center gap-4">
+                          {trendingCourseCards.map((course, index) => (
+                            <button
+                              key={`${course.id}-dot`}
+                              type="button"
+                              onClick={() => scrollTrendingCoursesToIndex(index)}
+                              aria-label={`Go to trending course ${index + 1}`}
+                              className={`h-3.5 w-3.5 rounded-full transition ${
+                                index === activeTrendingCourseIndex
+                                  ? "bg-[#1d4ed8]"
+                                  : "bg-[rgba(148,163,184,0.35)] hover:bg-[rgba(148,163,184,0.6)]"
+                              }`}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1377,104 +1755,6 @@ export function HomePage({
             })}
           </div>
 
-          <div className="mt-12 w-full scroll-fade-in" data-scroll-animate>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold text-[color:var(--text-dark)] md:text-3xl">Top Exams</h2>
-              <button
-                type="button"
-                onClick={() => router.push("/search?type=exam")}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
-              >
-                Explore all
-                <ArrowRight className="size-4" />
-              </button>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {topExamCards.map((exam, index) => {
-                const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
-                return (
-                  <article
-                    key={exam.name}
-                    onClick={() => router.push(exam.href)}
-                    className={`luxe-card relative flex h-full min-h-[18rem] w-full flex-col gap-3 p-4 scroll-fade-in ${delays[index % 5]}`}
-                    data-scroll-animate
-                  >
-                    <span
-                      className={`absolute right-3 top-3 inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
-                        exam.mode === "Online Exam"
-                          ? "bg-[rgba(34,197,94,0.14)] text-[rgb(21,128,61)]"
-                          : "bg-[rgba(249,115,22,0.14)] text-[rgb(194,65,12)]"
-                      }`}
-                    >
-                      {exam.mode}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 overflow-hidden rounded-full border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_24px_rgba(15,76,129,0.12)]">
-                        {exam.logo ? (
-                          <img
-                            src={exam.logo}
-                            alt={`${exam.name} logo`}
-                            className="h-full w-full object-contain p-1"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Bell className="size-4 text-[color:var(--brand-primary)]" />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="mt-1 text-[1.25rem] font-semibold leading-none text-[color:var(--text-dark)]">
-                          {exam.name}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <dl className="space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
-                        <dt className="text-[color:var(--text-muted)]">Colleges</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 border-b border-[rgba(20,32,51,0.08)] pb-1.5">
-                        <dt className="text-[color:var(--text-muted)]">Exam Date</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="text-[color:var(--text-muted)]">Level</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</dd>
-                      </div>
-                    </dl>
-
-                    <div className="mt-auto space-y-1.5 border-t border-[rgba(20,32,51,0.08)] pt-2">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          router.push(exam.href);
-                        }}
-                        className="flex w-full items-center justify-between text-left text-sm font-semibold text-[color:var(--text-dark)]"
-                      >
-                        Application Process
-                        <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          router.push(exam.href);
-                        }}
-                        className="flex w-full items-center justify-between border-t border-[rgba(20,32,51,0.08)] pt-1.5 text-left text-sm font-semibold text-[color:var(--text-dark)]"
-                      >
-                        Exam Info
-                        <ArrowRight className="size-4 text-[color:var(--brand-primary)]" />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </section>
 

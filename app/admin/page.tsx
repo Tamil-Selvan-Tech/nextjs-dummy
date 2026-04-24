@@ -743,6 +743,8 @@ export default function AdminPage() {
   const [lastSeenNotificationAt, setLastSeenNotificationAt] = useState(0);
   const [isSeenNotificationsReady, setIsSeenNotificationsReady] = useState(false);
   const seenNotificationHydratedRef = useRef(false);
+  const seenNotificationIdsRef = useRef<string[]>([]);
+  const lastSeenNotificationAtRef = useRef(0);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
   const logoPreviewUrl = useMemo(
@@ -2264,18 +2266,9 @@ export default function AdminPage() {
   const unreadRequestNotifications = useMemo(
     () =>
       isSeenNotificationsReady
-        ? pendingRequestNotifications.filter((item) => {
-            if (seenNotificationIds.includes(item.id)) {
-              return false;
-            }
-            const itemTimestamp = new Date(String(item.updatedAt || item.createdAt || "")).getTime();
-            if (!Number.isFinite(itemTimestamp) || itemTimestamp <= 0) {
-              return true;
-            }
-            return itemTimestamp > lastSeenNotificationAt;
-          })
+        ? pendingRequestNotifications.filter((item) => !seenNotificationIds.includes(item.id))
         : [],
-    [isSeenNotificationsReady, pendingRequestNotifications, seenNotificationIds, lastSeenNotificationAt],
+    [isSeenNotificationsReady, pendingRequestNotifications, seenNotificationIds],
   );
   const fallbackAdminEmail = useMemo(
     () => String(readCurrentUser()?.email || "").trim().toLowerCase(),
@@ -2309,14 +2302,28 @@ export default function AdminPage() {
     },
     [seenNotificationStorageKey],
   );
-  const markNotificationsAsSeen = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    setSeenNotificationIds((previous) => {
-      const merged = Array.from(new Set([...previous, ...ids]));
-      if (merged.length === previous.length) return previous;
-      return merged;
-    });
-  }, []);
+  useEffect(() => {
+    seenNotificationIdsRef.current = seenNotificationIds;
+  }, [seenNotificationIds]);
+  useEffect(() => {
+    lastSeenNotificationAtRef.current = lastSeenNotificationAt;
+  }, [lastSeenNotificationAt]);
+  const markNotificationIdsAsSeen = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const nextSeenIds = Array.from(new Set([...seenNotificationIdsRef.current, ...ids]));
+      const nextLastSeenAt = Math.max(lastSeenNotificationAtRef.current, latestPendingNotificationAt);
+      seenNotificationIdsRef.current = nextSeenIds;
+      lastSeenNotificationAtRef.current = nextLastSeenAt;
+      setSeenNotificationIds(nextSeenIds);
+      setLastSeenNotificationAt(nextLastSeenAt);
+      persistSeenNotifications(nextSeenIds, nextLastSeenAt);
+    },
+    [
+      latestPendingNotificationAt,
+      persistSeenNotifications,
+    ],
+  );
 
   useEffect(() => {
     seenNotificationHydratedRef.current = false;
@@ -2383,6 +2390,7 @@ export default function AdminPage() {
     const activeIds = new Set(pendingRequestNotifications.map((item) => item.id));
     setSeenNotificationIds((previous) => {
       const next = previous.filter((id) => activeIds.has(id));
+      seenNotificationIdsRef.current = next;
       if (next.length === previous.length) return previous;
       return next;
     });
@@ -2391,12 +2399,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (activeTab !== "college-notifications") return;
     if (unreadRequestNotifications.length === 0) return;
-    markNotificationsAsSeen(unreadRequestNotifications.map((item) => item.id));
-    setLastSeenNotificationAt((previous) => Math.max(previous, latestPendingNotificationAt));
+    markNotificationIdsAsSeen(unreadRequestNotifications.map((item) => item.id));
   }, [
     activeTab,
-    latestPendingNotificationAt,
-    markNotificationsAsSeen,
+    markNotificationIdsAsSeen,
     unreadRequestNotifications,
     unreadRequestNotifications.length,
   ]);
@@ -2432,14 +2438,7 @@ export default function AdminPage() {
                 const nextOpen = !showRequestNotifications;
                 setShowRequestNotifications(nextOpen);
                 if (nextOpen) {
-                  const nextUnreadIds = unreadRequestNotifications.map((item) => item.id);
-                  const nextSeenIds = Array.from(new Set([...seenNotificationIds, ...nextUnreadIds]));
-                  markNotificationsAsSeen(nextUnreadIds);
-                  if (unreadRequestNotifications.length > 0) {
-                    const nextLastSeenAt = Math.max(lastSeenNotificationAt, latestPendingNotificationAt);
-                    setLastSeenNotificationAt(nextLastSeenAt);
-                    persistSeenNotifications(nextSeenIds, nextLastSeenAt);
-                  }
+                  markNotificationIdsAsSeen(unreadRequestNotifications.map((item) => item.id));
                 }
               }}
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(56,189,248,0.28)] bg-white text-slate-700 transition hover:border-[rgba(56,189,248,0.4)] hover:bg-sky-50"
@@ -2475,14 +2474,7 @@ export default function AdminPage() {
                         key={item.id}
                         type="button"
                         onClick={() => {
-                          const nextSeenIds = Array.from(new Set([...seenNotificationIds, item.id]));
-                          const nextLastSeenAt = Math.max(
-                            lastSeenNotificationAt,
-                            new Date(String(item.updatedAt || item.createdAt || "")).getTime() || 0,
-                          );
-                          markNotificationsAsSeen([item.id]);
-                          setLastSeenNotificationAt(nextLastSeenAt);
-                          persistSeenNotifications(nextSeenIds, nextLastSeenAt);
+                          markNotificationIdsAsSeen([item.id]);
                           setShowRequestNotifications(false);
                           handleTabChange(item.tab);
                         }}
