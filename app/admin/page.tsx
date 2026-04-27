@@ -2574,11 +2574,8 @@ export default function AdminPage() {
                       No custom home background image set
                     </div>
                   )}
-                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-                    <span>Preview</span>
-                    <span className="truncate text-right">
-                      {homeHeroImageFile?.name || siteSettings.homeHeroImageUrl || "Using default image"}
-                    </span>
+                  <div className="border-t border-slate-100 px-4 py-3 text-xs font-medium text-slate-500">
+                    Background Preview
                   </div>
                 </div>
               </div>
@@ -2650,55 +2647,87 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-[1.25rem] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] p-4">
-                <div className="flex items-center justify-between gap-3">
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              <div className="overflow-hidden rounded-[1.25rem] border border-emerald-200">
+                <div className="flex items-center justify-between gap-3 border-b border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] px-4 py-3">
                   <p className="text-sm font-bold text-emerald-900">Edited Colleges</p>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
                     {collegeDashboardEditStatus.edited.length}
                   </span>
                 </div>
-                <div className="mt-3 space-y-2">
-                  {collegeDashboardEditStatus.edited.length > 0 ? (
-                    collegeDashboardEditStatus.edited.slice(0, 8).map((college) => (
-                      <div key={`edited-${college._id}`} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2">
-                        <p className="text-sm font-semibold text-slate-900">{college.name || "College"}</p>
-                        <p className="mt-1 text-xs text-slate-600">
-                          Last edit: {college.lastDashboardEditAt ? new Date(college.lastDashboardEditAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-xl border border-dashed border-emerald-200 bg-white/70 px-3 py-4 text-sm text-emerald-800">
-                      Innum yaarum college dashboard edit pannala.
-                    </p>
-                  )}
-                </div>
+                {collegeDashboardEditStatus.edited.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Last Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {collegeDashboardEditStatus.edited.map((college) => (
+                          <tr key={`edited-college-${college._id}`} className="align-middle">
+                            <td className="px-4 py-3 font-semibold text-slate-900">{college.name || "College"}</td>
+                            <td className="px-4 py-3 text-slate-600">{college.contactEmail || college.ownerEmail || "-"}</td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {college.lastDashboardEditAt
+                                ? new Date(college.lastDashboardEditAt).toLocaleDateString("en-IN", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-white px-4 py-6 text-sm text-slate-500">
+                    Innum yaarum college dashboard edit pannala.
+                  </div>
+                )}
               </div>
 
-              <div className="rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-amber-900">Not Yet Edited</p>
+              <div className="overflow-hidden rounded-[1.25rem] border border-amber-200">
+                <div className="flex items-center justify-between gap-3 border-b border-amber-100 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] px-4 py-3">
+                  <p className="text-sm font-bold text-amber-900">Pending Colleges</p>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700">
                     {collegeDashboardEditStatus.notEdited.length}
                   </span>
                 </div>
-                <div className="mt-3 space-y-2">
-                  {collegeDashboardEditStatus.notEdited.length > 0 ? (
-                    collegeDashboardEditStatus.notEdited.slice(0, 8).map((college) => (
-                      <div key={`not-edited-${college._id}`} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2">
-                        <p className="text-sm font-semibold text-slate-900">{college.name || "College"}</p>
-                        <p className="mt-1 text-xs text-slate-600">
-                          Mail: {college.contactEmail || college.ownerEmail || "-"}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-xl border border-dashed border-amber-200 bg-white/70 px-3 py-4 text-sm text-amber-800">
-                      Ella colleges-um least once dashboard edit pannirukku.
-                    </p>
-                  )}
-                </div>
+                {collegeDashboardEditStatus.notEdited.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {collegeDashboardEditStatus.notEdited.map((college) => (
+                          <tr key={`pending-college-${college._id}`} className="align-middle">
+                            <td className="px-4 py-3 font-semibold text-slate-900">{college.name || "College"}</td>
+                            <td className="px-4 py-3 text-slate-600">{college.contactEmail || college.ownerEmail || "-"}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                Pending
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-white px-4 py-6 text-sm text-slate-500">
+                    Ella colleges-um least once dashboard edit pannirukku.
+                  </div>
+                )}
               </div>
             </div>
           </article>

@@ -91,14 +91,27 @@ export function CourseDetailsView({
       }),
     [collegeLookup, relatedCourses],
   );
-  const formatCutoffDetails = (course: Course) => {
+  const renderCutoffDetails = (course: Course) => {
     if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
-      return course.cutoffByCategory
-        .filter((item) => item.category && item.cutoff)
-        .map((item) => `${item.category}: ${item.cutoff}`)
-        .join(", ");
+      const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
+      if (cutoffItems.length > 0) {
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            {cutoffItems.map((item) => (
+              <span
+                key={`${course.id}-${item.category}`}
+                className="inline-flex items-center gap-1 rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2.5 py-1 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
+              >
+                <span className="font-semibold text-slate-700">{item.category}</span>
+                <span className="text-slate-500">:</span>
+                <span>{item.cutoff}</span>
+              </span>
+            ))}
+          </div>
+        );
+      }
     }
-    return course.cutoff ? String(course.cutoff) : "-";
+    return <span>{course.cutoff ? String(course.cutoff) : "-"}</span>;
   };
 
   const filteredRows = useMemo(() => {
@@ -341,7 +354,9 @@ export function CourseDetailsView({
                         </div>
                         <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Cutoff</p>
-                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">{formatCutoffDetails(course)}</p>
+                          <div className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">
+                            {renderCutoffDetails(course)}
+                          </div>
                         </div>
                       </div>
 

@@ -1037,11 +1037,11 @@ export function HomePage({
           </>
         ) : (
           <>
-            <div className="flex flex-col items-start gap-2 sm:gap-3">
+            <div className="flex flex-col items-center gap-2 text-center sm:gap-3 sm:items-start sm:text-left">
               <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] sm:h-11 sm:w-11 sm:rounded-[0.75rem]">
                 <Icon className="size-4 sm:size-5" />
               </div>
-              <div className="flex flex-1 flex-col justify-start">
+              <div className="flex flex-1 flex-col justify-start items-center text-center sm:items-start sm:text-left">
                 <h3 className="line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[0.78rem] leading-4 sm:text-[0.95rem] sm:leading-5">
                   {feature.title}
                 </h3>
@@ -1417,7 +1417,8 @@ export function HomePage({
           shadow-[0_12px_24px_rgba(37,99,235,0.24)]
           transition
           hover:translate-y-[-1px]
-          hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)]
+                          hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)]
+          md:self-center
           md:mx-2
           md:min-w-[7.5rem]
           md:w-auto
@@ -1504,11 +1505,11 @@ export function HomePage({
                     <div className="mx-auto grid w-full max-w-[69rem] grid-cols-4 gap-1.5 sm:w-[80%] sm:gap-2.5">
                       {heroStatCards.map((item) => (
                         <div key={item.label} className="min-w-0 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-2 py-2 shadow-[0_10px_20px_rgba(15,76,129,0.06)] sm:px-3 sm:py-3">
-                          <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+                          <div className="flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2.5 sm:text-left">
                             <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
                               <item.icon className="size-3.5 sm:size-4" />
                             </span>
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-center sm:text-left">
                               <p className="text-[0.95rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
                               <p className="mt-1 text-[9px] font-medium leading-3 text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
                             </div>
@@ -1520,43 +1521,62 @@ export function HomePage({
                   </div>
 
                   {/* Cutoff banner section */}
+
                   <div className="mx-auto w-full max-w-[78rem] px-2 sm:px-4 md:px-0">
                     <div className="mt-6">
                       <article
-                        className="relative overflow-hidden rounded-[1.2rem] sm:rounded-[1.85rem]
-      border border-[rgba(99,102,241,0.14)]
-      bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.98)_48%,rgba(224,231,255,0.96))]
-      p-4 sm:p-4 md:p-5
-      text-[color:var(--text-dark)]
-      shadow-[0_22px_42px_rgba(59,130,246,0.11)]
-      transition duration-300 hover:-translate-y-0.5
-      hover:shadow-[0_26px_50px_rgba(59,130,246,0.15)]
-      scroll-fade-in"
-                        data-scroll-animate
+                        className="
+        relative overflow-hidden
+        rounded-[1.3rem] sm:rounded-[1.8rem] lg:rounded-[2rem]
+        border border-[rgba(99,102,241,0.14)]
+        bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.98)_48%,rgba(224,231,255,0.96))]
+        p-4 sm:p-5 md:p-6
+        text-[color:var(--text-dark)]
+        shadow-[0_22px_42px_rgba(59,130,246,0.11)]
+        transition duration-300
+        hover:shadow-[0_26px_50px_rgba(59,130,246,0.15)]
+      "
                       >
+                        {/* Blur Effects */}
                         <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.18)] blur-3xl" />
                         <div className="pointer-events-none absolute -bottom-16 right-8 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.14)] blur-3xl" />
 
-                        {/* MAIN BANNER SECTION */}
-                        <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.9fr] lg:items-center">
+                        {/* MAIN SECTION */}
+                        <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
 
                           {/* LEFT CONTENT */}
-                          <div className="max-w-2xl order-2 lg:order-1">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(59,130,246,0.18)] bg-[rgba(59,130,246,0.08)] px-4 py-2 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2563eb]">
+                          <div className="order-2 lg:order-1 max-w-2xl">
+                            {/* Badge */}
+                            <span
+                              className="
+              inline-flex items-center gap-2
+              rounded-full
+              border border-[rgba(59,130,246,0.18)]
+              bg-[rgba(59,130,246,0.08)]
+              px-4 py-2
+              text-[10px] sm:text-[11px]
+              font-semibold uppercase
+              tracking-[0.18em]
+              text-[#2563eb]
+            "
+                            >
                               <CourseIcon className="size-4" />
                               Cutoff Zone
                             </span>
 
+                            {/* Heading */}
                             <h3
-                              className="mt-4 max-w-xl
-            text-[1.65rem]
-            sm:text-[1.95rem]
-            md:text-[2.2rem]
-            lg:text-[2.60rem]
-            font-black
-            leading-[1.08]
-            tracking-[-0.04em]
-            text-[#14213d]"
+                              className="
+              mt-4
+              text-[1.8rem]
+              sm:text-[2.2rem]
+              md:text-[2.6rem]
+              lg:text-[3rem]
+              font-black
+              leading-[1.08]
+              tracking-[-0.04em]
+              text-[#14213d]
+            "
                             >
                               <span className="block">
                                 Unlock Your Future College.
@@ -1567,58 +1587,86 @@ export function HomePage({
                               </span>
                             </h3>
 
-                            <p className="mt-4 max-w-xl text-[14px] sm:text-[15px] leading-6 text-[color:var(--text-muted)] md:text-[0.98rem]">
-                              Enter your marks, choose your preferences, and explore the
-                              best college possibilities with smarter matches and clearer
-                              cutoffs in one flow.
+                            {/* Description */}
+                            <p
+                              className="
+              mt-4
+              max-w-xl
+              text-[14px] sm:text-[15px] md:text-[16px]
+              leading-6
+              text-[color:var(--text-muted)]
+            "
+                            >
+                              Enter your marks, choose your preferences, and explore
+                              the best college possibilities with smarter matches and
+                              clearer cutoffs in one flow.
                             </p>
 
-                            <div className="mt-4 flex max-w-[36rem] flex-wrap gap-2 text-[12px] sm:text-[13px] font-semibold text-[color:var(--brand-primary)]">
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(29,78,216,0.16)] bg-white/95 px-3 py-2 shadow-[0_8px_18px_rgba(37,99,235,0.08)]">
-                                <Sparkles className="size-3.5 text-[#f59e0b]" />
+                            {/* Feature Pills */}
+                            <div
+                              className="
+              mt-5
+              flex flex-wrap
+              gap-2
+              text-[12px] sm:text-[13px]
+              font-semibold
+              text-[color:var(--brand-primary)]
+            "
+                            >
+                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
+                                <Sparkles className="size-4 text-[#f59e0b]" />
                                 Instant results
                               </span>
 
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(29,78,216,0.16)] bg-white/95 px-3 py-2 shadow-[0_8px_18px_rgba(37,99,235,0.08)]">
-                                <ArrowRight className="size-3.5 text-[#2563eb]" />
+                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
+                                <ArrowRight className="size-4 text-[#2563eb]" />
                                 Extra match picks
                               </span>
 
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(29,78,216,0.16)] bg-white/95 px-3 py-2 shadow-[0_8px_18px_rgba(37,99,235,0.08)]">
-                                <Medal className="size-3.5 text-[#ef4444]" />
+                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
+                                <Medal className="size-4 text-[#ef4444]" />
                                 Category accurate
                               </span>
                             </div>
 
+                            {/* CTA */}
                             <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4">
                               <button
                                 type="button"
                                 onClick={() => router.push("/find")}
-                                className="inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-[1.05rem]
-              bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
-              px-5 py-3 text-sm font-semibold text-white
-              shadow-[0_16px_28px_rgba(37,99,235,0.24)]
-              transition hover:-translate-y-0.5
-              hover:shadow-[0_20px_34px_rgba(37,99,235,0.28)]"
+                                className="
+                inline-flex
+                w-full sm:w-auto
+                items-center justify-center gap-2.5
+                rounded-[1rem]
+                bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
+                px-6 py-3.5
+                text-sm font-semibold
+                text-white
+                shadow-[0_16px_28px_rgba(37,99,235,0.24)]
+                transition
+                hover:-translate-y-0.5
+              "
                               >
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18">
-                                  <Rocket className="size-[1.125rem]" />
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                                  <Rocket className="size-4" />
                                 </span>
 
                                 Check My Colleges
                                 <ArrowRight className="size-4" />
                               </button>
 
+                              {/* Trusted */}
                               <div className="flex items-center gap-3 text-sm text-[color:var(--text-muted)]">
                                 <div className="flex -space-x-2">
                                   {["A", "S", "M"].map((letter, index) => (
                                     <span
                                       key={letter}
                                       className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-sm ${index === 0
-                                        ? "bg-[#1d4ed8]"
-                                        : index === 1
-                                          ? "bg-[#f97316]"
-                                          : "bg-[#0f766e]"
+                                          ? "bg-[#1d4ed8]"
+                                          : index === 1
+                                            ? "bg-[#f97316]"
+                                            : "bg-[#0f766e]"
                                         }`}
                                     >
                                       {letter}
@@ -1632,19 +1680,18 @@ export function HomePage({
                           </div>
 
                           {/* RIGHT IMAGE */}
-                          <div className="relative mx-auto flex w-full max-w-[29rem] items-center justify-center lg:justify-end order-1 lg:order-2">
-                            <div className="relative overflow-hidden rounded-[1.55rem] bg-transparent p-1 shadow-none">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+                            <div className="relative">
                               <img
                                 src="/cutoff-banner.png"
                                 alt="Cutoff banner illustration"
                                 className="
-                h-auto
                 w-full
-                max-w-[17rem]
-                sm:max-w-[20rem]
-                md:max-w-[22rem]
-                lg:max-w-[23.5rem]
+                max-w-[18rem]
+                sm:max-w-[22rem]
+                md:max-w-[26rem]
+                lg:max-w-[30rem]
+                h-auto
                 object-contain
               "
                               />
@@ -1654,12 +1701,20 @@ export function HomePage({
 
                         {/* BOTTOM FEATURES */}
                         <div
-                          className="relative mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4
-        gap-3 rounded-[1rem] sm:rounded-[1.15rem]
-        border border-white/70 bg-white/74
-        p-3 sm:p-3
-        shadow-[0_10px_18px_rgba(59,130,246,0.08)]
-        backdrop-blur md:gap-0"
+                          className="
+          mt-7
+          grid
+          grid-cols-1
+          sm:grid-cols-2
+          lg:grid-cols-4
+          gap-3 lg:gap-0
+          rounded-[1rem] sm:rounded-[1.2rem]
+          border border-white/70
+          bg-white/75
+          p-3 sm:p-4
+          shadow-[0_10px_18px_rgba(59,130,246,0.08)]
+          backdrop-blur
+        "
                         >
                           {[
                             {
@@ -1685,17 +1740,21 @@ export function HomePage({
                           ].map((item, index) => (
                             <div
                               key={item.title}
-                              className={`flex items-start gap-3 px-2 py-2 md:px-3 ${index < 3
-                                ? "md:border-r md:border-[rgba(148,163,184,0.18)]"
-                                : ""
-                                }`}
+                              className={`
+              flex items-start gap-3
+              px-2 py-2 md:px-4
+              ${index < 3
+                                  ? "lg:border-r lg:border-[rgba(148,163,184,0.18)]"
+                                  : ""
+                                }
+            `}
                             >
-                              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(59,130,246,0.1)] text-[#2563eb]">
+                              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(59,130,246,0.10)] text-[#2563eb]">
                                 <item.icon className="size-4" />
                               </span>
 
                               <div>
-                                <p className="text-[13px] font-semibold leading-4 text-[#14213d]">
+                                <p className="text-[13px] font-semibold text-[#14213d]">
                                   {item.title}
                                 </p>
 
@@ -1814,297 +1873,297 @@ export function HomePage({
 
       {/* Explore courses and feature highlights section */}
       <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
-      <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="scroll-fade-in" data-scroll-animate>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
-              Discover Pathways
-            </p>
-            <h2 className="section-title mt-3 text-balance">
-              Explore courses with clearer decisions and stronger presentation.
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/explore")}
-            className="scroll-fade-in scroll-delay-2 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
-            data-scroll-animate
-          >
-            View all courses
-            <ArrowRight className="size-4" />
-          </button>
-        </div>
-
-        {/* Explore courses horizontal cards */}
-        <div className="relative mt-8">
-          <div
-            ref={scrollContainerRef}
-            onScroll={() =>
-              syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
-            }
-            className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
-          >
-            {exploreCourseCards.slice(0, 10).map((course, index) => {
-              const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
-              return (
-                <article
-                  key={course.id}
-                  className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
-                  data-scroll-animate
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                      {course.isTopCourse ? "Top Course" : "Course"}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
-                    {course.course}
-                  </h3>
-                  <dl className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
-                      <dt className="text-slate-500">Duration</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
-                      <dt className="text-slate-500">Total Fees</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.feesRange}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <dt className="text-slate-500">Cutoff</dt>
-                      <dd className="font-semibold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
-                    className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
-                  >
-                    Course Overview
-                    <ArrowRight className="size-4" />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-
-          {showLeftArrow ? (
-            <button
-              type="button"
-              onClick={() => scrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })}
-              className="absolute -left-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-          ) : null}
-
-          {showRightArrow ? (
-            <button
-              type="button"
-              onClick={() => scrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })}
-              className="absolute -right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
-            >
-              <ChevronRight className="size-5" />
-            </button>
-          ) : null}
-        </div>
-
-        {/* Feature highlights grid */}
-        <div className="mt-10 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-3">
-          {featureCards.map((item, index) => {
-            const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3"];
-            return (
-              <div
-                key={item.title}
-                className={`scroll-fade-in ${delays[Math.min(index, 3)]}`}
-                data-scroll-animate
-              >
-                {renderFeatureCard(item, "grid")}
-              </div>
-            );
-          })}
-        </div>
-
-      </div>
-      </section>
-
-    {/* Hidden spotlight colleges section */ }
-  {
-    false && (
-      <section className="section-shell page-section bg-[#f6f1e7] text-slate-800">
-        <div className="page-container relative z-10">
+        <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
+            <div className="scroll-fade-in" data-scroll-animate>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
-                Spotlight Institutions
+                Discover Pathways
               </p>
-              <h2 className="section-title mt-3">Top colleges presented with more trust, texture, and clarity.</h2>
+              <h2 className="section-title mt-3 text-balance">
+                Explore courses with clearer decisions and stronger presentation.
+              </h2>
             </div>
             <button
               type="button"
               onClick={() => router.push("/explore")}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+              className="scroll-fade-in scroll-delay-2 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+              data-scroll-animate
             >
-              Browse colleges
+              View all courses
               <ArrowRight className="size-4" />
             </button>
           </div>
 
+          {/* Explore courses horizontal cards */}
           <div className="relative mt-8">
             <div
-              ref={collegesScrollContainerRef}
+              ref={scrollContainerRef}
               onScroll={() =>
-                syncScrollIndicators(
-                  collegesScrollContainerRef.current,
-                  setShowLeftArrowColleges,
-                  setShowRightArrowColleges,
-                )
+                syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
               }
-              className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
+              className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
             >
-              {collegesData
-                .filter((college) => college.isBestCollege)
-                .slice(0, 10)
-                .map((college) => (
+              {exploreCourseCards.slice(0, 10).map((course, index) => {
+                const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
+                return (
                   <article
-                    key={college.id}
-                    onClick={() => router.push(`/college/${college.id}`)}
-                    className="luxe-card group min-w-[17rem] cursor-pointer overflow-hidden sm:min-w-[20rem]"
+                    key={course.id}
+                    className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
+                    data-scroll-animate
                   >
-                    <div className="relative h-44 overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={college.image}
-                        alt={college.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#09111d] via-[#09111d]/65 to-transparent" />
-                      <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
-                        Best College
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                        {course.isTopCourse ? "Top Course" : "Course"}
+                      </span>
                     </div>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="font-[family:var(--font-display)] text-[1.75rem] leading-none text-[color:var(--text-dark)]">
-                            {college.name}
-                          </h3>
-                          <p className="mt-1.5 text-xs text-slate-500">{college.university}</p>
-                        </div>
-                        <div className="rounded-2xl bg-[rgba(16,37,78,0.08)] px-3 py-2 text-right">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Placement</p>
-                          <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p>
-                        </div>
+                    <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
+                      {course.course}
+                    </h3>
+                    <dl className="mt-4 space-y-2 text-sm">
+                      <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
+                        <dt className="text-slate-500">Duration</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
                       </div>
-
-                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{college.description}</p>
-
-                      <div className="mt-4 flex items-center justify-between">
-                        <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                          <MapPin className="size-3.5" />
-                          {college.district}, {college.state}
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-accent-deep)]">
-                          Details
-                          <ArrowRight className="size-4" />
-                        </span>
+                      <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
+                        <dt className="text-slate-500">Total Fees</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.feesRange}</dd>
                       </div>
-                    </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-slate-500">Cutoff</dt>
+                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
+                      </div>
+                    </dl>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
+                      className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
+                    >
+                      Course Overview
+                      <ArrowRight className="size-4" />
+                    </button>
                   </article>
-                ))}
+                );
+              })}
             </div>
 
-            {showLeftArrowColleges ? (
+            {showLeftArrow ? (
               <button
                 type="button"
-                onClick={() =>
-                  collegesScrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })
-                }
-                className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                onClick={() => scrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })}
+                className="absolute -left-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
               >
                 <ChevronLeft className="size-5" />
               </button>
             ) : null}
 
-            {showRightArrowColleges ? (
+            {showRightArrow ? (
               <button
                 type="button"
-                onClick={() =>
-                  collegesScrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })
-                }
-                className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                onClick={() => scrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })}
+                className="absolute -right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
               >
                 <ChevronRight className="size-5" />
               </button>
             ) : null}
           </div>
+
+          {/* Feature highlights grid */}
+          <div className="mt-10 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-3">
+            {featureCards.map((item, index) => {
+              const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3"];
+              return (
+                <div
+                  key={item.title}
+                  className={`scroll-fade-in ${delays[Math.min(index, 3)]}`}
+                  data-scroll-animate
+                >
+                  {renderFeatureCard(item, "grid")}
+                </div>
+              );
+            })}
+          </div>
+
         </div>
       </section>
-    )
-  }
 
-  {/* Newsletter section */ }
-  <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-    <div className="page-container-full relative z-10 max-w-[1300px]">
-      <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 scroll-scale-in" data-scroll-animate>
-        <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
-        <div className="relative z-10 mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] scroll-fade-in" data-scroll-animate>
-            Newsletter
-          </p>
-          <h2 className="section-title mt-3 text-balance scroll-fade-in scroll-delay-1" data-scroll-animate>
-            Get sharper updates on colleges, exams, and opportunities.
-          </h2>
-          <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base scroll-fade-in scroll-delay-2" data-scroll-animate>
-            A cleaner form, stronger contrast, and a more premium finish so the last section feels as polished as the hero.
-          </p>
+      {/* Hidden spotlight colleges section */}
+      {
+        false && (
+          <section className="section-shell page-section bg-[#f6f1e7] text-slate-800">
+            <div className="page-container relative z-10">
+              <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+                    Spotlight Institutions
+                  </p>
+                  <h2 className="section-title mt-3">Top colleges presented with more trust, texture, and clarity.</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/explore")}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
+                >
+                  Browse colleges
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+
+              <div className="relative mt-8">
+                <div
+                  ref={collegesScrollContainerRef}
+                  onScroll={() =>
+                    syncScrollIndicators(
+                      collegesScrollContainerRef.current,
+                      setShowLeftArrowColleges,
+                      setShowRightArrowColleges,
+                    )
+                  }
+                  className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide"
+                >
+                  {collegesData
+                    .filter((college) => college.isBestCollege)
+                    .slice(0, 10)
+                    .map((college) => (
+                      <article
+                        key={college.id}
+                        onClick={() => router.push(`/college/${college.id}`)}
+                        className="luxe-card group min-w-[17rem] cursor-pointer overflow-hidden sm:min-w-[20rem]"
+                      >
+                        <div className="relative h-44 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={college.image}
+                            alt={college.name}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#09111d] via-[#09111d]/65 to-transparent" />
+                          <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
+                            Best College
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="font-[family:var(--font-display)] text-[1.75rem] leading-none text-[color:var(--text-dark)]">
+                                {college.name}
+                              </h3>
+                              <p className="mt-1.5 text-xs text-slate-500">{college.university}</p>
+                            </div>
+                            <div className="rounded-2xl bg-[rgba(16,37,78,0.08)] px-3 py-2 text-right">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Placement</p>
+                              <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p>
+                            </div>
+                          </div>
+
+                          <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{college.description}</p>
+
+                          <div className="mt-4 flex items-center justify-between">
+                            <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                              <MapPin className="size-3.5" />
+                              {college.district}, {college.state}
+                            </p>
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-accent-deep)]">
+                              Details
+                              <ArrowRight className="size-4" />
+                            </span>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                </div>
+
+                {showLeftArrowColleges ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      collegesScrollContainerRef.current?.scrollBy({ left: -320, behavior: "smooth" })
+                    }
+                    className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </button>
+                ) : null}
+
+                {showRightArrowColleges ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      collegesScrollContainerRef.current?.scrollBy({ left: 320, behavior: "smooth" })
+                    }
+                    className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white p-2.5 text-slate-700 shadow-xl transition hover:bg-slate-100 lg:block"
+                  >
+                    <ChevronRight className="size-5" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      {/* Newsletter section */}
+      <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
+        <div className="page-container-full relative z-10 max-w-[1300px]">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 scroll-scale-in" data-scroll-animate>
+            <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
+            <div className="relative z-10 mx-auto max-w-2xl text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] scroll-fade-in" data-scroll-animate>
+                Newsletter
+              </p>
+              <h2 className="section-title mt-3 text-balance scroll-fade-in scroll-delay-1" data-scroll-animate>
+                Get sharper updates on colleges, exams, and opportunities.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base scroll-fade-in scroll-delay-2" data-scroll-animate>
+                A cleaner form, stronger contrast, and a more premium finish so the last section feels as polished as the hero.
+              </p>
+            </div>
+
+            <form className="relative z-10 mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Email</label>
+                <div className="flex items-center gap-2">
+                  <Mail className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                  <input type="email" placeholder="your@email.com" className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
+                </div>
+              </div>
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Phone</label>
+                <div className="flex items-center gap-2">
+                  <Phone className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    placeholder="10-digit number"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    onInput={(event) => {
+                      const target = event.currentTarget;
+                      target.value = target.value.replace(/\D/g, "").slice(0, 10);
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Course</label>
+                <div className="flex items-center gap-2">
+                  <CourseIcon className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                  <input type="text" placeholder="B.Tech, MBA, etc." className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
+                </div>
+              </div>
+              <div className="flex items-stretch sm:col-span-2 md:col-span-1">
+                <button
+                  type="submit"
+                  className="shine-button w-full rounded-[1.4rem] border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.24)] transition hover:bg-[#2563eb] hover:shadow-[0_18px_36px_rgba(37,99,235,0.3)]"
+                >
+                  Join Updates
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <form className="relative z-10 mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Email</label>
-            <div className="flex items-center gap-2">
-              <Mail className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
-              <input type="email" placeholder="your@email.com" className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
-            </div>
-          </div>
-          <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Phone</label>
-            <div className="flex items-center gap-2">
-              <Phone className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
-              <input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]{10}"
-                maxLength={10}
-                placeholder="10-digit number"
-                className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-                onInput={(event) => {
-                  const target = event.currentTarget;
-                  target.value = target.value.replace(/\D/g, "").slice(0, 10);
-                }}
-              />
-            </div>
-          </div>
-          <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Course</label>
-            <div className="flex items-center gap-2">
-              <CourseIcon className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
-              <input type="text" placeholder="B.Tech, MBA, etc." className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400" />
-            </div>
-          </div>
-          <div className="flex items-stretch sm:col-span-2 md:col-span-1">
-            <button
-              type="submit"
-              className="shine-button w-full rounded-[1.4rem] border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-6 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.24)] transition hover:bg-[#2563eb] hover:shadow-[0_18px_36px_rgba(37,99,235,0.3)]"
-            >
-              Join Updates
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </section>
+      </section>
     </div>
   );
 }

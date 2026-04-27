@@ -49,6 +49,45 @@ const toList = (value: unknown) => {
     .filter(Boolean);
 };
 
+const normalizeCutoffCategory = (value: unknown) => {
+  const normalized = normalizeText(String(value || "")).replace(/[^a-z0-9]/g, "");
+  if (!normalized) return "";
+  if (normalized === "oc" || normalized === "general" || normalized === "open" || normalized === "opencompetition" || normalized === "ews") {
+    return "OC";
+  }
+  if (normalized === "bc" || normalized === "obc" || normalized === "backwardclass") {
+    return "BC";
+  }
+  if (normalized === "bcm" || normalized === "backwardclassmuslim") {
+    return "BCM";
+  }
+  if (normalized === "mbc" || normalized === "dnc" || normalized === "mbcdnc" || normalized === "mostbackwardclass" || normalized === "denotifiedcommunity") {
+    return "MBC";
+  }
+  if (normalized === "sca" || normalized === "scheduledcastearunthathiyar") {
+    return "SCA";
+  }
+  if (normalized === "sc" || normalized === "scheduledcaste") {
+    return "SC";
+  }
+  if (normalized === "st" || normalized === "scheduledtribe") {
+    return "ST";
+  }
+  return String(value || "").trim().toUpperCase();
+};
+
+const mapCutoffByCategory = (
+  entries: Array<{ category?: string; cutoff?: string }> | undefined,
+) =>
+  Array.isArray(entries)
+    ? entries
+        .map((entry) => ({
+          category: normalizeCutoffCategory(entry.category),
+          cutoff: String(entry.cutoff || "").trim(),
+        }))
+        .filter((entry) => entry.category && entry.cutoff)
+    : [];
+
 const fetchJson = async <T>(path: string) => {
   const fetchFrom = async (baseUrl: string) => {
     const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
@@ -226,14 +265,7 @@ const mapExamSchedules = (siteSettingsData?: BackendSiteSettings): PublicExamSch
 
 const mapCourses = (records: BackendCourse[]): Course[] =>
   records.map((item, index) => {
-    const cutoffByCategory = Array.isArray(item.cutoffByCategory)
-      ? item.cutoffByCategory
-          .map((entry) => ({
-            category: String(entry.category || "").trim(),
-            cutoff: String(entry.cutoff || "").trim(),
-          }))
-          .filter((entry) => entry.category && entry.cutoff)
-      : [];
+    const cutoffByCategory = mapCutoffByCategory(item.cutoffByCategory);
 
     const collegeDetails = Array.isArray(item.collegeDetails)
       ? item.collegeDetails
@@ -251,14 +283,7 @@ const mapCourses = (records: BackendCourse[]): Course[] =>
               hostelFees: toNumber(detail.hostelFees),
               cutoff: toNumber(detail.cutoff),
               cutoffText: toCutoffText(detail.cutoff),
-              cutoffByCategory: Array.isArray(detail.cutoffByCategory)
-                ? detail.cutoffByCategory
-                    .map((entry) => ({
-                      category: String(entry.category || "").trim(),
-                      cutoff: String(entry.cutoff || "").trim(),
-                    }))
-                    .filter((entry) => entry.category && entry.cutoff)
-                : [],
+              cutoffByCategory: mapCutoffByCategory(detail.cutoffByCategory),
               intake: toNumber(detail.intake),
               applicationFee: toNumber(detail.applicationFee),
             };

@@ -425,12 +425,41 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
   const [editingCourseId, setEditingCourseId] = useState("");
   const [courseForm, setCourseForm] = useState<CourseDraft>(() => emptyCourseDraft(text(college, "university")));
   const persistedCourseBaselineRef = useRef<Record<string, string>>({});
+  const logoPreviewUrl = useMemo(() => (logoFile ? URL.createObjectURL(logoFile) : ""), [logoFile]);
+  const coverImagePreviewUrl = useMemo(() => (coverImageFile ? URL.createObjectURL(coverImageFile) : ""), [coverImageFile]);
+  const selectedCollegeImagePreviewUrls = useMemo(
+    () => imageFiles.map((file) => URL.createObjectURL(file)),
+    [imageFiles],
+  );
   useStatusToast(status);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+    };
+  }, [logoPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (coverImagePreviewUrl) URL.revokeObjectURL(coverImagePreviewUrl);
+    };
+  }, [coverImagePreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      selectedCollegeImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedCollegeImagePreviewUrls]);
+
   useEffect(() => {
     const mappedCourseDrafts = courses.map(mapExistingCourseToDraft);
     setForm(buildForm(college, currentUser));
     setCourseDrafts(mappedCourseDrafts);
     setRemovedCourseIds([]);
+    setLogoFile(null);
+    setCoverImageFile(null);
+    setImageFiles([]);
+    setBrochureFile(null);
     setCourseForm(emptyCourseDraft(text(college, "university")));
     setEditingCourseId("");
     setShowCourseEditor(false);
@@ -961,7 +990,108 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
               </div>
             </div>
           ) : null}
-          {step === 3 ? <div className={sectionClass}><label><span className={labelClass}>Logo Image *</span><input className={inputClass} type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} /></label><label><span className={labelClass}>Cover Image *</span><input className={inputClass} type="file" accept="image/*" onChange={(e) => setCoverImageFile(e.target.files?.[0] || null)} /></label><label><span className={labelClass}>College Images * (Minimum 2)</span><input className={inputClass} type="file" accept="image/*" multiple onChange={(e) => { const nextFiles = Array.from(e.target.files || []); if (nextFiles.length) { setImageFiles((prev) => [...prev, ...nextFiles]); } }} /></label><label><span className={labelClass}>Brochure PDF</span><input className={inputClass} type="file" accept="application/pdf" onChange={(e) => setBrochureFile(e.target.files?.[0] || null)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Campus Video</span><input className={inputClass} value={form.campusVideoUrl} onChange={(e) => setField("campusVideoUrl", e.target.value)} /></label></div> : null}
+          {step === 3 ? (
+            <div className="space-y-4">
+              <div className={sectionClass}>
+                <label>
+                  <span className={labelClass}>Logo Image *</span>
+                  <input className={inputClass} type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
+                </label>
+                <label>
+                  <span className={labelClass}>Cover Image *</span>
+                  <input className={inputClass} type="file" accept="image/*" onChange={(e) => setCoverImageFile(e.target.files?.[0] || null)} />
+                </label>
+                <label>
+                  <span className={labelClass}>College Images * (Minimum 2)</span>
+                  <input
+                    className={inputClass}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const nextFiles = Array.from(e.target.files || []);
+                      if (nextFiles.length) {
+                        setImageFiles((prev) => [...prev, ...nextFiles]);
+                      }
+                    }}
+                  />
+                </label>
+                <label>
+                  <span className={labelClass}>Brochure PDF</span>
+                  <input className={inputClass} type="file" accept="application/pdf" onChange={(e) => setBrochureFile(e.target.files?.[0] || null)} />
+                </label>
+                <label className="md:col-span-2 xl:col-span-2">
+                  <span className={labelClass}>Campus Video</span>
+                  <input className={inputClass} value={form.campusVideoUrl} onChange={(e) => setField("campusVideoUrl", e.target.value)} />
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Logo Preview</p>
+                  {logoPreviewUrl || form.logo ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={logoPreviewUrl || form.logo}
+                      alt="College logo preview"
+                      className="mt-3 h-28 w-full rounded-[0.85rem] border border-slate-200 bg-white object-contain p-3"
+                    />
+                  ) : (
+                    <div className="mt-3 flex h-28 items-center justify-center rounded-[0.85rem] border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+                      Logo preview will appear here
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Cover Preview</p>
+                  {coverImagePreviewUrl || form.coverImage ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={coverImagePreviewUrl || form.coverImage}
+                      alt="College cover preview"
+                      className="mt-3 h-28 w-full rounded-[0.85rem] border border-slate-200 bg-white object-cover"
+                    />
+                  ) : (
+                    <div className="mt-3 flex h-28 items-center justify-center rounded-[0.85rem] border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+                      Cover image preview will appear here
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College Images Preview</p>
+                  <span className="text-xs text-slate-500">
+                    Saved: {form.images.length} | New: {imageFiles.length}
+                  </span>
+                </div>
+                {form.images.length > 0 || selectedCollegeImagePreviewUrls.length > 0 ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {form.images.map((imageUrl, index) => (
+                      <div key={`saved-image-${index}`} className="overflow-hidden rounded-[0.9rem] border border-slate-200 bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageUrl} alt={`Saved college image ${index + 1}`} className="h-32 w-full object-cover" />
+                        <div className="border-t border-slate-100 px-3 py-2 text-[11px] font-medium text-slate-500">Already saved</div>
+                      </div>
+                    ))}
+                    {selectedCollegeImagePreviewUrls.map((imageUrl, index) => (
+                      <div key={`new-image-${index}`} className="overflow-hidden rounded-[0.9rem] border border-sky-200 bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageUrl} alt={`New college image ${index + 1}`} className="h-32 w-full object-cover" />
+                        <div className="border-t border-sky-100 px-3 py-2 text-[11px] font-medium text-sky-700">Newly selected</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 flex h-28 items-center justify-center rounded-[0.85rem] border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+                    Added college images will show here
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
           {step === 4 ? <div className={sectionClass}><label><span className={labelClass}>Ranking</span><input className={inputClass} value={form.ranking} onChange={(e) => setField("ranking", normalizeRankingRangeInput(e.target.value))} onBlur={() => setField("ranking", formatRankingRangeForSave(form.ranking))} /></label><label><span className={labelClass}>Accreditation</span><input className={inputClass} list="college-accreditation-options" value={form.accreditation} onChange={(e) => setField("accreditation", e.target.value)} /></label><label><span className={labelClass}>Awards & Recognitions</span><input className={inputClass} value={form.awardsRecognitions} onChange={(e) => setField("awardsRecognitions", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Reviews</span><textarea className={inputClass} rows={3} value={form.reviews} onChange={(e) => setField("reviews", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Course Tags</span><input className={inputClass} value={form.courseTags} onChange={(e) => setField("courseTags", e.target.value)} /></label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isTopCollege} onChange={(e) => setField("isTopCollege", e.target.checked)} /> Top College</label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isBestCollege} onChange={(e) => setField("isBestCollege", e.target.checked)} /> Best College</label></div> : null}
           {step === 5 ? <div className="space-y-4"><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{facilityOptions.map((item) => { const selected = selectedFacilities.some((value) => value.toLowerCase() === item.toLowerCase()); const next = selected ? selectedFacilities.filter((value) => value.toLowerCase() !== item.toLowerCase()) : [...selectedFacilities, item]; return <button key={item} type="button" onClick={() => setField("facilities", next.join(", "))} className={`rounded-[1rem] border px-3 py-2 text-sm font-semibold transition ${selected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700"}`}>{item}</button>; })}</div><label><span className={labelClass}>Facilities</span><input className={inputClass} value={form.facilities} onChange={(e) => setField("facilities", e.target.value)} /></label></div> : null}
           {step === 6 ? <div className={sectionClass}><label><span className={labelClass}>Quotas</span><input className={inputClass} value={form.quotas} onChange={(e) => setField("quotas", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Fees Structure *</span><div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={form.feeMin} onChange={(e) => setField("feeMin", e.target.value)} placeholder="Minimum fee" /><input className={inputClass} value={form.feeMax} onChange={(e) => setField("feeMax", e.target.value)} placeholder="Maximum fee" /></div></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Admission Process *</span><textarea className={inputClass} rows={3} value={form.admissionProcess} onChange={(e) => setField("admissionProcess", e.target.value)} /></label><label><span className={labelClass}>Application Mode *</span><select className={inputClass} value={form.applicationMode} onChange={(e) => setField("applicationMode", e.target.value)}><option value="">Select application mode</option>{applicationModeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>Scholarships</span><textarea className={inputClass} rows={2} value={form.scholarships} onChange={(e) => setField("scholarships", e.target.value)} /></label></div> : null}

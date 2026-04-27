@@ -470,13 +470,27 @@ export function CutoffClient({
   }, [cutoffMax, normalizedEstimatedCutoff]);
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(summaryLevel);
   const resolveCategoryKey = (value: string) => {
-    const normalized = normalizeText(value);
+    const normalized = normalizeText(value).replace(/[^a-z0-9]/g, "");
     if (!normalized) return "";
     const categoryMap: Record<string, string> = {
+      oc: "OC",
+      open: "OC",
+      opencompetition: "OC",
       general: "OC",
       obc: "BC",
+      backwardclass: "BC",
+      bcm: "BCM",
+      backwardclassmuslim: "BCM",
+      mbc: "MBC",
+      dnc: "MBC",
+      mbcdnc: "MBC",
+      mostbackwardclass: "MBC",
       sc: "SC",
+      scheduledcaste: "SC",
+      sca: "SCA",
+      scheduledcastearunthathiyar: "SCA",
       st: "ST",
+      scheduledtribe: "ST",
       ews: "OC",
     };
     return (categoryMap[normalized] || normalized).toUpperCase();
@@ -1358,7 +1372,7 @@ export function CutoffClient({
     ) => {
       if (!entries?.length || !category) return "";
       const resolved = entries.find(
-        (entry) => normalizeText(entry.category) === normalizeText(category),
+        (entry) => resolveCategoryKey(entry.category) === resolveCategoryKey(category),
       );
       return resolved?.cutoff || "";
     };

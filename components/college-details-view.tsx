@@ -115,14 +115,27 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     const formatted = formatCompactIndianCurrency(value);
     return formatted === "-" ? "Not available" : formatted;
   };
-  const formatCutoffDetails = (course: Course) => {
+  const renderCutoffDetails = (course: Course) => {
     if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
-      return course.cutoffByCategory
-        .filter((item) => item.category && item.cutoff)
-        .map((item) => `${item.category}: ${item.cutoff}`)
-        .join(", ");
+      const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
+      if (cutoffItems.length > 0) {
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            {cutoffItems.map((item) => (
+              <span
+                key={`${course.id}-${item.category}`}
+                className="inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-3 py-1.5 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
+              >
+                <span className="shrink-0 font-semibold text-slate-700">{item.category}</span>
+                <span className="shrink-0 text-slate-500">:</span>
+                <span className="shrink-0">{item.cutoff}</span>
+              </span>
+            ))}
+          </div>
+        );
+      }
     }
-    return course.cutoff ? String(course.cutoff) : "-";
+    return <span>{course.cutoff ? String(course.cutoff) : "-"}</span>;
   };
 
   const getFeeRangeFromStructure = () => {
@@ -990,7 +1003,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       ) : null}
       {expandedCourseKey ? (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-4xl overflow-hidden rounded-[1.5rem] border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_28px_60px_rgba(22,50,79,0.22)]">
+          <div className="w-full max-w-7xl overflow-hidden rounded-[1.5rem] border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_28px_60px_rgba(22,50,79,0.22)]">
             <div className="flex items-center justify-between border-b border-[rgba(15,76,129,0.08)] px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Course</p>
@@ -1005,13 +1018,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <X className="size-4" />
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto px-4 py-4 sm:px-5">
+            <div className="max-h-[70vh] overflow-auto px-3 py-4 sm:px-4 lg:px-5">
               <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.16)] bg-[rgba(15,76,129,0.02)]">
                 <div className="border-b border-[rgba(15,76,129,0.16)] px-3 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
                   Scroll horizontally to view all course columns.
                 </div>
                 <div className="responsive-data-table">
-                <div className="grid grid-cols-[minmax(240px,2.4fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(170px,1.5fr)_minmax(90px,1fr)_minmax(170px,1.4fr)_minmax(130px,1.2fr)_minmax(130px,1.2fr)_minmax(110px,1fr)] gap-0 divide-x divide-[rgba(15,76,129,0.22)] border-b border-[rgba(15,76,129,0.22)] bg-[rgba(15,76,129,0.06)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                <div className="grid grid-cols-[minmax(240px,2.2fr)_minmax(90px,0.9fr)_minmax(90px,0.9fr)_minmax(250px,2fr)_minmax(90px,0.9fr)_minmax(190px,1.5fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(110px,0.9fr)] gap-0 divide-x divide-[rgba(15,76,129,0.22)] border-b border-[rgba(15,76,129,0.22)] bg-[rgba(15,76,129,0.06)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                   <div className="px-3 py-2">Course</div>
                   <div className="px-3 py-2 text-center whitespace-nowrap">Mode</div>
                   <div className="px-3 py-2 text-center whitespace-nowrap">Duration</div>
@@ -1024,11 +1037,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
                 <div className="divide-y divide-[rgba(15,76,129,0.2)]">
                   {(groupedCourses.find((group) => group.key === expandedCourseKey)?.courses || []).map((course) => (
-                    <div key={`modal-${course.id}`} className="grid grid-cols-[minmax(240px,2.4fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(170px,1.5fr)_minmax(90px,1fr)_minmax(170px,1.4fr)_minmax(130px,1.2fr)_minmax(130px,1.2fr)_minmax(110px,1fr)] gap-0 divide-x divide-[rgba(15,76,129,0.16)] bg-white text-sm text-[color:var(--text-dark)]">
+                    <div key={`modal-${course.id}`} className="grid grid-cols-[minmax(240px,2.2fr)_minmax(90px,0.9fr)_minmax(90px,0.9fr)_minmax(250px,2fr)_minmax(90px,0.9fr)_minmax(190px,1.5fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(110px,0.9fr)] gap-0 divide-x divide-[rgba(15,76,129,0.16)] bg-white text-sm text-[color:var(--text-dark)]">
                       <div className="px-3 py-3 font-semibold">{getCourseTitle(course)}</div>
                       <div className="px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</div>
-                      <div className="px-3 py-3 text-left text-xs leading-5 text-[color:var(--text-muted)]">{formatCutoffDetails(course)}</div>
+                      <div className="px-3 py-3 text-left text-xs leading-5 text-[color:var(--text-muted)]">
+                        {renderCutoffDetails(course)}
+                      </div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</div>
                       <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
                         {course.minimumQualification || "-"}

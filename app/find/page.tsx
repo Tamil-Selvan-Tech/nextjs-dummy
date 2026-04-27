@@ -478,9 +478,10 @@ export default function FindPage() {
     <main className="min-h-screen bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
 <div className="px-2 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
-  <div className="mx-auto grid w-full max-w-[1440px] gap-4 sm:gap-5 md:gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.95fr)] xl:items-start">        
-<section className="w-full rounded-[28px] border-2 border-[#8db2ff] bg-white/95 
-p-4 sm:p-5 md:p-6 xl:p-7">
+  <div className="mx-auto grid w-full max-w-[1440px] gap-4 sm:gap-5 md:gap-6 
+grid-cols-1 md:grid-cols-2 items-start">
+ <section className="w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 
+p-3 sm:p-4 md:p-6 xl:p-7">
             <div className="flex flex-col gap-4 sm:gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -535,7 +536,7 @@ p-4 sm:p-5 md:p-6 xl:p-7">
                 if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
                 router.push(`/cutoff?${params.toString()}`);
               }}
-              className="mt-4 rounded-[26px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#fdfefe_100%)] p-3.5 shadow-[0_20px_48px_rgba(89,107,168,0.12)] sm:p-4 md:p-5"
+              className="mt-3 rounded-[22px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#fdfefe_100%)] p-3.5 shadow-[0_20px_48px_rgba(89,107,168,0.12)] sm:p-4 md:p-5"
             >
               <div className="mb-6">
                 <h2 className="text-[1.55rem] font-bold tracking-[-0.04em] text-[#162b62]">Personal Details</h2>
@@ -1048,18 +1049,18 @@ p-4 sm:p-5 md:p-6 xl:p-7">
             </div>
           </div>
         </section>
-<aside className="w-full mt-4 xl:mt-0 xl:sticky xl:top-4 ...">
+<aside className="w-full order-1 md:order-2 mt-4 md:mt-0 md:sticky md:top-4">
           <div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_top,#eef2ff_0%,#d9e3ff_38%,#aebfe6_68%,#6f7f9d_100%)] p-3 sm:p-4">
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04),rgba(255,255,255,0.22),rgba(255,255,255,0.04))]" />
-            <div className="relative mx-auto max-w-[360px]">
-              <Image
-                src="/cutoff.png"
-                alt="Student using laptop"
-                width={900}
-                height={900}
-className="mx-auto w-full max-w-[260px] sm:max-w-[320px] md:max-w-[360px]"
-                priority
-              />
+<div className="relative w-full h-full flex items-center justify-center">
+             <Image
+  src="/cutoff.png"
+  alt="Student using laptop"
+  width={900}
+  height={900}
+  className="w-full h-auto object-contain max-h-[380px] md:max-h-[480px]"
+  priority
+/>
             </div>
           </div>
 
