@@ -24,6 +24,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { SearchBar } from "@/components/search-bar";
+import { BREAKING_NEWS_ITEMS } from "@/lib/breaking-news";
 import { allCoursesList } from "@/lib/site-data";
 import {
   defaultStudyPreference,
@@ -214,7 +215,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={openPreferenceModal}
-            className="hidden min-w-44 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:flex md:flex-col"
+            className="hidden min-w-40 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:flex md:flex-col"
           >
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
@@ -226,7 +227,7 @@ export function Navbar() {
             </div>
           </button>
 
-          <div className="order-3 w-full md:order-none md:mt-0 md:flex-1">
+          <div className="order-3 w-full md:order-none md:mt-0 md:flex-[1.35] lg:flex-[1.55]">
             <SearchBar />
           </div>
 
@@ -343,7 +344,44 @@ export function Navbar() {
         >
           All Courses
         </button>
-        <div className="hidden min-w-0 flex-1 md:block" aria-hidden="true" />
+        <div className="breaking-news-shell min-w-0 flex-1">
+          <div className="breaking-news-label">
+            <Bell className="breaking-news-label-icon" />
+            Breaking Updates
+          </div>
+
+          <div className="breaking-news-viewport">
+            <div className="marquee-track breaking-news-track" aria-live="polite">
+              {[0, 1].map((loopIndex) =>
+                BREAKING_NEWS_ITEMS.map((item, itemIndex) => (
+                  <div
+                    key={`${loopIndex}-${item.status}-${item.title}`}
+                    className="marquee-item breaking-news-entry"
+                    aria-hidden={loopIndex === 1}
+                  >
+                    <a
+                      href={item.href}
+                      target={item.href.startsWith("http") ? "_blank" : undefined}
+                      rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      className="breaking-news-link"
+                      aria-label={`${item.title} page`}
+                    >
+                      <span className={`breaking-news-status breaking-news-status-${item.tone}`}>
+                        <span className="breaking-news-status-dot" />
+                        {item.status}
+                      </span>
+                      <span className="breaking-news-dash" aria-hidden="true">-</span>
+                      <span className="breaking-news-headline">{item.title}</span>
+                    </a>
+                    {itemIndex < BREAKING_NEWS_ITEMS.length - 1 || loopIndex === 0 ? (
+                      <span className="breaking-news-separator" aria-hidden="true" />
+                    ) : null}
+                  </div>
+                )),
+              )}
+            </div>
+          </div>
+        </div>
       </nav>
       {showBackUnderNav ? (
         <div className="mt-3 flex justify-start">

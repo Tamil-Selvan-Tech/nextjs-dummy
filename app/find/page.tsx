@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
 import {
   ArrowRight,
+  CircleAlert,
   BarChart3,
   BookOpen,
   Calculator,
@@ -74,33 +75,13 @@ type PerformanceMetric = {
   max: number;
 };
 
-type ComparisonPoint = {
-  label: string;
-  score: number;
-  expected: number;
-};
-
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-const buildProgressSeries = (score: number, expected: number): ComparisonPoint[] => {
-  const milestones = [
-    { label: "Start", ratio: 0.25 },
-    { label: "Progress", ratio: 0.5 },
-    { label: "Competitive", ratio: 0.75 },
-    { label: "Target", ratio: 1 },
-  ];
-
-  return milestones.map((item) => ({
-    label: item.label,
-    score: Math.round(score * item.ratio),
-    expected: Math.round(expected * item.ratio),
-  }));
-};
 
 export default function FindPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState("11");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDegree, setSelectedDegree] = useState("");
@@ -132,6 +113,8 @@ export default function FindPage() {
   const showAgricultureFields = selectedDegree === "Agriculture" && (selectedLevel === "11" || selectedLevel === "12");
   const showLawClatFields = showLawFields && selectedAdmissionType === "CLAT";
   const showLawMarksFields = showLawFields && selectedAdmissionType === "11th/12th Mark";
+
+  const isBlank = (value: string) => value.trim().length === 0;
 
   const resetAcademicFields = () => {
     setSelectedCourse("");
@@ -380,17 +363,10 @@ export default function FindPage() {
   ]);
 
   const cutoffScaleMax = chartConfig.scoreMax;
-  const expectedCutoffValue = chartConfig.expectedCutoff;
-
   const liveCutoffValue = useMemo(() => {
     const parsed = Number(finalCutoffValue);
     return Number.isFinite(parsed) ? parsed : 0;
   }, [finalCutoffValue]);
-
-  const displayScoreTrend = useMemo(
-    () => buildProgressSeries(liveCutoffValue, expectedCutoffValue),
-    [expectedCutoffValue, liveCutoffValue],
-  );
 
   const scoreProgress = useMemo(() => {
     if (!cutoffScaleMax) return 0;
@@ -474,6 +450,99 @@ export default function FindPage() {
     return "Tip: Focus on basics first, practice daily, and your cutoff score will improve step by step.";
   }, [scoreProgress]);
 
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+
+    if (isBlank(name)) errors.name = "This field is required";
+    if (isBlank(phone)) {
+      errors.phone = "This field is required";
+    } else if (phone.length !== 10) {
+      errors.phone = "Enter a valid 10 digit mobile number";
+    }
+    if (isBlank(selectedCategory)) errors.category = "This field is required";
+    if (isBlank(selectedDegree)) errors.degree = "This field is required";
+
+    if (showEngineeringFields || showMedicalFields || showLawFields) {
+      if (isBlank(selectedCourse)) errors.course = "This field is required";
+    }
+
+    if (showEngineeringFields) {
+      if (isBlank(physicsMarks)) errors.physics = "This field is required";
+      if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
+      if (isBlank(mathsMarks)) errors.maths = "This field is required";
+    }
+
+    if (showMedicalFields && isBlank(neetMarks)) {
+      errors.neet = "This field is required";
+    }
+
+    if (showBArchFields) {
+      if (isBlank(boardMarksTotal)) errors.boardTotal = "This field is required";
+      if (isBlank(nataScore)) errors.nata = "This field is required";
+    }
+
+    if (showLawFields && isBlank(selectedAdmissionType)) {
+      errors.admissionType = "This field is required";
+    }
+
+    if (showLawClatFields && isBlank(clatMarks)) {
+      errors.clat = "This field is required";
+    }
+
+    if (showLawMarksFields) {
+      if (isBlank(lawBestSubjectOne)) errors.bestSubject1 = "This field is required";
+      if (isBlank(lawBestSubjectTwo)) errors.bestSubject2 = "This field is required";
+      if (isBlank(lawBestSubjectThree)) errors.bestSubject3 = "This field is required";
+    }
+
+    if (showParamedicalFields) {
+      if (isBlank(paramedicalBiologyMarks)) errors.paramedicalBiology = "This field is required";
+      if (isBlank(paramedicalPhysicsMarks)) errors.paramedicalPhysics = "This field is required";
+      if (isBlank(paramedicalChemistryMarks)) errors.paramedicalChemistry = "This field is required";
+    }
+
+    if (showAgricultureFields) {
+      if (isBlank(agricultureBiologyMarks)) errors.agricultureBiology = "This field is required";
+      if (isBlank(agriculturePhysicsMarks)) errors.agriculturePhysics = "This field is required";
+      if (isBlank(agricultureChemistryMarks)) errors.agricultureChemistry = "This field is required";
+    }
+
+    return errors;
+  }, [
+    agricultureBiologyMarks,
+    agricultureChemistryMarks,
+    agriculturePhysicsMarks,
+    boardMarksTotal,
+    chemistryMarks,
+    clatMarks,
+    lawBestSubjectOne,
+    lawBestSubjectThree,
+    lawBestSubjectTwo,
+    mathsMarks,
+    name,
+    nataScore,
+    neetMarks,
+    paramedicalBiologyMarks,
+    paramedicalChemistryMarks,
+    paramedicalPhysicsMarks,
+    phone,
+    physicsMarks,
+    selectedAdmissionType,
+    selectedCategory,
+    selectedCourse,
+    selectedDegree,
+    showAgricultureFields,
+    showBArchFields,
+    showEngineeringFields,
+    showLawClatFields,
+    showLawFields,
+    showLawMarksFields,
+    showMedicalFields,
+    showParamedicalFields,
+  ]);
+
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
@@ -506,8 +575,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
             </div>
 
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
+                setHasSubmitted(true);
+                if (hasValidationErrors) {
+                  return;
+                }
                 const params = new URLSearchParams();
                 params.set("name", name);
                 params.set("phone", phone);
@@ -544,24 +618,26 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldShell icon={User} label="Full Name">
+                <FieldShell icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
                   <input
                     type="text"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Enter your full name"
-                    className={inputClassName}
+                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.name))}
+                    aria-invalid={Boolean(hasSubmitted && validationErrors.name)}
                     required
                   />
                 </FieldShell>
 
-                <FieldShell icon={Phone} label="Phone Number">
+                <FieldShell icon={Phone} label="Phone Number" invalid={Boolean(hasSubmitted && validationErrors.phone)} error={hasSubmitted ? validationErrors.phone : undefined}>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="Enter 10 digit mobile number"
-                    className={inputClassName}
+                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.phone))}
+                    aria-invalid={Boolean(hasSubmitted && validationErrors.phone)}
                     inputMode="numeric"
                     pattern="[0-9]{10}"
                     maxLength={10}
@@ -594,11 +670,12 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   </select>
                 </FieldShell>
 
-                <FieldShell icon={Users} label="Category">
+                <FieldShell icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
                   <select
                     value={selectedCategory}
                     onChange={(event) => setSelectedCategory(event.target.value)}
-                    className={inputClassName}
+                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
+                    aria-invalid={Boolean(hasSubmitted && validationErrors.category)}
                     required
                   >
                     <option value="">Select your category</option>
@@ -617,14 +694,15 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       : "md:col-span-2"
                   }
                 >
-                  <FieldShell icon={School} label="Select Degree">
+                  <FieldShell icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
                     <select
                       value={selectedDegree}
                       onChange={(event) => {
                         setSelectedDegree(event.target.value);
                         resetAcademicFields();
                       }}
-                      className={inputClassName}
+                      className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.degree))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.degree)}
                       required
                     >
                       <option value="">Choose your preferred degree</option>
@@ -638,11 +716,12 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 </div>
 
                 {showEngineeringFields || showMedicalFields || showLawFields ? (
-                  <AcademicShell icon={BookOpen} label="Select Course">
+                  <AcademicShell icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
-                      className={academicInputClassName}
+                      className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.course))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.course)}
                       required={showEngineeringFields || showMedicalFields || showLawFields}
                     >
                       <option value="">Choose course</option>
@@ -665,44 +744,47 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showEngineeringFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={FlaskConical} label="Physics">
+                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
                       <input
                         type="number"
                         min="0"
-                        max="200"
+                        max="100"
                         step="0.01"
                         value={physicsMarks}
                         onChange={(event) => setPhysicsMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.physics))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.physics)}
                         required={showEngineeringFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Chemistry">
+                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
                       <input
                         type="number"
                         min="0"
-                        max="200"
+                        max="100"
                         step="0.01"
                         value={chemistryMarks}
                         onChange={(event) => setChemistryMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.chemistry))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.chemistry)}
                         required={showEngineeringFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={Calculator} label="Maths">
+                    <AcademicShell icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
                       <input
                         type="number"
                         min="0"
-                        max="200"
+                        max="100"
                         step="0.01"
                         value={mathsMarks}
                         onChange={(event) => setMathsMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.maths))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.maths)}
                         required={showEngineeringFields}
                       />
                     </AcademicShell>
@@ -720,7 +802,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showMedicalFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={Calculator} label="NEET Mark">
+                    <AcademicShell icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean(hasSubmitted && validationErrors.neet)} error={hasSubmitted ? validationErrors.neet : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -729,7 +811,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={neetMarks}
                         onChange={(event) => setNeetMarks(event.target.value)}
                         placeholder="Enter your NEET mark"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.neet))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.neet)}
                         required={showMedicalFields}
                       />
                     </AcademicShell>
@@ -747,7 +830,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showBArchFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={BookOpen} label="11th / 12th Marks (Out of 600)">
+                    <AcademicShell icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -756,12 +839,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={boardMarksTotal}
                         onChange={(event) => setBoardMarksTotal(event.target.value)}
                         placeholder="Enter your 11th/12th total"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.boardTotal))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.boardTotal)}
                         required={showBArchFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={Calculator} label="NATA Score (Out of 200)">
+                    <AcademicShell icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -770,7 +854,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={nataScore}
                         onChange={(event) => setNataScore(event.target.value)}
                         placeholder="Enter your NATA score"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.nata))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.nata)}
                         required={showBArchFields}
                       />
                     </AcademicShell>
@@ -790,7 +875,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showLawFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={BarChart3} label="Admission Type">
+                    <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                       <select
                         value={selectedAdmissionType}
                         onChange={(event) => {
@@ -800,7 +885,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           setLawBestSubjectTwo("");
                           setLawBestSubjectThree("");
                         }}
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
                         required={showLawFields}
                       >
                         <option value="">Select admission type</option>
@@ -813,7 +899,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     </AcademicShell>
 
                     {showLawClatFields ? (
-                      <AcademicShell icon={Calculator} label="Enter your CLAT mark">
+                      <AcademicShell icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean(hasSubmitted && validationErrors.clat)} error={hasSubmitted ? validationErrors.clat : undefined}>
                         <input
                           type="number"
                           min="0"
@@ -822,7 +908,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           value={clatMarks}
                           onChange={(event) => setClatMarks(event.target.value)}
                           placeholder="Enter your CLAT mark"
-                          className={academicInputClassName}
+                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.clat))}
+                          aria-invalid={Boolean(hasSubmitted && validationErrors.clat)}
                           required={showLawClatFields}
                         />
                       </AcademicShell>
@@ -832,7 +919,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   {showLawMarksFields ? (
                     <div className="space-y-3.5">
                       <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                        <AcademicShell icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil">
+                        <AcademicShell icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)} error={hasSubmitted ? validationErrors.bestSubject1 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -841,12 +928,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             value={lawBestSubjectOne}
                             onChange={(event) => setLawBestSubjectOne(event.target.value)}
                             placeholder="Enter mark"
-                            className={academicInputClassName}
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject1))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={BookOpen} label="Best Subject 2" hint="Eg: English">
+                        <AcademicShell icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)} error={hasSubmitted ? validationErrors.bestSubject2 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -855,12 +943,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             value={lawBestSubjectTwo}
                             onChange={(event) => setLawBestSubjectTwo(event.target.value)}
                             placeholder="Enter mark"
-                            className={academicInputClassName}
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject2))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce">
+                        <AcademicShell icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)} error={hasSubmitted ? validationErrors.bestSubject3 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -869,7 +958,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             value={lawBestSubjectThree}
                             onChange={(event) => setLawBestSubjectThree(event.target.value)}
                             placeholder="Enter mark"
-                            className={academicInputClassName}
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject3))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
@@ -898,7 +988,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showParamedicalFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell icon={BookOpen} label="Biology">
+                    <AcademicShell icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)} error={hasSubmitted ? validationErrors.paramedicalBiology : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -907,12 +997,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={paramedicalBiologyMarks}
                         onChange={(event) => setParamedicalBiologyMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalBiology))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Physics">
+                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)} error={hasSubmitted ? validationErrors.paramedicalPhysics : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -921,12 +1012,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={paramedicalPhysicsMarks}
                         onChange={(event) => setParamedicalPhysicsMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalPhysics))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Chemistry">
+                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)} error={hasSubmitted ? validationErrors.paramedicalChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -935,7 +1027,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={paramedicalChemistryMarks}
                         onChange={(event) => setParamedicalChemistryMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalChemistry))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
@@ -955,7 +1048,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showAgricultureFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell icon={BookOpen} label="Biology">
+                    <AcademicShell icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)} error={hasSubmitted ? validationErrors.agricultureBiology : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -964,12 +1057,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={agricultureBiologyMarks}
                         onChange={(event) => setAgricultureBiologyMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureBiology))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Physics">
+                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)} error={hasSubmitted ? validationErrors.agriculturePhysics : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -978,12 +1072,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={agriculturePhysicsMarks}
                         onChange={(event) => setAgriculturePhysicsMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agriculturePhysics))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Chemistry">
+                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)} error={hasSubmitted ? validationErrors.agricultureChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -992,7 +1087,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         value={agricultureChemistryMarks}
                         onChange={(event) => setAgricultureChemistryMarks(event.target.value)}
                         placeholder="Enter your marks"
-                        className={academicInputClassName}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureChemistry))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
@@ -1023,7 +1119,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-[18px] border-2 border-[#2f63ff] bg-[linear-gradient(90deg,#2d5bff_0%,#9d55f7_100%)] px-7 text-[0.98rem] font-semibold text-white shadow-[0_20px_34px_rgba(92,93,255,0.24)] transition hover:-translate-y-0.5 sm:w-auto"
                 >
                   <Sparkles className="size-5" />
-                  Get My Colleges
+                  Get My Compatible Colleges
                   <ArrowRight className="size-5" />
                 </button>
               </div>
@@ -1058,7 +1154,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
   alt="Student using laptop"
   width={900}
   height={900}
-  className="w-full h-auto object-contain max-h-[380px] md:max-h-[480px]"
+  className="w-full h-auto object-contain max-h-[300px] md:max-h-[380px]"
   priority
 />
             </div>
@@ -1077,7 +1173,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               <div className="mt-2 text-[0.76rem] text-[#5f79b1]">
                 {chartConfig.comparisonTitle} scale: 0 to {cutoffScaleMax}
               </div>
-              <TrendChart points={displayScoreTrend} maxValue={cutoffScaleMax} />
+              <div className="mt-1 text-[0.74rem] text-[#6b7fb0]">{chartConfig.scaleHint}</div>
+              <BarChart metrics={chartConfig.subjectMetrics} />
             </div>
 
             <div className="rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3 shadow-[0_12px_30px_rgba(88,113,196,0.08)]">
@@ -1154,22 +1251,45 @@ function FieldShell({
   children,
   icon: Icon,
   label,
+  invalid = false,
+  error,
 }: {
   children: ReactNode;
   icon: typeof User;
   label: string;
+  invalid?: boolean;
+  error?: string;
 }) {
   return (
-    <label className="block rounded-[14px] border-2 border-[#9ebcff] bg-white px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]">
-      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-[10px] border border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff] shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)]">
+    <label
+      className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+        invalid
+          ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
+          : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
+      }`}
+    >
+      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+        <div
+          className={`flex size-8 items-center justify-center rounded-[10px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
+          }`}
+        >
           <Icon className="size-4 stroke-[2.4]" />
         </div>
         <div className="min-w-0">
-          <div className="mb-0.5 text-[0.82rem] font-semibold text-[#17306f]">{label}</div>
+          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
           {children}
         </div>
+        <div className="flex items-center justify-center">
+          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : null}
+        </div>
       </div>
+      {error ? (
+        <div className="mt-2 flex items-center gap-2 text-[0.9rem] font-medium text-[#ff4d5e]">
+          <CircleAlert className="size-5 shrink-0" strokeWidth={2.2} />
+          <span>{error}</span>
+        </div>
+      ) : null}
     </label>
   );
 }
@@ -1179,24 +1299,55 @@ function AcademicShell({
   icon: Icon,
   label,
   hint,
+  invalid = false,
+  error,
 }: {
   children: ReactNode;
   icon: typeof User;
   label: string;
   hint?: string;
+  invalid?: boolean;
+  error?: string;
 }) {
   return (
-    <label className="block rounded-[14px] border-2 border-[#9ebcff] bg-white px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]">
-      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-[10px] border border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff] shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)]">
+    <label
+      className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+        invalid
+          ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
+          : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
+      }`}
+    >
+      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+        <div
+          className={`flex size-8 items-center justify-center rounded-[10px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
+          }`}
+        >
           <Icon className="size-4 stroke-[2.3]" />
         </div>
         <div className="min-w-0">
-          <div className="mb-0.5 text-[0.82rem] font-semibold text-[#17306f]">{label}</div>
-          {hint ? <div className="mb-1 text-[0.74rem] text-[#5f79b1]">{hint}</div> : null}
+          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
+          {hint ? (
+            <div
+              className={`mb-1 inline-flex rounded-full px-2.5 py-1 text-[0.73rem] font-semibold tracking-[0.01em] ${
+                invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#2f63ff]"
+              }`}
+            >
+              {hint}
+            </div>
+          ) : null}
           {children}
         </div>
+        <div className="flex items-center justify-center">
+          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : null}
+        </div>
       </div>
+      {error ? (
+        <div className="mt-2 flex items-center gap-2 text-[0.9rem] font-medium text-[#ff4d5e]">
+          <CircleAlert className="size-5 shrink-0" strokeWidth={2.2} />
+          <span>{error}</span>
+        </div>
+      ) : null}
     </label>
   );
 }
@@ -1241,107 +1392,78 @@ function ScoreHighlight({
   );
 }
 
-function TrendChart({
-  points,
-  maxValue,
+function BarChart({
+  metrics,
 }: {
-  points: ComparisonPoint[];
-  maxValue: number;
+  metrics: PerformanceMetric[];
 }) {
-  const width = 360;
-  const height = 140;
-  const left = 28;
-  const right = 24;
-  const top = 14;
-  const bottom = 34;
-  const innerWidth = width - left - right;
-  const innerHeight = height - top - bottom;
-  const normalizedMax = Math.max(1, maxValue);
-  const ticks = Array.from({ length: 5 }, (_, index) => Math.round((normalizedMax / 4) * index));
-  const toX = (index: number) => left + (innerWidth / Math.max(1, points.length - 1)) * index;
-  const toY = (value: number) => top + innerHeight - (clamp(value, 0, normalizedMax) / normalizedMax) * innerHeight;
-  const buildPath = (values: number[]) =>
-    values.map((value, index) => `${index === 0 ? "M" : "L"} ${toX(index)} ${toY(value)}`).join(" ");
-  const getPointAnchor = (index: number) => {
-    if (index === 0) return "start";
-    if (index === points.length - 1) return "end";
-    return "middle";
-  };
-  const getPointTextX = (index: number) => {
-    const x = toX(index);
-    if (index === 0) return x + 8;
-    if (index === points.length - 1) return x - 8;
-    return x;
-  };
+  const chartHeight = 160;
+  const barAreaHeight = 190;
+  const normalizedMax = Math.max(1, ...metrics.map((metric) => metric.max));
+  const visualMax = normalizedMax * 1.12;
+  const ticks = Array.from({ length: 5 }, (_, index) => Math.round((normalizedMax / 4) * (4 - index)));
 
   return (
-    <div className="mt-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[180px] w-full">
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line
-              x1={left}
-              x2={width - right}
-              y1={toY(tick)}
-              y2={toY(tick)}
-              stroke="#dfe7ff"
-              strokeWidth="1"
-            />
-            <text x="4" y={toY(tick) + 4} fontSize="10" fill="#6f86b7">
+    <div className="mt-4 rounded-[20px] border border-[#d9e4ff] bg-[linear-gradient(180deg,#fbfcff_0%,#f4f7ff_100%)] p-3 shadow-[0_8px_18px_rgba(88,113,196,0.06)]">
+      <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-3">
+        <div className="relative h-[220px]">
+          {ticks.map((tick, index) => (
+            <div
+              key={tick}
+              className="absolute left-0 flex w-full -translate-y-1/2 items-center justify-end pr-1 text-[0.68rem] font-medium text-[#6f86b7]"
+              style={{ top: `${(index / (ticks.length - 1)) * 100}%` }}
+            >
               {tick}
-            </text>
-          </g>
-        ))}
-        <path d={buildPath(points.map((point) => point.score))} fill="none" stroke="#2f63ff" strokeWidth="3" />
-        <path
-          d={buildPath(points.map((point) => point.expected))}
-          fill="none"
-          stroke="#9b75ff"
-          strokeWidth="3"
-          strokeDasharray="6 6"
-        />
-        {points.map((point, index) => (
-          <g key={point.label}>
-            {(() => {
-              const scoreY = toY(point.score);
-              const expectedY = toY(point.expected);
-              const labelsTooClose = Math.abs(scoreY - expectedY) < 20;
-              const labelX = getPointTextX(index);
-              const labelAnchor = getPointAnchor(index);
+            </div>
+          ))}
+        </div>
+
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-0">
+            {ticks.map((tick, index) => (
+              <div
+                key={tick}
+                className="absolute left-0 right-0 border-t border-[#dfe7ff]"
+                style={{ top: `${(index / (ticks.length - 1)) * 100}%` }}
+              />
+            ))}
+          </div>
+
+          <div className="relative flex h-[220px] items-end justify-around gap-3 rounded-[16px] px-2 pb-8 pt-6">
+            {metrics.map((metric) => {
+              const scoreHeight = clamp((metric.score / Math.max(1, visualMax)) * chartHeight, 0, chartHeight);
+              const expectedHeight = clamp((metric.expected / Math.max(1, visualMax)) * chartHeight, 0, chartHeight);
 
               return (
-                <>
-                  <circle cx={toX(index)} cy={scoreY} r="4.5" fill="#2f63ff" />
-                  <text
-                    x={labelX}
-                    y={scoreY - (labelsTooClose ? 16 : 10)}
-                    fontSize="10"
-                    fill="#17306f"
-                    fontWeight="700"
-                    textAnchor={labelAnchor}
-                  >
-                    {point.score}
-                  </text>
-                  <circle cx={toX(index)} cy={expectedY} r="4.5" fill="#9b75ff" />
-                  <text
-                    x={labelX}
-                    y={expectedY + (labelsTooClose ? 22 : 16)}
-                    fontSize="10"
-                    fill="#7d62e8"
-                    fontWeight="700"
-                    textAnchor={labelAnchor}
-                  >
-                    {point.expected}
-                  </text>
-                  <text x={labelX} y={height - 8} fontSize="10" fill="#6f86b7" textAnchor={labelAnchor}>
-                    {point.label}
-                  </text>
-                </>
+                <div key={metric.label} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                  <div className="flex items-end justify-center gap-2" style={{ height: `${barAreaHeight}px` }}>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-[0.68rem] font-semibold text-[#17306f]">{Math.round(metric.score)}</div>
+                      <div
+                        className="w-5 rounded-t-[8px] bg-[linear-gradient(180deg,#2f63ff_0%,#1f4fe0_100%)] shadow-[0_8px_16px_rgba(47,99,255,0.22)] sm:w-7"
+                        style={{ height: `${scoreHeight}px` }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-[0.68rem] font-semibold text-[#6f52df]">{Math.round(metric.expected)}</div>
+                      <div
+                        className="w-5 rounded-t-[8px] bg-[linear-gradient(180deg,#9b75ff_0%,#6f52df_100%)] shadow-[0_8px_16px_rgba(111,82,223,0.22)] sm:w-7"
+                        style={{ height: `${expectedHeight}px` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-[0.78rem] font-semibold text-[#17306f]">{metric.label}</div>
+                    <div className="mt-0.5 text-[0.68rem] font-medium text-[#6b7fb0]">Out of {metric.max}</div>
+                  </div>
+                </div>
               );
-            })()}
-          </g>
-        ))}
-      </svg>
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1350,5 +1472,7 @@ const inputClassName =
   "w-full h-[44px] sm:h-auto border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
 const academicInputClassName =
   "w-full border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none transition placeholder:text-[#7e97c8]";
+const getInputClassName = (baseClassName: string, invalid: boolean) =>
+  `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
 
 

@@ -2,7 +2,6 @@
 
 import {
   ArrowRight,
-  Bell,
   BriefcaseBusiness,
   Building2,
   BookOpen,
@@ -61,6 +60,7 @@ const SEARCH_FLOW_ITEMS = [
 ];
 const TOP_EXAM_CARDS = [
   {
+    id: "jee-main",
     name: "JEE Main",
     slug: "jee-main",
     href: "/exams/jee-main",
@@ -71,6 +71,7 @@ const TOP_EXAM_CARDS = [
     examLevel: "National",
   },
   {
+    id: "jee-advanced",
     name: "JEE Advanced",
     slug: "jee-advanced",
     href: "/exams/jee-advanced",
@@ -81,6 +82,7 @@ const TOP_EXAM_CARDS = [
     examLevel: "National",
   },
   {
+    id: "cuet",
     name: "CUET",
     slug: "cuet",
     href: "/exams/cuet",
@@ -91,6 +93,7 @@ const TOP_EXAM_CARDS = [
     examLevel: "National",
   },
   {
+    id: "neet",
     name: "NEET",
     slug: "neet",
     href: "/exams/neet",
@@ -128,13 +131,6 @@ type FeatureCardItem = {
   icon: typeof Search;
   imageSrc: string;
 };
-type BreakingNewsItem = {
-  status: "LIVE" | "NEW" | "LAST DATE" | "ALERT";
-  title: string;
-  tone: "danger" | "success" | "warning" | "info";
-  href: string;
-};
-
 const FEATURE_CARDS: FeatureCardItem[] = [
   {
     title: "Smart Search",
@@ -174,69 +170,6 @@ const FEATURE_CARDS: FeatureCardItem[] = [
   },
 ];
 
-const BREAKING_NEWS_ITEMS: BreakingNewsItem[] = [
-  {
-    status: "LIVE",
-    title: "10th Result Date Announced",
-    tone: "danger",
-    href: "https://tnresults.nic.in/",
-  },
-  {
-    status: "LIVE",
-    title: "12th Result Date Announced",
-    tone: "danger",
-    href: "https://tnresults.nic.in/",
-  },
-  {
-    status: "NEW",
-    title: "TNEA Counseling Open",
-    tone: "success",
-    href: "https://www.tneaonline.org/",
-  },
-  {
-    status: "ALERT",
-    title: "NEET Updates & Counseling Alerts",
-    tone: "info",
-    href: "/exams/neet",
-  },
-  {
-    status: "NEW",
-    title: "JEE Main / Advanced Schedule",
-    tone: "success",
-    href: "https://jeemain.nta.nic.in/",
-  },
-  {
-    status: "NEW",
-    title: "CUET Updates & Registration",
-    tone: "success",
-    href: "/exams/cuet",
-  },
-  {
-    status: "ALERT",
-    title: "Polytechnic Admission Open",
-    tone: "info",
-    href: "https://www.tnpoly.in/registration",
-  },
-  {
-    status: "LAST DATE",
-    title: "Scholarship Apply Today",
-    tone: "warning",
-    href: "https://scholarships.gov.in/ApplicationForm/",
-  },
-  {
-    status: "NEW",
-    title: "Government Exam Notifications",
-    tone: "success",
-    href: "https://tnpsc.gov.in/english/notification.aspx",
-  },
-  {
-    status: "LAST DATE",
-    title: "College Admission Last Dates",
-    tone: "warning",
-    href: "/explore?view=colleges",
-  },
-];
-
 export function HomePage({
   collegesData = fallbackColleges,
   coursesData = fallbackCourses,
@@ -259,12 +192,15 @@ export function HomePage({
   const [brokenHeroSuggestionImages, setBrokenHeroSuggestionImages] = useState<Record<string, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const trendingCoursesScrollRef = useRef<HTMLDivElement | null>(null);
+  const topExamsScrollRef = useRef<HTMLDivElement | null>(null);
   const collegesScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const searchFieldBlurTimeoutRef = useRef<number | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [showLeftArrowTrendingCourses, setShowLeftArrowTrendingCourses] = useState(false);
   const [showRightArrowTrendingCourses, setShowRightArrowTrendingCourses] = useState(true);
+  const [showLeftArrowTopExams, setShowLeftArrowTopExams] = useState(false);
+  const [showRightArrowTopExams, setShowRightArrowTopExams] = useState(true);
   const [showLeftArrowColleges, setShowLeftArrowColleges] = useState(false);
   const [showRightArrowColleges, setShowRightArrowColleges] = useState(true);
   const [activeTrendingCourseIndex, setActiveTrendingCourseIndex] = useState(0);
@@ -575,7 +511,7 @@ export function HomePage({
 
         return {
           id: `${course.toLowerCase().replace(/\s+/g, "-")}-trending`,
-          course: hrefCourse,
+          course: course,
           icon: iconMap[course as keyof typeof iconMap] ?? CourseIcon,
           subtitle: subtitleMap[course] ?? "Student Favorite",
           href: `/explore/course/${encodeURIComponent(hrefCourse)}`,
@@ -800,6 +736,22 @@ export function HomePage({
       description: "Type a city or district and matching locations will show here.",
     };
   }, [activeSearchField]);
+
+  useEffect(() => {
+    if (!shouldShowHeroSearchPanel) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [shouldShowHeroSearchPanel]);
+
   // Hero spotlight and quick stat data
   const spotlightColleges = useMemo(() => {
     const bestColleges = collegesData.filter(
@@ -878,8 +830,24 @@ export function HomePage({
     setActiveTrendingCourseIndex(nearestIndex);
   }, []);
 
+  const updateTopExamsScrollState = useCallback(() => {
+    syncScrollIndicators(
+      topExamsScrollRef.current,
+      setShowLeftArrowTopExams,
+      setShowRightArrowTopExams,
+    );
+  }, []);
+
   const scrollTrendingCoursesByCard = (direction: "left" | "right") => {
     const element = trendingCoursesScrollRef.current;
+    if (!element) return;
+    const firstCard = element.firstElementChild as HTMLElement | null;
+    const step = firstCard ? firstCard.offsetWidth + 16 : 320;
+    element.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
+  };
+
+  const scrollTopExamsByCard = (direction: "left" | "right") => {
+    const element = topExamsScrollRef.current;
     if (!element) return;
     const firstCard = element.firstElementChild as HTMLElement | null;
     const step = firstCard ? firstCard.offsetWidth + 16 : 320;
@@ -899,6 +867,7 @@ export function HomePage({
     syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow);
     const animationFrame = window.requestAnimationFrame(() => {
       updateTrendingCoursesScrollState();
+      updateTopExamsScrollState();
     });
     syncScrollIndicators(
       collegesScrollContainerRef.current,
@@ -906,12 +875,13 @@ export function HomePage({
       setShowRightArrowColleges,
     );
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [updateTrendingCoursesScrollState]);
+  }, [updateTopExamsScrollState, updateTrendingCoursesScrollState]);
 
   useEffect(() => {
     const handleResize = () => {
       syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow);
       updateTrendingCoursesScrollState();
+      updateTopExamsScrollState();
       syncScrollIndicators(
         collegesScrollContainerRef.current,
         setShowLeftArrowColleges,
@@ -921,7 +891,7 @@ export function HomePage({
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [updateTrendingCoursesScrollState]);
+  }, [updateTopExamsScrollState, updateTrendingCoursesScrollState]);
 
   useEffect(() => {
     if (isSpotlightPaused) return;
@@ -999,28 +969,33 @@ export function HomePage({
     "--text-dark": "#0f172a",
     "--text-muted": "#475569",
   };
+  // Hero layout helpers
   const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
   const activeFeature = featureCards[activeFeatureCard] ?? featureCards[0];
+
+  // Feature cards
   const renderFeatureCard = (feature: FeatureCardItem, variant: "hero" | "grid" = "grid") => {
     const isHeroCard = variant === "hero";
+    const isCompactFeature = !isHeroCard && feature.title === "Course Explorer";
+    const isShortFeature = !isHeroCard && feature.title === "Ranking View";
     const Icon = feature.icon;
 
     return (
       <div
-        className={`overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_18px_40px_rgba(15,76,129,0.11)] ${isHeroCard ? "flex h-full min-h-[11.75rem] p-3 sm:min-h-[12.5rem] sm:p-3.5" : "p-4"
+        className={`overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_18px_40px_rgba(15,76,129,0.11)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-3.5 sm:p-3.5" : isShortFeature ? "p-3.5 sm:p-3.5" : "p-4"
           }`}
       >
         {isHeroCard ? (
           <>
-            <div className="flex w-full flex-1 items-center gap-2.5 sm:gap-3.5">
+            <div className="flex w-full flex-1 items-center gap-2 sm:gap-3">
               <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
                 <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] sm:h-[2.125rem] sm:w-[2.125rem]">
                   <Icon className="size-4" />
                 </div>
-                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[1.02rem] leading-tight sm:text-[1.15rem]">
+                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[0.9rem] leading-tight sm:text-[1rem]">
                   {feature.title}
                 </h3>
-                <p className="mt-1.5 max-w-[10rem] text-[10px] leading-[1.15rem] text-[color:var(--text-muted)] sm:max-w-[11rem] sm:text-[11px]">
+                <p className="mt-1 max-w-[9rem] text-[9px] leading-[0.95rem] text-[color:var(--text-muted)] sm:max-w-[9.75rem] sm:text-[10px] sm:leading-[1rem]">
                   {feature.description}
                 </p>
               </div>
@@ -1029,7 +1004,7 @@ export function HomePage({
                 <img
                   src={feature.imageSrc}
                   alt={feature.title}
-                  className="mx-auto h-[6.9rem] w-full max-w-[10.25rem] object-contain sm:h-[7.4rem] sm:max-w-[10.9rem]"
+                  className="mx-auto h-[5.8rem] w-full max-w-[9.25rem] object-contain sm:h-[6.3rem] sm:max-w-[9.8rem]"
                   loading="lazy"
                 />
               </div>
@@ -1038,14 +1013,14 @@ export function HomePage({
         ) : (
           <>
             <div className="flex flex-col items-center gap-2 text-center sm:gap-3 sm:items-start sm:text-left">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] sm:h-11 sm:w-11 sm:rounded-[0.75rem]">
+              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.9rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] ${isCompactFeature || isShortFeature ? "h-8 w-8 sm:h-9 sm:w-9" : "h-9 w-9 sm:h-11 sm:w-11 sm:rounded-[0.75rem]"}`}>
                 <Icon className="size-4 sm:size-5" />
               </div>
               <div className="flex flex-1 flex-col justify-start items-center text-center sm:items-start sm:text-left">
-                <h3 className="line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[0.78rem] leading-4 sm:text-[0.95rem] sm:leading-5">
+                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] ${isCompactFeature ? "text-[0.75rem] leading-4 sm:text-[0.88rem] sm:leading-[1.15rem]" : isShortFeature ? "text-[0.74rem] leading-4 sm:text-[0.86rem] sm:leading-[1.1rem]" : "text-[0.78rem] leading-4 sm:text-[0.95rem] sm:leading-5"}`}>
                   {feature.title}
                 </h3>
-                <p className="mt-1 hidden text-[12px] leading-5 text-[color:var(--text-muted)] sm:block">
+                <p className={`mt-1 hidden text-[color:var(--text-muted)] sm:block ${isCompactFeature ? "text-[11px] leading-[1.15rem]" : isShortFeature ? "text-[11px] leading-[1.05rem]" : "text-[12px] leading-5"}`}>
                   {feature.description}
                 </p>
               </div>
@@ -1055,6 +1030,279 @@ export function HomePage({
       </div>
     );
   };
+  // Hero cutoff banner
+  const renderHeroCutoffBanner = () => (
+    <article
+      className="
+        relative overflow-hidden
+        h-full
+        rounded-[1.4rem] sm:rounded-[1.8rem]
+        border border-[rgba(99,102,241,0.14)]
+        bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.98)_48%,rgba(224,231,255,0.96))]
+        p-4
+        text-[color:var(--text-dark)]
+        shadow-[0_18px_40px_rgba(59,130,246,0.11)]
+      "
+    >
+      <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.18)] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 right-8 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.14)] blur-3xl" />
+
+      <div className="relative flex h-full flex-col justify-between">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(59,130,246,0.18)] bg-[rgba(59,130,246,0.08)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2563eb]">
+            <CourseIcon className="size-3.5" />
+            Cutoff Zone
+          </span>
+          <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] shadow-sm">
+            Fast Match
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_15.5rem] md:items-center lg:grid-cols-[minmax(0,1fr)_18.5rem]">
+          <div className="min-w-0">
+            <h3 className="text-[1.08rem] font-black leading-[1.12] tracking-[-0.035em] text-[#14213d] sm:text-[1.18rem] lg:text-[1.34rem]">
+              <span className="block whitespace-nowrap">
+                Unlock Your Future College.
+              </span>
+              <span className="mt-1 block text-[#3b82f6]">
+                Discover Your Best Fit.
+              </span>
+            </h3>
+
+            <p className="mt-2.5 max-w-none text-[10px] leading-[1.05rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-[1.2rem] lg:text-[12px] lg:leading-5">
+              Enter your marks and preferences to find better college matches.
+              Get clearer cutoff guidance in one simple flow.
+            </p>
+
+            <div className="mt-3 grid grid-cols-3 items-stretch gap-0 rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-white/88 text-[8.5px] font-semibold text-[color:var(--brand-primary)] shadow-sm sm:max-w-[19rem] sm:text-[9px]">
+              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 px-2 py-2 text-center">
+                <Sparkles className="size-3.5 shrink-0 text-[#f59e0b]" />
+                <span>Instant results</span>
+              </span>
+              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 border-x border-[rgba(29,78,216,0.12)] px-1 py-2 text-center">
+                <ArrowRight className="size-3.5 shrink-0 text-[#2563eb]" />
+                <span>Extra match picks</span>
+              </span>
+              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 px-2 py-2 text-center">
+                <Medal className="size-3.5 shrink-0 text-[#ef4444]" />
+                <span>Category accurate</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="mx-auto flex w-full max-w-[16rem] justify-center md:mx-0 md:max-w-[17rem] md:justify-end lg:max-w-[21rem]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cutoff-banner.png"
+              alt="Cutoff banner illustration"
+              className="h-auto w-full scale-[1.08] object-contain md:scale-[1.1]"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={() => router.push("/find")}
+            className="
+              inline-flex w-full items-center justify-center gap-2.5
+              rounded-[1rem]
+              bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
+              px-5 py-3
+              text-sm font-semibold
+              text-white
+              shadow-[0_16px_28px_rgba(37,99,235,0.24)]
+              transition
+              hover:-translate-y-0.5
+              sm:w-auto
+            "
+          >
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+              <Rocket className="size-4" />
+            </span>
+            Check My Cutoff
+            <ArrowRight className="size-4" />
+          </button>
+
+          <div className="flex items-center justify-center gap-3 text-sm text-[color:var(--text-muted)] sm:justify-end">
+            <div className="flex -space-x-2">
+              {["A", "S", "M"].map((letter, index) => (
+                <span
+                  key={letter}
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-sm ${index === 0
+                    ? "bg-[#1d4ed8]"
+                    : index === 1
+                      ? "bg-[#f97316]"
+                      : "bg-[#0f766e]"
+                    }`}
+                >
+                  {letter}
+                </span>
+              ))}
+            </div>
+            <span className="text-[12px] font-medium">Trusted by 1L+ students</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+  // Top college flow
+  const renderTopCollegeFlow = () => (
+    <div className="flex h-full min-h-[20.5rem] w-full flex-col rounded-[1.4rem] sm:rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
+          Top College Flow
+        </p>
+        <div className="flex gap-1.5">
+          {spotlightColleges.map((college, index) => (
+            <span
+              key={college.id}
+              className={`h-1.5 rounded-full transition-all ${index === activeAction ? "w-6 bg-[color:var(--brand-primary)]" : "w-2 bg-[rgba(15,76,129,0.18)]"
+                }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div
+        className="relative mt-3 h-32 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-36 md:h-40"
+        onMouseEnter={() => setIsSpotlightPaused(true)}
+        onMouseLeave={() => setIsSpotlightPaused(false)}
+      >
+        <div
+          className="flex h-full w-full transition-transform duration-700 ease-out"
+          style={{ transform: `translateX(-${activeAction * 100}%)` }}
+        >
+          {spotlightColleges.map((college) => (
+            <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
+              {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
+                <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
+                  <div>
+                    <p className="text-[15px] font-semibold text-white">{college.name}</p>
+                    <p className="mt-1 text-[11px] text-white/80">
+                      {college.district}, {college.state}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={getSpotlightImage(college)}
+                  alt={college.name}
+                  className="h-full w-full object-cover"
+                  onError={() =>
+                    setBrokenCollegeImages((current) => ({
+                      ...current,
+                      [college.id]: true,
+                    }))
+                  }
+                />
+              )}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
+              <div className="absolute bottom-3 left-3 right-3">
+                <p className="text-[15px] font-semibold text-white">{college.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
+        <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
+          {activeCollege?.name || "Top College"}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[color:var(--text-muted)]">
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="size-3" />
+            {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
+          </span>
+        </div>
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-primary-soft)]">
+              Placement
+            </p>
+            <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
+              {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+              Recent placement performance
+            </p>
+          </div>
+          <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.18)] bg-[rgba(239,68,68,0.06)] p-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-accent-deep)]">
+              Accreditation
+            </p>
+            <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
+              {activeCollege?.accreditation || "-"}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+              Latest approved accreditation status
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Top exams card
+  const renderTopExamCard = (exam: (typeof topExamCards)[number]) => (
+    <button
+      type="button"
+      onClick={() => router.push(exam.href)}
+      className="group flex min-h-[18.75rem] w-[15rem] shrink-0 flex-col rounded-[1.5rem] border border-[rgba(220,230,248,0.95)] bg-white p-4 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.35rem] lg:min-h-[19rem] lg:w-full"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3 mt-1.5">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_6px_16px_rgba(15,76,129,0.08)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={exam.logo}
+              alt={exam.name}
+              className="h-full w-full object-contain p-0.5"
+            />
+          </span>
+          <div className="min-w-0">
+            <h3 className="whitespace-nowrap font-[family:var(--font-display)] text-[0.96rem] leading-tight text-[#0f1738] sm:text-[1.02rem]">
+              {exam.name}
+            </h3>
+          </div>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 mb-1.5 text-[10px] font-semibold ${exam.mode.toLowerCase().includes("online")
+          ? "bg-[rgba(34,197,94,0.14)] text-[#15803d]"
+          : "bg-[rgba(249,115,22,0.14)] text-[#c2410c]"
+          }`}>
+          {exam.mode}
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3 text-[12px] text-[color:var(--text-muted)]">
+        <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
+          <span>Colleges</span>
+          <span className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
+          <span>Exam Date</span>
+          <span className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 pb-1">
+          <span>Level</span>
+          <span className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</span>
+        </div>
+      </div>
+
+      <div className="mt-auto space-y-2 pt-5">
+        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.95rem] font-medium text-[#0f1738]">
+          <span>Application Process</span>
+          <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
+        </div>
+        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.95rem] font-medium text-[#0f1738]">
+          <span>Exam Info</span>
+          <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
+        </div>
+      </div>
+    </button>
+  );
   return (
     <div className="home-theme bg-white" style={homeThemeStyles}>
       {/* Hero section */}
@@ -1072,188 +1320,50 @@ export function HomePage({
           {/* Top navigation */}
           <Navbar />
 
-          {/* Breaking updates announcement bar */}
-          <div className="page-container-full pt-2">
-            <div
-              className="breaking-news-shell reveal-up"
-              data-scroll-animate
-            >
-              <div className="breaking-news-label">
-                <Bell className="breaking-news-label-icon" />
-                Breaking Updates
-              </div>
-
-              <div className="breaking-news-viewport">
-                <div className="marquee-track breaking-news-track" aria-live="polite">
-                  {[0, 1].map((loopIndex) =>
-                    BREAKING_NEWS_ITEMS.map((item, itemIndex) => (
-                      <div
-                        key={`${loopIndex}-${item.status}-${item.title}`}
-                        className="marquee-item breaking-news-entry"
-                        aria-hidden={loopIndex === 1}
-                      >
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="breaking-news-link"
-                          aria-label={`${item.title} page`}
-                        >
-                          <span className={`breaking-news-status breaking-news-status-${item.tone}`}>
-                            <span className="breaking-news-status-dot" />
-                            {item.status}
-                          </span>
-                          <span className="breaking-news-dash" aria-hidden="true">-</span>
-                          <span className="breaking-news-headline">{item.title}</span>
-                        </a>
-                        {itemIndex < BREAKING_NEWS_ITEMS.length - 1 || loopIndex === 0 ? (
-                          <span className="breaking-news-separator" aria-hidden="true" />
-                        ) : null}
-                      </div>
-                    )),
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Hero content section */}
 
-          <div className="page-container-full px-2 sm:px-4 pb-[4rem] pt-0 md:pb-[5.5rem] md:pt-1">
+          <div className="page-container-full px-1 sm:px-3 lg:px-4 pb-[4rem] pt-0 md:pb-[5.5rem] md:pt-1">
             <div className="space-y-2 py-2">
               {/* Hero headline and spotlight content */}
-              <div className="reveal-up mx-auto mb-1 w-full px-2">
+              <div className="reveal-up mx-auto mb-1 w-full px-0 sm:px-1">
                 <div className="relative py-0.5 sm:py-1">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
                   <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.14)] blur-3xl" />
 
-                  <div className="relative space-y-1 ">
-                    <div className="grid gap-5 grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.82fr)] lg:items-start">
-                      <div className="flex h-full flex-col justify-start space-y-4 lg:space-y-3">
-                        <div className="mx-auto max-w-[38rem] py-2 sm:py-3 px-2 text-center lg:mx-auto">
-                          <h1 className="text-[1.75rem] sm:text-[2.2rem] lg:text-[2.95rem] font-black leading-tight tracking-[-0.04em] text-[#163761]">                          Find Your{" "}
+                  <div className="relative space-y-1">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,33.75rem)] lg:items-stretch lg:gap-6">
+                      {/* Hero introduction */}
+                      <div className="flex h-full flex-col justify-start space-y-4 lg:space-y-3 lg:pl-1 xl:pl-2">
+                        <div className="max-w-[38rem] py-2 px-1 text-center lg:px-0 lg:text-left">
+                          <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
+                            Find Your{" "}
                             <span className="text-[#2563eb]">
                               Future College
                             </span>{" "}
                             Smartly.
                           </h1>
-                          <p className="mx-auto mt-3 max-w-[34rem] text-[12px] sm:text-[14px] leading-6 px-2 text-[color:var(--text-muted)]">                          Discover colleges, courses, exams, and cities from one premium search flow built to help you shortlist faster and decide with more confidence.
+                          <p className="mx-auto mt-2.5 max-w-[31rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
+                            Discover colleges, courses, exams, and cities from one premium search flow built to help you shortlist faster and decide with more confidence.
                           </p>
                         </div>
 
-                        {/* Rotating feature spotlight card */}
-
-                        <div className="relative mx-auto w-full max-w-[100%] sm:max-w-[20rem] lg:max-w-[30rem] px-2">
+                        {/* Hero feature spotlight */}
+                        <div className="relative mx-auto w-full max-w-[100%] px-2 sm:max-w-[20rem] lg:mx-0 lg:max-w-[30rem] lg:px-0">
                           <div key={`${activeFeature.title}-${activeFeatureCard}`} className="feature-pop-card absolute inset-0">
                             {renderFeatureCard(activeFeature, "hero")}
                           </div>
-                          <div className="min-h-[12.75rem] sm:min-h-[9rem]" />
+                          <div className="min-h-[10.9rem] sm:min-h-[8.15rem]" />
                         </div>
                       </div>
 
-                      {/* Top college spotlight card */}
-                      <div className="w-full lg:ml-auto lg:max-w-[33rem]">
-                        <div className="flex h-full w-full flex-col rounded-[1.4rem] sm:rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)]">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
-                              Top College Flow
-                            </p>
-                            <div className="flex gap-1.5">
-                              {spotlightColleges.map((college, index) => (
-                                <span
-                                  key={college.id}
-                                  className={`h-1.5 rounded-full transition-all ${index === activeAction ? "w-6 bg-[color:var(--brand-primary)]" : "w-2 bg-[rgba(15,76,129,0.18)]"
-                                    }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-
-                          <div
-                            className="relative mt-3 h-32 sm:h-36 md:h-40 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-40"
-                            onMouseEnter={() => setIsSpotlightPaused(true)}
-                            onMouseLeave={() => setIsSpotlightPaused(false)}
-                          >
-                            <div
-                              className="flex h-full w-full transition-transform duration-700 ease-out"
-                              style={{ transform: `translateX(-${activeAction * 100}%)` }}
-                            >
-                              {spotlightColleges.map((college) => (
-                                <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
-                                  {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
-                                    <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
-                                      <div>
-                                        <p className="text-[15px] font-semibold text-white">{college.name}</p>
-                                        <p className="mt-1 text-[11px] text-white/80">
-                                          {college.district}, {college.state}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                    <img
-                                      src={getSpotlightImage(college)}
-                                      alt={college.name}
-                                      className="h-full w-full object-cover"
-                                      onError={() =>
-                                        setBrokenCollegeImages((current) => ({
-                                          ...current,
-                                          [college.id]: true,
-                                        }))
-                                      }
-                                    />
-                                  )}
-                                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
-                                  <div className="absolute bottom-3 left-3 right-3">
-                                    <p className="text-[15px] font-semibold text-white">{college.name}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="mt-3 rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-                            <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
-                              {activeCollege?.name || "Top College"}
-                            </p>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[color:var(--text-muted)]">
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="size-3" />
-                                {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
-                              </span>
-                            </div>
-                            <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-2.5">
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-primary-soft)]">
-                                  Placement
-                                </p>
-                                <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
-                                  {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
-                                </p>
-                                <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
-                                  Recent placement performance
-                                </p>
-                              </div>
-                              <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.18)] bg-[rgba(239,68,68,0.06)] p-2.5">
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-accent-deep)]">
-                                  Accreditation
-                                </p>
-                                <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
-                                  {activeCollege?.accreditation || "-"}
-                                </p>
-                                <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
-                                  Latest approved accreditation status
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                      {/* Hero cutoff banner */}
+                      <div className="w-full lg:ml-auto lg:max-w-[33.75rem]">
+                        {renderHeroCutoffBanner()}
                       </div>
                     </div>
 
-                    {/* Search bar section */}
-                    {/* Search bar */}
+                    {/* Hero search module */}
                     <div className="hero-search-shell group relative z-[70] mx-auto mt-5 w-full max-w-none px-0 py-5 sm:mt-6">
                       <div
                         className="
@@ -1432,9 +1542,9 @@ export function HomePage({
 
                       {/* Suggestion Panel */}
                       {shouldShowHeroSearchPanel ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] overflow-hidden rounded-[1.2rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.16)] backdrop-blur-sm">
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.16)] backdrop-blur-sm">
                           {activeSearchField && activeSearchSuggestions.length > 0 ? (
-                            <div className="px-2 py-2">
+                            <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
                               <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
                                 Related {activeSearchField}
                               </p>
@@ -1488,7 +1598,7 @@ export function HomePage({
                               ))}
                             </div>
                           ) : (
-                            <div className="px-4 py-4 text-left">
+                            <div className="max-h-[22.75rem] overflow-y-auto px-4 py-4 text-left">
                               <p className="text-sm font-semibold text-[color:var(--text-dark)]">
                                 {activeSearchEmptyState.title}
                               </p>
@@ -1501,364 +1611,245 @@ export function HomePage({
                       ) : null}
                     </div>
 
-                    {/* Quick stats cards */}
-                    <div className="mx-auto grid w-full max-w-[69rem] grid-cols-4 gap-1.5 sm:w-[80%] sm:gap-2.5">
+                    {/* Hero quick stats */}
+                    <div className="mx-auto grid w-full max-w-[72rem] grid-cols-4 gap-1 sm:w-[94%] sm:gap-2.5 items-center  justify-center">
                       {heroStatCards.map((item) => (
-                        <div key={item.label} className="min-w-0 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-2 py-2 shadow-[0_10px_20px_rgba(15,76,129,0.06)] sm:px-3 sm:py-3">
+                        <div key={item.label} className="min-w-0 rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-1.5 py-2 shadow-[0_8px_16px_rgba(15,76,129,0.06)] sm:rounded-[1rem] sm:px-3 sm:py-3">
                           <div className="flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2.5 sm:text-left">
-                            <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
-                              <item.icon className="size-3.5 sm:size-4" />
+                            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
+                              <item.icon className="size-3 sm:size-4" />
                             </span>
                             <div className="min-w-0 text-center sm:text-left">
-                              <p className="text-[0.95rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
-                              <p className="mt-1 text-[9px] font-medium leading-3 text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
+                              <p className="text-[0.78rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
+                              <p className="mt-1 text-[7px] font-medium leading-[0.7rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                  </div>
-
-                  {/* Cutoff banner section */}
-
-                  <div className="mx-auto w-full max-w-[78rem] px-2 sm:px-4 md:px-0">
-                    <div className="mt-6">
-                      <article
-                        className="
-        relative overflow-hidden
-        rounded-[1.3rem] sm:rounded-[1.8rem] lg:rounded-[2rem]
-        border border-[rgba(99,102,241,0.14)]
-        bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.98)_48%,rgba(224,231,255,0.96))]
-        p-4 sm:p-5 md:p-6
-        text-[color:var(--text-dark)]
-        shadow-[0_22px_42px_rgba(59,130,246,0.11)]
-        transition duration-300
-        hover:shadow-[0_26px_50px_rgba(59,130,246,0.15)]
-      "
-                      >
-                        {/* Blur Effects */}
-                        <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.18)] blur-3xl" />
-                        <div className="pointer-events-none absolute -bottom-16 right-8 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.14)] blur-3xl" />
-
-                        {/* MAIN SECTION */}
-                        <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-
-                          {/* LEFT CONTENT */}
-                          <div className="order-2 lg:order-1 max-w-2xl">
-                            {/* Badge */}
-                            <span
-                              className="
-              inline-flex items-center gap-2
-              rounded-full
-              border border-[rgba(59,130,246,0.18)]
-              bg-[rgba(59,130,246,0.08)]
-              px-4 py-2
-              text-[10px] sm:text-[11px]
-              font-semibold uppercase
-              tracking-[0.18em]
-              text-[#2563eb]
-            "
-                            >
-                              <CourseIcon className="size-4" />
-                              Cutoff Zone
-                            </span>
-
-                            {/* Heading */}
-                            <h3
-                              className="
-              mt-4
-              text-[1.8rem]
-              sm:text-[2.2rem]
-              md:text-[2.6rem]
-              lg:text-[3rem]
-              font-black
-              leading-[1.08]
-              tracking-[-0.04em]
-              text-[#14213d]
-            "
-                            >
-                              <span className="block">
-                                Unlock Your Future College.
-                              </span>
-
-                              <span className="mt-2 block text-[#3b82f6]">
-                                Discover Your Best Fit.
-                              </span>
-                            </h3>
-
-                            {/* Description */}
-                            <p
-                              className="
-              mt-4
-              max-w-xl
-              text-[14px] sm:text-[15px] md:text-[16px]
-              leading-6
-              text-[color:var(--text-muted)]
-            "
-                            >
-                              Enter your marks, choose your preferences, and explore
-                              the best college possibilities with smarter matches and
-                              clearer cutoffs in one flow.
-                            </p>
-
-                            {/* Feature Pills */}
-                            <div
-                              className="
-              mt-5
-              flex flex-wrap
-              gap-2
-              text-[12px] sm:text-[13px]
-              font-semibold
-              text-[color:var(--brand-primary)]
-            "
-                            >
-                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
-                                <Sparkles className="size-4 text-[#f59e0b]" />
-                                Instant results
-                              </span>
-
-                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
-                                <ArrowRight className="size-4 text-[#2563eb]" />
-                                Extra match picks
-                              </span>
-
-                              <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(29,78,216,0.16)] bg-white px-4 py-2 shadow-sm">
-                                <Medal className="size-4 text-[#ef4444]" />
-                                Category accurate
-                              </span>
-                            </div>
-
-                            {/* CTA */}
-                            <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                              <button
-                                type="button"
-                                onClick={() => router.push("/find")}
-                                className="
-                inline-flex
-                w-full sm:w-auto
-                items-center justify-center gap-2.5
-                rounded-[1rem]
-                bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
-                px-6 py-3.5
-                text-sm font-semibold
-                text-white
-                shadow-[0_16px_28px_rgba(37,99,235,0.24)]
-                transition
-                hover:-translate-y-0.5
-              "
-                              >
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                                  <Rocket className="size-4" />
-                                </span>
-
-                                Check My Colleges
-                                <ArrowRight className="size-4" />
-                              </button>
-
-                              {/* Trusted */}
-                              <div className="flex items-center gap-3 text-sm text-[color:var(--text-muted)]">
-                                <div className="flex -space-x-2">
-                                  {["A", "S", "M"].map((letter, index) => (
-                                    <span
-                                      key={letter}
-                                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-sm ${index === 0
-                                          ? "bg-[#1d4ed8]"
-                                          : index === 1
-                                            ? "bg-[#f97316]"
-                                            : "bg-[#0f766e]"
-                                        }`}
-                                    >
-                                      {letter}
-                                    </span>
-                                  ))}
-                                </div>
-
-                                Trusted by 1L+ students
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* RIGHT IMAGE */}
-                          <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
-                            <div className="relative">
-                              <img
-                                src="/cutoff-banner.png"
-                                alt="Cutoff banner illustration"
-                                className="
-                w-full
-                max-w-[18rem]
-                sm:max-w-[22rem]
-                md:max-w-[26rem]
-                lg:max-w-[30rem]
-                h-auto
-                object-contain
-              "
-                              />
-                            </div>
-                          </div>
+                    {/* Top exams overview */}
+                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0">
+                      <div className="relative w-full">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <p className="text-[1rem] font-semibold uppercase tracking-[0.22em] text-[#132a6b]">
+                            Top Exams
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/exams")}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
+                          >
+                            Explore all
+                            <ArrowRight className="size-4" />
+                          </button>
                         </div>
 
-                        {/* BOTTOM FEATURES */}
-                        <div
-                          className="
-          mt-7
-          grid
-          grid-cols-1
-          sm:grid-cols-2
-          lg:grid-cols-4
-          gap-3 lg:gap-0
-          rounded-[1rem] sm:rounded-[1.2rem]
-          border border-white/70
-          bg-white/75
-          p-3 sm:p-4
-          shadow-[0_10px_18px_rgba(59,130,246,0.08)]
-          backdrop-blur
-        "
-                        >
-                          {[
-                            {
-                              icon: Medal,
-                              title: "100% Safe & Secure",
-                              subtitle: "Your data stays protected",
-                            },
-                            {
-                              icon: Sparkles,
-                              title: "Less Than 2 Min",
-                              subtitle: "Quick flow, simple inputs",
-                            },
-                            {
-                              icon: Building2,
-                              title: "Personalized For You",
-                              subtitle: "Better matches",
-                            },
-                            {
-                              icon: Search,
-                              title: "Trusted By Students",
-                              subtitle: "Built for confident shortlisting",
-                            },
-                          ].map((item, index) => (
-                            <div
-                              key={item.title}
-                              className={`
-              flex items-start gap-3
-              px-2 py-2 md:px-4
-              ${index < 3
-                                  ? "lg:border-r lg:border-[rgba(148,163,184,0.18)]"
-                                  : ""
-                                }
-            `}
-                            >
-                              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(59,130,246,0.10)] text-[#2563eb]">
-                                <item.icon className="size-4" />
-                              </span>
-
-                              <div>
-                                <p className="text-[13px] font-semibold text-[#14213d]">
-                                  {item.title}
-                                </p>
-
-                                <p className="mt-1 text-[11px] leading-4 text-[color:var(--text-muted)]">
-                                  {item.subtitle}
-                                </p>
-                              </div>
+                        <div className="hidden gap-4 lg:grid lg:grid-cols-4">
+                          {topExamCards.map((exam) => (
+                            <div key={exam.id}>
+                              {renderTopExamCard(exam)}
                             </div>
                           ))}
                         </div>
-                      </article>
-                    </div>
-                  </div>
 
-                  {/* Trending courses carousel */}
-                  <div className="reveal-up delay-3 mt-8 pt-3">
-                    <div className="relative px-0 py-2 scroll-fade-in scroll-delay-2" data-scroll-animate>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[1.05rem] font-semibold uppercase tracking-[0.24em] text-[#132a6b]">
-                          Trending Courses
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => router.push("/explore")}
-                          className="inline-flex items-center gap-2 text-lg font-medium text-[#1d4ed8]"
-                        >
-                          View all
-                          <ArrowRight className="size-5" />
-                        </button>
+                        <div className="relative lg:hidden">
+                          <div
+                            ref={topExamsScrollRef}
+                            onScroll={updateTopExamsScrollState}
+                            className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 scroll-smooth scrollbar-hide"
+                          >
+                            {topExamCards.map((exam) => (
+                              <div key={exam.id} className="shrink-0 snap-start">
+                                {renderTopExamCard(exam)}
+                              </div>
+                            ))}
+                          </div>
+
+                          {showLeftArrowTopExams ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTopExamsByCard("left")}
+                              className="absolute -left-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll top exams left"
+                            >
+                              <ChevronLeft className="size-5" />
+                            </button>
+                          ) : null}
+
+                          {showRightArrowTopExams ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTopExamsByCard("right")}
+                              className="absolute -right-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll top exams right"
+                            >
+                              <ChevronRight className="size-5" />
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
+                    </div>
 
-                      <div className="relative mt-8">
-                        <div
-                          ref={trendingCoursesScrollRef}
-                          onScroll={updateTrendingCoursesScrollState}
-                          className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 scroll-smooth scrollbar-hide"
-                        >
-                          {trendingCourseCards.map((course) => {
+                  </div>
+                  {/* Trending courses and top college flow */}
+                  <div className="reveal-up delay-3 mt-8 pt-3">
+                    <div className="mx-auto grid w-full max-w-[72rem] gap-6 px-1 sm:px-2  md:px-0 lg:grid-cols-2 lg:items-stretch">
+                      {/* Trending courses section */}
+                      <div className="relative flex h-full flex-col rounded-[1.4rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] px-4 py-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)] scroll-fade-in scroll-delay-2" data-scroll-animate>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[1.05rem] font-semibold uppercase tracking-[0.24em] text-[#132a6b]">
+                            Trending Courses
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/explore")}
+                            className="inline-flex items-center gap-2 text-lg font-medium text-[#1d4ed8]"
+                          >
+                            View all
+                            <ArrowRight className="size-5" />
+                          </button>
+                        </div>
+
+                        <div className="mt-6 hidden gap-2.5 lg:grid lg:grid-cols-3 ">
+                          {trendingCourseCards.slice(0, 6).map((course) => {
                             const Icon = course.icon;
                             return (
                               <button
                                 key={course.id}
                                 type="button"
                                 onClick={() => router.push(course.href)}
-                                className="group flex min-h-[20rem] w-[14.75rem] shrink-0 snap-start flex-col rounded-[1.7rem] border border-[rgba(220,230,248,0.95)] bg-white px-6 py-7 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.5rem] lg:w-[17rem]"
+                                className="group flex min-h-[10.5rem] flex-col rounded-[1.15rem] border border-[rgba(220,230,248,0.95)] bg-white px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(30,64,175,0.12)]"
                               >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="flex h-[5.3rem] w-[5.3rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
-                                    <Icon className="size-8 stroke-[1.8]" />
-                                  </div>
+                                <div className="flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
+                                  <Icon className="size-5 stroke-[1.8] " />
                                 </div>
-                                <div className="mt-8">
-                                  <p className="font-[family:var(--font-display)] text-[1.35rem] leading-[1.28] text-[#0f1738]">
+                                <div className="mt-3">
+                                  <p className="font-[family:var(--font-display)] text-[0.96rem] leading-[1.15] text-[#0f1738]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99]">
+                                  <p className="mt-1.5 text-[0.52rem] font-semibold uppercase tracking-[0.14em] text-[#5d6f99]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8]">
+                                <div className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[0.74rem] font-medium text-[#1d4ed8]">
                                   Explore Course
-                                  <ArrowRight className="size-5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
+                                  <ArrowRight className="size-3.5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
                                 </div>
                               </button>
                             );
                           })}
                         </div>
 
-                        {showLeftArrowTrendingCourses ? (
-                          <button
-                            type="button"
-                            onClick={() => scrollTrendingCoursesByCard("left")}
-                            className="absolute left-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
-                            aria-label="Scroll trending courses left"
-                          >
-                            <ChevronLeft className="size-7" />
-                          </button>
-                        ) : null}
+                        <div className="mt-5 grid grid-cols-3 gap-1.5 md:hidden">
+                          {trendingCourseCards.slice(0, 6).map((course) => {
+                            const Icon = course.icon;
+                            return (
+                              <button
+                                key={`${course.id}-mobile-grid`}
+                                type="button"
+                                onClick={() => router.push(course.href)}
+                                className="group flex min-h-[7.15rem] flex-col rounded-[0.9rem] border border-[rgba(220,230,248,0.95)] bg-white px-1.5 py-1.5 text-left shadow-[0_6px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,64,175,0.1)]"
+                              >
+                                <div className="flex h-[2.15rem] w-[2.15rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f]">
+                                  <Icon className="size-3.5 stroke-[1.8]" />
+                                </div>
+                                <div className="mt-1.5">
+                                  <p className="font-[family:var(--font-display)] text-[0.66rem] leading-[1] text-[#0f1738]">
+                                    {course.course}
+                                  </p>
+                                  <p className="mt-0.5 text-[0.4rem] font-semibold uppercase tracking-[0.06em] text-[#5d6f99]">
+                                    {course.subtitle}
+                                  </p>
+                                </div>
+                                <div className="mt-auto inline-flex items-center gap-1 pt-1.5 text-[0.5rem] font-medium text-[#1d4ed8]">
+                                  Explore
+                                  <ArrowRight className="size-2.5 text-[#ff3b30]" />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                        {showRightArrowTrendingCourses ? (
-                          <button
-                            type="button"
-                            onClick={() => scrollTrendingCoursesByCard("right")}
-                            className="absolute right-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
-                            aria-label="Scroll trending courses right"
+                        <div className="relative mt-8 hidden md:block lg:hidden">
+                          <div
+                            ref={trendingCoursesScrollRef}
+                            onScroll={updateTrendingCoursesScrollState}
+                            className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 scroll-smooth scrollbar-hide"
                           >
-                            <ChevronRight className="size-7" />
-                          </button>
-                        ) : null}
+                            {trendingCourseCards.map((course) => {
+                              const Icon = course.icon;
+                              return (
+                                <button
+                                  key={course.id}
+                                  type="button"
+                                  onClick={() => router.push(course.href)}
+                                  className="group flex min-h-[20rem] w-[14.75rem] shrink-0 snap-start flex-col rounded-[1.7rem] border border-[rgba(220,230,248,0.95)] bg-white px-6 py-7 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.5rem]"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex h-[5.3rem] w-[5.3rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
+                                      <Icon className="size-8 stroke-[1.8]" />
+                                    </div>
+                                  </div>
+                                  <div className="mt-8">
+                                    <p className="font-[family:var(--font-display)] text-[1.2rem] leading-[1.22] text-[#0f1738]">
+                                      {course.course}
+                                    </p>
+                                    <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99]">
+                                      {course.subtitle}
+                                    </p>
+                                  </div>
+                                  <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8]">
+                                    Explore Course
+                                    <ArrowRight className="size-5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {showLeftArrowTrendingCourses ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTrendingCoursesByCard("left")}
+                              className="absolute left-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll trending courses left"
+                            >
+                              <ChevronLeft className="size-7" />
+                            </button>
+                          ) : null}
+
+                          {showRightArrowTrendingCourses ? (
+                            <button
+                              type="button"
+                              onClick={() => scrollTrendingCoursesByCard("right")}
+                              className="absolute right-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              aria-label="Scroll trending courses right"
+                            >
+                              <ChevronRight className="size-7" />
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-5 hidden items-center justify-center gap-4 md:flex lg:hidden">
+                          {trendingCourseCards.map((course, index) => (
+                            <button
+                              key={`${course.id}-dot`}
+                              type="button"
+                              onClick={() => scrollTrendingCoursesToIndex(index)}
+                              aria-label={`Go to trending course ${index + 1}`}
+                              className={`h-3.5 w-3.5 rounded-full transition ${index === activeTrendingCourseIndex
+                                ? "bg-[#1d4ed8]"
+                                : "bg-[rgba(148,163,184,0.35)] hover:bg-[rgba(148,163,184,0.6)]"
+                                }`}
+                            />
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="mt-5 flex items-center justify-center gap-4">
-                        {trendingCourseCards.map((course, index) => (
-                          <button
-                            key={`${course.id}-dot`}
-                            type="button"
-                            onClick={() => scrollTrendingCoursesToIndex(index)}
-                            aria-label={`Go to trending course ${index + 1}`}
-                            className={`h-3.5 w-3.5 rounded-full transition ${index === activeTrendingCourseIndex
-                              ? "bg-[#1d4ed8]"
-                              : "bg-[rgba(148,163,184,0.35)] hover:bg-[rgba(148,163,184,0.6)]"
-                              }`}
-                          />
-                        ))}
+                      {/* Top college flow section */}
+                      <div className="w-full">
+                        {renderTopCollegeFlow()}
                       </div>
                     </div>
                   </div>

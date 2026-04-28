@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPortalShell } from "@/components/admin-portal-shell";
+import { ResponsiveTableWrapper, type TableColumn } from "@/components/responsive-table-wrapper";
 import {
   clearAuth,
   readAuthToken,
@@ -253,15 +254,15 @@ const adminModuleLabels: Record<string, string> = {
   enquiries: "Enquiries",
   exams: "Exams",
 };
-const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3.5 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:text-sm";
-const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500";
-const primaryButtonClass = "inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0f4c81_0%,#38bdf8_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(56,189,248,0.24)] transition duration-200 hover:shadow-[0_18px_34px_rgba(56,189,248,0.28)]";
-const softButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-4 py-2.5 text-sm font-semibold text-[#2563eb] shadow-[0_10px_20px_rgba(37,99,235,0.08)] transition duration-200 hover:bg-[#3b82f6] hover:text-white hover:border-[#3b82f6] hover:shadow-[0_12px_24px_rgba(37,99,235,0.18)]";
-const solidBlueButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:bg-white hover:text-[#2563eb] hover:border-[rgba(37,99,235,0.34)] hover:shadow-[0_12px_24px_rgba(37,99,235,0.12)]";
-const dangerButtonClass = "inline-flex items-center gap-2 rounded-full border border-[rgba(251,191,36,0.22)] bg-[linear-gradient(135deg,#fff8e7_0%,#fff0d2_100%)] px-4 py-2.5 text-sm font-semibold text-[#9a6700] shadow-[0_8px_18px_rgba(251,191,36,0.12)] transition duration-200 hover:bg-[linear-gradient(135deg,#fff4d6_0%,#ffebc2_100%)]";
+const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:px-3.5 sm:text-sm md:text-sm";
+const labelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:mb-1.5 sm:text-[11px]";
+const primaryButtonClass = "inline-flex items-center justify-center gap-1 rounded-full bg-[linear-gradient(135deg,#0f4c81_0%,#38bdf8_100%)] px-3 py-2 text-xs font-semibold text-white shadow-[0_16px_30px_rgba(56,189,248,0.24)] transition duration-200 hover:shadow-[0_18px_34px_rgba(56,189,248,0.28)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
+const softButtonClass = "inline-flex items-center justify-center gap-1 rounded-full border border-[rgba(37,99,235,0.3)] bg-white px-3 py-2 text-xs font-semibold text-[#2563eb] shadow-[0_10px_20px_rgba(37,99,235,0.08)] transition duration-200 hover:bg-[#3b82f6] hover:text-white hover:border-[#3b82f6] hover:shadow-[0_12px_24px_rgba(37,99,235,0.18)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
+const solidBlueButtonClass = "inline-flex items-center justify-center gap-1 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:bg-white hover:text-[#2563eb] hover:border-[rgba(37,99,235,0.34)] hover:shadow-[0_12px_24px_rgba(37,99,235,0.12)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
+const dangerButtonClass = "inline-flex items-center justify-center gap-1 rounded-full border border-[rgba(251,191,36,0.22)] bg-[linear-gradient(135deg,#fff8e7_0%,#fff0d2_100%)] px-3 py-2 text-xs font-semibold text-[#9a6700] shadow-[0_8px_18px_rgba(251,191,36,0.12)] transition duration-200 hover:bg-[linear-gradient(135deg,#fff4d6_0%,#ffebc2_100%)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
 const requiredMarkClass = "ml-1 text-rose-500";
-const errorTextClass = "mt-1 block text-[11px] font-medium text-rose-600";
-const formSectionClass = "grid gap-2 md:grid-cols-2 xl:grid-cols-3";
+const errorTextClass = "mt-1 block text-[10px] font-medium text-rose-600 sm:text-[11px]";
+const formSectionClass = "grid gap-2 grid-cols-1 sm:gap-3 md:grid-cols-2 xl:grid-cols-3";
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
@@ -2416,7 +2417,7 @@ export default function AdminPage() {
       activeTab={activeTab}
       onChangeTab={handleTabChange}
       headerActions={
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
           {currentUser?.isSuperAdmin && activeTab === "admin-access" ? (
             <button
               type="button"
@@ -2451,7 +2452,7 @@ export default function AdminPage() {
               ) : null}
             </button>
             {showRequestNotifications ? (
-              <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[22rem] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
+              <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[min(22rem,calc(100vw-1.25rem))] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
@@ -2506,7 +2507,7 @@ export default function AdminPage() {
       ) : null}
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={`admin-skeleton-${index}`} className="h-28 rounded-[1.5rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-[0_16px_28px_rgba(148,163,184,0.1)]" />
           ))}
@@ -2516,8 +2517,8 @@ export default function AdminPage() {
       {!loading && activeTab === "overview" ? (
         <div className="space-y-4">
           <article className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,#ffffff_0%,#f5faff_100%)] p-5 shadow-[0_24px_48px_rgba(148,163,184,0.12)]">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="max-w-2xl min-w-0">
                 <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
                   Home Page Background
                 </div>
@@ -2562,7 +2563,7 @@ export default function AdminPage() {
                 )}
               </div>
 
-              <div className="w-full max-w-xl">
+              <div className="w-full max-w-full xl:max-w-xl">
                 <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)]">
                   {homeHeroPreviewUrl ? (
                     <div
@@ -2582,7 +2583,7 @@ export default function AdminPage() {
             </div>
           </article>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {stats.map((item) => {
               const Icon = item.icon;
               return (
@@ -2621,7 +2622,7 @@ export default function AdminPage() {
           </div>
 
           <article className="rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-white p-5 shadow-[0_20px_40px_rgba(148,163,184,0.1)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                   College Edit Status
@@ -2647,7 +2648,7 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="overflow-hidden rounded-[1.25rem] border border-emerald-200">
                 <div className="flex items-center justify-between gap-3 border-b border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] px-4 py-3">
                   <p className="text-sm font-bold text-emerald-900">Edited Colleges</p>
@@ -3921,7 +3922,7 @@ export default function AdminPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleCollegeCards.map((college) => {
               const range = formatFeeRange(college.feesStructure);
               const isExpanded = expandedCollegeIds.includes(college._id);
@@ -4604,7 +4605,7 @@ export default function AdminPage() {
               No courses have been added yet.
             </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {adminState.courses.map((course) => (
                 <article key={course._id} className="rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
                   <h3 className="text-base font-bold text-slate-900">
@@ -5168,126 +5169,178 @@ export default function AdminPage() {
 
       {showSavedCourseList ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onClick={() => setShowSavedCourseList(false)}>
-          <div className="w-full max-w-[96vw] rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <h3 className="text-base font-bold text-slate-900">Saved Course List</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSavedCourseList(false)}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
-                >
-                  Done
-                </button>
-              </div>
+          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+              <h3 className="text-base font-bold text-slate-900 md:text-lg">Saved Course List</h3>
+              <button
+                type="button"
+                onClick={() => setShowSavedCourseList(false)}
+                className="w-full rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:w-auto"
+              >
+                Done
+              </button>
             </div>
 
-            <div className="max-h-[75vh] overflow-auto p-5">
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                <table className="min-w-[2200px] table-fixed text-left text-[12px] text-slate-700 sm:text-[13px]">
-                  <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                    <tr>
-                      <th className="w-[260px] px-3 py-2.5">Course</th>
-                      <th className="w-[90px] px-3 py-2.5">Degree</th>
-                      <th className="w-[140px] px-3 py-2.5">Stream</th>
-                      <th className="w-[110px] px-3 py-2.5">Duration</th>
-                      <th className="w-[220px] px-3 py-2.5">Qualification</th>
-                      <th className="w-[130px] px-3 py-2.5">Semester Fee</th>
-                      <th className="w-[130px] px-3 py-2.5">Total Fee</th>
-                      <th className="w-[220px] px-3 py-2.5">Cutoff</th>
-                      <th className="w-[100px] px-3 py-2.5">Intake</th>
-                      <th className="w-[140px] px-3 py-2.5">Application Fee</th>
-                      <th className="w-[360px] px-3 py-2.5">Entrance Exam</th>
-                      <th className="w-[220px] px-3 py-2.5">University</th>
-                      <th className="w-[220px] px-3 py-2.5">Lateral Entry</th>
-                      <th className="w-[280px] px-3 py-2.5">Description</th>
-                      <th className="w-[150px] px-3 py-2.5 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {embeddedCourses.map((item, index) => (
-                      <tr key={`${item.id || item.courseType}-${index}`} className="border-t border-slate-100 align-top">
-                        <td className="px-3 py-3 align-top">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+              <ResponsiveTableWrapper
+                columns={[
+                  {
+                    key: "course",
+                    label: "Course",
+                    render: (_, row) => {
+                      const item = row as EmbeddedCourseDraft;
+                      return (
+                        <div>
                           <p className="font-semibold text-slate-900">
                             {[item.courseType, item.specialization].filter(Boolean).join(" - ") || "Course"}
                           </p>
                           <p className="mt-1 text-[11px] text-slate-500">{item.mode || "-"}</p>
-                        </td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.degreeType || "-"}</td>
-                        <td className="px-3 py-3 align-top">{item.stream || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.duration || "-"}</td>
-                        <td className="px-3 py-3 align-top">{formatQualificationLabel(item.minimumQualification || "") || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{formatCompactIndianCurrency(item.semesterFees)}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap font-semibold text-slate-900">{formatCompactIndianCurrency(item.totalFees)}</td>
-                        <td className="px-3 py-3 align-top">
-                          {normalizeCategoryCutoffs(item.cutoffByCategory).length > 0 ? (
-                            <div className="space-y-1 text-[11px] text-slate-600">
-                              {normalizeCategoryCutoffs(item.cutoffByCategory).map((cutoffItem) => (
-                                <p key={`${item.id || item.courseType}-${cutoffItem.category}`}>
-                                  <span className="font-semibold text-slate-800">{cutoffItem.category}</span>: {cutoffItem.cutoff}
-                                </p>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: "degreeType",
+                    label: "Degree",
+                    className: "whitespace-nowrap",
+                  },
+                  {
+                    key: "stream",
+                    label: "Stream",
+                  },
+                  {
+                    key: "duration",
+                    label: "Duration",
+                    className: "whitespace-nowrap",
+                  },
+                  {
+                    key: "minimumQualification",
+                    label: "Qualification",
+                    render: (value) => formatQualificationLabel(String(value || "")) || "-",
+                  },
+                  {
+                    key: "semesterFees",
+                    label: "Semester Fee",
+                    className: "whitespace-nowrap",
+                    render: (value) => formatCompactIndianCurrency(value),
+                  },
+                  {
+                    key: "totalFees",
+                    label: "Total Fee",
+                    className: "whitespace-nowrap font-semibold text-slate-900",
+                    render: (value) => formatCompactIndianCurrency(value),
+                  },
+                  {
+                    key: "cutoff",
+                    label: "Cutoff",
+                    render: (_, row) => {
+                      const item = row as EmbeddedCourseDraft;
+                      const categoryCutoffs = normalizeCategoryCutoffs(item.cutoffByCategory);
+                      if (categoryCutoffs.length > 0) {
+                        return (
+                          <div className="space-y-1 text-[11px] text-slate-600">
+                            {categoryCutoffs.map((cutoffItem) => (
+                              <p key={cutoffItem.category}>
+                                <span className="font-semibold text-slate-800">{cutoffItem.category}</span>: {cutoffItem.cutoff}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return item.cutoff || "-";
+                    },
+                  },
+                  {
+                    key: "intake",
+                    label: "Intake",
+                    className: "whitespace-nowrap",
+                  },
+                  {
+                    key: "applicationFee",
+                    label: "Application Fee",
+                    className: "whitespace-nowrap",
+                    render: (value) => formatCompactIndianCurrency(value),
+                  },
+                  {
+                    key: "entranceExams",
+                    label: "Entrance Exam",
+                    render: (_, row) => {
+                      const item = row as EmbeddedCourseDraft;
+                      if (item.entranceExams && item.entranceExams.some((exam) => Object.values(exam).some(Boolean))) {
+                        return (
+                          <div className="space-y-2">
+                            {item.entranceExams
+                              .filter((exam) => Object.values(exam).some(Boolean))
+                              .map((exam, idx) => (
+                                <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
+                                  <p className="font-semibold text-slate-800">{exam.examName || `Exam ${idx + 1}`}</p>
+                                  <p>Cutoff: {exam.cutoffScoreOrRank || "-"}</p>
+                                  <p>Weightage: {exam.weightage || "-"}</p>
+                                </div>
                               ))}
-                            </div>
-                          ) : (
-                            item.cutoff || "-"
-                          )}
-                        </td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{item.intake || "-"}</td>
-                        <td className="px-3 py-3 align-top whitespace-nowrap">{formatCompactIndianCurrency(item.applicationFee)}</td>
-                        <td className="px-3 py-3 align-top">
-                          {item.entranceExams.some((exam) => Object.values(exam).some(Boolean)) ? (
-                            <div className="space-y-2">
-                              {item.entranceExams
-                                .filter((exam) => Object.values(exam).some(Boolean))
-                                .map((exam, examIndex) => (
-                                  <div key={`${item.id || item.courseType}-exam-${examIndex}`} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
-                                    <p className="font-semibold text-slate-800">{exam.examName || `Exam ${examIndex + 1}`}</p>
-                                    <p>Cutoff: {exam.cutoffScoreOrRank || "-"}</p>
-                                    <p>Weightage: {exam.weightage || "-"}</p>
-                                    <p>Paper: {exam.paperOrSyllabus || "-"}</p>
-                                    <p>Notes: {exam.preparationNotes || "-"}</p>
-                                  </div>
-                                ))}
-                            </div>
-                          ) : (
-                            "Not needed"
-                          )}
-                        </td>
-                        <td className="px-3 py-3 align-top">{item.university || "-"}</td>
-                        <td className="px-3 py-3 align-top">
+                          </div>
+                        );
+                      }
+                      return "Not needed";
+                    },
+                  },
+                  {
+                    key: "university",
+                    label: "University",
+                  },
+                  {
+                    key: "actions",
+                    label: "Action",
+                    render: (_, row, index) => {
+                      const item = row as EmbeddedCourseDraft & { _id?: string };
+                      return (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowSavedCourseList(false);
+                              editEmbeddedCourse(index);
+                            }}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEmbeddedCourses((prev) => prev.filter((_, courseIndex) => courseIndex !== index))
+                            }
+                            className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    },
+                  },
+                ]}
+                data={embeddedCourses}
+                keyExtractor={(_, idx) => `course-${idx}`}
+                expandedRowContent={(row) => {
+                  const item = row as EmbeddedCourseDraft;
+                  return (
+                    <div className="grid gap-3 text-sm">
+                      <div>
+                        <p className="font-semibold text-slate-700">Lateral Entry:</p>
+                        <p className="mt-1 text-slate-600">
                           {item.lateralEntryAvailable
                             ? `Available${item.lateralEntryDetails ? ` - ${item.lateralEntryDetails}` : ""}`
                             : "Not available"}
-                        </td>
-                        <td className="px-3 py-3 align-top whitespace-normal break-words">{item.description || "-"}</td>
-                        <td className="px-3 py-3 align-top">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowSavedCourseList(false);
-                                editEmbeddedCourse(index);
-                              }}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEmbeddedCourses((prev) => prev.filter((_, courseIndex) => courseIndex !== index))
-                              }
-                              className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-700">Description:</p>
+                        <p className="mt-1 break-words text-slate-600">{item.description || "-"}</p>
+                      </div>
+                    </div>
+                  );
+                }}
+              />
             </div>
           </div>
         </div>
