@@ -1,6 +1,10 @@
-const toNumericValue = (value: string | number | null | undefined) => {
+const toNumericValue = (value: unknown) => {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : Number.NaN;
+  }
+
+  if (typeof value !== "string" && value !== null && value !== undefined) {
+    return Number.NaN;
   }
 
   const normalized = String(value ?? "")
@@ -15,7 +19,7 @@ const toNumericValue = (value: string | number | null | undefined) => {
 const trimTrailingZeros = (value: string) => value.replace(/\.0+$|(\.\d*[1-9])0+$/, "$1");
 
 export const formatCompactIndianCurrency = (
-  value: string | number | null | undefined,
+  value: unknown,
   prefix = "Rs. ",
 ) => {
   const numeric = toNumericValue(value);
@@ -36,8 +40,8 @@ export const formatCompactIndianCurrency = (
 };
 
 export const formatCompactIndianCurrencyRange = (
-  min: string | number | null | undefined,
-  max: string | number | null | undefined,
+  min: unknown,
+  max: unknown,
   prefix = "Rs. ",
 ) => {
   const start = formatCompactIndianCurrency(min, prefix);
