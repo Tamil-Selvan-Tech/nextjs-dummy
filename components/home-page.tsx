@@ -1332,10 +1332,10 @@ export function HomePage({
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.14)] blur-3xl" />
 
                   <div className="relative space-y-1">
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,33.75rem)] lg:items-stretch lg:gap-6">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-4">
                       {/* Hero introduction */}
-                      <div className="flex h-full flex-col justify-start space-y-4 lg:space-y-3 lg:pl-1 xl:pl-2">
-                        <div className="max-w-[38rem] py-2 px-1 text-center lg:px-0 lg:text-left">
+                      <div className="flex h-full flex-col justify-center space-y-4 lg:space-y-3 lg:pr-2">
+                        <div className="max-w-full py-2 px-1 text-center lg:px-0 lg:text-left">
                           <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
                             Find Your{" "}
                             <span className="text-[#2563eb]">
@@ -1343,22 +1343,29 @@ export function HomePage({
                             </span>{" "}
                             Smartly.
                           </h1>
-                          <p className="mx-auto mt-2.5 max-w-[31rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
-                            Discover colleges, courses, exams, and cities from one premium search flow built to help you shortlist faster and decide with more confidence.
+
+                          <p className="mx-auto mt-2.5 max-w-[34rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
+                            Discover colleges, courses, exams, and cities from one premium
+                            search flow built to help you shortlist faster and decide with
+                            more confidence.
                           </p>
                         </div>
 
                         {/* Hero feature spotlight */}
-                        <div className="relative mx-auto w-full max-w-[100%] px-2 sm:max-w-[20rem] lg:mx-0 lg:max-w-[30rem] lg:px-0">
-                          <div key={`${activeFeature.title}-${activeFeatureCard}`} className="feature-pop-card absolute inset-0">
+                        <div className="relative mx-auto w-full max-w-full px-2 lg:mx-0 lg:px-0">
+                          <div
+                            key={`${activeFeature.title}-${activeFeatureCard}`}
+                            className="feature-pop-card absolute inset-0"
+                          >
                             {renderFeatureCard(activeFeature, "hero")}
                           </div>
+
                           <div className="min-h-[10.9rem] sm:min-h-[8.15rem]" />
                         </div>
                       </div>
 
                       {/* Hero cutoff banner */}
-                      <div className="w-full lg:ml-auto lg:max-w-[33.75rem]">
+                      <div className="w-full lg:max-w-full">
                         {renderHeroCutoffBanner()}
                       </div>
                     </div>
@@ -1386,8 +1393,7 @@ export function HomePage({
         items-stretch
         gap-2
         md:gap-0
-      "
-                        >
+      " >
                           {/* Course Search */}
                           <div
                             className="

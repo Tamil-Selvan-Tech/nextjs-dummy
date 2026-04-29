@@ -77,6 +77,7 @@ type PerformanceMetric = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+// Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -104,6 +105,7 @@ export default function FindPage() {
   const [agriculturePhysicsMarks, setAgriculturePhysicsMarks] = useState("");
   const [agricultureChemistryMarks, setAgricultureChemistryMarks] = useState("");
 
+  // Form field visibility by selected degree and level.
   const showEngineeringFields =
     selectedDegree === "Engineering" && (selectedLevel === "11" || selectedLevel === "12");
   const showMedicalFields = selectedDegree === "Medical" && selectedLevel === "12";
@@ -116,6 +118,7 @@ export default function FindPage() {
 
   const isBlank = (value: string) => value.trim().length === 0;
 
+  // Resets all cutoff form academic inputs when degree/level path changes.
   const resetAcademicFields = () => {
     setSelectedCourse("");
     setPhysicsMarks("");
@@ -137,6 +140,7 @@ export default function FindPage() {
     setAgricultureChemistryMarks("");
   };
 
+  // Degree-specific cutoff calculators used by the cutoff form.
   const engineeringCutoff = useMemo(() => {
     if (!showEngineeringFields) return "";
     const physics = Number(physicsMarks);
@@ -220,6 +224,7 @@ export default function FindPage() {
     return (cutoff * 2).toFixed(2);
   }, [agricultureCutoff100, showAgricultureFields]);
 
+  // Final cutoff value pushed to the cutoff page query string.
   const finalCutoffValue = useMemo(() => {
     if (showEngineeringFields) return engineeringCutoff;
     if (showMedicalFields) return neetMarks;
@@ -246,6 +251,7 @@ export default function FindPage() {
     showParamedicalFields,
   ]);
 
+  // Live preview panel config for the current cutoff form path.
   const chartConfig = useMemo(() => {
     if (showEngineeringFields) {
       return {
