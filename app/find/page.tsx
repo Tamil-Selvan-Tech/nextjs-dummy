@@ -76,7 +76,6 @@ type PerformanceMetric = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const router = useRouter();
@@ -115,6 +114,7 @@ export default function FindPage() {
   const showAgricultureFields = selectedDegree === "Agriculture" && (selectedLevel === "11" || selectedLevel === "12");
   const showLawClatFields = showLawFields && selectedAdmissionType === "CLAT";
   const showLawMarksFields = showLawFields && selectedAdmissionType === "11th/12th Mark";
+  const showCategoryField = selectedLevel === "11" || selectedLevel === "12";
 
   const isBlank = (value: string) => value.trim().length === 0;
 
@@ -465,7 +465,7 @@ export default function FindPage() {
     } else if (phone.length !== 10) {
       errors.phone = "Enter a valid 10 digit mobile number";
     }
-    if (isBlank(selectedCategory)) errors.category = "This field is required";
+    if (showCategoryField && isBlank(selectedCategory)) errors.category = "This field is required";
     if (isBlank(selectedDegree)) errors.degree = "This field is required";
 
     if (showEngineeringFields || showMedicalFields || showLawFields) {
@@ -537,6 +537,7 @@ export default function FindPage() {
     selectedCategory,
     selectedCourse,
     selectedDegree,
+    showCategoryField,
     showAgricultureFields,
     showBArchFields,
     showEngineeringFields,
@@ -548,7 +549,6 @@ export default function FindPage() {
   ]);
 
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
-
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
@@ -659,6 +659,9 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       const value = event.target.value;
                       setSelectedLevel(value);
                       if (!["11", "12"].includes(value)) {
+                        setSelectedCategory("");
+                      }
+                      if (!["11", "12"].includes(value)) {
                         resetAcademicFields();
                       }
                       if (value !== "12" && selectedDegree === "Medical") {
@@ -676,22 +679,24 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   </select>
                 </FieldShell>
 
-                <FieldShell icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
-                  <select
-                    value={selectedCategory}
-                    onChange={(event) => setSelectedCategory(event.target.value)}
-                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
-                    aria-invalid={Boolean(hasSubmitted && validationErrors.category)}
-                    required
-                  >
-                    <option value="">Select your category</option>
-                    {categoryOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </FieldShell>
+                {showCategoryField ? (
+                  <FieldShell icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
+                    <select
+                      value={selectedCategory}
+                      onChange={(event) => setSelectedCategory(event.target.value)}
+                      className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.category)}
+                      required
+                    >
+                      <option value="">Select your category</option>
+                      {categoryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldShell>
+                ) : null}
 
                 <div
                   className={

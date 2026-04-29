@@ -651,19 +651,19 @@ export function CutoffClient({
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
         {/* Header Welcome Section */}
         <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 shadow-[0_24px_80px_rgba(59,130,246,0.12)] backdrop-blur-xl">
-          <div className="grid gap-8 px-5 py-6 sm:px-7 sm:py-7 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 xl:px-10 xl:py-8">
-            <div className="flex flex-col gap-6">
+          <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 xl:px-10 xl:py-6">
+            <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.28em] text-sky-600">
                     Premium Cutoff Intelligence
                   </p>
 
-                  <h1 className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950 sm:text-[2.5rem] lg:text-[3rem]">
+                  <h1 className="mt-2 text-[2rem] font-black tracking-[-0.05em] text-slate-950 sm:text-[2.2rem] lg:text-[2.55rem]">
                     Hello, {safeStudentName}
                   </h1>
 
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                  <p className="mt-1.5 max-w-2xl text-[13px] leading-6 text-slate-600 sm:text-[0.94rem]">
                     {isJuniorLevel
                       ? "Let’s analyze your cutoff and plan your future with a cleaner view of school performance, strengths, and early college prediction."
                       : "Let’s analyze your cutoff and plan your future with entrance-focused clarity, eligibility direction, and smarter college prediction."}
@@ -671,41 +671,41 @@ export function CutoffClient({
                 </div>
 
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                  <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                     {topStandardLabel}
                     <ChevronDown className="size-4 text-slate-500" />
                   </div>
 
-                  <div className="inline-flex size-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#60a5fa)] text-white shadow-[0_16px_30px_rgba(37,99,235,0.26)]">
-                    <UserCircle2 className="size-7" />
+                  <div className="inline-flex size-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#60a5fa)] text-white shadow-[0_16px_30px_rgba(37,99,235,0.26)]">
+                    <UserCircle2 className="size-6" />
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-sky-100 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(255,255,255,0.96))] p-4 shadow-[0_14px_40px_rgba(14,165,233,0.08)]">
+                <div className="rounded-[1.4rem] border border-sky-100 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(14,165,233,0.08)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">
                     Current Standard
                   </p>
-                  <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
+                  <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
                     {topStandardLabel}
                   </p>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.95),rgba(255,255,255,0.96))] p-4 shadow-[0_14px_40px_rgba(99,102,241,0.08)]">
+                <div className="rounded-[1.4rem] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(99,102,241,0.08)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">
                     {isJuniorLevel ? "Performance Band" : "Selected Degree"}
                   </p>
-                  <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
+                  <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
                     {isJuniorLevel ? performanceLevel : selectedDegree || "Engineering"}
                   </p>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.95),rgba(255,255,255,0.96))] p-4 shadow-[0_14px_40px_rgba(16,185,129,0.08)]">
+                <div className="rounded-[1.4rem] border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(16,185,129,0.08)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">
                     {isJuniorLevel ? "Analysis Score" : "Cutoff / Score"}
                   </p>
-                  <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
+                  <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
                     {isJuniorLevel
                       ? `${visibleStandardsAverage}%`
                       : enteredCutoff || "Pending"}
@@ -716,49 +716,53 @@ export function CutoffClient({
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.28)] transition hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.28)] transition hover:-translate-y-0.5"
                 >
                   <Rocket className="size-4" />
                   Take Mock Test
                 </button>
 
-                <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
+                <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700">
                   Full-width career analysis view
                 </span>
               </div>
             </div>
 
-            <div className="relative flex min-h-[300px] items-end justify-center overflow-hidden rounded-[2rem] border border-sky-100 bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:min-h-[360px]">
-              <div className="absolute inset-x-8 top-8 h-28 rounded-full bg-[radial-gradient(circle,rgba(96,165,250,0.28),transparent_72%)] blur-3xl" />
+            <div className="relative flex min-h-[200px] items-center justify-center overflow-hidden rounded-[2rem] border border-sky-100 bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_100%)] px-3.5 pb-3 pt-18 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:min-h-[230px] sm:pt-20">
+              <div className="absolute inset-x-8 top-5 h-20 rounded-full bg-[radial-gradient(circle,rgba(96,165,250,0.28),transparent_72%)] blur-3xl" />
 
-              <div className="absolute left-6 top-6 rounded-[1.2rem] border border-white/80 bg-white/90 px-4 py-3 shadow-[0_16px_32px_rgba(37,99,235,0.12)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Future Snapshot
-                </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">
-                  Smarter analysis. Clearer choices.
-                </p>
+              <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
+                <div className="rounded-[1.1rem] border border-white/80 bg-white/92 px-3.5 py-2.5 shadow-[0_16px_32px_rgba(14,165,233,0.12)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
+                    {isJuniorLevel ? "Target Readiness" : "Prediction Strength"}
+                  </p>
+                  <p className="mt-1 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
+                    {isJuniorLevel
+                      ? `${Math.max(35, visibleStandardsAverage)}%`
+                      : `${Math.max(48, predictorPercentage)}%`}
+                  </p>
+                </div>
+
+                <div className="rounded-[1.1rem] border border-white/80 bg-white/92 px-3.5 py-2.5 shadow-[0_16px_32px_rgba(37,99,235,0.12)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Future Snapshot
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-slate-900">
+                    Smarter analysis. Clearer choices.
+                  </p>
+                </div>
               </div>
 
-              <div className="absolute bottom-6 right-6 rounded-[1.2rem] border border-white/80 bg-white/90 px-4 py-3 shadow-[0_16px_32px_rgba(14,165,233,0.12)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
-                  {isJuniorLevel ? "Target Readiness" : "Prediction Strength"}
-                </p>
-                <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
-                  {isJuniorLevel
-                    ? `${Math.max(35, visibleStandardsAverage)}%`
-                    : `${Math.max(48, predictorPercentage)}%`}
-                </p>
+              <div className="relative z-10 h-[210px] w-[164px] overflow-hidden rounded-[1.7rem] sm:h-[228px] sm:w-[178px] lg:h-[214px] lg:w-[168px]">
+                <Image
+                  src="/cutoff-page-topImage.png"
+                  alt="Student future planning illustration"
+                  fill
+                  priority
+                  sizes="178px"
+                  className="object-cover object-[48%_28%] scale-[1.08]"
+                />
               </div>
-
-              <Image
-                src="/cutoff-page-topImage.png"
-                alt="Student future planning illustration"
-                width={320}
-                height={320}
-                priority
-                className="relative z-10 h-auto w-full max-w-[250px] object-contain sm:max-w-[290px] lg:max-w-[270px]"
-              />
             </div>
           </div>
         </section>
@@ -825,7 +829,7 @@ export function CutoffClient({
                             key={`${standard.id}-${subject.key}`}
                             className="flex items-center justify-between gap-1 rounded-[0.9rem] border border-slate-100 bg-white px-2 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.03)]"
                           >
-                            <div className="flex min-w-0 items-center gap-1.5">
+                            <div className="flex min-w-0 items-center gap-2">
                               <div
                                 className={`inline-flex size-8 items-center justify-center rounded-lg ${subject.soft}`}
                               >
@@ -834,7 +838,7 @@ export function CutoffClient({
                                 />
                               </div>
 
-                              <span className="truncate text-[11px] font-semibold text-slate-800">
+                              <span className="truncate text-[13px] font-bold text-slate-800 sm:text-[14px]">
                                 {subject.label}
                               </span>
                             </div>
@@ -850,7 +854,7 @@ export function CutoffClient({
                                   event.target.value
                                 )
                               }
-                              className="h-8 w-12 rounded-lg border border-slate-200 bg-slate-50 px-1 text-center text-[11px] font-bold text-slate-900 outline-none transition focus:border-sky-300 focus:bg-white"
+                              className="h-9 w-14 rounded-lg border border-slate-200 bg-slate-50 px-1 text-center text-[13px] font-bold text-slate-900 outline-none transition focus:border-sky-300 focus:bg-white"
                               aria-label={`${standard.label} ${subject.label} marks`}
                             />
                           </div>
@@ -873,9 +877,9 @@ export function CutoffClient({
               </div>
             </section>
 
-            {/* Performance Analysis + Strength Section */}
-            <section className="grid gap-5 xl:grid-cols-[1.25fr_0.85fr]">
-              <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
+            {/* Performance Analysis Section - Full Width Row */}
+            <section className="w-full">
+              <article className="w-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
@@ -975,9 +979,11 @@ export function CutoffClient({
                   </div>
                 </div>
               </article>
+            </section>
 
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
-                <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
+            {/* Strength, Weakness & Improvement Section - Separate Row */}
+            <section className="grid items-stretch gap-5 lg:grid-cols-2">
+                <article className="h-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                   <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
                     <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">
                       3
@@ -1066,7 +1072,7 @@ export function CutoffClient({
                   </div>
                 </article>
 
-                <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
+                <article className="h-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                   <div className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
                     <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">4</span>
                     Recommended Group
@@ -1091,8 +1097,7 @@ export function CutoffClient({
                     </div>
                   </div>
                 </article>
-              </div>
-            </section>
+              </section>
           </>
         ) : (
           <>
