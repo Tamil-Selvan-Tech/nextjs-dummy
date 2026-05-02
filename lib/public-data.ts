@@ -191,6 +191,10 @@ type BackendCourse = {
   entranceExams?: Array<{
     examName?: string;
     cutoffScoreOrRank?: string;
+    cutoffByCategory?: Array<{
+      category?: string;
+      cutoff?: string;
+    }>;
     weightage?: string;
     paperOrSyllabus?: string;
     preparationNotes?: string;
@@ -320,6 +324,7 @@ const mapCourses = (records: BackendCourse[]): Course[] =>
         ? item.entranceExams.map((exam) => ({
             examName: String(exam.examName || ""),
             cutoffScoreOrRank: String(exam.cutoffScoreOrRank || ""),
+            cutoffByCategory: mapCutoffByCategory(exam.cutoffByCategory),
             weightage: String(exam.weightage || ""),
             paperOrSyllabus: String(exam.paperOrSyllabus || ""),
             preparationNotes: String(exam.preparationNotes || ""),

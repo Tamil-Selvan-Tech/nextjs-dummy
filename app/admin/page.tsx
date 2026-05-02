@@ -53,7 +53,7 @@ import {
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
-type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
+type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; cutoffByCategory?: CategoryCutoff[]; cutoffCategory?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
 type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
@@ -63,7 +63,7 @@ type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustReset
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
 type SiteSettings = { homeHeroImageUrl?: string; examSchedules?: SavedExamSchedule[] };
 type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
-type CourseExamForm = { examName: string; cutoffScoreOrRank: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
+type CourseExamForm = { examName: string; cutoffScoreOrRank: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
@@ -77,7 +77,7 @@ type CutoffRangeConfig = { max: number; scaleLabel: string; contextLabel: string
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
-const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
+const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", cutoffByCategory: [], cutoffCategory: "OC", cutoffValue: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
 const cutoffCategoryOptions = [
   { value: "OC", label: "OC / General" },
   { value: "BC", label: "BC" },
@@ -193,6 +193,117 @@ const getNextEmbeddedCutoffSelection = (currentCategory: string, cutoffByCategor
     nextCutoffValue: getCutoffValueForCategory(cutoffByCategory, nextCategory),
   };
 };
+const createCourseExamDraft = (exam?: Partial<AdminCourseExam> | null): CourseExamForm => {
+  const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+    exam?.cutoffByCategory,
+    exam?.cutoffScoreOrRank,
+    exam?.cutoffCategory,
+  );
+  const initialCategory = normalizedCutoffs[0]?.category || defaultCutoffCategory;
+
+  return {
+    examName: String(exam?.examName || "").trim(),
+    cutoffScoreOrRank: String(resolvePrimaryCategoryCutoff(normalizedCutoffs, exam?.cutoffScoreOrRank || "") || ""),
+    cutoffByCategory: normalizedCutoffs,
+    cutoffCategory: initialCategory,
+    cutoffValue: getCutoffValueForCategory(normalizedCutoffs, initialCategory),
+    weightage: String(exam?.weightage || "").trim(),
+    paperOrSyllabus: String(exam?.paperOrSyllabus || "").trim(),
+    preparationNotes: String(exam?.preparationNotes || "").trim(),
+  };
+};
+const normalizeCourseExamDraftForSave = (exam: CourseExamForm) => {
+  const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+    exam.cutoffByCategory,
+    exam.cutoffScoreOrRank,
+    exam.cutoffCategory,
+  );
+
+  return {
+    examName: exam.examName.trim(),
+    cutoffScoreOrRank: String(resolvePrimaryCategoryCutoff(normalizedCutoffs, exam.cutoffScoreOrRank) || ""),
+    cutoffByCategory: normalizedCutoffs,
+    weightage: exam.weightage.trim(),
+    paperOrSyllabus: exam.paperOrSyllabus.trim(),
+    preparationNotes: exam.preparationNotes.trim(),
+  };
+};
+const hasCourseExamValues = (exam: CourseExamForm) => {
+  const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
+    exam.cutoffByCategory,
+    exam.cutoffScoreOrRank,
+    exam.cutoffCategory,
+  );
+
+  return [
+    exam.examName,
+    exam.weightage,
+    exam.paperOrSyllabus,
+    exam.preparationNotes,
+    exam.cutoffScoreOrRank,
+    exam.cutoffValue,
+    ...normalizedCutoffs.map((item) => `${item.category}:${item.cutoff}`),
+  ].some((value) => String(value || "").trim());
+};
+const buildCourseExamCutoffState = (
+  exam: CourseExamForm,
+  rangeConfig: CutoffRangeConfig,
+) => {
+  const category = String(exam.cutoffCategory || "").trim().toUpperCase();
+  const cutoffValue = formatCutoffForSave(exam.cutoffValue);
+  if (!category || !cutoffValue || !isValidCutoffValue(cutoffValue)) {
+    return null;
+  }
+  if (!isCutoffWithinRangeConfig(cutoffValue, rangeConfig)) {
+    return null;
+  }
+
+  const normalizedCutoffs = normalizeCategoryCutoffs(exam.cutoffByCategory);
+  const nextCutoffs = normalizeCategoryCutoffs([
+    ...normalizedCutoffs.filter((item) => item.category !== category),
+    { category, cutoff: cutoffValue },
+  ]);
+  const nextCategory = getNextCutoffCategoryValue(category, nextCutoffs);
+
+  return {
+    ...exam,
+    cutoffByCategory: nextCutoffs,
+    cutoffScoreOrRank: String(resolvePrimaryCategoryCutoff(nextCutoffs, cutoffValue) || ""),
+    cutoffCategory: nextCategory,
+    cutoffValue: getCutoffValueForCategory(nextCutoffs, nextCategory),
+  };
+};
+const removeCourseExamCutoffState = (exam: CourseExamForm, category: string): CourseExamForm => {
+  const nextCutoffs = normalizeCategoryCutoffs(exam.cutoffByCategory).filter(
+    (item) => item.category !== category,
+  );
+  const activeCategory = nextCutoffs.some((item) => item.category === exam.cutoffCategory)
+    ? exam.cutoffCategory
+    : getNextCutoffCategoryValue(exam.cutoffCategory, nextCutoffs);
+
+  return {
+    ...exam,
+    cutoffByCategory: nextCutoffs,
+    cutoffScoreOrRank: String(resolvePrimaryCategoryCutoff(nextCutoffs) || ""),
+    cutoffCategory: activeCategory,
+    cutoffValue: getCutoffValueForCategory(nextCutoffs, activeCategory),
+  };
+};
+const syncCourseExamsForStream = (stream: string, exams: CourseExamForm[]) => {
+  const allowedExamNames = getExamScheduleNameOptions(stream);
+  return exams.map((exam) =>
+    !exam.examName || allowedExamNames.includes(exam.examName)
+      ? exam
+      : {
+          ...exam,
+          examName: "",
+          cutoffScoreOrRank: "",
+          cutoffByCategory: [],
+          cutoffCategory: defaultCutoffCategory,
+          cutoffValue: "",
+        },
+  );
+};
 const emptyCourseDetail = (): CourseCollegeDetailForm => ({ semesterFees: "", totalFees: "", cutoff: "", intake: "", applicationFee: "" });
 const createEmptyCourseForm = (university = ""): CourseForm => ({ courseType: "", degreeType: "", stream: "", specialization: "", duration: "", mode: "Full-time", lateralEntryAvailable: false, lateralEntryDetails: "", minimumQualification: "", university, admissionProcess: "", description: "", isTopCourse: false, entranceExamsEnabled: false, entranceExams: [emptyCourseExam()], colleges: [], details: {} });
 const createEmptyEmbeddedCourseDraft = (university = ""): EmbeddedCourseDraft => ({
@@ -234,12 +345,37 @@ const emptyExamScheduleForm: ExamScheduleForm = {
   resultDate: "",
 };
 const examScheduleNameOptions = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
+const examScheduleNameOptionsByStream: Record<string, string[]> = {
+  Engineering: ["JEE Main", "JEE Advanced"],
+  Architecture: ["JEE Main", "JEE Advanced"],
+  Law: ["CLAT"],
+  "Medical / Health": ["NEET"],
+  Agriculture: ["ICAR AIEEA"],
+};
 const normalizeExamScheduleName = (value: string) =>
   String(value || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+const getExamScheduleNameOptions = (stream: string) =>
+  examScheduleNameOptionsByStream[normalizeCourseStream(stream)] || examScheduleNameOptions;
+const resolveExamCutoffRangeConfig = (stream: string, examName: string): CutoffRangeConfig => {
+  const normalizedExamName = normalizeExamScheduleName(examName);
+  if (normalizedExamName === normalizeExamScheduleName("JEE Main")) {
+    return { max: 300, scaleLabel: "out of 300", contextLabel: "JEE Main" };
+  }
+  if (normalizedExamName === normalizeExamScheduleName("JEE Advanced")) {
+    return { max: 360, scaleLabel: "out of 360", contextLabel: "JEE Advanced" };
+  }
+  if (normalizedExamName === normalizeExamScheduleName("CLAT")) {
+    return { max: 120, scaleLabel: "out of 120", contextLabel: "CLAT" };
+  }
+  if (normalizedExamName === normalizeExamScheduleName("NEET")) {
+    return { max: 720, scaleLabel: "out of 720", contextLabel: "NEET" };
+  }
+  return resolveCutoffRangeConfig("", "UG", stream, "12th");
+};
 const normalizeIndianPhoneInput = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
@@ -927,7 +1063,6 @@ export default function AdminPage() {
       ),
     [courseForm.degreeType, courseForm.minimumQualification, courseForm.stream, courseResolvedCourseName],
   );
-
   const canAccess = useCallback(
     (module: string) =>
       Boolean(currentUser?.isSuperAdmin || currentUser?.permissions?.includes(module)),
@@ -1185,13 +1320,7 @@ export default function AdminPage() {
       applicationFee: String(collegeDetail?.applicationFee ?? course.applicationFee ?? ""),
       entranceExams:
         Array.isArray(course.entranceExams) && course.entranceExams.length > 0
-          ? course.entranceExams.map((item) => ({
-              examName: item.examName || "",
-              cutoffScoreOrRank: item.cutoffScoreOrRank || "",
-              weightage: item.weightage || "",
-              paperOrSyllabus: item.paperOrSyllabus || "",
-              preparationNotes: item.preparationNotes || "",
-            }))
+          ? course.entranceExams.map((item) => createCourseExamDraft(item))
           : [emptyCourseExam()],
     };
   };
@@ -1414,17 +1543,8 @@ export default function AdminPage() {
       intake: embeddedCourseForm.intake.trim(),
       applicationFee: embeddedCourseForm.applicationFee.trim(),
       entranceExams: embeddedCourseForm.entranceExams
-        .map((exam) => ({
-          examName: exam.examName.trim(),
-          cutoffScoreOrRank: exam.cutoffScoreOrRank.trim(),
-          weightage: exam.weightage.trim(),
-          paperOrSyllabus: exam.paperOrSyllabus.trim(),
-          preparationNotes: exam.preparationNotes.trim(),
-        }))
-        .filter((exam) =>
-          [exam.examName, exam.cutoffScoreOrRank, exam.weightage, exam.paperOrSyllabus, exam.preparationNotes]
-            .some(Boolean),
-        ),
+        .filter((exam) => hasCourseExamValues(exam))
+        .map((exam) => createCourseExamDraft(normalizeCourseExamDraftForSave(exam))),
     };
 
     setEmbeddedCourses((prev) => {
@@ -1810,10 +1930,9 @@ export default function AdminPage() {
             admissionProcess: courseForm.admissionProcess.trim(),
             description: courseForm.description.trim(),
             isTopCourse: courseForm.isTopCourse,
-            entranceExams: courseForm.entranceExams.filter((item) =>
-              [item.examName, item.cutoffScoreOrRank, item.weightage, item.paperOrSyllabus, item.preparationNotes]
-                .some((value) => String(value || "").trim()),
-            ),
+            entranceExams: courseForm.entranceExams
+              .filter((item) => hasCourseExamValues(item))
+              .map((item) => normalizeCourseExamDraftForSave(item)),
             colleges: selectedCollegeIds,
             college: primaryCollegeId,
             semesterFees: Number(primaryDetails.semesterFees || 0),
@@ -2075,6 +2194,10 @@ export default function AdminPage() {
     const normalizedExamName = examForm.examName.trim();
     if (!normalizedExamName) {
       setStatusText("Exams: Exam name is required");
+      return;
+    }
+    if (!examScheduleNameOptions.includes(normalizedExamName)) {
+      setStatusText("Exams: Select a valid exam name");
       return;
     }
 
@@ -3460,6 +3583,10 @@ export default function AdminPage() {
                                 stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
                                 courseType: "",
                                 specialization: "",
+                                entranceExams: syncCourseExamsForStream(
+                                  streamOptions.includes(prev.stream) ? "" : prev.stream,
+                                  prev.entranceExams,
+                                ),
                               };
                             }
                             const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
@@ -3475,6 +3602,7 @@ export default function AdminPage() {
                                 getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
                               entranceExamsEnabled:
                                 shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                              entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
                             };
                           })
                         }
@@ -3500,6 +3628,7 @@ export default function AdminPage() {
                               stream: event.target.value,
                               courseType: "",
                               specialization: "",
+                              entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
                             }))
                           }
                           required
@@ -3758,34 +3887,250 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-3">
-                        {embeddedCourseForm.entranceExams.map((exam, index) => (
-                          <div key={`embedded-exam-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                            <div className="mb-2 flex items-center justify-between gap-3">
-                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>
-                              {embeddedCourseForm.entranceExams.length > 1 ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEmbeddedCourseForm((prev) => ({
-                                      ...prev,
-                                      entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index),
-                                    }))
-                                  }
-                                  className="text-xs font-semibold text-rose-600"
-                                >
-                                  Remove
-                                </button>
-                              ) : null}
+                        {embeddedCourseForm.entranceExams.map((exam, index) => {
+                          const examOptions = getExamScheduleNameOptions(embeddedCourseForm.stream);
+                          const examRangeConfig = resolveExamCutoffRangeConfig(embeddedCourseForm.stream, exam.examName);
+                          const examRangeParts = getCutoffRangeParts(exam.cutoffValue);
+                          const examCutoffWarning = getCutoffLimitWarning(exam.cutoffValue, examRangeConfig);
+
+                          return (
+                            <div key={`embedded-exam-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>
+                                {embeddedCourseForm.entranceExams.length > 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEmbeddedCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index),
+                                      }))
+                                    }
+                                    className="text-xs font-semibold text-rose-600"
+                                  >
+                                    Remove
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                <label>
+                                  <span className={labelClass}>Exam Name</span>
+                                  <select
+                                    className={inputClass}
+                                    value={exam.examName}
+                                    onChange={(event) =>
+                                      setEmbeddedCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                          examIndex === index
+                                            ? {
+                                                ...item,
+                                                examName: event.target.value,
+                                                cutoffByCategory: [],
+                                                cutoffScoreOrRank: "",
+                                                cutoffCategory: defaultCutoffCategory,
+                                                cutoffValue: "",
+                                              }
+                                            : item,
+                                        ),
+                                      }))
+                                    }
+                                  >
+                                    <option value="">Select exam name</option>
+                                    {examOptions.map((item) => (
+                                      <option key={item} value={item}>
+                                        {item}
+                                      </option>
+                                    ))}
+                                    {exam.examName && !examOptions.includes(exam.examName) ? (
+                                      <option value={exam.examName}>{exam.examName}</option>
+                                    ) : null}
+                                  </select>
+                                </label>
+                                <label>
+                                  <span className={labelClass}>Exam Weightage</span>
+                                  <input className={inputClass} placeholder="Exam weightage" value={exam.weightage} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, weightage: event.target.value } : item) }))} />
+                                </label>
+                                <div className="md:col-span-2 xl:col-span-3">
+                                  <span className={labelClass}>Cutoff By Category</span>
+                                  <div className="grid gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
+                                    <select
+                                      className={inputClass}
+                                      value={exam.cutoffCategory}
+                                      onChange={(event) =>
+                                        setEmbeddedCourseForm((prev) => ({
+                                          ...prev,
+                                          entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                            examIndex === index
+                                              ? {
+                                                  ...item,
+                                                  cutoffCategory: event.target.value,
+                                                  cutoffValue: getCutoffValueForCategory(item.cutoffByCategory, event.target.value),
+                                                }
+                                              : item,
+                                          ),
+                                        }))
+                                      }
+                                    >
+                                      {cutoffCategoryOptions.map((item) => (
+                                        <option key={item.value} value={item.value}>{item.label}</option>
+                                      ))}
+                                    </select>
+                                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                                      <input
+                                        className={`${inputClass} text-center`}
+                                        value={examRangeParts.start}
+                                        data-cutoff-input-segment="start"
+                                        onChange={(event) =>
+                                          setEmbeddedCourseForm((prev) => ({
+                                            ...prev,
+                                            entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                              examIndex === index
+                                                ? {
+                                                    ...item,
+                                                    cutoffValue: buildCutoffRangeValue(event.target.value, getCutoffRangeParts(item.cutoffValue).end),
+                                                  }
+                                                : item,
+                                            ),
+                                          }))
+                                        }
+                                        onBlur={(event) => {
+                                          const shouldSkipAutoAdvance = shouldSkipEmbeddedCutoffAutoAdvance(event, "start");
+                                          setEmbeddedCourseForm((prev) => ({
+                                            ...prev,
+                                            entranceExams: prev.entranceExams.map((item, examIndex) => {
+                                              if (examIndex !== index) return item;
+                                              const normalizedDraft = {
+                                                ...item,
+                                                cutoffValue: buildCutoffRangeValue(
+                                                  getCutoffRangeParts(item.cutoffValue).start,
+                                                  getCutoffRangeParts(item.cutoffValue).end,
+                                                ),
+                                              };
+                                              if (shouldSkipAutoAdvance) {
+                                                return normalizedDraft;
+                                              }
+                                              return buildCourseExamCutoffState(normalizedDraft, examRangeConfig) ?? normalizedDraft;
+                                            }),
+                                          }));
+                                          setStatusText("");
+                                        }}
+                                        inputMode="decimal"
+                                        maxLength={7}
+                                      />
+                                      <span className="text-base font-semibold text-slate-500">-</span>
+                                      <input
+                                        className={`${inputClass} text-center`}
+                                        value={examRangeParts.end}
+                                        data-cutoff-input-segment="end"
+                                        onChange={(event) =>
+                                          setEmbeddedCourseForm((prev) => ({
+                                            ...prev,
+                                            entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                              examIndex === index
+                                                ? {
+                                                    ...item,
+                                                    cutoffValue: buildCutoffRangeValue(getCutoffRangeParts(item.cutoffValue).start, event.target.value),
+                                                  }
+                                                : item,
+                                            ),
+                                          }))
+                                        }
+                                        onBlur={(event) => {
+                                          const shouldSkipAutoAdvance = shouldSkipEmbeddedCutoffAutoAdvance(event, "end");
+                                          setEmbeddedCourseForm((prev) => ({
+                                            ...prev,
+                                            entranceExams: prev.entranceExams.map((item, examIndex) => {
+                                              if (examIndex !== index) return item;
+                                              const normalizedDraft = {
+                                                ...item,
+                                                cutoffValue: buildCutoffRangeValue(
+                                                  getCutoffRangeParts(item.cutoffValue).start,
+                                                  getCutoffRangeParts(item.cutoffValue).end,
+                                                ),
+                                              };
+                                              if (shouldSkipAutoAdvance) {
+                                                return normalizedDraft;
+                                              }
+                                              return buildCourseExamCutoffState(normalizedDraft, examRangeConfig) ?? normalizedDraft;
+                                            }),
+                                          }));
+                                          setStatusText("");
+                                        }}
+                                        inputMode="decimal"
+                                        maxLength={7}
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      data-cutoff-action="add"
+                                      onClick={() => {
+                                        if (!exam.cutoffCategory) {
+                                          setStatusText("Select an entrance exam cutoff category");
+                                          return;
+                                        }
+                                        if (!formatCutoffForSave(exam.cutoffValue)) {
+                                          setStatusText(cutoffValidationMessage);
+                                          return;
+                                        }
+                                        if (!isCutoffWithinRangeConfig(exam.cutoffValue, examRangeConfig)) {
+                                          setStatusText(getCutoffValidationMessageForConfig(examRangeConfig));
+                                          return;
+                                        }
+                                        setEmbeddedCourseForm((prev) => ({
+                                          ...prev,
+                                          entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                            examIndex === index
+                                              ? buildCourseExamCutoffState(item, examRangeConfig) ?? item
+                                              : item,
+                                          ),
+                                        }));
+                                        setStatusText("");
+                                      }}
+                                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                    >
+                                      Add Cutoff
+                                    </button>
+                                  </div>
+                                  <p className="mt-2 text-[11px] text-slate-500">
+                                    {getCutoffRangeHelperText(examRangeConfig)}
+                                  </p>
+                                  {examCutoffWarning ? (
+                                    <p className="mt-1 text-[11px] font-medium text-rose-600">{examCutoffWarning}</p>
+                                  ) : null}
+                                  {normalizeCategoryCutoffs(exam.cutoffByCategory).length > 0 ? (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {normalizeCategoryCutoffs(exam.cutoffByCategory).map((item) => (
+                                        <div key={`${index}-${item.category}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                                          <span>{item.category}: {item.cutoff}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setEmbeddedCourseForm((prev) => ({
+                                                ...prev,
+                                                entranceExams: prev.entranceExams.map((examItem, examIndex) =>
+                                                  examIndex === index
+                                                    ? removeCourseExamCutoffState(examItem, String(item.category || ""))
+                                                    : examItem,
+                                                ),
+                                              }))
+                                            }
+                                            className="text-rose-600 transition hover:text-rose-700"
+                                            aria-label={`Remove ${item.category} cutoff`}
+                                          >
+                                            <Trash2 className="size-3.5" />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <input className={`${inputClass} md:col-span-2 xl:col-span-3`} placeholder="Specified paper / syllabus" value={exam.paperOrSyllabus} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, paperOrSyllabus: event.target.value } : item) }))} />
+                                <textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} placeholder="Preparation notes" value={exam.preparationNotes} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, preparationNotes: event.target.value } : item) }))} />
+                              </div>
                             </div>
-                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                              <input className={inputClass} placeholder="Exam name" value={exam.examName} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, examName: event.target.value } : item) }))} />
-                              <input className={inputClass} placeholder="Cutoff score / rank" value={exam.cutoffScoreOrRank} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, cutoffScoreOrRank: event.target.value } : item) }))} />
-                              <input className={inputClass} placeholder="Exam weightage" value={exam.weightage} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, weightage: event.target.value } : item) }))} />
-                              <input className={`${inputClass} md:col-span-2 xl:col-span-3`} placeholder="Specified paper / syllabus" value={exam.paperOrSyllabus} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, paperOrSyllabus: event.target.value } : item) }))} />
-                              <textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} placeholder="Preparation notes" value={exam.preparationNotes} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, preparationNotes: event.target.value } : item) }))} />
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (
@@ -4152,6 +4497,10 @@ export default function AdminPage() {
                               stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
                               courseType: "",
                               specialization: "",
+                              entranceExams: syncCourseExamsForStream(
+                                streamOptions.includes(prev.stream) ? "" : prev.stream,
+                                prev.entranceExams,
+                              ),
                             };
                           }
                           const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
@@ -4167,6 +4516,7 @@ export default function AdminPage() {
                               getDefaultMinimumQualification(nextCourseType, prev.degreeType, event.target.value) || prev.minimumQualification,
                             entranceExamsEnabled:
                               shouldAutoShowEntranceExams(nextCourseType, prev.degreeType, event.target.value) || prev.entranceExamsEnabled,
+                            entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
                           };
                         })
                       }
@@ -4192,6 +4542,7 @@ export default function AdminPage() {
                             stream: event.target.value,
                             courseType: "",
                             specialization: "",
+                            entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
                           }))
                         }
                         required
@@ -4357,34 +4708,250 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {courseForm.entranceExams.map((exam, index) => (
-                      <div key={`exam-${index}`} className="rounded-2xl border border-slate-200 bg-white p-3">
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>
-                          {courseForm.entranceExams.length > 1 ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCourseForm((prev) => ({
-                                  ...prev,
-                                  entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index),
-                                }))
-                              }
-                              className="text-xs font-semibold text-rose-600"
-                            >
-                              Remove
-                            </button>
-                          ) : null}
+                    {courseForm.entranceExams.map((exam, index) => {
+                      const examOptions = getExamScheduleNameOptions(courseForm.stream);
+                      const examRangeConfig = resolveExamCutoffRangeConfig(courseForm.stream, exam.examName);
+                      const examRangeParts = getCutoffRangeParts(exam.cutoffValue);
+                      const examCutoffWarning = getCutoffLimitWarning(exam.cutoffValue, examRangeConfig);
+
+                      return (
+                        <div key={`exam-${index}`} className="rounded-2xl border border-slate-200 bg-white p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Exam {index + 1}</p>
+                            {courseForm.entranceExams.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCourseForm((prev) => ({
+                                    ...prev,
+                                    entranceExams: prev.entranceExams.filter((_, examIndex) => examIndex !== index),
+                                  }))
+                                }
+                                className="text-xs font-semibold text-rose-600"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                            <label>
+                              <span className={labelClass}>Exam Name</span>
+                              <select
+                                className={inputClass}
+                                value={exam.examName}
+                                onChange={(event) =>
+                                  setCourseForm((prev) => ({
+                                    ...prev,
+                                    entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                      examIndex === index
+                                        ? {
+                                            ...item,
+                                            examName: event.target.value,
+                                            cutoffByCategory: [],
+                                            cutoffScoreOrRank: "",
+                                            cutoffCategory: defaultCutoffCategory,
+                                            cutoffValue: "",
+                                          }
+                                        : item,
+                                    ),
+                                  }))
+                                }
+                              >
+                                <option value="">Select exam name</option>
+                                {examOptions.map((item) => (
+                                  <option key={item} value={item}>
+                                    {item}
+                                  </option>
+                                ))}
+                                {exam.examName && !examOptions.includes(exam.examName) ? (
+                                  <option value={exam.examName}>{exam.examName}</option>
+                                ) : null}
+                              </select>
+                            </label>
+                            <label>
+                              <span className={labelClass}>Exam Weightage</span>
+                              <input className={inputClass} placeholder="Exam weightage" value={exam.weightage} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, weightage: event.target.value } : item) }))} />
+                            </label>
+                            <div className="md:col-span-2 xl:col-span-3">
+                              <span className={labelClass}>Cutoff By Category</span>
+                              <div className="grid gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
+                                <select
+                                  className={inputClass}
+                                  value={exam.cutoffCategory}
+                                  onChange={(event) =>
+                                    setCourseForm((prev) => ({
+                                      ...prev,
+                                      entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                        examIndex === index
+                                          ? {
+                                              ...item,
+                                              cutoffCategory: event.target.value,
+                                              cutoffValue: getCutoffValueForCategory(item.cutoffByCategory, event.target.value),
+                                            }
+                                          : item,
+                                      ),
+                                    }))
+                                  }
+                                >
+                                  {cutoffCategoryOptions.map((item) => (
+                                    <option key={item.value} value={item.value}>{item.label}</option>
+                                  ))}
+                                </select>
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                                  <input
+                                    className={`${inputClass} text-center`}
+                                    value={examRangeParts.start}
+                                    data-cutoff-input-segment="start"
+                                    onChange={(event) =>
+                                      setCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                          examIndex === index
+                                            ? {
+                                                ...item,
+                                                cutoffValue: buildCutoffRangeValue(event.target.value, getCutoffRangeParts(item.cutoffValue).end),
+                                              }
+                                            : item,
+                                        ),
+                                      }))
+                                    }
+                                    onBlur={(event) => {
+                                      const shouldSkipAutoAdvance = shouldSkipEmbeddedCutoffAutoAdvance(event, "start");
+                                      setCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.map((item, examIndex) => {
+                                          if (examIndex !== index) return item;
+                                          const normalizedDraft = {
+                                            ...item,
+                                            cutoffValue: buildCutoffRangeValue(
+                                              getCutoffRangeParts(item.cutoffValue).start,
+                                              getCutoffRangeParts(item.cutoffValue).end,
+                                            ),
+                                          };
+                                          if (shouldSkipAutoAdvance) {
+                                            return normalizedDraft;
+                                          }
+                                          return buildCourseExamCutoffState(normalizedDraft, examRangeConfig) ?? normalizedDraft;
+                                        }),
+                                      }));
+                                      setStatusText("");
+                                    }}
+                                    inputMode="decimal"
+                                    maxLength={7}
+                                  />
+                                  <span className="text-base font-semibold text-slate-500">-</span>
+                                  <input
+                                    className={`${inputClass} text-center`}
+                                    value={examRangeParts.end}
+                                    data-cutoff-input-segment="end"
+                                    onChange={(event) =>
+                                      setCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                          examIndex === index
+                                            ? {
+                                                ...item,
+                                                cutoffValue: buildCutoffRangeValue(getCutoffRangeParts(item.cutoffValue).start, event.target.value),
+                                              }
+                                            : item,
+                                        ),
+                                      }))
+                                    }
+                                    onBlur={(event) => {
+                                      const shouldSkipAutoAdvance = shouldSkipEmbeddedCutoffAutoAdvance(event, "end");
+                                      setCourseForm((prev) => ({
+                                        ...prev,
+                                        entranceExams: prev.entranceExams.map((item, examIndex) => {
+                                          if (examIndex !== index) return item;
+                                          const normalizedDraft = {
+                                            ...item,
+                                            cutoffValue: buildCutoffRangeValue(
+                                              getCutoffRangeParts(item.cutoffValue).start,
+                                              getCutoffRangeParts(item.cutoffValue).end,
+                                            ),
+                                          };
+                                          if (shouldSkipAutoAdvance) {
+                                            return normalizedDraft;
+                                          }
+                                          return buildCourseExamCutoffState(normalizedDraft, examRangeConfig) ?? normalizedDraft;
+                                        }),
+                                      }));
+                                      setStatusText("");
+                                    }}
+                                    inputMode="decimal"
+                                    maxLength={7}
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  data-cutoff-action="add"
+                                  onClick={() => {
+                                    if (!exam.cutoffCategory) {
+                                      setStatusText("Select an entrance exam cutoff category");
+                                      return;
+                                    }
+                                    if (!formatCutoffForSave(exam.cutoffValue)) {
+                                      setStatusText(cutoffValidationMessage);
+                                      return;
+                                    }
+                                    if (!isCutoffWithinRangeConfig(exam.cutoffValue, examRangeConfig)) {
+                                      setStatusText(getCutoffValidationMessageForConfig(examRangeConfig));
+                                      return;
+                                    }
+                                    setCourseForm((prev) => ({
+                                      ...prev,
+                                      entranceExams: prev.entranceExams.map((item, examIndex) =>
+                                        examIndex === index
+                                          ? buildCourseExamCutoffState(item, examRangeConfig) ?? item
+                                          : item,
+                                      ),
+                                    }));
+                                    setStatusText("");
+                                  }}
+                                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                >
+                                  Add Cutoff
+                                </button>
+                              </div>
+                              <p className="mt-2 text-[11px] text-slate-500">
+                                {getCutoffRangeHelperText(examRangeConfig)}
+                              </p>
+                              {examCutoffWarning ? (
+                                <p className="mt-1 text-[11px] font-medium text-rose-600">{examCutoffWarning}</p>
+                              ) : null}
+                              {normalizeCategoryCutoffs(exam.cutoffByCategory).length > 0 ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {normalizeCategoryCutoffs(exam.cutoffByCategory).map((item) => (
+                                    <div key={`${index}-${item.category}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                                      <span>{item.category}: {item.cutoff}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCourseForm((prev) => ({
+                                            ...prev,
+                                            entranceExams: prev.entranceExams.map((examItem, examIndex) =>
+                                              examIndex === index
+                                                ? removeCourseExamCutoffState(examItem, String(item.category || ""))
+                                                : examItem,
+                                            ),
+                                          }))
+                                        }
+                                        className="text-rose-600 transition hover:text-rose-700"
+                                        aria-label={`Remove ${item.category} cutoff`}
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                            <input className={`${inputClass} md:col-span-2 xl:col-span-3`} placeholder="Specified paper / syllabus" value={exam.paperOrSyllabus} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, paperOrSyllabus: event.target.value } : item) }))} />
+                            <textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} placeholder="Preparation notes" value={exam.preparationNotes} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, preparationNotes: event.target.value } : item) }))} />
+                          </div>
                         </div>
-                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                          <input className={inputClass} placeholder="Exam name" value={exam.examName} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, examName: event.target.value } : item) }))} />
-                          <input className={inputClass} placeholder="Cutoff score / rank" value={exam.cutoffScoreOrRank} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, cutoffScoreOrRank: event.target.value } : item) }))} />
-                          <input className={inputClass} placeholder="Exam weightage" value={exam.weightage} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, weightage: event.target.value } : item) }))} />
-                          <input className={`${inputClass} md:col-span-2 xl:col-span-3`} placeholder="Specified paper / syllabus" value={exam.paperOrSyllabus} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, paperOrSyllabus: event.target.value } : item) }))} />
-                          <textarea className={`${inputClass} md:col-span-2 xl:col-span-3`} rows={2} placeholder="Preparation notes" value={exam.preparationNotes} onChange={(event) => setCourseForm((prev) => ({ ...prev, entranceExams: prev.entranceExams.map((item, examIndex) => examIndex === index ? { ...item, preparationNotes: event.target.value } : item) }))} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               ) : (
@@ -4668,13 +5235,7 @@ export default function AdminPage() {
                             Array.isArray(course.entranceExams) && course.entranceExams.length > 0,
                           entranceExams:
                             Array.isArray(course.entranceExams) && course.entranceExams.length > 0
-                              ? course.entranceExams.map((item) => ({
-                                  examName: item.examName || "",
-                                  cutoffScoreOrRank: item.cutoffScoreOrRank || "",
-                                  weightage: item.weightage || "",
-                                  paperOrSyllabus: item.paperOrSyllabus || "",
-                                  preparationNotes: item.preparationNotes || "",
-                                }))
+                              ? course.entranceExams.map((item) => createCourseExamDraft(item))
                               : [emptyCourseExam()],
                           colleges: collegeIds,
                           details,
@@ -4869,12 +5430,17 @@ export default function AdminPage() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <label className="xl:col-span-3">
+              <label className="md:col-span-2 xl:col-span-2">
                 <span className={labelClass}>Exam Name<span className={requiredMarkClass}>*</span></span>
                 <select
                   className={inputClass}
                   value={examForm.examName}
-                  onChange={(event) => setExamForm((prev) => ({ ...prev, examName: event.target.value }))}
+                  onChange={(event) =>
+                    setExamForm((prev) => ({
+                      ...prev,
+                      examName: event.target.value,
+                    }))
+                  }
                   required
                 >
                   <option value="">Select exam name</option>

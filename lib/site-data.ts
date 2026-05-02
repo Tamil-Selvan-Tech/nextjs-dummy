@@ -77,6 +77,10 @@ export type Course = {
   entranceExams?: Array<{
     examName?: string;
     cutoffScoreOrRank?: string;
+    cutoffByCategory?: Array<{
+      category?: string;
+      cutoff?: string;
+    }>;
     weightage?: string;
     paperOrSyllabus?: string;
     preparationNotes?: string;

@@ -93,11 +93,13 @@ export function Navbar() {
     pathname === "/" ||
     pathname.startsWith("/explore") ||
     pathname.startsWith("/college/") ||
-    pathname.startsWith("/explore/course/");
+    pathname.startsWith("/explore/course/") ||
+    pathname.startsWith("/cutoff");
   const showBackUnderNav =
     pathname?.startsWith("/explore") ||
     pathname?.startsWith("/college/") ||
-    pathname?.startsWith("/compare");
+    pathname?.startsWith("/compare") ||
+    pathname?.startsWith("/cutoff");
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
   const filteredCourses = useMemo(() => {

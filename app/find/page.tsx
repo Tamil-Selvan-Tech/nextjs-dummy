@@ -50,6 +50,12 @@ const lawAdmissionTypeOptions = [
   { value: "CLAT", label: "CLAT" },
 ];
 
+const engineeringAdmissionTypeOptions = [
+  { value: "PCM", label: "PCM" },
+  { value: "JEE Main", label: "JEE Main" },
+  { value: "JEE Advanced", label: "JEE Advanced" },
+];
+
 const trustItems = [
   {
     icon: ShieldCheck,
@@ -76,6 +82,28 @@ type PerformanceMetric = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getBoundedNumberValue = (value: string, max: number) => {
+  if (value === "") return "";
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return "";
+  }
+  return String(clamp(parsed, 0, max));
+};
+
+const validateNumericRange = (
+  errors: Record<string, string>,
+  value: string,
+  errorKey: string,
+  max: number,
+) => {
+  if (value.trim().length === 0) return;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > max) {
+    errors[errorKey] = `Enter a value between 0 and ${max}`;
+  }
+};
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const router = useRouter();
@@ -89,6 +117,7 @@ export default function FindPage() {
   const [physicsMarks, setPhysicsMarks] = useState("");
   const [chemistryMarks, setChemistryMarks] = useState("");
   const [mathsMarks, setMathsMarks] = useState("");
+  const [engineeringEntranceMarks, setEngineeringEntranceMarks] = useState("");
   const [neetMarks, setNeetMarks] = useState("");
   const [boardMarksTotal, setBoardMarksTotal] = useState("");
   const [nataScore, setNataScore] = useState("");
@@ -105,16 +134,28 @@ export default function FindPage() {
   const [agricultureChemistryMarks, setAgricultureChemistryMarks] = useState("");
 
   // Form field visibility by selected degree and level.
+  const isSeniorSecondaryLevel = selectedLevel === "11" || selectedLevel === "12";
+  const isLevel11 = selectedLevel === "11";
   const showEngineeringFields =
-    selectedDegree === "Engineering" && (selectedLevel === "11" || selectedLevel === "12");
+    selectedDegree === "Engineering" && isSeniorSecondaryLevel;
   const showMedicalFields = selectedDegree === "Medical" && selectedLevel === "12";
-  const showBArchFields = selectedDegree === "B.Arch" && (selectedLevel === "11" || selectedLevel === "12");
-  const showLawFields = selectedDegree === "Law" && (selectedLevel === "11" || selectedLevel === "12");
-  const showParamedicalFields = selectedDegree === "Paramedical" && (selectedLevel === "11" || selectedLevel === "12");
-  const showAgricultureFields = selectedDegree === "Agriculture" && (selectedLevel === "11" || selectedLevel === "12");
+  const showBArchFields = selectedDegree === "B.Arch" && isSeniorSecondaryLevel;
+  const showLawFields = selectedDegree === "Law" && isSeniorSecondaryLevel;
+  const showParamedicalFields = selectedDegree === "Paramedical" && isSeniorSecondaryLevel;
+  const showAgricultureFields = selectedDegree === "Agriculture" && isSeniorSecondaryLevel;
+  const showBArchNataField = showBArchFields && !isLevel11;
+  const showEngineeringPcmFields = showEngineeringFields && selectedAdmissionType === "PCM";
+  const showEngineeringJeeMainFields = showEngineeringFields && selectedAdmissionType === "JEE Main";
+  const showEngineeringJeeAdvancedFields = showEngineeringFields && selectedAdmissionType === "JEE Advanced";
   const showLawClatFields = showLawFields && selectedAdmissionType === "CLAT";
   const showLawMarksFields = showLawFields && selectedAdmissionType === "11th/12th Mark";
-  const showCategoryField = selectedLevel === "11" || selectedLevel === "12";
+  const showCategoryField = isSeniorSecondaryLevel;
+  const availableEngineeringAdmissionTypeOptions = isLevel11
+    ? engineeringAdmissionTypeOptions.filter((option) => option.value === "PCM")
+    : engineeringAdmissionTypeOptions;
+  const availableLawAdmissionTypeOptions = isLevel11
+    ? lawAdmissionTypeOptions.filter((option) => option.value === "11th/12th Mark")
+    : lawAdmissionTypeOptions;
 
   const isBlank = (value: string) => value.trim().length === 0;
 
@@ -124,6 +165,7 @@ export default function FindPage() {
     setPhysicsMarks("");
     setChemistryMarks("");
     setMathsMarks("");
+    setEngineeringEntranceMarks("");
     setNeetMarks("");
     setBoardMarksTotal("");
     setNataScore("");
@@ -142,7 +184,7 @@ export default function FindPage() {
 
   // Degree-specific cutoff calculators used by the cutoff form.
   const engineeringCutoff = useMemo(() => {
-    if (!showEngineeringFields) return "";
+    if (!showEngineeringPcmFields) return "";
     const physics = Number(physicsMarks);
     const chemistry = Number(chemistryMarks);
     const maths = Number(mathsMarks);
@@ -150,7 +192,7 @@ export default function FindPage() {
       return "";
     }
     return (maths + physics / 2 + chemistry / 2).toFixed(1);
-  }, [chemistryMarks, mathsMarks, physicsMarks, showEngineeringFields]);
+  }, [chemistryMarks, mathsMarks, physicsMarks, showEngineeringPcmFields]);
 
   const bArchConvertedScore = useMemo(() => {
     if (!showBArchFields) return "";
@@ -160,12 +202,12 @@ export default function FindPage() {
   }, [boardMarksTotal, showBArchFields]);
 
   const bArchCombinedScore = useMemo(() => {
-    if (!showBArchFields) return "";
+    if (!showBArchNataField) return "";
     const converted = Number(bArchConvertedScore);
     const nata = Number(nataScore);
     if (!Number.isFinite(converted) || !Number.isFinite(nata)) return "";
     return (converted + nata).toFixed(1);
-  }, [bArchConvertedScore, nataScore, showBArchFields]);
+  }, [bArchConvertedScore, nataScore, showBArchNataField]);
 
   const lawBestThreeTotal = useMemo(() => {
     if (!showLawMarksFields) return "";
@@ -226,9 +268,10 @@ export default function FindPage() {
 
   // Final cutoff value pushed to the cutoff page query string.
   const finalCutoffValue = useMemo(() => {
-    if (showEngineeringFields) return engineeringCutoff;
+    if (showEngineeringPcmFields) return engineeringCutoff;
+    if (showEngineeringJeeMainFields || showEngineeringJeeAdvancedFields) return engineeringEntranceMarks;
     if (showMedicalFields) return neetMarks;
-    if (showBArchFields) return bArchCombinedScore;
+    if (showBArchFields) return showBArchNataField ? bArchCombinedScore : bArchConvertedScore;
     if (showLawClatFields) return clatMarks;
     if (showLawMarksFields) return lawBestThreeTotal;
     if (showParamedicalFields) return paramedicalCutoff200;
@@ -237,14 +280,19 @@ export default function FindPage() {
   }, [
     agricultureCutoff200,
     bArchCombinedScore,
+    bArchConvertedScore,
     clatMarks,
     engineeringCutoff,
+    engineeringEntranceMarks,
     lawBestThreeTotal,
     neetMarks,
     paramedicalCutoff200,
     showAgricultureFields,
     showBArchFields,
-    showEngineeringFields,
+    showBArchNataField,
+    showEngineeringJeeAdvancedFields,
+    showEngineeringJeeMainFields,
+    showEngineeringPcmFields,
     showLawClatFields,
     showLawMarksFields,
     showMedicalFields,
@@ -253,7 +301,29 @@ export default function FindPage() {
 
   // Live preview panel config for the current cutoff form path.
   const chartConfig = useMemo(() => {
-    if (showEngineeringFields) {
+    if (showEngineeringJeeMainFields) {
+      return {
+        comparisonTitle: "JEE Main Score",
+        scaleHint: "JEE Main score is shown out of 300.",
+        expectedCutoff: 180,
+        scoreMax: 300,
+        subjectMetrics: [
+          { label: "JEE Main", score: Number(engineeringEntranceMarks) || 0, expected: 180, max: 300 },
+        ] as PerformanceMetric[],
+      };
+    }
+    if (showEngineeringJeeAdvancedFields) {
+      return {
+        comparisonTitle: "JEE Advanced Score",
+        scaleHint: "JEE Advanced score is shown out of 360.",
+        expectedCutoff: 180,
+        scoreMax: 360,
+        subjectMetrics: [
+          { label: "JEE Advanced", score: Number(engineeringEntranceMarks) || 0, expected: 180, max: 360 },
+        ] as PerformanceMetric[],
+      };
+    }
+    if (showEngineeringPcmFields) {
       return {
         comparisonTitle: "Engineering Cutoff",
         scaleHint: "Cutoff shown out of 200. Subject bars are shown out of 100.",
@@ -324,6 +394,17 @@ export default function FindPage() {
       };
     }
     if (showBArchFields) {
+      if (isLevel11) {
+        return {
+          comparisonTitle: "B.Arch Board Score",
+          scaleHint: "11th converted score is shown out of 200.",
+          expectedCutoff: 140,
+          scoreMax: 200,
+          subjectMetrics: [
+            { label: "11th Conv.", score: Number(bArchConvertedScore) || 0, expected: 140, max: 200 },
+          ] as PerformanceMetric[],
+        };
+      }
       return {
         comparisonTitle: "B.Arch Combined Score",
         scaleHint: "12th converted score and NATA are shown out of 200 each. Combined cutoff is shown out of 400.",
@@ -349,6 +430,7 @@ export default function FindPage() {
     bArchConvertedScore,
     chemistryMarks,
     clatMarks,
+    engineeringEntranceMarks,
     lawBestSubjectOne,
     lawBestSubjectThree,
     lawBestSubjectTwo,
@@ -361,7 +443,10 @@ export default function FindPage() {
     physicsMarks,
     showAgricultureFields,
     showBArchFields,
-    showEngineeringFields,
+    isLevel11,
+    showEngineeringJeeAdvancedFields,
+    showEngineeringJeeMainFields,
+    showEngineeringPcmFields,
     showLawClatFields,
     showLawMarksFields,
     showMedicalFields,
@@ -473,9 +558,15 @@ export default function FindPage() {
     }
 
     if (showEngineeringFields) {
-      if (isBlank(physicsMarks)) errors.physics = "This field is required";
-      if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
-      if (isBlank(mathsMarks)) errors.maths = "This field is required";
+      if (isBlank(selectedAdmissionType)) {
+        errors.admissionType = "This field is required";
+      } else if (showEngineeringPcmFields) {
+        if (isBlank(physicsMarks)) errors.physics = "This field is required";
+        if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
+        if (isBlank(mathsMarks)) errors.maths = "This field is required";
+      } else if (isBlank(engineeringEntranceMarks)) {
+        errors.engineeringEntranceMarks = "This field is required";
+      }
     }
 
     if (showMedicalFields && isBlank(neetMarks)) {
@@ -513,6 +604,24 @@ export default function FindPage() {
       if (isBlank(agricultureChemistryMarks)) errors.agricultureChemistry = "This field is required";
     }
 
+    validateNumericRange(errors, physicsMarks, "physics", 100);
+    validateNumericRange(errors, chemistryMarks, "chemistry", 100);
+    validateNumericRange(errors, mathsMarks, "maths", 100);
+    validateNumericRange(errors, engineeringEntranceMarks, "engineeringEntranceMarks", showEngineeringJeeAdvancedFields ? 360 : 300);
+    validateNumericRange(errors, neetMarks, "neet", 720);
+    validateNumericRange(errors, boardMarksTotal, "boardTotal", 600);
+    validateNumericRange(errors, nataScore, "nata", 200);
+    validateNumericRange(errors, clatMarks, "clat", 120);
+    validateNumericRange(errors, lawBestSubjectOne, "bestSubject1", 100);
+    validateNumericRange(errors, lawBestSubjectTwo, "bestSubject2", 100);
+    validateNumericRange(errors, lawBestSubjectThree, "bestSubject3", 100);
+    validateNumericRange(errors, paramedicalBiologyMarks, "paramedicalBiology", 100);
+    validateNumericRange(errors, paramedicalPhysicsMarks, "paramedicalPhysics", 100);
+    validateNumericRange(errors, paramedicalChemistryMarks, "paramedicalChemistry", 100);
+    validateNumericRange(errors, agricultureBiologyMarks, "agricultureBiology", 100);
+    validateNumericRange(errors, agriculturePhysicsMarks, "agriculturePhysics", 100);
+    validateNumericRange(errors, agricultureChemistryMarks, "agricultureChemistry", 100);
+
     return errors;
   }, [
     agricultureBiologyMarks,
@@ -521,6 +630,7 @@ export default function FindPage() {
     boardMarksTotal,
     chemistryMarks,
     clatMarks,
+    engineeringEntranceMarks,
     lawBestSubjectOne,
     lawBestSubjectThree,
     lawBestSubjectTwo,
@@ -541,6 +651,8 @@ export default function FindPage() {
     showAgricultureFields,
     showBArchFields,
     showEngineeringFields,
+    showEngineeringJeeAdvancedFields,
+    showEngineeringPcmFields,
     showLawClatFields,
     showLawFields,
     showLawMarksFields,
@@ -595,24 +707,29 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 params.set("degree", selectedDegree);
                 if (selectedCategory) params.set("category", selectedCategory);
                 if (selectedCourse) params.set("course", selectedCourse);
-                if (selectedAdmissionType) params.set("admissionType", selectedAdmissionType);
-                if (physicsMarks) params.set("physics", physicsMarks);
-                if (chemistryMarks) params.set("chemistry", chemistryMarks);
-                if (mathsMarks) params.set("maths", mathsMarks);
-                if (neetMarks) params.set("neet", neetMarks);
-                if (boardMarksTotal) params.set("boardTotal", boardMarksTotal);
-                if (nataScore) params.set("nata", nataScore);
+                if (selectedAdmissionType && (showEngineeringFields || showLawFields)) {
+                  params.set("admissionType", selectedAdmissionType);
+                }
+                if (showEngineeringPcmFields && physicsMarks) params.set("physics", physicsMarks);
+                if (showEngineeringPcmFields && chemistryMarks) params.set("chemistry", chemistryMarks);
+                if (showEngineeringPcmFields && mathsMarks) params.set("maths", mathsMarks);
+                if ((showEngineeringJeeMainFields || showEngineeringJeeAdvancedFields) && engineeringEntranceMarks) {
+                  params.set("engineeringScore", engineeringEntranceMarks);
+                }
+                if (showMedicalFields && neetMarks) params.set("neet", neetMarks);
+                if (showBArchFields && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
+                if (showBArchNataField && nataScore) params.set("nata", nataScore);
                 if (bArchConvertedScore) params.set("converted12th", bArchConvertedScore);
-                if (clatMarks) params.set("clat", clatMarks);
-                if (lawBestSubjectOne) params.set("bestSubject1", lawBestSubjectOne);
-                if (lawBestSubjectTwo) params.set("bestSubject2", lawBestSubjectTwo);
-                if (lawBestSubjectThree) params.set("bestSubject3", lawBestSubjectThree);
-                if (paramedicalBiologyMarks) params.set("paramedicalBiology", paramedicalBiologyMarks);
-                if (paramedicalPhysicsMarks) params.set("paramedicalPhysics", paramedicalPhysicsMarks);
-                if (paramedicalChemistryMarks) params.set("paramedicalChemistry", paramedicalChemistryMarks);
-                if (agricultureBiologyMarks) params.set("agricultureBiology", agricultureBiologyMarks);
-                if (agriculturePhysicsMarks) params.set("agriculturePhysics", agriculturePhysicsMarks);
-                if (agricultureChemistryMarks) params.set("agricultureChemistry", agricultureChemistryMarks);
+                if (showLawClatFields && clatMarks) params.set("clat", clatMarks);
+                if (showLawMarksFields && lawBestSubjectOne) params.set("bestSubject1", lawBestSubjectOne);
+                if (showLawMarksFields && lawBestSubjectTwo) params.set("bestSubject2", lawBestSubjectTwo);
+                if (showLawMarksFields && lawBestSubjectThree) params.set("bestSubject3", lawBestSubjectThree);
+                if (showParamedicalFields && paramedicalBiologyMarks) params.set("paramedicalBiology", paramedicalBiologyMarks);
+                if (showParamedicalFields && paramedicalPhysicsMarks) params.set("paramedicalPhysics", paramedicalPhysicsMarks);
+                if (showParamedicalFields && paramedicalChemistryMarks) params.set("paramedicalChemistry", paramedicalChemistryMarks);
+                if (showAgricultureFields && agricultureBiologyMarks) params.set("agricultureBiology", agricultureBiologyMarks);
+                if (showAgricultureFields && agriculturePhysicsMarks) params.set("agriculturePhysics", agriculturePhysicsMarks);
+                if (showAgricultureFields && agricultureChemistryMarks) params.set("agricultureChemistry", agricultureChemistryMarks);
                 if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
                 router.push(`/cutoff?${params.toString()}`);
               }}
@@ -666,6 +783,17 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       }
                       if (value !== "12" && selectedDegree === "Medical") {
                         resetAcademicFields();
+                      }
+                      if (value === "11" && selectedDegree === "Engineering" && selectedAdmissionType !== "PCM") {
+                        setSelectedAdmissionType("");
+                        setEngineeringEntranceMarks("");
+                      }
+                      if (value === "11" && selectedDegree === "Law" && selectedAdmissionType === "CLAT") {
+                        setSelectedAdmissionType("");
+                        setClatMarks("");
+                      }
+                      if (value === "11" && selectedDegree === "B.Arch") {
+                        setNataScore("");
                       }
                     }}
                     className={inputClassName}
@@ -755,58 +883,143 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showEngineeringFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={physicsMarks}
-                        onChange={(event) => setPhysicsMarks(event.target.value)}
-                        placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.physics))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.physics)}
+                    <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                      <select
+                        value={selectedAdmissionType}
+                        onChange={(event) => {
+                          setSelectedAdmissionType(event.target.value);
+                          setPhysicsMarks("");
+                          setChemistryMarks("");
+                          setMathsMarks("");
+                          setEngineeringEntranceMarks("");
+                        }}
+                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                        aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
                         required={showEngineeringFields}
-                      />
-                    </AcademicShell>
-
-                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={chemistryMarks}
-                        onChange={(event) => setChemistryMarks(event.target.value)}
-                        placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.chemistry))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.chemistry)}
-                        required={showEngineeringFields}
-                      />
-                    </AcademicShell>
-
-                    <AcademicShell icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={mathsMarks}
-                        onChange={(event) => setMathsMarks(event.target.value)}
-                        placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.maths))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.maths)}
-                        required={showEngineeringFields}
-                      />
+                      >
+                        <option value="">Select admission type</option>
+                        {availableEngineeringAdmissionTypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </AcademicShell>
                   </div>
 
-                  <ScoreHighlight
-                    title="Engineering Cutoff"
-                    formula="Cutoff = Maths + (Physics / 2) + (Chemistry / 2)"
-                    primaryLabel="Calculated Cutoff"
-                    primaryValue={engineeringCutoff || "0.0"}
-                  />
+                  {showEngineeringPcmFields ? (
+                    <>
+                      <div className="grid gap-3.5 md:grid-cols-2">
+                        <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={physicsMarks}
+                            onChange={(event) => setPhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
+                            placeholder="Enter your marks"
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.physics))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.physics)}
+                            required={showEngineeringPcmFields}
+                          />
+                        </AcademicShell>
+
+                        <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={chemistryMarks}
+                            onChange={(event) => setChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
+                            placeholder="Enter your marks"
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.chemistry))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.chemistry)}
+                            required={showEngineeringPcmFields}
+                          />
+                        </AcademicShell>
+
+                        <AcademicShell icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={mathsMarks}
+                            onChange={(event) => setMathsMarks(getBoundedNumberValue(event.target.value, 100))}
+                            placeholder="Enter your marks"
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.maths))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.maths)}
+                            required={showEngineeringPcmFields}
+                          />
+                        </AcademicShell>
+                      </div>
+
+                      <ScoreHighlight
+                        title="Engineering Cutoff"
+                        formula="Cutoff = Maths + (Physics / 2) + (Chemistry / 2)"
+                        primaryLabel="Calculated Cutoff"
+                        primaryValue={engineeringCutoff || "0.0"}
+                      />
+                    </>
+                  ) : null}
+
+                  {showEngineeringJeeMainFields ? (
+                    <>
+                      <div className="grid gap-3.5 md:grid-cols-2">
+                        <AcademicShell icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="300"
+                            step="0.01"
+                            value={engineeringEntranceMarks}
+                            onChange={(event) => setEngineeringEntranceMarks(getBoundedNumberValue(event.target.value, 300))}
+                            placeholder="Enter your JEE Main mark"
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)}
+                            required={showEngineeringJeeMainFields}
+                          />
+                        </AcademicShell>
+                      </div>
+
+                      <ScoreHighlight
+                        title="JEE Main Score"
+                        formula="Engineering prediction uses your JEE Main mark directly"
+                        primaryLabel="JEE Main Mark"
+                        primaryValue={`${engineeringEntranceMarks || "0"} / 300`}
+                      />
+                    </>
+                  ) : null}
+
+                  {showEngineeringJeeAdvancedFields ? (
+                    <>
+                      <div className="grid gap-3.5 md:grid-cols-2">
+                        <AcademicShell icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="360"
+                            step="0.01"
+                            value={engineeringEntranceMarks}
+                            onChange={(event) => setEngineeringEntranceMarks(getBoundedNumberValue(event.target.value, 360))}
+                            placeholder="Enter your JEE Advanced mark"
+                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)}
+                            required={showEngineeringJeeAdvancedFields}
+                          />
+                        </AcademicShell>
+                      </div>
+
+                      <ScoreHighlight
+                        title="JEE Advanced Score"
+                        formula="Engineering prediction uses your JEE Advanced mark directly"
+                        primaryLabel="JEE Advanced Mark"
+                        primaryValue={`${engineeringEntranceMarks || "0"} / 360`}
+                      />
+                    </>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -820,7 +1033,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="720"
                         step="0.01"
                         value={neetMarks}
-                        onChange={(event) => setNeetMarks(event.target.value)}
+                        onChange={(event) => setNeetMarks(getBoundedNumberValue(event.target.value, 720))}
                         placeholder="Enter your NEET mark"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.neet))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.neet)}
@@ -848,7 +1061,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="600"
                         step="0.01"
                         value={boardMarksTotal}
-                        onChange={(event) => setBoardMarksTotal(event.target.value)}
+                        onChange={(event) => setBoardMarksTotal(getBoundedNumberValue(event.target.value, 600))}
                         placeholder="Enter your 11th/12th total"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.boardTotal))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.boardTotal)}
@@ -856,29 +1069,39 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="200"
-                        step="0.01"
-                        value={nataScore}
-                        onChange={(event) => setNataScore(event.target.value)}
-                        placeholder="Enter your NATA score"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.nata))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.nata)}
-                        required={showBArchFields}
-                      />
-                    </AcademicShell>
+                    {showBArchNataField ? (
+                      <AcademicShell icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="200"
+                          step="0.01"
+                          value={nataScore}
+                          onChange={(event) => setNataScore(getBoundedNumberValue(event.target.value, 200))}
+                          placeholder="Enter your NATA score"
+                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.nata))}
+                          aria-invalid={Boolean(hasSubmitted && validationErrors.nata)}
+                          required={showBArchNataField}
+                        />
+                      </AcademicShell>
+                    ) : null}
                   </div>
 
                   <ScoreHighlight
-                    title="B.Arch Combined Score"
-                    formula="12th (out of 600) to (out of 200) + NATA (out of 200)"
+                    title={showBArchNataField ? "B.Arch Combined Score" : "B.Arch Board Score"}
+                    formula={
+                      showBArchNataField
+                        ? "12th (out of 600) to (out of 200) + NATA (out of 200)"
+                        : "11th mark total (out of 600) is converted to (out of 200)"
+                    }
                     primaryLabel="Calculated Cutoff"
-                    primaryValue={`${bArchCombinedScore || "0.0"} / 400`}
-                    secondaryLabel="12th Converted"
-                    secondaryValue={`${bArchConvertedScore || "0.0"} / 200`}
+                    primaryValue={
+                      showBArchNataField
+                        ? `${bArchCombinedScore || "0.0"} / 400`
+                        : `${bArchConvertedScore || "0.0"} / 200`
+                    }
+                    secondaryLabel={showBArchNataField ? "12th Converted" : undefined}
+                    secondaryValue={showBArchNataField ? `${bArchConvertedScore || "0.0"} / 200` : undefined}
                   />
                 </div>
               ) : null}
@@ -901,7 +1124,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         required={showLawFields}
                       >
                         <option value="">Select admission type</option>
-                        {lawAdmissionTypeOptions.map((option) => (
+                        {availableLawAdmissionTypeOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -917,7 +1140,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           max="120"
                           step="0.01"
                           value={clatMarks}
-                          onChange={(event) => setClatMarks(event.target.value)}
+                          onChange={(event) => setClatMarks(getBoundedNumberValue(event.target.value, 120))}
                           placeholder="Enter your CLAT mark"
                           className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.clat))}
                           aria-invalid={Boolean(hasSubmitted && validationErrors.clat)}
@@ -937,7 +1160,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             max="100"
                             step="0.01"
                             value={lawBestSubjectOne}
-                            onChange={(event) => setLawBestSubjectOne(event.target.value)}
+                            onChange={(event) => setLawBestSubjectOne(getBoundedNumberValue(event.target.value, 100))}
                             placeholder="Enter mark"
                             className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject1))}
                             aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)}
@@ -952,7 +1175,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             max="100"
                             step="0.01"
                             value={lawBestSubjectTwo}
-                            onChange={(event) => setLawBestSubjectTwo(event.target.value)}
+                            onChange={(event) => setLawBestSubjectTwo(getBoundedNumberValue(event.target.value, 100))}
                             placeholder="Enter mark"
                             className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject2))}
                             aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)}
@@ -967,7 +1190,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                             max="100"
                             step="0.01"
                             value={lawBestSubjectThree}
-                            onChange={(event) => setLawBestSubjectThree(event.target.value)}
+                            onChange={(event) => setLawBestSubjectThree(getBoundedNumberValue(event.target.value, 100))}
                             placeholder="Enter mark"
                             className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject3))}
                             aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)}
@@ -1006,7 +1229,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={paramedicalBiologyMarks}
-                        onChange={(event) => setParamedicalBiologyMarks(event.target.value)}
+                        onChange={(event) => setParamedicalBiologyMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalBiology))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)}
@@ -1021,7 +1244,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={paramedicalPhysicsMarks}
-                        onChange={(event) => setParamedicalPhysicsMarks(event.target.value)}
+                        onChange={(event) => setParamedicalPhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalPhysics))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)}
@@ -1036,7 +1259,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={paramedicalChemistryMarks}
-                        onChange={(event) => setParamedicalChemistryMarks(event.target.value)}
+                        onChange={(event) => setParamedicalChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalChemistry))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)}
@@ -1066,7 +1289,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={agricultureBiologyMarks}
-                        onChange={(event) => setAgricultureBiologyMarks(event.target.value)}
+                        onChange={(event) => setAgricultureBiologyMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureBiology))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)}
@@ -1081,7 +1304,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={agriculturePhysicsMarks}
-                        onChange={(event) => setAgriculturePhysicsMarks(event.target.value)}
+                        onChange={(event) => setAgriculturePhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agriculturePhysics))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)}
@@ -1096,7 +1319,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         max="100"
                         step="0.01"
                         value={agricultureChemistryMarks}
-                        onChange={(event) => setAgricultureChemistryMarks(event.target.value)}
+                        onChange={(event) => setAgricultureChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
                         placeholder="Enter your marks"
                         className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureChemistry))}
                         aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)}

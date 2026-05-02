@@ -238,7 +238,7 @@ export default function CollegeDashboardPage() {
                 <p>University: {portalState.college.university || "-"}</p>
                 <p>State: {portalState.college.state || "-"}</p>
                 <p>District: {portalState.college.district || "-"}</p>
-                <p>Ranking: {String(portalState.college.ranking || "-")}</p>
+                <p>Ranking: {formatRankingRangeForDisplay(portalState.college.ranking || "-")}</p>
               </div>
             </div>
             <button
@@ -290,3 +290,4 @@ export default function CollegeDashboardPage() {
     </CollegePortalShell>
   );
 }
+import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
