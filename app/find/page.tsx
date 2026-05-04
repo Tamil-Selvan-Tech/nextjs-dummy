@@ -56,6 +56,42 @@ const engineeringAdmissionTypeOptions = [
   { value: "JEE Advanced", label: "JEE Advanced" },
 ];
 
+const artsScienceCourseOptions = [
+  "B.Sc Mathematics",
+  "B.Sc Physics",
+  "B.Sc Chemistry",
+  "B.Sc Computer Science",
+  "B.Sc Information Technology (IT)",
+  "B.Sc Microbiology",
+  "B.Sc Biotechnology",
+  "B.Sc Zoology",
+  "B.Sc Botany",
+  "B.Sc Geology",
+  "B.Sc Home Science",
+  "B.Sc Nutrition & Dietetics",
+  "B.Com (General)",
+  "B.Com Accounting & Finance",
+  "B.Com Banking & Insurance",
+  "B.Com Corporate Secretaryship",
+  "B.Com Computer Applications",
+  "B.A English",
+  "B.A Tamil",
+  "B.A History",
+  "B.A Economics",
+  "B.A Political Science",
+  "B.A Sociology",
+  "B.A Psychology",
+  "BBA (Bachelor of Business Administration)",
+  "BCA (Bachelor of Computer Applications)",
+  "BSW (Social Work)",
+  "BFA (Fine Arts)",
+];
+
+const artsScienceAdmissionTypeOptions = [
+  { value: "CUET", label: "CUET" },
+  { value: "12th Marks", label: "12th Marks" },
+];
+
 const trustItems = [
   {
     icon: ShieldCheck,
@@ -92,6 +128,15 @@ const getBoundedNumberValue = (value: string, max: number) => {
   return String(clamp(parsed, 0, max));
 };
 
+const getNonNegativeNumberValue = (value: string) => {
+  if (value === "") return "";
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return "";
+  }
+  return value;
+};
+
 const validateNumericRange = (
   errors: Record<string, string>,
   value: string,
@@ -123,6 +168,7 @@ export default function FindPage() {
   const [nataScore, setNataScore] = useState("");
   const [selectedAdmissionType, setSelectedAdmissionType] = useState("");
   const [clatMarks, setClatMarks] = useState("");
+  const [artsScienceCuetMarks, setArtsScienceCuetMarks] = useState("");
   const [lawBestSubjectOne, setLawBestSubjectOne] = useState("");
   const [lawBestSubjectTwo, setLawBestSubjectTwo] = useState("");
   const [lawBestSubjectThree, setLawBestSubjectThree] = useState("");
@@ -141,9 +187,16 @@ export default function FindPage() {
   const showMedicalFields = selectedDegree === "Medical" && selectedLevel === "12";
   const showBArchFields = selectedDegree === "B.Arch" && isSeniorSecondaryLevel;
   const showLawFields = selectedDegree === "Law" && isSeniorSecondaryLevel;
+  const showArtsScienceFields =
+    selectedDegree === "Arts & Science" && isSeniorSecondaryLevel;
   const showParamedicalFields = selectedDegree === "Paramedical" && isSeniorSecondaryLevel;
   const showAgricultureFields = selectedDegree === "Agriculture" && isSeniorSecondaryLevel;
   const showBArchNataField = showBArchFields && !isLevel11;
+  const showArtsScienceAdmissionTypeField = showArtsScienceFields && !isLevel11;
+  const showArtsScienceCuetField =
+    showArtsScienceAdmissionTypeField && selectedAdmissionType === "CUET";
+  const showArtsScienceBoardMarksField =
+    showArtsScienceFields && (isLevel11 || selectedAdmissionType === "12th Marks");
   const showEngineeringPcmFields = showEngineeringFields && selectedAdmissionType === "PCM";
   const showEngineeringJeeMainFields = showEngineeringFields && selectedAdmissionType === "JEE Main";
   const showEngineeringJeeAdvancedFields = showEngineeringFields && selectedAdmissionType === "JEE Advanced";
@@ -171,6 +224,7 @@ export default function FindPage() {
     setNataScore("");
     setSelectedAdmissionType("");
     setClatMarks("");
+    setArtsScienceCuetMarks("");
     setLawBestSubjectOne("");
     setLawBestSubjectTwo("");
     setLawBestSubjectThree("");
@@ -274,13 +328,17 @@ export default function FindPage() {
     if (showBArchFields) return showBArchNataField ? bArchCombinedScore : bArchConvertedScore;
     if (showLawClatFields) return clatMarks;
     if (showLawMarksFields) return lawBestThreeTotal;
+    if (showArtsScienceCuetField) return artsScienceCuetMarks;
+    if (showArtsScienceBoardMarksField) return boardMarksTotal;
     if (showParamedicalFields) return paramedicalCutoff200;
     if (showAgricultureFields) return agricultureCutoff200;
     return "";
   }, [
     agricultureCutoff200,
+    artsScienceCuetMarks,
     bArchCombinedScore,
     bArchConvertedScore,
+    boardMarksTotal,
     clatMarks,
     engineeringCutoff,
     engineeringEntranceMarks,
@@ -293,6 +351,8 @@ export default function FindPage() {
     showEngineeringJeeAdvancedFields,
     showEngineeringJeeMainFields,
     showEngineeringPcmFields,
+    showArtsScienceBoardMarksField,
+    showArtsScienceCuetField,
     showLawClatFields,
     showLawMarksFields,
     showMedicalFields,
@@ -384,6 +444,28 @@ export default function FindPage() {
         subjectMetrics: [{ label: "CLAT", score: Number(clatMarks) || 0, expected: 85, max: 120 }] as PerformanceMetric[],
       };
     }
+    if (showArtsScienceCuetField) {
+      return {
+        comparisonTitle: "CUET Score",
+        scaleHint: "CUET score is shown using the marks you enter.",
+        expectedCutoff: 350,
+        scoreMax: 600,
+        subjectMetrics: [
+          { label: "CUET", score: Number(artsScienceCuetMarks) || 0, expected: 350, max: 600 },
+        ] as PerformanceMetric[],
+      };
+    }
+    if (showArtsScienceBoardMarksField) {
+      return {
+        comparisonTitle: "Arts & Science Board Score",
+        scaleHint: "12th Marks are shown out of 600.",
+        expectedCutoff: 450,
+        scoreMax: 600,
+        subjectMetrics: [
+          { label: "12th Marks", score: Number(boardMarksTotal) || 0, expected: 450, max: 600 },
+        ] as PerformanceMetric[],
+      };
+    }
     if (showMedicalFields) {
       return {
         comparisonTitle: "NEET Score",
@@ -425,9 +507,11 @@ export default function FindPage() {
     };
   }, [
     agricultureBiologyMarks,
+    artsScienceCuetMarks,
     agricultureChemistryMarks,
     agriculturePhysicsMarks,
     bArchConvertedScore,
+    boardMarksTotal,
     chemistryMarks,
     clatMarks,
     engineeringEntranceMarks,
@@ -447,6 +531,8 @@ export default function FindPage() {
     showEngineeringJeeAdvancedFields,
     showEngineeringJeeMainFields,
     showEngineeringPcmFields,
+    showArtsScienceBoardMarksField,
+    showArtsScienceCuetField,
     showLawClatFields,
     showLawMarksFields,
     showMedicalFields,
@@ -553,7 +639,7 @@ export default function FindPage() {
     if (showCategoryField && isBlank(selectedCategory)) errors.category = "This field is required";
     if (isBlank(selectedDegree)) errors.degree = "This field is required";
 
-    if (showEngineeringFields || showMedicalFields || showLawFields) {
+    if (showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields) {
       if (isBlank(selectedCourse)) errors.course = "This field is required";
     }
 
@@ -592,6 +678,18 @@ export default function FindPage() {
       if (isBlank(lawBestSubjectThree)) errors.bestSubject3 = "This field is required";
     }
 
+    if (showArtsScienceAdmissionTypeField && isBlank(selectedAdmissionType)) {
+      errors.admissionType = "This field is required";
+    }
+
+    if (showArtsScienceCuetField && isBlank(artsScienceCuetMarks)) {
+      errors.artsScienceCuet = "This field is required";
+    }
+
+    if (showArtsScienceBoardMarksField && isBlank(boardMarksTotal)) {
+      errors.boardTotal = "This field is required";
+    }
+
     if (showParamedicalFields) {
       if (isBlank(paramedicalBiologyMarks)) errors.paramedicalBiology = "This field is required";
       if (isBlank(paramedicalPhysicsMarks)) errors.paramedicalPhysics = "This field is required";
@@ -625,6 +723,7 @@ export default function FindPage() {
     return errors;
   }, [
     agricultureBiologyMarks,
+    artsScienceCuetMarks,
     agricultureChemistryMarks,
     agriculturePhysicsMarks,
     boardMarksTotal,
@@ -653,6 +752,10 @@ export default function FindPage() {
     showEngineeringFields,
     showEngineeringJeeAdvancedFields,
     showEngineeringPcmFields,
+    showArtsScienceAdmissionTypeField,
+    showArtsScienceBoardMarksField,
+    showArtsScienceCuetField,
+    showArtsScienceFields,
     showLawClatFields,
     showLawFields,
     showLawMarksFields,
@@ -707,7 +810,10 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 params.set("degree", selectedDegree);
                 if (selectedCategory) params.set("category", selectedCategory);
                 if (selectedCourse) params.set("course", selectedCourse);
-                if (selectedAdmissionType && (showEngineeringFields || showLawFields)) {
+                if (
+                  selectedAdmissionType &&
+                  (showEngineeringFields || showLawFields || showArtsScienceAdmissionTypeField)
+                ) {
                   params.set("admissionType", selectedAdmissionType);
                 }
                 if (showEngineeringPcmFields && physicsMarks) params.set("physics", physicsMarks);
@@ -724,6 +830,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 if (showLawMarksFields && lawBestSubjectOne) params.set("bestSubject1", lawBestSubjectOne);
                 if (showLawMarksFields && lawBestSubjectTwo) params.set("bestSubject2", lawBestSubjectTwo);
                 if (showLawMarksFields && lawBestSubjectThree) params.set("bestSubject3", lawBestSubjectThree);
+                if (showArtsScienceBoardMarksField && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
+                if (showArtsScienceCuetField && artsScienceCuetMarks) params.set("artsScienceCuet", artsScienceCuetMarks);
                 if (showParamedicalFields && paramedicalBiologyMarks) params.set("paramedicalBiology", paramedicalBiologyMarks);
                 if (showParamedicalFields && paramedicalPhysicsMarks) params.set("paramedicalPhysics", paramedicalPhysicsMarks);
                 if (showParamedicalFields && paramedicalChemistryMarks) params.set("paramedicalChemistry", paramedicalChemistryMarks);
@@ -792,6 +900,10 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                         setSelectedAdmissionType("");
                         setClatMarks("");
                       }
+                      if (value === "11" && selectedDegree === "Arts & Science") {
+                        setSelectedAdmissionType("");
+                        setArtsScienceCuetMarks("");
+                      }
                       if (value === "11" && selectedDegree === "B.Arch") {
                         setNataScore("");
                       }
@@ -828,7 +940,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
 
                 <div
                   className={
-                    showEngineeringFields || showMedicalFields || showLawFields || showParamedicalFields
+                    showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields || showParamedicalFields
                       ? ""
                       : "md:col-span-2"
                   }
@@ -854,19 +966,21 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   </FieldShell>
                 </div>
 
-                {showEngineeringFields || showMedicalFields || showLawFields ? (
+                {showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields ? (
                   <AcademicShell icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
                       className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.course))}
                       aria-invalid={Boolean(hasSubmitted && validationErrors.course)}
-                      required={showEngineeringFields || showMedicalFields || showLawFields}
+                      required={showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields}
                     >
                       <option value="">Choose course</option>
                       {(
                         showMedicalFields
                           ? medicalCourseOptions
+                          : showArtsScienceFields
+                            ? artsScienceCourseOptions
                           : showLawFields
                             ? lawCourseOptions
                             : engineeringCourseOptions
@@ -1216,6 +1330,85 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       primaryValue={`${clatMarks || "0"} / 120`}
                     />
                   ) : null}
+                </div>
+              ) : null}
+
+              {showArtsScienceFields ? (
+                <div className="mt-5 space-y-3.5">
+                  {showArtsScienceAdmissionTypeField ? (
+                    <div className="grid gap-3.5 md:grid-cols-2">
+                      <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                        <select
+                          value={selectedAdmissionType}
+                          onChange={(event) => {
+                            setSelectedAdmissionType(event.target.value);
+                            setArtsScienceCuetMarks("");
+                            setBoardMarksTotal("");
+                          }}
+                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                          aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
+                          required={showArtsScienceAdmissionTypeField}
+                        >
+                          <option value="">Select admission type</option>
+                          {artsScienceAdmissionTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </AcademicShell>
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-3.5 md:grid-cols-2">
+                    {showArtsScienceCuetField ? (
+                      <AcademicShell icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)} error={hasSubmitted ? validationErrors.artsScienceCuet : undefined}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={artsScienceCuetMarks}
+                          onChange={(event) => setArtsScienceCuetMarks(getNonNegativeNumberValue(event.target.value))}
+                          placeholder="Enter your CUET mark"
+                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.artsScienceCuet))}
+                          aria-invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)}
+                          required={showArtsScienceCuetField}
+                        />
+                      </AcademicShell>
+                    ) : null}
+
+                    {showArtsScienceBoardMarksField ? (
+                      <AcademicShell icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="600"
+                          step="0.01"
+                          value={boardMarksTotal}
+                          onChange={(event) => setBoardMarksTotal(getBoundedNumberValue(event.target.value, 600))}
+                          placeholder="Enter your 12th total"
+                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.boardTotal))}
+                          aria-invalid={Boolean(hasSubmitted && validationErrors.boardTotal)}
+                          required={showArtsScienceBoardMarksField}
+                        />
+                      </AcademicShell>
+                    ) : null}
+                  </div>
+
+                  <ScoreHighlight
+                    title={showArtsScienceCuetField ? "Arts & Science CUET Score" : "Arts & Science Board Score"}
+                    formula={
+                      showArtsScienceCuetField
+                        ? "Arts & Science prediction uses your CUET mark directly"
+                        : "Arts & Science prediction uses your 12th Marks total directly"
+                    }
+                    primaryLabel={showArtsScienceCuetField ? "CUET Mark" : "12th Marks"}
+                    primaryValue={
+                      showArtsScienceCuetField
+                        ? `${artsScienceCuetMarks || "0"}`
+                        : `${boardMarksTotal || "0"} / 600`
+                    }
+                  />
                 </div>
               ) : null}
 

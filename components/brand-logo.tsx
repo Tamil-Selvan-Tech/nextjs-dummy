@@ -5,6 +5,7 @@ type BrandLogoProps = {
   alt?: string;
   variant?: "full" | "tab";
   textColor?: "dark" | "light";
+  iconClassName?: string;
 };
 
 export function BrandLogo({
@@ -12,6 +13,7 @@ export function BrandLogo({
   alt = "College EdwiseR",
   variant = "full",
   textColor = "dark",
+  iconClassName = "",
 }: BrandLogoProps) {
   const sizeClass = variant === "tab" ? "text-[14px]" : "text-[16px]";
   const iconClass = variant === "tab" ? "size-4" : "size-5";
@@ -23,7 +25,7 @@ export function BrandLogo({
       aria-label={alt}
       className={`inline-flex items-center gap-1 font-extrabold leading-none tracking-[0.01em] ${sizeClass} ${className}`}
     >
-      <GraduationCap className={`${iconClass} text-[#f4ae35]`} strokeWidth={2.2} />
+      <GraduationCap className={`${iconClass} text-[#f4ae35] ${iconClassName}`} strokeWidth={2.2} />
       <span>
         <span className={collegeTextColor}>
           College{" "}

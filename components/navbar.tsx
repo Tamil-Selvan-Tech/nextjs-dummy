@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { PageBackButton } from "@/components/global-back-button";
@@ -54,6 +55,20 @@ const getAuthServerSnapshot = () => "";
 const subscribeToMount = () => () => {};
 const getMountSnapshot = () => true;
 const getMountServerSnapshot = () => false;
+
+const navbarThemeStyles = {
+  "--brand-primary": "#1e4e79",
+  "--brand-primary-soft": "#2f6aa3",
+  "--brand-accent": "#ef4444",
+  "--brand-accent-deep": "#dc2626",
+  "--brand-support": "#2563eb",
+  "--surface-base": "#ffffff",
+  "--surface-muted": "#ffffff",
+  "--surface-soft": "#ffffff",
+  "--page-bg": "#ffffff",
+  "--text-dark": "#0f172a",
+  "--text-muted": "#475569",
+} as CSSProperties;
 
 export function Navbar() {
   const router = useRouter();
@@ -206,12 +221,15 @@ export function Navbar() {
     { label: "Terms & Conditions", href: "/terms" },
   ];
   return (
-    <header className="page-container-full relative z-30 pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0">
+    <header
+      className="page-container-full relative z-30 pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
+      style={navbarThemeStyles}
+    >
       {!hideBackButton ? <div className="mb-3"><PageBackButton /></div> : null}
-      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-white px-3 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4">
+      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-3 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4">
         <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
           <Link href="/" className="transition hover:opacity-80">
-            <BrandLogo variant="tab" textColor="dark" className="h-9" />
+            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] sm:text-[17px] md:text-[18px]" iconClassName="size-5 sm:size-[1.35rem] md:size-6" />
           </Link>
 
           <button
@@ -401,7 +419,7 @@ export function Navbar() {
           />
           <aside className="absolute right-0 top-0 z-[401] h-full w-[86%] max-w-sm overflow-y-auto border-l border-[rgba(30,78,121,0.12)] bg-white p-5 text-[color:var(--text-dark)] shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
-              <BrandLogo variant="tab" textColor="dark" className="h-8" />
+              <BrandLogo variant="tab" textColor="dark" className="origin-left scale-105 text-[15px] sm:text-[16px]" iconClassName="size-[1.15rem] sm:size-5" />
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}

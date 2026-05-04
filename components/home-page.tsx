@@ -168,6 +168,24 @@ const FEATURE_CARDS: FeatureCardItem[] = [
     icon: Globe2,
     imageSrc: "/features/features-img-4.png",
   },
+  {
+    title: "Fund & Training",
+    description: "Access scholarships, financial aid, and training programs for your education.",
+    icon: BriefcaseBusiness,
+    imageSrc: "/features/features-img-7.png",
+  },
+  {
+    title: "Internship & Jobs",
+    description: "Explore internship opportunities and job placements from partner companies.",
+    icon: Rocket,
+    imageSrc: "/features/features-img-8.png",
+  },
+  {
+    title: "Project Guidance & Funding",
+    description: "Get expert guidance on projects and access funding opportunities.",
+    icon: Sparkles,
+    imageSrc: "/features/features-img-9.png",
+  },
 ];
 
 export function HomePage({
@@ -978,11 +996,14 @@ export function HomePage({
     const isHeroCard = variant === "hero";
     const isCompactFeature = !isHeroCard && feature.title === "Course Explorer";
     const isShortFeature = !isHeroCard && feature.title === "Ranking View";
+    const isLongFeature =
+      !isHeroCard &&
+      (feature.title === "Project Guidance and Funding" || feature.title === "Internships and Jobs");
     const Icon = feature.icon;
 
     return (
       <div
-        className={`overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_18px_40px_rgba(15,76,129,0.11)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-3.5 sm:p-3.5" : isShortFeature ? "p-3.5 sm:p-3.5" : "p-4"
+        className={`overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_14px_28px_rgba(15,76,129,0.1)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-2.5 sm:p-3" : isShortFeature ? "p-2.5 sm:p-3" : isLongFeature ? "p-2.5 sm:p-3" : "p-3 sm:p-3.5"
           }`}
       >
         {isHeroCard ? (
@@ -1013,14 +1034,14 @@ export function HomePage({
         ) : (
           <>
             <div className="flex flex-col items-center gap-2 text-center sm:gap-3 sm:items-start sm:text-left">
-              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.9rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] ${isCompactFeature || isShortFeature ? "h-8 w-8 sm:h-9 sm:w-9" : "h-9 w-9 sm:h-11 sm:w-11 sm:rounded-[0.75rem]"}`}>
-                <Icon className="size-4 sm:size-5" />
+              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.85rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] ${isCompactFeature || isShortFeature ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8 sm:h-9 sm:w-9 sm:rounded-[0.7rem]"}`}>
+                <Icon className="size-3.5 sm:size-4.5" />
               </div>
               <div className="flex flex-1 flex-col justify-start items-center text-center sm:items-start sm:text-left">
-                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] ${isCompactFeature ? "text-[0.75rem] leading-4 sm:text-[0.88rem] sm:leading-[1.15rem]" : isShortFeature ? "text-[0.74rem] leading-4 sm:text-[0.86rem] sm:leading-[1.1rem]" : "text-[0.78rem] leading-4 sm:text-[0.95rem] sm:leading-5"}`}>
+                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] ${isCompactFeature ? "text-[0.7rem] leading-[0.95rem] sm:text-[0.82rem] sm:leading-[1.05rem]" : isShortFeature ? "text-[0.69rem] leading-[0.95rem] sm:text-[0.8rem] sm:leading-[1rem]" : isLongFeature ? "text-[0.67rem] leading-[0.92rem] sm:text-[0.79rem] sm:leading-[1rem]" : "text-[0.72rem] leading-[1rem] sm:text-[0.88rem] sm:leading-[1.1rem]"}`}>
                   {feature.title}
                 </h3>
-                <p className={`mt-1 hidden text-[color:var(--text-muted)] sm:block ${isCompactFeature ? "text-[11px] leading-[1.15rem]" : isShortFeature ? "text-[11px] leading-[1.05rem]" : "text-[12px] leading-5"}`}>
+                <p className={`mt-1 hidden text-[color:var(--text-muted)] sm:block ${isCompactFeature ? "text-[10px] leading-[0.95rem]" : isShortFeature ? "text-[10px] leading-[0.92rem]" : isLongFeature ? "text-[9px] leading-[0.88rem]" : "text-[10px] leading-[0.98rem]"}`}>
                   {feature.description}
                 </p>
               </div>
@@ -1058,7 +1079,7 @@ export function HomePage({
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_15.5rem] md:items-center lg:grid-cols-[minmax(0,1fr)_18.5rem]">
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_16.25rem] md:items-center lg:grid-cols-[minmax(0,1fr)_19.5rem]">
           <div className="min-w-0">
             <h3 className="text-[1.08rem] font-black leading-[1.12] tracking-[-0.035em] text-[#14213d] sm:text-[1.18rem] lg:text-[1.34rem]">
               <span className="block whitespace-nowrap">
@@ -1090,7 +1111,7 @@ export function HomePage({
             </div>
           </div>
 
-          <div className="mx-auto flex w-full max-w-[16rem] justify-center md:mx-0 md:max-w-[17rem] md:justify-end lg:max-w-[21rem]">
+          <div className="mx-auto flex w-full max-w-[16.75rem] justify-center md:mx-0 md:max-w-[18rem] md:justify-end lg:max-w-[22rem]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/cutoff-banner.png"
@@ -1229,7 +1250,7 @@ export function HomePage({
               Recent placement performance
             </p>
           </div>
-          <div className="rounded-[0.95rem] border border-[rgba(239,68,68,0.18)] bg-[rgba(239,68,68,0.06)] p-2.5">
+          <div className="rounded-[0.95rem] border border-[rgba(29,78,216,0.18)] bg-[rgba(29,78,216,0.06)] p-2.5">
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-accent-deep)]">
               Accreditation
             </p>
@@ -1329,10 +1350,10 @@ export function HomePage({
                 <div className="relative py-0.5 sm:py-1">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
                   <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
-                  <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.14)] blur-3xl" />
+                  <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.14)] blur-3xl" />
 
                   <div className="relative space-y-1">
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-4">
+                    <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-3">
                       {/* Hero introduction */}
                       <div className="flex h-full flex-col justify-center space-y-4 lg:space-y-3 lg:pr-2">
                         <div className="max-w-full py-2 px-1 text-center lg:px-0 lg:text-left">
@@ -1352,7 +1373,7 @@ export function HomePage({
                         </div>
 
                         {/* Hero feature spotlight */}
-                        <div className="relative mx-auto w-full max-w-full px-2 lg:mx-0 lg:px-0">
+                        <div className="relative mx-auto w-full max-w-full px-2 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
                           <div
                             key={`${activeFeature.title}-${activeFeatureCard}`}
                             className="feature-pop-card absolute inset-0"
@@ -1365,24 +1386,30 @@ export function HomePage({
                       </div>
 
                       {/* Hero cutoff banner */}
-                      <div className="w-full lg:max-w-full">
+                      <div className="w-full lg:max-w-[42rem] lg:justify-self-end">
                         {renderHeroCutoffBanner()}
                       </div>
                     </div>
 
                     {/* Hero search module */}
-                    <div className="hero-search-shell group relative z-[70] mx-auto mt-5 w-full max-w-none px-0 py-5 sm:mt-6">
-                      <div
-                        className="
+                    <div className="hero-search-shell group relative z-[70] mx-auto mt-3 w-full max-w-none px-0 py-2 sm:mt-4 sm:py-2.5">
+                    <div
+                      className="
       hero-search-input
       relative z-[2] overflow-hidden
       rounded-[1.2rem] sm:rounded-[1.65rem]
-      border border-[rgba(255,138,61,0.22)]
+      border
       bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))]
-      p-2 sm:p-1.5
+      p-1.5 sm:p-1
       shadow-[0_18px_36px_rgba(22,50,79,0.11)]
-      ring-1 ring-[rgba(255,138,61,0.08)]
+      ring-1
     "
+                      style={{
+                        borderColor: activeSearchField ? "rgba(37,99,235,0.72)" : "rgba(56,189,248,0.52)",
+                        boxShadow: activeSearchField
+                          ? "0 18px 36px rgba(22,50,79,0.11), 0 0 0 3px rgba(37,99,235,0.14)"
+                          : "0 18px 36px rgba(22,50,79,0.11), 0 0 0 1px rgba(56,189,248,0.14)",
+                      }}
                       >
                         {/* SAME DESIGN FOR MOBILE + DESKTOP */}
                         <div
@@ -1396,15 +1423,17 @@ export function HomePage({
       " >
                           {/* Course Search */}
                           <div
-                            className="
+                            className={`
+                            
           relative min-w-0
-          px-4 py-3 md:px-5
+          px-4 py-2.5 md:px-5
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
-          border border-[rgba(15,76,129,0.08)]
+          border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        "
+        ${activeSearchField === "course" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        `}
                           >
                             <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
                               <Search className="size-4" />
@@ -1412,7 +1441,7 @@ export function HomePage({
                             </div>
 
                             {!courseSearchInput ? (
-                              <div className="pointer-events-none absolute inset-x-4 md:inset-x-5 bottom-3 flex items-center overflow-hidden text-[15px] md:text-[16px] text-[color:var(--text-muted)]">
+                              <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px] text-[color:var(--text-muted)]">
                                 {typedSearchText}
                                 <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">
                                   |
@@ -1436,21 +1465,23 @@ export function HomePage({
                                 }
                               }}
                               placeholder=""
-                              className="min-h-[2rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[15px] md:text-[16px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                              className="min-h-[1.8rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[15px] md:text-[16px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
                             />
                           </div>
 
                           {/* College Search */}
                           <div
-                            className="
-          flex min-h-[3.2rem] items-center gap-3
+                            className={`
+                            
+          flex min-h-[2.95rem] items-center gap-3
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-3 md:py-2
-          border border-[rgba(15,76,129,0.08)]
+          px-4 py-2.5 md:py-1.5
+          border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        "
+        ${activeSearchField === "college" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        `}
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
                               <Building2 className="size-[1.1rem]" />
@@ -1479,15 +1510,17 @@ export function HomePage({
 
                           {/* Location Search */}
                           <div
-                            className="
-          flex min-h-[3.2rem] items-center gap-3
+                            className={`
+                            
+          flex min-h-[2.95rem] items-center gap-3
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-3 md:py-2
-          border border-[rgba(15,76,129,0.08)]
+          px-4 py-2.5 md:py-1.5
+          border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        "
+        ${activeSearchField === "location" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        `}
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
                               <MapPin className="size-[1.1rem]" />
@@ -1520,14 +1553,14 @@ export function HomePage({
                             onClick={handleHeroSearch}
                             className="
           inline-flex
-          h-12 min-h-[3.25rem]
+          h-11 min-h-[3rem]
           w-full
           items-center justify-center
           gap-2
           rounded-[1.05rem]
           bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_52%,#38bdf8_100%)]
           px-5
-          text-[15px]
+          text-[14px]
           font-semibold
           text-white
           shadow-[0_12px_24px_rgba(37,99,235,0.24)]
@@ -1536,7 +1569,7 @@ export function HomePage({
                           hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)]
           md:self-center
           md:mx-2
-          md:min-w-[7.5rem]
+          md:min-w-[7rem]
           md:w-auto
         "
                           >
@@ -1618,7 +1651,7 @@ export function HomePage({
                     </div>
 
                     {/* Hero quick stats */}
-                    <div className="mx-auto grid w-full max-w-[72rem] grid-cols-4 gap-1 sm:w-[94%] sm:gap-2.5 items-center  justify-center">
+                    <div className="mx-auto grid w-full max-w-[72rem] grid-cols-4 gap-1 sm:w-[94%] sm:gap-2 items-center justify-center">
                       {heroStatCards.map((item) => (
                         <div key={item.label} className="min-w-0 rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-1.5 py-2 shadow-[0_8px_16px_rgba(15,76,129,0.06)] sm:rounded-[1rem] sm:px-3 sm:py-3">
                           <div className="flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2.5 sm:text-left">
@@ -1965,7 +1998,7 @@ export function HomePage({
           </div>
 
           {/* Feature highlights grid */}
-          <div className="mt-10 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3">
             {featureCards.map((item, index) => {
               const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3"];
               return (
@@ -2102,7 +2135,7 @@ export function HomePage({
       <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
         <div className="page-container-full relative z-10 max-w-[1300px]">
           <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 scroll-scale-in" data-scroll-animate>
-            <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(239,68,68,0.28)] blur-3xl" />
+            <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.28)] blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
             <div className="relative z-10 mx-auto max-w-2xl text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] scroll-fade-in" data-scroll-animate>

@@ -65,6 +65,12 @@ type PredictorCard = {
   targetScore: number | null;
 };
 
+type FallbackCollegeAggregate = {
+  college: College;
+  minCutoff: number | null;
+  maxCutoff: number | null;
+};
+
 type TierBucket = {
   id: "tier1" | "tier2" | "tier3";
   title: string;
@@ -558,6 +564,7 @@ const clampMark = (value: number) => Math.max(0, Math.min(100, value));
 const getCutoffScale = (degree: string, admissionType: string) => {
   if (degree === "Medical") return 720;
   if (degree === "B.Arch") return 400;
+  if (degree === "Arts & Science") return 600;
   if (degree === "Law") {
     return admissionType === "CLAT" ? 125 : 300;
   }
@@ -618,14 +625,14 @@ const juniorRecommendationLabel = (_level: StandardId) => "11th";
 const predictorTierTheme = (tierId: TierBucket["id"]) => {
   if (tierId === "tier1") {
     return {
-      titleColor: "text-emerald-700",
+      titleColor: "text-[#1e4e79]",
       subtitleColor: "text-slate-500",
-      iconWrap: "bg-amber-50 text-amber-500",
-      chanceColor: "text-[#f59e0b]",
-      progressTrack: "bg-slate-200",
-      progressBar: "bg-[linear-gradient(90deg,#12b76a,#8be1b4)]",
-      cardTone: "border-[#dce9f8] bg-white",
-      buttonTone: "bg-[#f4f7ff] text-[#3456ff]",
+      iconWrap: "bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.96))] text-[#2563eb]",
+      chanceColor: "text-[#2563eb]",
+      progressTrack: "bg-[#dbeafe]",
+      progressBar: "bg-[linear-gradient(90deg,#1e4e79,#2563eb)]",
+      cardTone: "border-[#bfdbfe] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)]",
+      buttonTone: "bg-[#eff6ff] text-[#1d4ed8]",
     };
   }
 
@@ -694,6 +701,13 @@ const formatCutoffLabel = (value: unknown) => {
   const parsed = parseCutoffValue(String(value || ""));
   if (!parsed) return String(value || "-");
   return parsed.start === parsed.end ? `${parsed.start}` : `${parsed.start} - ${parsed.end}`;
+};
+
+const buildCutoffRangeLabel = (minCutoff: number | null, maxCutoff: number | null) => {
+  if (minCutoff === null && maxCutoff === null) return "Cutoff unavailable";
+  if (minCutoff === null) return `${maxCutoff}`;
+  if (maxCutoff === null) return `${minCutoff}`;
+  return minCutoff === maxCutoff ? `${minCutoff}` : `${minCutoff} - ${maxCutoff}`;
 };
 
 const DEGREE_MATCH_ALIASES: Record<string, string[]> = {
@@ -994,19 +1008,121 @@ export function CutoffClient({
       });
     });
 
-    const fallbackCards = colleges
+    const fallbackAggregates = new Map<string, FallbackCollegeAggregate>();
+
+    courses.forEach((course) => {
+      if (!degreeMatchesCourse(course, selectedDegree)) return;
+      if ((selectedCourse || selectedSpecialization) && !courseMatchesSelection(course, selectedCourse, selectedSpecialization)) {
+        return;
+      }
+
+      const details =
+        Array.isArray(course.collegeDetails) && course.collegeDetails.length
+          ? course.collegeDetails
+          : [
+              {
+                college: course.collegeId || course.college,
+                cutoff: course.cutoff,
+                cutoffByCategory: course.cutoffByCategory || [],
+              },
+            ];
+
+      details.forEach((detail) => {
+        const rawCollegeKey = normalizeText(String(detail.college || ""));
+        const college = colleges.find(
+          (item) =>
+            normalizeText(item.id) === rawCollegeKey ||
+            normalizeText(item.name) === rawCollegeKey ||
+            normalizeText(item.university) === rawCollegeKey,
+        );
+
+        if (!college || !collegeTypeMatches(college, selectedCollegeType)) return;
+
+        const rawCutoff = detail.cutoffText || course.cutoffText || detail.cutoff || course.cutoff;
+        const parsed = parseCutoffValue(String(rawCutoff || ""));
+        if (!parsed) return;
+
+        const existing = fallbackAggregates.get(college.id);
+        if (!existing) {
+          fallbackAggregates.set(college.id, {
+            college,
+            minCutoff: Math.min(parsed.start, parsed.end),
+            maxCutoff: Math.max(parsed.start, parsed.end),
+          });
+          return;
+        }
+
+        fallbackAggregates.set(college.id, {
+          college,
+          minCutoff:
+            existing.minCutoff === null
+              ? Math.min(parsed.start, parsed.end)
+              : Math.min(existing.minCutoff, parsed.start, parsed.end),
+          maxCutoff:
+            existing.maxCutoff === null
+              ? Math.max(parsed.start, parsed.end)
+              : Math.max(existing.maxCutoff, parsed.start, parsed.end),
+        });
+      });
+    });
+
+    const fallbackCards = Array.from(fallbackAggregates.values())
+      .sort((left, right) => {
+        const leftTier = getTierIdForRanking(String(left.college.ranking || ""));
+        const rightTier = getTierIdForRanking(String(right.college.ranking || ""));
+        if (leftTier !== rightTier) {
+          const tierOrder = { tier1: 0, tier2: 1, tier3: 2 };
+          return tierOrder[leftTier] - tierOrder[rightTier];
+        }
+
+        const leftRankingStart = getRankingStartValue(String(left.college.ranking || ""));
+        const rightRankingStart = getRankingStartValue(String(right.college.ranking || ""));
+        if (leftRankingStart !== null && rightRankingStart !== null && leftRankingStart !== rightRankingStart) {
+          return leftRankingStart - rightRankingStart;
+        }
+        if (leftRankingStart !== null && rightRankingStart === null) return -1;
+        if (leftRankingStart === null && rightRankingStart !== null) return 1;
+        return left.college.name.localeCompare(right.college.name);
+      })
+      .slice(0, 12)
+      .map(({ college, minCutoff, maxCutoff }) => {
+        const targetScore = maxCutoff;
+        const scaledTarget =
+          Number.isFinite(targetScore) && targetScore !== null && targetScore > 0
+            ? scaleMax > 100
+              ? Math.min(100, Math.round((targetScore / scaleMax) * 100))
+              : Math.min(100, Math.round(targetScore))
+            : 68;
+
+        return {
+          id: college.id,
+          name: college.name,
+          location: [college.district, college.state].filter(Boolean).join(", "),
+          image: college.image || "/cutoff-page-topImage.png",
+          href: `/college/${college.id}`,
+          cutoffLabel: buildCutoffRangeLabel(minCutoff, maxCutoff),
+          matchScore: Math.max(38, Math.min(98, Math.round(100 - Math.max(0, scaledTarget - predictorPercentage) * 1.6))),
+          isBestCollege: Boolean(college.isBestCollege),
+          ranking: String(college.ranking || ""),
+          rankingStart: getRankingStartValue(String(college.ranking || "")),
+          tierId: getTierIdForRanking(String(college.ranking || "")),
+          targetScore: targetScore && Number.isFinite(targetScore) ? targetScore : null,
+        };
+      });
+
+    const genericFallbackCards = colleges
       .filter(() => isJuniorLevel || selectedCutoffScore === null)
       .filter((college) => !selectedDegree || college.streams.some((item) => normalizeText(item).includes(normalizeText(selectedDegree))))
       .filter((college) => collegeTypeMatches(college, selectedCollegeType))
       .slice(0, 12)
-      .map((college, index) => ({
+      .map((college) => ({
         id: college.id,
         name: college.name,
         location: [college.district, college.state].filter(Boolean).join(", "),
         image: college.image || "/cutoff-page-topImage.png",
         href: `/college/${college.id}`,
-        cutoffLabel: `${72 + index * 3}`,
-        matchScore: Math.max(55, 86 - index * 4),
+        cutoffLabel: "Cutoff unavailable",
+        matchScore: 55,
         isBestCollege: Boolean(college.isBestCollege),
         ranking: String(college.ranking || ""),
         rankingStart: getRankingStartValue(String(college.ranking || "")),
@@ -1027,7 +1143,7 @@ export function CutoffClient({
       return right.matchScore - left.matchScore;
     });
     if (isTwelfthStandard) return sortedCards;
-    return sortedCards.length ? sortedCards : fallbackCards;
+    return sortedCards.length ? sortedCards : fallbackCards.length ? fallbackCards : genericFallbackCards;
   }, [
     colleges,
     courses,
@@ -1358,7 +1474,7 @@ export function CutoffClient({
                         {juniorSubjectMeta.map((subject) => (
                           <div
                             key={`${standard.id}-${subject.key}`}
-                            className="flex items-center gap-4"
+                            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
                           >
                             <div className={`inline-flex size-14 shrink-0 items-center justify-center rounded-[1rem] ${subject.soft}`}>
                               <subject.icon className={`size-7 ${subject.accent}`} />
@@ -1368,7 +1484,13 @@ export function CutoffClient({
                               <div className="mb-2 text-[1.05rem] font-semibold text-slate-900">
                                 {subject.label}
                               </div>
-                              <div className="flex items-center gap-3 rounded-[1rem] border border-[#d9e2fb] bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                              <div
+                                className={`flex min-w-0 items-center gap-3 rounded-[1rem] border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition ${
+                                  marks[subject.key] > 0
+                                    ? "border-[#2563eb] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
+                                    : "border-[#93c5fd] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-[0_8px_18px_rgba(37,99,235,0.08)]"
+                                }`}
+                              >
                                 <input
                                   type="text"
                                   inputMode="numeric"
@@ -1380,7 +1502,7 @@ export function CutoffClient({
                                   className="h-10 flex-1 bg-transparent text-[1rem] font-medium text-slate-900 outline-none placeholder:text-[#b5c0e3]"
                                   aria-label={`${standard.label} ${subject.label} marks`}
                                 />
-                                <span className="text-[1rem] font-semibold text-slate-800">/100</span>
+                                <span className="shrink-0 text-[1rem] font-semibold text-slate-800">/100</span>
                               </div>
                             </div>
                           </div>
@@ -1685,9 +1807,6 @@ export function CutoffClient({
             <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
               <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                 <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">
-                    1
-                  </span>
                   Cutoff Overview
                 </div>
 
@@ -1766,7 +1885,6 @@ export function CutoffClient({
 
               <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                 <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">2</span>
                   Eligibility & Exam Direction
                 </div>
                 <h3 className="mt-4 text-2xl font-black tracking-[-0.04em] text-slate-950">{seniorGuide.title}</h3>
@@ -1908,7 +2026,7 @@ export function CutoffClient({
                             <Link
                               key={`${tier.id}-${college.id}`}
                               href={college.href}
-                              className="group w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 rounded-[1rem] border border-[#d8e3ff] bg-white p-3 text-center shadow-[0_12px_28px_rgba(52,86,255,0.08)] transition hover:-translate-y-0.5 hover:border-[#b8caff]"
+                              className="group box-border w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 rounded-[1rem] border-2 border-[#d8e3ff] bg-white p-3 text-center shadow-[0_12px_28px_rgba(52,86,255,0.08)] transition-[border-color,box-shadow] duration-200 hover:border-[#8fb0ff] hover:shadow-[0_16px_30px_rgba(52,86,255,0.14)]"
                             >
                               <div className="relative mx-auto h-[78px] w-full overflow-hidden rounded-[0.9rem] border-2 border-[#dfe7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                                 <Image
@@ -1921,6 +2039,9 @@ export function CutoffClient({
                               </div>
                               <p className="mt-3 line-clamp-2 text-[11px] font-semibold leading-4 text-slate-700">
                                 {college.name}
+                              </p>
+                              <p className="mt-2 text-[11px] font-bold text-sky-700">
+                                {college.cutoffLabel} cutoff
                               </p>
                             </Link>
                           ))}
@@ -1945,7 +2066,6 @@ export function CutoffClient({
           <section className={`grid gap-5 ${usesFocusedMatchFlow ? "" : "xl:grid-cols-[0.92fr_1.08fr]"}`}>
             <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">4</span>
                 Best Picks For You
               </div>
               <div className="mt-5 space-y-3">

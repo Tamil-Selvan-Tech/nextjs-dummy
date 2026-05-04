@@ -402,7 +402,14 @@ const formSectionClass = "grid gap-2 grid-cols-1 sm:gap-3 md:grid-cols-2 xl:grid
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
-const streamOptions = ["Engineering", "Architecture", "Computer / IT", "Science", "Medical / Health", "Paramedical", "Commerce", "Management", "Arts", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
+const artsAndScienceStream = "Arts & Science";
+const artsScienceCourseTypeGroups = {
+  science: "B.Sc (Science Courses)",
+  commerce: "B.Com (Commerce Courses)",
+  arts: "B.A (Arts Courses)",
+  professional: "Other Professional Courses",
+} as const;
+const streamOptions = ["Engineering", "Architecture", artsAndScienceStream, "Medical / Health", "Paramedical", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
 const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
 const qualificationLabelMap: Record<string, string> = {
   "10th": "Secondary School (Grade 10)",
@@ -447,34 +454,18 @@ const courseCatalog: CourseCatalogItem[] = [
   { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Automobile Engineering", degreeType: "Diploma" },
   { stream: "Engineering", courseType: "Diploma in Engineering", specialization: "Information Technology", degreeType: "Diploma" },
   { stream: "Architecture", courseType: "B.Arch (Bachelor of Architecture)", specialization: "Architecture", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "General", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Data Science", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Artificial Intelligence", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Cyber Security", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Cloud Computing", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Blockchain Technology", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Game Development", degreeType: "UG" },
-  { stream: "Computer / IT", courseType: "BCA", specialization: "Web Development", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Computer Science", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Information Technology", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Software Engineering", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Data Analytics", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Artificial Intelligence", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Cyber Security", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Animation & Multimedia", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Physics", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Chemistry", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Mathematics", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Statistics", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Biotechnology", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Microbiology", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Biochemistry", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Genetics", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Zoology", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Botany", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Environmental Science", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Food Science", degreeType: "UG" },
-  { stream: "Science", courseType: "B.Sc", specialization: "Nutrition & Dietetics", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Mathematics", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Physics", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Chemistry", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Computer Science", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Information Technology (IT)", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Microbiology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Biotechnology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Zoology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Botany", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Geology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Home Science", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.science, specialization: "B.Sc Nutrition & Dietetics", degreeType: "UG" },
   { stream: "Medical / Health", courseType: "MBBS", specialization: "General Medicine", degreeType: "UG" },
   { stream: "Medical / Health", courseType: "BDS", specialization: "Dentistry", degreeType: "UG" },
   { stream: "Medical / Health", courseType: "BAMS", specialization: "Ayurveda", degreeType: "UG" },
@@ -492,32 +483,22 @@ const courseCatalog: CourseCatalogItem[] = [
   { stream: "Paramedical", courseType: "B.Sc", specialization: "Operation Theatre Technology", degreeType: "UG" },
   { stream: "Paramedical", courseType: "B.Sc", specialization: "Cardiac Technology", degreeType: "UG" },
   { stream: "Paramedical", courseType: "B.Sc", specialization: "Respiratory Therapy", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "General", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "Accounting & Finance", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "Banking & Insurance", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "Corporate Secretaryship", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "Computer Applications", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "Taxation", degreeType: "UG" },
-  { stream: "Commerce", courseType: "B.Com", specialization: "E-Commerce", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "General", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "Marketing", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "Finance", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "Human Resource", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "Logistics", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "International Business", degreeType: "UG" },
-  { stream: "Management", courseType: "BBA", specialization: "Aviation Management", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "English", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Tamil", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Hindi", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "History", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Political Science", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Sociology", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Psychology", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Economics", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Journalism", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Public Administration", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Philosophy", degreeType: "UG" },
-  { stream: "Arts", courseType: "B.A", specialization: "Geography", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.commerce, specialization: "B.Com (General)", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.commerce, specialization: "B.Com Accounting & Finance", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.commerce, specialization: "B.Com Banking & Insurance", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.commerce, specialization: "B.Com Corporate Secretaryship", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.commerce, specialization: "B.Com Computer Applications", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A English", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A Tamil", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A History", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A Economics", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A Political Science", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A Sociology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.arts, specialization: "B.A Psychology", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.professional, specialization: "BBA (Bachelor of Business Administration)", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.professional, specialization: "BCA (Bachelor of Computer Applications)", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.professional, specialization: "BSW (Social Work)", degreeType: "UG" },
+  { stream: artsAndScienceStream, courseType: artsScienceCourseTypeGroups.professional, specialization: "BFA (Fine Arts)", degreeType: "UG" },
   { stream: "Law", courseType: "LLB", specialization: "General", degreeType: "UG" },
   { stream: "Law", courseType: "BA LLB", specialization: "Integrated", degreeType: "UG" },
   { stream: "Law", courseType: "BBA LLB", specialization: "Integrated", degreeType: "UG" },
@@ -586,10 +567,7 @@ const streamDurationByDegreeType: Record<string, Partial<Record<string, string>>
 const streamCourseNameByDegreeType: Record<string, Partial<Record<string, string>>> = {
   Engineering: { UG: "B.E", PG: "M.E", Diploma: "Diploma in Engineering", Certificate: "Certificate in Engineering", Doctorate: "Ph.D" },
   Architecture: { UG: "B.Arch (Bachelor of Architecture)", PG: "M.Arch", Diploma: "Diploma in Architecture", Certificate: "Certificate in Architecture", Doctorate: "Ph.D" },
-  Management: { UG: "BBA", PG: "MBA", Diploma: "Diploma in Management", Certificate: "Certificate in Management", Doctorate: "Ph.D" },
-  Arts: { UG: "B.A", PG: "M.A", Diploma: "Diploma in Arts", Certificate: "Certificate in Arts", Doctorate: "Ph.D" },
-  Science: { UG: "B.Sc", PG: "M.Sc", Diploma: "Diploma in Science", Certificate: "Certificate in Science", Doctorate: "Ph.D" },
-  Commerce: { UG: "B.Com", PG: "M.Com", Diploma: "Diploma in Commerce", Certificate: "Certificate in Commerce", Doctorate: "Ph.D" },
+  "Arts & Science": { UG: "B.A", PG: "M.A", Diploma: "Diploma in Arts & Science", Certificate: "Certificate in Arts & Science", Doctorate: "Ph.D" },
   Medical: { UG: "MBBS", PG: "M.D", Diploma: "Diploma in Medical Sciences", Certificate: "Certificate in Medical Sciences", Doctorate: "Ph.D" },
   Law: { UG: "LLB", PG: "LLM", Diploma: "Diploma in Law", Certificate: "Certificate in Law", Doctorate: "Ph.D" },
   Design: { UG: "B.Des", PG: "M.Des", Diploma: "Diploma in Design", Certificate: "Certificate in Design", Doctorate: "Ph.D" },
@@ -700,9 +678,59 @@ const getQualificationSuggestions = (courseName: string, degreeType: string, str
   return Array.from(new Set(highestRequired ? [highestRequired] : qualificationOptions));
 };
 const normalizeAdminOption = (value?: string) => String(value || "").trim();
+const normalizeArtsScienceCourseType = (stream: string, courseType: string, specialization = "") => {
+  if (normalizeCourseStream(stream) !== artsAndScienceStream) return normalizeAdminOption(courseType);
+
+  const normalizedCourseType = normalizeAdminOption(courseType);
+  const normalizedSpecialization = normalizeAdminOption(specialization);
+  if (
+    [
+      artsScienceCourseTypeGroups.science,
+      artsScienceCourseTypeGroups.commerce,
+      artsScienceCourseTypeGroups.arts,
+      artsScienceCourseTypeGroups.professional,
+    ].includes(normalizedCourseType as (typeof artsScienceCourseTypeGroups)[keyof typeof artsScienceCourseTypeGroups])
+  ) {
+    return normalizedCourseType;
+  }
+
+  if (normalizedCourseType === "B.Sc") return artsScienceCourseTypeGroups.science;
+  if (normalizedCourseType === "B.Com") return artsScienceCourseTypeGroups.commerce;
+  if (normalizedCourseType === "B.A") return artsScienceCourseTypeGroups.arts;
+  if (["BBA", "BCA", "BSW", "BFA"].includes(normalizedCourseType)) {
+    return artsScienceCourseTypeGroups.professional;
+  }
+  if (
+    normalizedSpecialization.startsWith("B.Sc ") ||
+    ["Physics", "Chemistry", "Mathematics", "Microbiology", "Biotechnology", "Zoology", "Botany"].includes(normalizedSpecialization)
+  ) {
+    return artsScienceCourseTypeGroups.science;
+  }
+  if (normalizedSpecialization.startsWith("B.Com ") || normalizedSpecialization === "B.Com (General)") {
+    return artsScienceCourseTypeGroups.commerce;
+  }
+  if (normalizedSpecialization.startsWith("B.A ")) {
+    return artsScienceCourseTypeGroups.arts;
+  }
+  if (
+    normalizedSpecialization.startsWith("BBA ") ||
+    normalizedSpecialization.startsWith("BCA ") ||
+    normalizedSpecialization.startsWith("BSW ") ||
+    normalizedSpecialization.startsWith("BFA ")
+  ) {
+    return artsScienceCourseTypeGroups.professional;
+  }
+
+  return normalizedCourseType;
+};
 const streamAliasMap: Record<string, string> = {
-  "Computer Applications": "Computer / IT",
+  "Computer Applications": artsAndScienceStream,
   Medical: "Medical / Health",
+  Arts: artsAndScienceStream,
+  Science: artsAndScienceStream,
+  Commerce: artsAndScienceStream,
+  Management: artsAndScienceStream,
+  "Computer / IT": artsAndScienceStream,
 };
 const normalizeCourseStream = (value?: string) => streamAliasMap[normalizeAdminOption(value)] || normalizeAdminOption(value);
 const getDurationMultiplier = (duration: string) => {
@@ -921,24 +949,26 @@ export default function AdminPage() {
     [imageFiles],
   );
   const embeddedStreamOptions = useMemo(() => {
-    const currentStream = String(embeddedCourseForm.stream || "").trim();
+    const currentStream = normalizeCourseStream(embeddedCourseForm.stream);
     return currentStream && !streamOptions.includes(currentStream)
       ? [currentStream, ...streamOptions]
       : streamOptions;
   }, [embeddedCourseForm.stream]);
   const courseStreamOptionsForForm = useMemo(() => {
-    const currentStream = String(courseForm.stream || "").trim();
+    const currentStream = normalizeCourseStream(courseForm.stream);
     return currentStream && !streamOptions.includes(currentStream)
       ? [currentStream, ...streamOptions]
       : streamOptions;
   }, [courseForm.stream]);
-  const embeddedStreamSelectValue = embeddedStreamOptions.includes(embeddedCourseForm.stream)
-    ? embeddedCourseForm.stream
+  const normalizedEmbeddedStream = normalizeCourseStream(embeddedCourseForm.stream);
+  const normalizedCourseStreamValue = normalizeCourseStream(courseForm.stream);
+  const embeddedStreamSelectValue = embeddedStreamOptions.includes(normalizedEmbeddedStream)
+    ? normalizedEmbeddedStream
     : embeddedCourseForm.stream
       ? CUSTOM_STREAM_OPTION
       : "";
-  const courseStreamSelectValue = courseStreamOptionsForForm.includes(courseForm.stream)
-    ? courseForm.stream
+  const courseStreamSelectValue = courseStreamOptionsForForm.includes(normalizedCourseStreamValue)
+    ? normalizedCourseStreamValue
     : courseForm.stream
       ? CUSTOM_STREAM_OPTION
       : "";
@@ -947,11 +977,17 @@ export default function AdminPage() {
       const normalizedStream = normalizeCourseStream(stream);
       const catalogOptions = courseCatalog
         .filter((item) => (!normalizedStream || item.stream === normalizedStream) && (!degreeType || item.degreeType === degreeType))
-        .map((item) => item.courseType);
+        .map((item) => normalizeArtsScienceCourseType(item.stream, item.courseType, item.specialization));
       const existingOptions = adminState.courses.flatMap((course) => {
         if (normalizeCourseStream(course.stream) !== normalizedStream) return [];
         if (degreeType && normalizeAdminOption(course.degreeType) !== degreeType) return [];
-        return [normalizeAdminOption(course.courseType)].filter(Boolean);
+        return [
+          normalizeArtsScienceCourseType(
+            String(course.stream || course.courseCategory || ""),
+            normalizeAdminOption(course.courseType),
+            normalizeAdminOption(course.specialization || course.courseName),
+          ),
+        ].filter(Boolean);
       });
 
       return Array.from(new Set([...catalogOptions, ...existingOptions]));
@@ -961,6 +997,7 @@ export default function AdminPage() {
   const getSpecializationOptionsForSelection = useCallback(
     (stream: string, degreeType: string, courseType: string) => {
       const normalizedStream = normalizeCourseStream(stream);
+      const isArtsAndScienceSelection = normalizedStream === artsAndScienceStream;
       const catalogOptions = courseCatalog
         .filter((item) =>
           (!normalizedStream || item.stream === normalizedStream) &&
@@ -969,20 +1006,30 @@ export default function AdminPage() {
         )
         .map((item) => ({
           value: item.specialization,
-          label: item.specialization === item.courseType ? item.courseType : `${item.courseType} - ${item.specialization}`,
+          label:
+            isArtsAndScienceSelection || item.specialization === item.courseType
+              ? item.specialization
+              : `${item.courseType} - ${item.specialization}`,
         }));
       const existingOptions = adminState.courses.flatMap((course) => {
         if (normalizeCourseStream(course.stream) !== normalizedStream) return [];
         if (degreeType && normalizeAdminOption(course.degreeType) !== degreeType) return [];
-        if (courseType && normalizeAdminOption(course.courseType) !== courseType) return [];
+        const existingCourseType = normalizeArtsScienceCourseType(
+          String(course.stream || course.courseCategory || ""),
+          normalizeAdminOption(course.courseType),
+          normalizeAdminOption(course.specialization || course.courseName),
+        );
+        if (courseType && existingCourseType !== courseType) return [];
 
         const specialization = normalizeAdminOption(course.specialization || course.courseName);
-        const existingCourseType = normalizeAdminOption(course.courseType);
         if (!specialization) return [];
 
         return [{
           value: specialization,
-          label: specialization === existingCourseType ? existingCourseType : `${existingCourseType} - ${specialization}`,
+          label:
+            isArtsAndScienceSelection || specialization === existingCourseType
+              ? specialization
+              : `${existingCourseType} - ${specialization}`,
         }];
       });
 
@@ -1291,9 +1338,13 @@ export default function AdminPage() {
 
     return {
       id: course._id,
-      courseType: course.courseType || "",
+      courseType: normalizeArtsScienceCourseType(
+        course.stream || course.courseCategory || "",
+        course.courseType || "",
+        course.specialization || course.courseName || "",
+      ),
       degreeType: course.degreeType || "",
-      stream: course.stream || course.courseCategory || "",
+      stream: normalizeCourseStream(course.stream || course.courseCategory || ""),
       specialization: course.specialization || course.courseName || course.course || "",
       duration: course.duration || "",
       mode: course.mode || "Full-time",
@@ -1908,18 +1959,19 @@ export default function AdminPage() {
       }));
       const primaryCollegeId = selectedCollegeIds[0] || "";
       const primaryDetails = courseForm.details[primaryCollegeId] || emptyCourseDetail();
+      const normalizedCourseStream = normalizeCourseStream(courseForm.stream);
 
       const data = await request(
         editCourseId ? `/api/admin/courses/${editCourseId}` : "/api/admin/courses",
         withAuth(token, {
           method: editCourseId ? "PUT" : "POST",
           body: JSON.stringify({
-            course: `${courseForm.courseType} - ${courseForm.stream} - ${courseForm.specialization}`,
+            course: `${courseForm.courseType} - ${normalizedCourseStream} - ${courseForm.specialization}`,
             courseType: courseResolvedCourseName.trim(),
-            courseCategory: courseForm.stream.trim(),
+            courseCategory: normalizedCourseStream,
             courseName: courseForm.specialization.trim(),
             degreeType: courseForm.degreeType.trim(),
-            stream: courseForm.stream.trim(),
+            stream: normalizedCourseStream,
             specialization: courseForm.specialization.trim(),
             duration: courseForm.duration.trim(),
             mode: courseForm.mode.trim(),
@@ -2067,13 +2119,14 @@ export default function AdminPage() {
       const savedCollegeId = String(data?.college?._id || editCollegeId || "");
       if (savedCollegeId && embeddedCourses.length > 0) {
         for (const draft of embeddedCourses) {
+          const normalizedDraftStream = normalizeCourseStream(draft.stream);
           const payload = {
-            course: `${getResolvedCourseName(draft.stream, draft.degreeType, draft.courseType)} - ${draft.stream} - ${draft.specialization}`,
-            courseType: getResolvedCourseName(draft.stream, draft.degreeType, draft.courseType),
-            courseCategory: draft.stream,
+            course: `${getResolvedCourseName(normalizedDraftStream, draft.degreeType, draft.courseType)} - ${normalizedDraftStream} - ${draft.specialization}`,
+            courseType: getResolvedCourseName(normalizedDraftStream, draft.degreeType, draft.courseType),
+            courseCategory: normalizedDraftStream,
             courseName: draft.specialization,
             degreeType: draft.degreeType,
-            stream: draft.stream,
+            stream: normalizedDraftStream,
             specialization: draft.specialization,
             duration: draft.duration,
             mode: draft.mode,
@@ -5218,9 +5271,13 @@ export default function AdminPage() {
                         setShowCourseForm(true);
                         setSelectedCourseCollegeId("");
                         setCourseForm({
-                          courseType: course.courseType || course.course || "",
+                          courseType: normalizeArtsScienceCourseType(
+                            course.stream || course.courseCategory || "",
+                            course.courseType || course.course || "",
+                            course.specialization || course.courseName || "",
+                          ),
                           degreeType: course.degreeType || "",
-                          stream: course.stream || course.courseCategory || "",
+                          stream: normalizeCourseStream(course.stream || course.courseCategory || ""),
                           specialization: course.specialization || course.courseName || "",
                           duration: course.duration || "",
                           mode: course.mode || "Full-time",

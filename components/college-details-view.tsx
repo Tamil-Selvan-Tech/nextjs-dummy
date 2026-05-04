@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
-import { PageBackButton } from "@/components/global-back-button";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import type { College, Course } from "@/lib/site-data";
 import { EnquiryForm } from "@/components/enquiry-form";
@@ -829,9 +828,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       </button>
                     </div>
                   ) : null}
-                  <div className="flex justify-center pt-4">
-                    <PageBackButton />
-                  </div>
                 </div>
               ) : null}
 
