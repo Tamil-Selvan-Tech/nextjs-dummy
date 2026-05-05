@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   BookOpen,
@@ -148,16 +147,6 @@ export function CourseDetailsView({
       <div className="relative z-10">
         <Navbar />
         <div className="page-container py-8 md:py-12">
-          <div className="mb-5">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--brand-primary)] shadow-[0_12px_24px_rgba(22,50,79,0.05)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)]"
-            >
-              <ArrowLeft className="size-4" />
-              Back to Home
-            </Link>
-          </div>
-
           <div className="overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] shadow-[0_24px_56px_rgba(22,50,79,0.12)]">
             <div className="grid gap-6 p-5 md:p-8 xl:grid-cols-[1.1fr_0.9fr]">
               <div>

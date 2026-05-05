@@ -73,20 +73,20 @@ export function AdminPortalShell({
 
   return (
     <section className="section-shell min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_20%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),linear-gradient(180deg,#fffdf8_0%,#f8fbff_54%,#f3f8ff_100%)] text-[color:var(--text-dark)]">
-      <div className="mesh-bg opacity-20" />
-      <div className="hero-grid absolute inset-0 opacity-[0.05]" />
-      <div className="absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(251,191,36,0.12)] blur-3xl" />
-      <div className="absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
-
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div className="pointer-events-none mesh-bg opacity-20" />
+      <div className="pointer-events-none hero-grid absolute inset-0 opacity-[0.05]" />
+      <div className="pointer-events-none absolute left-[-4rem] top-10 h-52 w-52 rounded-full bg-[rgba(251,191,36,0.12)] blur-3xl" />
+      <div className="pointer-events-none absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
 
       <div className="page-container-full relative z-10 px-2 py-2 sm:px-3 sm:py-4">
+        {/* Keep the backdrop in the same stacking context as the sidebar so mobile taps reach the menu. */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         <div className="grid min-h-0 gap-2.5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
           {/* Sidebar - Desktop visible, Mobile hidden unless opened */}
           <aside

@@ -102,7 +102,15 @@ const highlightTerms = [
   "1250 marks",
 ];
 
-const highlightPattern = new RegExp(`(${highlightTerms.sort((a, b) => b.length - a.length).map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+const escapedHighlightTerms = highlightTerms
+  .slice()
+  .sort((a, b) => b.length - a.length)
+  .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+const highlightPattern = new RegExp(
+  `(^|[^A-Za-z0-9])(${escapedHighlightTerms.join("|")})(?=[^A-Za-z0-9]|$)`,
+  "gi",
+);
 
 function buildHeroTitle(details: ExamDetails) {
   const examName = details.title.replace(/\s+\d{4}$/, "");
@@ -184,18 +192,38 @@ function getExamApplicationFee(details: ExamDetails) {
 }
 
 function renderHighlightedText(text: string): ReactNode {
-  const parts = text.split(highlightPattern);
+  const value = String(text || "");
+  highlightPattern.lastIndex = 0;
+  const matches = Array.from(value.matchAll(highlightPattern));
+
+  if (!matches.length) {
+    return value;
+  }
 
   return (
     <>
-      {parts.map((part, index) =>
-        highlightTerms.some((term) => term.toLowerCase() === part.toLowerCase()) ? (
-          <span key={`${part}-${index}`} className="font-bold text-[#111827]">
-            {part}
+      {matches.map((match, index) => {
+        const matchIndex = match.index ?? 0;
+        const fullMatch = match[0] ?? "";
+        const leadingText = match[1] ?? "";
+        const highlightedText = match[2] ?? "";
+        const highlightedOffset = fullMatch.lastIndexOf(highlightedText);
+        const prefixEnd = matchIndex + Math.max(highlightedOffset, leadingText.length);
+        const previousMatchEnd =
+          index === 0
+            ? 0
+            : (matches[index - 1]?.index ?? 0) + (matches[index - 1]?.[0]?.length ?? 0);
+
+        return (
+          <span key={`${highlightedText}-${matchIndex}`}>
+            {value.slice(previousMatchEnd, matchIndex)}
+            {value.slice(matchIndex, prefixEnd)}
+            <span className="font-bold text-[#111827]">{highlightedText}</span>
           </span>
-        ) : (
-          <span key={`${part}-${index}`}>{part}</span>
-        ),
+        );
+      })}
+      {value.slice(
+        (matches[matches.length - 1]?.index ?? 0) + (matches[matches.length - 1]?.[0]?.length ?? 0),
       )}
     </>
   );
@@ -569,7 +597,7 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
       </h3>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)] xl:items-center">
-        <div className="relative mx-auto hidden aspect-square w-full max-w-[560px] xl:block">
+        <div className="relative mx-auto aspect-square w-full max-w-[320px] sm:max-w-[380px] md:max-w-[460px] xl:max-w-[560px]">
           <div className="absolute inset-[12%] rounded-full border border-[#f7d2bb] bg-[radial-gradient(circle,#fffaf6_0%,#fff1e7_68%,transparent_70%)] shadow-[0_0_70px_rgba(245,158,11,0.12)]" />
           <div className="absolute inset-[24%] rounded-full border border-[#f3cbb1]/80" />
           <div className="absolute inset-[36%] rounded-full border border-[#f3cbb1]/60" />
@@ -594,11 +622,11 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
             })}
           </svg>
 
-          <div className="absolute left-1/2 top-1/2 flex h-[180px] w-[180px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(255,232,214,0.7))] text-center shadow-[0_0_0_10px_rgba(255,255,255,0.35),0_24px_60px_rgba(248,146,32,0.18),inset_0_0_30px_rgba(255,255,255,0.7)] backdrop-blur-xl">
-            <div className="absolute inset-4 rounded-full border border-[#ffd7be]/80" />
+          <div className="absolute left-1/2 top-1/2 flex h-[112px] w-[112px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(255,232,214,0.7))] text-center shadow-[0_0_0_8px_rgba(255,255,255,0.35),0_18px_42px_rgba(248,146,32,0.18),inset_0_0_24px_rgba(255,255,255,0.7)] backdrop-blur-xl sm:h-[132px] sm:w-[132px] md:h-[150px] md:w-[150px] xl:h-[180px] xl:w-[180px] xl:shadow-[0_0_0_10px_rgba(255,255,255,0.35),0_24px_60px_rgba(248,146,32,0.18),inset_0_0_30px_rgba(255,255,255,0.7)]">
+            <div className="absolute inset-3 rounded-full border border-[#ffd7be]/80 sm:inset-4" />
             <div>
               <p className="text-[0.82rem] font-semibold uppercase tracking-[0.3em] text-[#f08b33]">Overview</p>
-              <p className="mt-2 px-5 text-[1.6rem] font-bold leading-tight tracking-[-0.04em] text-[#172033]">
+              <p className="mt-2 px-3 text-[1.1rem] font-bold leading-tight tracking-[-0.04em] text-[#172033] sm:px-4 sm:text-[1.25rem] md:px-5 md:text-[1.4rem] xl:text-[1.6rem]">
                 {details.title.replace(/\s+2026$/, "")}
               </p>
             </div>
@@ -611,20 +639,20 @@ function OverviewInfographic({ details }: { details: ExamDetails }) {
             return (
               <div
                 key={`${card.title}-${card.value}-orbit`}
-                className="absolute flex h-[98px] w-[98px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.88),rgba(255,243,234,0.68))] shadow-[0_0_0_8px_rgba(255,255,255,0.32),0_18px_34px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+                className="absolute flex h-[62px] w-[62px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.88),rgba(255,243,234,0.68))] shadow-[0_0_0_5px_rgba(255,255,255,0.32),0_12px_24px_rgba(15,23,42,0.14)] backdrop-blur-xl sm:h-[72px] sm:w-[72px] md:h-[82px] md:w-[82px] xl:h-[98px] xl:w-[98px] xl:shadow-[0_0_0_8px_rgba(255,255,255,0.32),0_18px_34px_rgba(15,23,42,0.14)]"
                 style={{
                   top: orbitPositions[index].top,
                   left: orbitPositions[index].left,
-                  boxShadow: `0 0 0 8px rgba(255,255,255,0.32), 0 0 30px ${palette.accent}30, 0 18px 34px rgba(15,23,42,0.14)`,
+                  boxShadow: `0 0 0 5px rgba(255,255,255,0.32), 0 0 24px ${palette.accent}30, 0 12px 24px rgba(15,23,42,0.14)`,
                 }}
               >
                 <div
-                  className="flex h-[66px] w-[66px] items-center justify-center rounded-full border text-center"
+                  className="flex h-[42px] w-[42px] items-center justify-center rounded-full border text-center sm:h-[48px] sm:w-[48px] md:h-[56px] md:w-[56px] xl:h-[66px] xl:w-[66px]"
                   style={{ borderColor: `${palette.accent}66`, background: `linear-gradient(145deg, ${palette.soft}, #ffffff)` }}
                 >
                   <div className="flex flex-col items-center gap-1">
-                    <Icon className="size-4" style={{ color: palette.accent }} />
-                    <span className="text-xs font-bold" style={{ color: palette.accent }}>
+                    <Icon className="size-3 sm:size-3.5 md:size-4" style={{ color: palette.accent }} />
+                    <span className="text-[10px] font-bold sm:text-[11px] md:text-xs" style={{ color: palette.accent }}>
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
@@ -1176,10 +1204,14 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
       <Navbar />
       <div className="page-container-full w-full px-4 py-6 sm:px-6 md:py-8">
           <div className="flex flex-wrap items-center gap-2 text-sm text-[#55708b]">
-            <Home className="size-4 text-[#2f6edb]" />
-            <Link href="/explore" className="text-[#2f6edb] hover:underline">
-              Exams
+            <Link
+              href="/"
+              aria-label="Go to home page"
+              className="inline-flex items-center text-[#2f6edb] hover:text-[#245fc5]"
+            >
+              <Home className="size-4" />
             </Link>
+            <span className="text-[#2f6edb]">Exams</span>
             <ChevronRight className="size-4" />
             <span className="font-medium text-[#344256]">{details.title.replace(/\s+\d{4}$/, "")}</span>
           </div>
@@ -1265,91 +1297,93 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
               )}
             </div>
 
-            <aside className="space-y-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto xl:pr-2">
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#fff4ec] text-[#ef4444]">
-                    <FileText className="size-7" />
+            <aside className="space-y-5 xl:self-start">
+              <div className="space-y-5">
+                <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#fff4ec] text-[#ef4444]">
+                      <FileText className="size-7" />
+                    </div>
+                    <h3 className="text-[1.05rem] font-semibold leading-8 text-[#2a2f37] md:text-[1.1rem]">
+                      Download Free {details.title.replace(/\s+\d{4}$/, "")} Previous Year Papers with Solutions
+                    </h3>
                   </div>
-                  <h3 className="text-[1.05rem] font-semibold leading-8 text-[#2a2f37] md:text-[1.1rem]">
-                    Download Free {details.title.replace(/\s+\d{4}$/, "")} Previous Year Papers with Solutions
-                  </h3>
-                </div>
-                {details.studyHub?.previousYearPapers?.[0] ? (
-                  <a
-                    href={details.studyHub.previousYearPapers[0].href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
-                    title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
-                  >
-                    Free Download
-                    <Download className="size-5" />
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
-                    title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
-                  >
-                    Free Download
-                    <Download className="size-5" />
-                  </button>
-                )}
-              </section>
+                  {details.studyHub?.previousYearPapers?.[0] ? (
+                    <a
+                      href={details.studyHub.previousYearPapers[0].href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
+                      title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
+                    >
+                      Free Download
+                      <Download className="size-5" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#f97316] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#ea6a0c]"
+                      title={applicationFee ? `Application Fee: ${applicationFee}` : undefined}
+                    >
+                      Free Download
+                      <Download className="size-5" />
+                    </button>
+                  )}
+                </section>
 
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-                <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Get More Info About {details.title.replace(/\s+\d{4}$/, "")}</h3>
-                {details.studyHub?.practiceLinks?.[0] ? (
-                  <a
-                    href={details.studyHub.practiceLinks[0].href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
-                  >
-                    Download Sample Papers
-                    <Download className="size-5" />
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
-                  >
-                    Download Sample Papers
-                    <Download className="size-5" />
-                  </button>
-                )}
-              </section>
+                <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+                  <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Get More Info About {details.title.replace(/\s+\d{4}$/, "")}</h3>
+                  {details.studyHub?.practiceLinks?.[0] ? (
+                    <a
+                      href={details.studyHub.practiceLinks[0].href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+                    >
+                      Download Sample Papers
+                      <Download className="size-5" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+                    >
+                      Download Sample Papers
+                      <Download className="size-5" />
+                    </button>
+                  )}
+                </section>
 
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-                <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Important Timeline</h3>
-                <div className="mt-5 space-y-4">
-                  {details.timeline.map((item) => (
-                    <div key={item.label} className="rounded-[1.25rem] bg-[#f8fafc] px-4 py-4">
-                      <p className="text-sm font-semibold text-[#172033]">{item.label}</p>
-                      <p className="mt-1 text-sm text-[#637181]">{item.displayDate}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+                  <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Important Timeline</h3>
+                  <div className="mt-5 space-y-4">
+                    {details.timeline.map((item) => (
+                      <div key={item.label} className="rounded-[1.25rem] bg-[#f8fafc] px-4 py-4">
+                        <p className="text-sm font-semibold text-[#172033]">{item.label}</p>
+                        <p className="mt-1 text-sm text-[#637181]">{item.displayDate}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
 
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-                <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Quick Facts</h3>
-                <div className="mt-5 space-y-4">
-                  {[
-                    { label: "Exam Mode", value: details.examMode },
-                    { label: "Authority", value: details.authority },
-                    { label: "Courses Offered", value: details.coursesOffered },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-[1.25rem] border border-[#edf1f6] px-4 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#7b8796]">{item.label}</p>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-[#243041]">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+                  <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Quick Facts</h3>
+                  <div className="mt-5 space-y-4">
+                    {[
+                      { label: "Exam Mode", value: details.examMode },
+                      { label: "Authority", value: details.authority },
+                      { label: "Courses Offered", value: details.coursesOffered },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-[1.25rem] border border-[#edf1f6] px-4 py-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#7b8796]">{item.label}</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-[#243041]">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
 
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)] xl:sticky xl:top-6">
                 <div className="flex items-center gap-2">
                   <Info className="size-5 text-[#2f6edb]" />
                   <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Explore Other Exams</h3>

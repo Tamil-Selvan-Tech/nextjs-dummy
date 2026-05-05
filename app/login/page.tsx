@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -22,6 +22,7 @@ import {
   type SafeAuthUser,
 } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
+import { navigateToSafeBack } from "@/lib/safe-back";
 import { useStatusToast } from "@/lib/toast";
 
 const accountModes = {
@@ -85,6 +86,7 @@ function CollegeIllustration() {
 
 export default function LoginPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const rawType = searchParams.get("type");
   const queryType = rawType === "college" ? "college" : "student";
@@ -99,6 +101,11 @@ export default function LoginPage() {
   const mode = accountModes[accountType];
   const Illustration = accountType === "college" ? CollegeIllustration : StudentIllustration;
   const signupHref = useMemo(() => `/signup?type=${accountType}`, [accountType]);
+  const currentRoute = useMemo(() => {
+    if (!pathname) return "/";
+    const query = searchParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     const currentUser = readCurrentUser();
@@ -223,7 +230,7 @@ export default function LoginPage() {
             <div className="w-full max-w-md sm:max-w-lg lg:max-w-md">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => navigateToSafeBack(router, currentRoute, "/")}
                 className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(4,12,26,0.08)] transition hover:border-[color:var(--brand-primary-soft)] hover:text-[color:var(--text-dark)]"
               >
                 <ArrowLeft className="size-3.5" />

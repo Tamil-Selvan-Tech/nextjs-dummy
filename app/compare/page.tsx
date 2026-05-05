@@ -328,20 +328,13 @@ export default function ComparePage() {
               <X className="size-3.5" />
             </button>
           </div>
-          <div
-            className="relative h-12 w-24 overflow-hidden rounded-[0.9rem] border border-[rgba(15,76,129,0.14)] shadow-[0_8px_18px_rgba(22,50,79,0.1)]"
-            style={{
-              backgroundImage:
-                "linear-gradient(135deg, #e7edf6 0%, #ffffff 100%), repeating-linear-gradient(45deg, rgba(15,76,129,0.08) 0 6px, rgba(255,255,255,0.9) 6px 12px)",
-              backgroundBlendMode: "multiply",
-            }}
-          >
+          <div className="relative h-12 w-24 overflow-hidden rounded-[0.9rem] border border-[rgba(15,76,129,0.14)] bg-white shadow-[0_8px_18px_rgba(22,50,79,0.1)]">
             <Image
               src={college.logo || college.image}
               alt={college.name}
               fill
               sizes="96px"
-              className={college.logo ? "object-contain p-2" : "object-cover"}
+              className={college.logo ? "object-contain p-1" : "object-cover"}
             />
           </div>
           <h3 className="line-clamp-3 text-sm font-semibold leading-5 text-[color:var(--brand-primary)]">
@@ -406,18 +399,18 @@ export default function ComparePage() {
         <div className="page-container-full py-6 px-4 sm:px-6 md:py-10">
           <div className="reveal-up rounded-[2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,251,255,0.96))] p-5 shadow-[0_28px_60px_rgba(22,50,79,0.1)] sm:p-6">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div>
+              <div className="space-y-6">
                 <p className="editorial-kicker">
                   <Trophy className="size-3.5" />
                   Compare Colleges
                 </p>
-                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
+                <div className="inline-flex items-center gap-4 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
                   Side-by-side college snapshot
                 </div>
-                <h1 className="mt-4 max-w-4xl text-balance font-[family:var(--font-display)] text-[1.55rem] font-bold leading-[1.2] text-[color:var(--text-dark)] sm:text-[1.85rem]">
+                <h1 className="max-w-4xl text-balance font-[family:var(--font-display)] text-[1.55rem] font-bold leading-[1.2] text-[color:var(--text-dark)] sm:text-[1.85rem]">
                   {compareTitle || "Compare top colleges side by side"}
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-[color:var(--text-muted)] sm:text-base">
+                <p className="max-w-3xl text-sm leading-6 text-[color:var(--text-muted)] sm:text-base">
                   Review rankings, fees, cut off signals, facilities, and key college facts in one
                   cleaner comparison experience built with the same modern visual language as the
                   homepage.
@@ -476,20 +469,13 @@ export default function ComparePage() {
                     </div>
 
                     <div className="mt-4 flex items-center gap-4">
-                      <div
-                        className="relative h-16 w-16 overflow-hidden rounded-[1.2rem] border border-[rgba(15,76,129,0.14)] shadow-[0_10px_20px_rgba(22,50,79,0.1)]"
-                        style={{
-                          backgroundImage:
-                            "linear-gradient(135deg, #e7edf6 0%, #ffffff 100%), repeating-linear-gradient(45deg, rgba(15,76,129,0.08) 0 6px, rgba(255,255,255,0.9) 6px 12px)",
-                          backgroundBlendMode: "multiply",
-                        }}
-                      >
+                      <div className="relative h-16 w-16 overflow-hidden rounded-[1.2rem] border border-[rgba(15,76,129,0.14)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
                         <Image
                           src={college.logo || college.image}
                           alt={college.name}
                           fill
                           sizes="64px"
-                          className={college.logo ? "object-contain p-2" : "object-cover"}
+                          className={college.logo ? "object-contain p-1.5" : "object-cover"}
                         />
                       </div>
                       <div className="min-w-0">
@@ -596,13 +582,13 @@ export default function ComparePage() {
                     <h2 className="text-lg font-bold text-[color:var(--text-dark)]">{section.title}</h2>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-2 items-stretch gap-0 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-white sm:gap-4 sm:rounded-none sm:border-0 sm:bg-transparent md:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-5 grid grid-cols-2 items-stretch gap-3 bg-transparent md:grid-cols-2 lg:grid-cols-3">
                     {compareColleges.map((college, index) => {
                       if (!college) {
                         return (
                           <div
                             key={`${section.key}-empty-${index}`}
-                          className={`rounded-[1.3rem] border border-dashed border-[rgba(15,76,129,0.26)] bg-[rgba(15,76,129,0.03)] px-3 py-6 text-center text-sm text-[color:var(--text-muted)] sm:px-4 sm:py-8 ${
+                          className={`rounded-[1.3rem] border border-dashed border-[rgba(15,76,129,0.16)] bg-[rgba(15,76,129,0.025)] px-3 py-6 text-center text-sm text-[color:var(--text-muted)] sm:px-4 sm:py-8 ${
                               index === 2 ? "hidden lg:block" : ""
                             }`}
                         >
@@ -618,13 +604,11 @@ export default function ComparePage() {
                       return (
                         <article
                           key={`${section.key}-${college.id}`}
-                          className={`flex h-full flex-col border border-[rgba(15,76,129,0.18)] bg-white px-3 py-3 sm:rounded-[1.3rem] sm:px-4 sm:py-4 ${
-                            index === 0 ? "border-r-0 sm:border" : ""
-                          } ${index === 1 ? "border-l-0 sm:border" : ""} ${
+                          className={`flex h-full flex-col rounded-[1.3rem] border border-[rgba(15,76,129,0.09)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,252,255,0.94))] px-3 py-3 shadow-[0_10px_24px_rgba(22,50,79,0.04)] sm:px-4 sm:py-4 ${
                             index === 2 ? "hidden lg:block" : ""
                           }`}
                         >
-                          <div className="mb-4 border-b border-[rgba(15,76,129,0.08)] pb-3">
+                          <div className="mb-4 border-b border-[rgba(15,76,129,0.06)] pb-3">
                             <p className="line-clamp-2 text-sm font-bold text-[color:var(--text-dark)] sm:text-base">
                               {college.name}
                             </p>
@@ -638,7 +622,7 @@ export default function ComparePage() {
                               {comparisonPairs.map((item) => (
                                 <div
                                   key={item.label}
-                                  className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 last:border-b-0 last:pb-0 sm:grid-cols-[92px_minmax(0,1fr)]"
+                                  className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.05)] pb-2.5 last:border-b-0 last:pb-0 sm:grid-cols-[92px_minmax(0,1fr)]"
                                 >
                                   <span className="text-slate-500">{item.label}</span>
                                   <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
@@ -651,7 +635,7 @@ export default function ComparePage() {
 
                           {section.key === "ranking" ? (
                             <div className="space-y-2.5 text-[12.5px] sm:text-[13px]">
-                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
+                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.05)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
                                 <span className="text-slate-500">Recognition</span>
                                 <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
                                   {college.accreditation}
@@ -671,13 +655,13 @@ export default function ComparePage() {
 
                           {section.key === "fees" ? (
                             <div className="space-y-2.5 text-[12.5px] sm:text-[13px]">
-                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
+                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.05)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
                                 <span className="text-slate-500">Courses</span>
                                 <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
                                   {summary.totalCourses}
                                 </span>
                               </div>
-                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.08)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
+                              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-2 border-b border-[rgba(15,76,129,0.05)] pb-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
                                 <span className="text-slate-500">Estimated Fees</span>
                                 <span className="text-left font-semibold text-[color:var(--text-dark)] break-words sm:text-right">
                                   {summary.fees}
@@ -738,13 +722,13 @@ export default function ComparePage() {
                                 })}
                               </div>
                               <div className="text-[11.5px] leading-4 text-slate-600 min-[380px]:text-[12.5px] min-[380px]:leading-5 sm:text-[13px]">
-                                Hostel:{" "}
+                                <span className="font-bold text-[color:var(--text-dark)]">Hostel:</span>{" "}
                                 <span className="font-semibold text-[color:var(--text-dark)]">
                                   {college.hasHostel ? "Available" : "Not Available"}
                                 </span>
                               </div>
                               <div className="text-[11.5px] leading-4 text-slate-600 break-words min-[380px]:text-[12.5px] min-[380px]:leading-5 sm:text-[13px]">
-                                Streams:{" "}
+                                <span className="font-bold text-[color:var(--text-dark)]">Streams:</span>{" "}
                                 <span className="font-semibold text-[color:var(--text-dark)]">
                                   {college.streams.join(", ")}
                                 </span>
@@ -816,19 +800,20 @@ export default function ComparePage() {
                           alt={college.name}
                           fill
                           sizes="48px"
-                          className={college.logo ? "object-contain p-1.5" : "object-cover"}
+                          className={college.logo ? "object-contain p-1" : "object-cover"}
                         />
                       </div>
                       <div className="min-w-0">
                       <p className="font-semibold text-[color:var(--text-dark)]">{college.name}</p>
                       <p className="mt-1 text-sm text-slate-500">{college.university}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]">
-                          {college.district}
-                        </span>
-                        <span className="rounded-full bg-[rgba(255,138,61,0.08)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)]">
-                          {summary.fees}
-                        </span>
+                      <p className="mt-1 text-sm text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
+  {college.district}, {college.state}
+</p>
+
+<span className="rounded-full bg-[rgba(255,138,61,0.08)] px-3 py-1 text-xs font-semibold text-[color:var(--brand-accent-deep)] whitespace-nowrap">
+  {summary.fees}
+</span>
                       </div>
                       </div>
                     </div>

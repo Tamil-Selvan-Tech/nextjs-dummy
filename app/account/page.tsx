@@ -179,6 +179,14 @@ export default function AccountPage() {
               </button>
               <button
                 type="button"
+                onClick={() => router.push("/")}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
+              >
+                <ArrowRight className="size-4 rotate-180" />
+                Go Home
+              </button>
+              <button
+                type="button"
                 onClick={handleLogout}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
               >
@@ -310,17 +318,6 @@ export default function AccountPage() {
               )}
             </section>
           </div>
-
-          <footer className="border-t border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-5 py-4 sm:px-6">
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"
-            >
-              <ArrowRight className="size-4 rotate-180" />
-              Go Home
-            </button>
-          </footer>
         </div>
       </div>
     </section>

@@ -123,9 +123,9 @@ export function ResponsiveTableWrapper({
             <div className="border-t border-slate-100 px-3 py-3 sm:px-4">
               <div className="grid gap-3 text-xs sm:text-sm">
                 {columns.slice(1, 4).map((col) => (
-                  <div key={`${rowKey}-${col.key}`} className="flex items-start justify-between gap-2">
-                    <span className="font-medium text-slate-600 whitespace-nowrap">{col.label}:</span>
-                    <span className="text-right text-slate-900 break-words flex-1">
+                  <div key={`${rowKey}-${col.key}`} className="grid grid-cols-[auto,minmax(0,1fr)] items-start gap-x-3 gap-y-1">
+                    <span className="whitespace-nowrap font-medium text-slate-600">{col.label}:</span>
+                    <span className="min-w-0 break-words text-left text-slate-900">
                       {col.render
                         ? col.render(row[col.key], row, idx)
                         : String(row[col.key] || "-")}

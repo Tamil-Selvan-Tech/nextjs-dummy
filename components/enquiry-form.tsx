@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, MessageSquareText, Phone, UserRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { College, Course } from "@/lib/site-data";
@@ -15,6 +15,8 @@ type EnquiryFormProps = {
 };
 
 type FormErrors = Partial<Record<"name" | "email" | "phone" | "course" | "message", string>>;
+
+const normalizeValue = (value: string) => value.trim().toLowerCase();
 
 export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFormProps) {
   const router = useRouter();
@@ -89,7 +91,28 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
     }
   };
 
-  const courseOptions = [...new Set(relatedCourses.map((course) => course.course).filter(Boolean))];
+  const courseOptions = useMemo(() => {
+    const filteredCourses = relatedCourses.filter((course) => {
+      const linkedCollegeId = String(course.collegeId || "").trim();
+      const linkedCollegeName = String(course.college || "").trim();
+
+      if (linkedCollegeId && linkedCollegeId === college.id) return true;
+      if (linkedCollegeName && normalizeValue(linkedCollegeName) === normalizeValue(college.name)) return true;
+      return false;
+    });
+
+    const optionSet = new Set<string>();
+
+    filteredCourses.forEach((course) => {
+      const label = [String(course.course || "").trim(), String(course.specialization || "").trim()]
+        .filter(Boolean)
+        .join(" - ");
+
+      if (label) optionSet.add(label);
+    });
+
+    return [...optionSet];
+  }, [college.id, college.name, relatedCourses]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

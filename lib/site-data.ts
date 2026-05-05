@@ -101,6 +101,47 @@ export type Course = {
   }>;
 };
 
+export const formatCourseDisplayName = (
+  courseName: string,
+  stream?: string,
+  specialization?: string,
+) => {
+  const baseCourse = String(courseName || "").trim();
+  const streamLabel = String(stream || "").trim();
+  const specializationLabel = String(specialization || "").trim();
+  const normalizedParts = (streamLabel
+    ? baseCourse
+        .split(" - ")
+        .filter((part) => part.trim().toLowerCase() !== streamLabel.toLowerCase())
+    : baseCourse.split(" - "))
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const normalizedBaseCourse = normalizedParts.join(" - ").trim();
+
+  if (
+    specializationLabel &&
+    normalizedBaseCourse.toLowerCase().includes(specializationLabel.toLowerCase())
+  ) {
+    const leadingPart = normalizedParts[0] || normalizedBaseCourse;
+    const specializationToken = specializationLabel.split(/\s+/).filter(Boolean).at(-1)?.toLowerCase() || "";
+    const duplicateSpecializationTail = specializationToken
+      ? `${specializationLabel} ${specializationToken}`.toLowerCase()
+      : "";
+    const normalizedLower = normalizedBaseCourse.toLowerCase();
+
+    if (
+      duplicateSpecializationTail &&
+      normalizedLower.includes(duplicateSpecializationTail)
+    ) {
+      return [leadingPart, specializationLabel].filter(Boolean).join(" - ");
+    }
+
+    return normalizedBaseCourse;
+  }
+
+  return [normalizedBaseCourse, specializationLabel].filter(Boolean).join(" - ");
+};
+
 export const allCoursesList = [
   "B.Tech",
   "MBA",

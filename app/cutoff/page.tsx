@@ -1,6 +1,29 @@
 import { CutoffClient } from "@/app/cutoff/cutoff-client";
 import { fetchPublicPanelData } from "@/lib/public-data";
 
+const DETAIL_PARAM_KEYS = [
+  "phone",
+  "physics",
+  "chemistry",
+  "maths",
+  "engineeringScore",
+  "neet",
+  "boardTotal",
+  "nata",
+  "converted12th",
+  "clat",
+  "bestSubject1",
+  "bestSubject2",
+  "bestSubject3",
+  "artsScienceCuet",
+  "paramedicalBiology",
+  "paramedicalPhysics",
+  "paramedicalChemistry",
+  "agricultureBiology",
+  "agriculturePhysics",
+  "agricultureChemistry",
+] as const;
+
 // Cutoff page server entry: reads search params and hydrates the cutoff client with public data.
 export default async function CutoffPage({
   searchParams,
@@ -12,6 +35,9 @@ export default async function CutoffPage({
     Array.isArray(value) ? value[0] || "" : value || "";
   const enteredScore = pick(params.cutoff) || pick(params.marks) || pick(params.rank);
   const panelData = await fetchPublicPanelData();
+  const submittedDetails = Object.fromEntries(
+    DETAIL_PARAM_KEYS.map((key) => [key, pick(params[key])]),
+  );
 
   return (
     <CutoffClient
@@ -29,6 +55,7 @@ export default async function CutoffPage({
         pick(params.fullName) ||
         pick(params.username)
       }
+      submittedDetails={submittedDetails}
       colleges={panelData.colleges}
       courses={panelData.courses}
     />

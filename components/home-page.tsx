@@ -23,7 +23,13 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
-import { colleges as fallbackColleges, courses as fallbackCourses, type College, type Course } from "@/lib/site-data";
+import {
+  colleges as fallbackColleges,
+  courses as fallbackCourses,
+  formatCourseDisplayName,
+  type College,
+  type Course,
+} from "@/lib/site-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 import { normalizeSearchText } from "@/lib/search-utils";
 
@@ -150,12 +156,12 @@ const FEATURE_CARDS: FeatureCardItem[] = [
     icon: BookOpen,
     imageSrc: "/features/features-img-2.png",
   },
-  {
-    title: "Cutoff Calculation",
-    description: "Cutoff calculation insights to shortlist colleges faster.",
-    icon: Medal,
-    imageSrc: "/features/features-img-3.png",
-  },
+  // {
+  //   title: "Cutoff Calculation",
+  //   description: "Cutoff calculation insights to shortlist colleges faster.",
+  //   icon: Medal,
+  //   imageSrc: "/features/features-img-3.png",
+  // },
   {
     title: "Verified Profiles",
     description: "See approved college details, fees, facilities, and rankings in one place.",
@@ -170,7 +176,7 @@ const FEATURE_CARDS: FeatureCardItem[] = [
   },
   {
     title: "Fund & Training",
-    description: "Access scholarships, financial aid, and training programs for your education.",
+    description: "Access scholarships and training programs for your education.",
     icon: BriefcaseBusiness,
     imageSrc: "/features/features-img-7.png",
   },
@@ -235,10 +241,7 @@ export function HomePage({
     const locationValue = locationSearchInput.trim();
     const combinedQuery = [courseValue, collegeValue, locationValue].filter(Boolean).join(" ").trim();
 
-    if (!combinedQuery) {
-      router.push("/search");
-      return;
-    }
+    if (!combinedQuery) return;
 
     const normalizedCollegeQuery = normalizeSearchText(collegeValue);
     const normalizedCourseQuery = normalizeSearchText(courseValue);
@@ -429,6 +432,12 @@ export function HomePage({
     });
 
     return [...grouped.entries()].map(([courseName, rows]) => {
+      const primaryCourse = rows[0];
+      const displayCourseName = formatCourseDisplayName(
+        courseName,
+        primaryCourse?.stream || primaryCourse?.courseCategory,
+        primaryCourse?.specialization,
+      );
       const fees = rows.map((row) => row.totalFees);
       const cutoffs = rows.map((row) => row.cutoff);
       const durations = [...new Set(rows.map((row) => row.duration).filter(Boolean))];
@@ -439,7 +448,7 @@ export function HomePage({
 
       return {
         id: courseName,
-        course: courseName,
+        course: displayCourseName,
         duration: durations.join(", ") || "-",
         feesRange: formatCompactIndianCurrencyRange(minFees, maxFees),
         cutoffRange: minCutoff === maxCutoff ? `${minCutoff}` : `${minCutoff} - ${maxCutoff}`,
@@ -455,7 +464,15 @@ export function HomePage({
       coursesData
         .filter((course) => course.isTopCourse)
         .filter((course, index, arr) => arr.findIndex((item) => item.course === course.course) === index)
-        .map((course) => ({ id: course.id, course: course.course })),
+        .map((course) => ({
+          id: course.id,
+          course: formatCourseDisplayName(
+            course.course,
+            course.stream || course.courseCategory,
+            course.specialization,
+          ),
+          hrefCourse: course.course,
+        })),
     [coursesData],
   );
   const trendingCourseCards = useMemo(() => {
@@ -514,7 +531,7 @@ export function HomePage({
     const normalizedTopCourses = topCourseChips.reduce<Array<{ id: string; course: string; hrefCourse: string }>>((list, course) => {
       const normalizedCourse = normalizeTrendingCourse(course.course);
       if (list.some((item) => item.course === normalizedCourse)) return list;
-      return [...list, { id: course.id, course: normalizedCourse, hrefCourse: course.course }];
+      return [...list, { id: course.id, course: normalizedCourse, hrefCourse: course.hrefCourse }];
     }, []);
 
     const orderedTopCourses = [
@@ -671,7 +688,11 @@ export function HomePage({
   const courseSuggestions = useMemo(() => {
     const unique = new Map<string, { id: string; label: string }>();
     coursesData.forEach((course) => {
-      const label = String(course.course || "").trim();
+      const label = formatCourseDisplayName(
+        String(course.course || "").trim(),
+        course.stream || course.courseCategory,
+        course.specialization,
+      );
       const key = label.toLowerCase();
       if (!label || unique.has(key)) return;
       unique.set(key, { id: `course:${key}`, label });
@@ -783,6 +804,13 @@ export function HomePage({
   const activeCollege = spotlightColleges[activeAction] ?? spotlightColleges[0];
   const getSpotlightImage = (college: College) =>
     String(college.image || college.logo || "").trim();
+  const openCollegeProfile = useCallback(
+    (collegeId?: string) => {
+      if (!collegeId) return;
+      router.push(`/college/${collegeId}`);
+    },
+    [router],
+  );
   const heroStatCards = useMemo(
     () => [
       {
@@ -1003,24 +1031,24 @@ export function HomePage({
 
     return (
       <div
-        className={`overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] shadow-[0_14px_28px_rgba(15,76,129,0.1)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-2.5 sm:p-3" : isShortFeature ? "p-2.5 sm:p-3" : isLongFeature ? "p-2.5 sm:p-3" : "p-3 sm:p-3.5"
+        className={`overflow-hidden rounded-[1.6rem] border border-[rgba(248,113,113,0.2)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(254,242,242,0.96))] shadow-[0_14px_28px_rgba(127,29,29,0.08)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-2.5 sm:p-3" : isShortFeature ? "p-2.5 sm:p-3" : isLongFeature ? "p-2.5 sm:p-3" : "p-3 sm:p-3.5"
           }`}
       >
         {isHeroCard ? (
           <>
             <div className="flex w-full flex-1 items-center gap-2 sm:gap-3">
               <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
-                <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] sm:h-[2.125rem] sm:w-[2.125rem]">
+                <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(135deg,rgba(219,234,254,0.98),rgba(255,255,255,0.96))] text-[#2563eb] sm:h-[2.125rem] sm:w-[2.125rem]">
                   <Icon className="size-4" />
                 </div>
-                <h3 className="font-bold tracking-[-0.03em] text-[color:var(--text-dark)] text-[0.9rem] leading-tight sm:text-[1rem]">
+                <h3 className="text-[0.9rem] font-bold leading-tight tracking-[-0.03em] text-[#2563eb] sm:text-[1rem]">
                   {feature.title}
                 </h3>
                 <p className="mt-1 max-w-[9rem] text-[9px] leading-[0.95rem] text-[color:var(--text-muted)] sm:max-w-[9.75rem] sm:text-[10px] sm:leading-[1rem]">
                   {feature.description}
                 </p>
               </div>
-              <div className="relative w-[46%] shrink-0 overflow-hidden rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(255,255,255,0.92))] p-2 sm:w-[44%]">
+              <div className="relative w-[46%] shrink-0 overflow-hidden rounded-[1.15rem] border border-[rgba(248,113,113,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(254,242,242,0.92))] p-2 sm:w-[44%]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={feature.imageSrc}
@@ -1034,11 +1062,11 @@ export function HomePage({
         ) : (
           <>
             <div className="flex flex-col items-center gap-2 text-center sm:gap-3 sm:items-start sm:text-left">
-              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.85rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,rgba(29,78,216,0.12),rgba(255,255,255,0.96))] text-[color:var(--brand-primary)] ${isCompactFeature || isShortFeature ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8 sm:h-9 sm:w-9 sm:rounded-[0.7rem]"}`}>
+              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.85rem] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(135deg,rgba(219,234,254,0.98),rgba(255,255,255,0.96))] text-[#2563eb] ${isCompactFeature || isShortFeature ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8 sm:h-9 sm:w-9 sm:rounded-[0.7rem]"}`}>
                 <Icon className="size-3.5 sm:size-4.5" />
               </div>
               <div className="flex flex-1 flex-col justify-start items-center text-center sm:items-start sm:text-left">
-                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[color:var(--text-dark)] ${isCompactFeature ? "text-[0.7rem] leading-[0.95rem] sm:text-[0.82rem] sm:leading-[1.05rem]" : isShortFeature ? "text-[0.69rem] leading-[0.95rem] sm:text-[0.8rem] sm:leading-[1rem]" : isLongFeature ? "text-[0.67rem] leading-[0.92rem] sm:text-[0.79rem] sm:leading-[1rem]" : "text-[0.72rem] leading-[1rem] sm:text-[0.88rem] sm:leading-[1.1rem]"}`}>
+                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[#2563eb] ${isCompactFeature ? "text-[0.7rem] leading-[0.95rem] sm:text-[0.82rem] sm:leading-[1.05rem]" : isShortFeature ? "text-[0.69rem] leading-[0.95rem] sm:text-[0.8rem] sm:leading-[1rem]" : isLongFeature ? "text-[0.67rem] leading-[0.92rem] sm:text-[0.79rem] sm:leading-[1rem]" : "text-[0.72rem] leading-[1rem] sm:text-[0.88rem] sm:leading-[1.1rem]"}`}>
                   {feature.title}
                 </h3>
                 <p className={`mt-1 hidden text-[color:var(--text-muted)] sm:block ${isCompactFeature ? "text-[10px] leading-[0.95rem]" : isShortFeature ? "text-[10px] leading-[0.92rem]" : isLongFeature ? "text-[9px] leading-[0.88rem]" : "text-[10px] leading-[0.98rem]"}`}>
@@ -1169,15 +1197,18 @@ export function HomePage({
   );
   // Top college flow
   const renderTopCollegeFlow = () => (
-    <div className="flex h-full min-h-[20.5rem] w-full flex-col rounded-[1.4rem] sm:rounded-[1.8rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)]">
+    <div className="flex h-full min-h-[19.5rem] w-full flex-col rounded-[1.4rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-3.5 shadow-[0_18px_40px_rgba(15,76,129,0.11)] scroll-fade-in scroll-delay-3 sm:min-h-[20.5rem] sm:rounded-[1.8rem] sm:p-4" data-scroll-animate>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
           Top College Flow
         </p>
         <div className="flex gap-1.5">
           {spotlightColleges.map((college, index) => (
-            <span
+            <button
               key={college.id}
+              type="button"
+              onClick={() => setActiveAction(index)}
+              aria-label={`Show ${college.name}`}
               className={`h-1.5 rounded-full transition-all ${index === activeAction ? "w-6 bg-[color:var(--brand-primary)]" : "w-2 bg-[rgba(15,76,129,0.18)]"
                 }`}
             />
@@ -1185,10 +1216,13 @@ export function HomePage({
         </div>
       </div>
 
-      <div
-        className="relative mt-3 h-32 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] sm:h-36 md:h-40"
+      <button
+        type="button"
+        onClick={() => openCollegeProfile(activeCollege?.id)}
+        className="relative mt-3 h-32 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] text-left transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,76,129,0.14)] sm:h-36 md:h-40"
         onMouseEnter={() => setIsSpotlightPaused(true)}
         onMouseLeave={() => setIsSpotlightPaused(false)}
+        aria-label={activeCollege ? `Open ${activeCollege.name}` : "Open college profile"}
       >
         <div
           className="flex h-full w-full transition-transform duration-700 ease-out"
@@ -1226,12 +1260,18 @@ export function HomePage({
             </div>
           ))}
         </div>
-      </div>
+      </button>
 
       <div className="mt-3 rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-        <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
-          {activeCollege?.name || "Top College"}
-        </p>
+        <button
+          type="button"
+          onClick={() => openCollegeProfile(activeCollege?.id)}
+          className="text-left transition hover:text-[color:var(--brand-primary)]"
+        >
+          <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
+            {activeCollege?.name || "Top College"}
+          </p>
+        </button>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[color:var(--text-muted)]">
           <span className="inline-flex items-center gap-1">
             <MapPin className="size-3" />
@@ -1261,6 +1301,24 @@ export function HomePage({
               Latest approved accreditation status
             </p>
           </div>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={() => openCollegeProfile(activeCollege?.id)}
+            disabled={!activeCollege?.id}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_55%,#38bdf8_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(37,99,235,0.26)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            Browse College
+            <ArrowRight className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/explore?view=colleges")}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] sm:w-auto"
+          >
+            View All Colleges
+          </button>
         </div>
       </div>
     </div>
@@ -1343,20 +1401,20 @@ export function HomePage({
 
           {/* Hero content section */}
 
-          <div className="page-container-full px-1 sm:px-3 lg:px-4 pb-[4rem] pt-0 md:pb-[5.5rem] md:pt-1">
-            <div className="space-y-2 py-2">
+          <div className="page-container-full px-0 sm:px-1 lg:px-2 pb-[4rem] pt-0 md:pb-[5.5rem] md:pt-1">
+            <div className="space-y-1 py-1.5">
               {/* Hero headline and spotlight content */}
-              <div className="reveal-up mx-auto mb-1 w-full px-0 sm:px-1">
-                <div className="relative py-0.5 sm:py-1">
+              <div className="reveal-up mx-auto mb-0.5 w-full px-0">
+                <div className="relative py-0 sm:py-0.5">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
                   <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.14)] blur-3xl" />
 
-                  <div className="relative space-y-1">
-                    <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-3">
+                  <div className="relative space-y-0.5">
+                    <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-2">
                       {/* Hero introduction */}
-                      <div className="flex h-full flex-col justify-center space-y-4 lg:space-y-3 lg:pr-2">
-                        <div className="max-w-full py-2 px-1 text-center lg:px-0 lg:text-left">
+                      <div className="flex h-full flex-col justify-center space-y-2.5 lg:space-y-2 lg:pr-1">
+                        <div className="max-w-full py-1 px-0 text-center lg:px-0 lg:text-left">
                           <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
                             Find Your{" "}
                             <span className="text-[#2563eb]">
@@ -1373,7 +1431,7 @@ export function HomePage({
                         </div>
 
                         {/* Hero feature spotlight */}
-                        <div className="relative mx-auto w-full max-w-full px-2 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
+                        <div className="relative mx-auto w-full max-w-full px-0.5 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
                           <div
                             key={`${activeFeature.title}-${activeFeatureCard}`}
                             className="feature-pop-card absolute inset-0"
@@ -1399,16 +1457,16 @@ export function HomePage({
       relative z-[2] overflow-hidden
       rounded-[1.2rem] sm:rounded-[1.65rem]
       border
-      bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))]
+      bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,242,232,0.96))]
       p-1.5 sm:p-1
-      shadow-[0_18px_36px_rgba(22,50,79,0.11)]
+      shadow-[0_18px_36px_rgba(8,17,31,0.12)]
       ring-1
     "
                       style={{
-                        borderColor: activeSearchField ? "rgba(37,99,235,0.72)" : "rgba(56,189,248,0.52)",
+                        borderColor: activeSearchField ? "rgba(239,68,68,0.78)" : "rgba(239,68,68,0.36)",
                         boxShadow: activeSearchField
-                          ? "0 18px 36px rgba(22,50,79,0.11), 0 0 0 3px rgba(37,99,235,0.14)"
-                          : "0 18px 36px rgba(22,50,79,0.11), 0 0 0 1px rgba(56,189,248,0.14)",
+                          ? "0 24px 48px rgba(8,17,31,0.16), 0 0 0 4px rgba(248,113,113,0.2), 0 0 22px rgba(239,68,68,0.12)"
+                          : "0 22px 44px rgba(8,17,31,0.13), 0 0 0 2px rgba(248,113,113,0.14), 0 0 18px rgba(239,68,68,0.08)",
                       }}
                       >
                         {/* SAME DESIGN FOR MOBILE + DESKTOP */}
@@ -1432,18 +1490,18 @@ export function HomePage({
           border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "course" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        ${activeSearchField === "course" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
         `}
                           >
-                            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
                               <Search className="size-4" />
                               Search Courses
                             </div>
 
                             {!courseSearchInput ? (
-                              <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px] text-[color:var(--text-muted)]">
-                                {typedSearchText}
-                                <span className="ml-0.5 inline-block text-[color:var(--brand-accent)]">
+                              <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px]">
+                                <span className="truncate text-[color:var(--brand-primary-soft)]">{typedSearchText}</span>
+                                <span className="ml-1 inline-block text-[color:var(--brand-primary-soft)]">
                                   |
                                 </span>
                               </div>
@@ -1480,7 +1538,7 @@ export function HomePage({
           border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "college" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        ${activeSearchField === "college" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
         `}
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
@@ -1488,7 +1546,7 @@ export function HomePage({
                             </span>
 
                             <div className="min-w-0 flex-1">
-                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
                                 College
                               </label>
 
@@ -1503,7 +1561,7 @@ export function HomePage({
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="College"
                                 placeholder="Type college"
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
                           </div>
@@ -1519,7 +1577,7 @@ export function HomePage({
           border
           md:border-0
           md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "location" ? "border-[rgba(15,76,129,0.85)] bg-[linear-gradient(180deg,rgba(243,248,255,0.98),rgba(239,246,255,0.95))] shadow-[0_10px_20px_rgba(29,78,216,0.12)]" : "border-[rgba(15,76,129,0.08)]"}
+        ${activeSearchField === "location" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
         `}
                           >
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
@@ -1527,7 +1585,7 @@ export function HomePage({
                             </span>
 
                             <div className="min-w-0 flex-1">
-                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary-soft)]">
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
                                 Location
                               </label>
 
@@ -1542,7 +1600,7 @@ export function HomePage({
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="Location"
                                 placeholder="Type location"
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
                           </div>
@@ -1558,15 +1616,16 @@ export function HomePage({
           items-center justify-center
           gap-2
           rounded-[1.05rem]
-          bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_52%,#38bdf8_100%)]
+          bg-[linear-gradient(135deg,#dc2626_0%,#ef4444_55%,#f87171_100%)]
           px-5
           text-[14px]
           font-semibold
           text-white
-          shadow-[0_12px_24px_rgba(37,99,235,0.24)]
+          shadow-[0_12px_24px_rgba(220,38,38,0.22)]
           transition
           hover:translate-y-[-1px]
-                          hover:shadow-[0_16px_28px_rgba(56,189,248,0.22)]
+          hover:bg-[linear-gradient(135deg,#b91c1c_0%,#dc2626_55%,#ef4444_100%)]
+          hover:shadow-[0_16px_28px_rgba(220,38,38,0.28)]
           md:self-center
           md:mx-2
           md:min-w-[7rem]
@@ -1581,7 +1640,7 @@ export function HomePage({
 
                       {/* Suggestion Panel */}
                       {shouldShowHeroSearchPanel ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(29,78,216,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.97))] p-1.5 shadow-[0_24px_48px_rgba(29,78,216,0.16)] backdrop-blur-sm">
+                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(239,68,68,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,247,247,0.97))] p-1.5 shadow-[0_24px_48px_rgba(220,38,38,0.12)] backdrop-blur-sm">
                           {activeSearchField && activeSearchSuggestions.length > 0 ? (
                             <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
                               <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
@@ -1668,7 +1727,7 @@ export function HomePage({
                     </div>
 
                     {/* Top exams overview */}
-                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0">
+                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1" data-scroll-animate>
                       <div className="relative w-full">
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <p className="text-[1rem] font-semibold uppercase tracking-[0.22em] text-[#132a6b]">
@@ -1965,7 +2024,7 @@ export function HomePage({
                     </dl>
                     <button
                       type="button"
-                      onClick={() => router.push(`/explore/course/${encodeURIComponent(course.course)}`)}
+                      onClick={() => router.push(course.href)}
                       className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
                     >
                       Course Overview
@@ -1998,7 +2057,7 @@ export function HomePage({
           </div>
 
           {/* Feature highlights grid */}
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3">
+          {/* <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3">
             {featureCards.map((item, index) => {
               const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3"];
               return (
@@ -2011,7 +2070,7 @@ export function HomePage({
                 </div>
               );
             })}
-          </div>
+          </div> */}
 
         </div>
       </section>

@@ -117,6 +117,33 @@ type PerformanceMetric = {
   max: number;
 };
 
+const VALIDATION_FIELD_ORDER = [
+  "name",
+  "phone",
+  "category",
+  "degree",
+  "course",
+  "admissionType",
+  "physics",
+  "chemistry",
+  "maths",
+  "engineeringEntranceMarks",
+  "neet",
+  "boardTotal",
+  "nata",
+  "clat",
+  "bestSubject1",
+  "bestSubject2",
+  "bestSubject3",
+  "artsScienceCuet",
+  "paramedicalBiology",
+  "paramedicalPhysics",
+  "paramedicalChemistry",
+  "agricultureBiology",
+  "agriculturePhysics",
+  "agricultureChemistry",
+] as const;
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const getBoundedNumberValue = (value: string, max: number) => {
@@ -661,7 +688,7 @@ export default function FindPage() {
 
     if (showBArchFields) {
       if (isBlank(boardMarksTotal)) errors.boardTotal = "This field is required";
-      if (isBlank(nataScore)) errors.nata = "This field is required";
+      if (showBArchNataField && isBlank(nataScore)) errors.nata = "This field is required";
     }
 
     if (showLawFields && isBlank(selectedAdmissionType)) {
@@ -749,6 +776,7 @@ export default function FindPage() {
     showCategoryField,
     showAgricultureFields,
     showBArchFields,
+    showBArchNataField,
     showEngineeringFields,
     showEngineeringJeeAdvancedFields,
     showEngineeringPcmFields,
@@ -764,6 +792,22 @@ export default function FindPage() {
   ]);
 
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
+  const scrollToFirstInvalidField = () => {
+    const firstInvalidField = VALIDATION_FIELD_ORDER.find((field) => validationErrors[field]);
+    if (!firstInvalidField) return;
+
+    window.requestAnimationFrame(() => {
+      const fieldElement = document.querySelector<HTMLElement>(`[data-field-id="${firstInvalidField}"]`);
+      if (!fieldElement) return;
+
+      fieldElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      const control = fieldElement.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        "input, select, textarea",
+      );
+      control?.focus();
+    });
+  };
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
@@ -801,6 +845,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 event.preventDefault();
                 setHasSubmitted(true);
                 if (hasValidationErrors) {
+                  scrollToFirstInvalidField();
                   return;
                 }
                 const params = new URLSearchParams();
@@ -849,7 +894,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldShell icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
+                <FieldShell fieldId="name" icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
                   <input
                     type="text"
                     value={name}
@@ -861,7 +906,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   />
                 </FieldShell>
 
-                <FieldShell icon={Phone} label="Phone Number" invalid={Boolean(hasSubmitted && validationErrors.phone)} error={hasSubmitted ? validationErrors.phone : undefined}>
+                <FieldShell fieldId="phone" icon={Phone} label="Phone Number" invalid={Boolean(hasSubmitted && validationErrors.phone)} error={hasSubmitted ? validationErrors.phone : undefined}>
                   <input
                     type="tel"
                     value={phone}
@@ -920,7 +965,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 </FieldShell>
 
                 {showCategoryField ? (
-                  <FieldShell icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
+                  <FieldShell fieldId="category" icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
                     <select
                       value={selectedCategory}
                       onChange={(event) => setSelectedCategory(event.target.value)}
@@ -945,7 +990,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       : "md:col-span-2"
                   }
                 >
-                  <FieldShell icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
+                  <FieldShell fieldId="degree" icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
                     <select
                       value={selectedDegree}
                       onChange={(event) => {
@@ -967,7 +1012,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 </div>
 
                 {showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields ? (
-                  <AcademicShell icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
+                  <AcademicShell fieldId="course" icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
                     <select
                       value={selectedCourse}
                       onChange={(event) => setSelectedCourse(event.target.value)}
@@ -997,7 +1042,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showEngineeringFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                    <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                       <select
                         value={selectedAdmissionType}
                         onChange={(event) => {
@@ -1024,7 +1069,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   {showEngineeringPcmFields ? (
                     <>
                       <div className="grid gap-3.5 md:grid-cols-2">
-                        <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
+                        <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1039,7 +1084,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
+                        <AcademicShell fieldId="chemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1054,7 +1099,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
+                        <AcademicShell fieldId="maths" icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1082,7 +1127,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   {showEngineeringJeeMainFields ? (
                     <>
                       <div className="grid gap-3.5 md:grid-cols-2">
-                        <AcademicShell icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                        <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1110,7 +1155,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   {showEngineeringJeeAdvancedFields ? (
                     <>
                       <div className="grid gap-3.5 md:grid-cols-2">
-                        <AcademicShell icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                        <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1140,7 +1185,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showMedicalFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean(hasSubmitted && validationErrors.neet)} error={hasSubmitted ? validationErrors.neet : undefined}>
+                    <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean(hasSubmitted && validationErrors.neet)} error={hasSubmitted ? validationErrors.neet : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1168,7 +1213,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showBArchFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
+                    <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1184,7 +1229,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     </AcademicShell>
 
                     {showBArchNataField ? (
-                      <AcademicShell icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
+                      <AcademicShell fieldId="nata" icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
                         <input
                           type="number"
                           min="0"
@@ -1223,7 +1268,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showLawFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2">
-                    <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                    <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                       <select
                         value={selectedAdmissionType}
                         onChange={(event) => {
@@ -1247,7 +1292,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     </AcademicShell>
 
                     {showLawClatFields ? (
-                      <AcademicShell icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean(hasSubmitted && validationErrors.clat)} error={hasSubmitted ? validationErrors.clat : undefined}>
+                      <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean(hasSubmitted && validationErrors.clat)} error={hasSubmitted ? validationErrors.clat : undefined}>
                         <input
                           type="number"
                           min="0"
@@ -1267,7 +1312,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   {showLawMarksFields ? (
                     <div className="space-y-3.5">
                       <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                        <AcademicShell icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)} error={hasSubmitted ? validationErrors.bestSubject1 : undefined}>
+                        <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)} error={hasSubmitted ? validationErrors.bestSubject1 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1282,7 +1327,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)} error={hasSubmitted ? validationErrors.bestSubject2 : undefined}>
+                        <AcademicShell fieldId="bestSubject2" icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)} error={hasSubmitted ? validationErrors.bestSubject2 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1297,7 +1342,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                           />
                         </AcademicShell>
 
-                        <AcademicShell icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)} error={hasSubmitted ? validationErrors.bestSubject3 : undefined}>
+                        <AcademicShell fieldId="bestSubject3" icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)} error={hasSubmitted ? validationErrors.bestSubject3 : undefined}>
                           <input
                             type="number"
                             min="0"
@@ -1337,7 +1382,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 <div className="mt-5 space-y-3.5">
                   {showArtsScienceAdmissionTypeField ? (
                     <div className="grid gap-3.5 md:grid-cols-2">
-                      <AcademicShell icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                      <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                         <select
                           value={selectedAdmissionType}
                           onChange={(event) => {
@@ -1362,7 +1407,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
 
                   <div className="grid gap-3.5 md:grid-cols-2">
                     {showArtsScienceCuetField ? (
-                      <AcademicShell icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)} error={hasSubmitted ? validationErrors.artsScienceCuet : undefined}>
+                      <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)} error={hasSubmitted ? validationErrors.artsScienceCuet : undefined}>
                         <input
                           type="number"
                           min="0"
@@ -1378,7 +1423,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     ) : null}
 
                     {showArtsScienceBoardMarksField ? (
-                      <AcademicShell icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
+                      <AcademicShell fieldId="boardTotal" icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
                         <input
                           type="number"
                           min="0"
@@ -1415,7 +1460,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showParamedicalFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)} error={hasSubmitted ? validationErrors.paramedicalBiology : undefined}>
+                    <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)} error={hasSubmitted ? validationErrors.paramedicalBiology : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1430,7 +1475,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)} error={hasSubmitted ? validationErrors.paramedicalPhysics : undefined}>
+                    <AcademicShell fieldId="paramedicalPhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)} error={hasSubmitted ? validationErrors.paramedicalPhysics : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1445,7 +1490,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)} error={hasSubmitted ? validationErrors.paramedicalChemistry : undefined}>
+                    <AcademicShell fieldId="paramedicalChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)} error={hasSubmitted ? validationErrors.paramedicalChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1475,7 +1520,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {showAgricultureFields ? (
                 <div className="mt-5 space-y-3.5">
                   <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)} error={hasSubmitted ? validationErrors.agricultureBiology : undefined}>
+                    <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)} error={hasSubmitted ? validationErrors.agricultureBiology : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1490,7 +1535,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)} error={hasSubmitted ? validationErrors.agriculturePhysics : undefined}>
+                    <AcademicShell fieldId="agriculturePhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)} error={hasSubmitted ? validationErrors.agriculturePhysics : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1505,7 +1550,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                       />
                     </AcademicShell>
 
-                    <AcademicShell icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)} error={hasSubmitted ? validationErrors.agricultureChemistry : undefined}>
+                    <AcademicShell fieldId="agricultureChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)} error={hasSubmitted ? validationErrors.agricultureChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
@@ -1678,17 +1723,20 @@ function FieldShell({
   children,
   icon: Icon,
   label,
+  fieldId,
   invalid = false,
   error,
 }: {
   children: ReactNode;
   icon: typeof User;
   label: string;
+  fieldId?: string;
   invalid?: boolean;
   error?: string;
 }) {
   return (
     <label
+      data-field-id={fieldId}
       className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
@@ -1726,6 +1774,7 @@ function AcademicShell({
   icon: Icon,
   label,
   hint,
+  fieldId,
   invalid = false,
   error,
 }: {
@@ -1733,11 +1782,13 @@ function AcademicShell({
   icon: typeof User;
   label: string;
   hint?: string;
+  fieldId?: string;
   invalid?: boolean;
   error?: string;
 }) {
   return (
     <label
+      data-field-id={fieldId}
       className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"

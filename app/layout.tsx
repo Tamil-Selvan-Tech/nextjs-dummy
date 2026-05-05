@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AppToastProvider } from "@/components/app-toast-provider";
 import { Footer } from "@/components/footer";
+import { RouteHistoryTracker } from "@/components/route-history-tracker";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
+        <RouteHistoryTracker />
         <main className="flex-1">{children}</main>
         <AppToastProvider />
         <Footer />

@@ -121,11 +121,11 @@ export function SearchResultsClient({
           <div className="rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-3.5 shadow-[0_24px_56px_rgba(22,50,79,0.12)] sm:p-5">
             <div className="responsive-topbar">
               <Link
-                href="/search"
+                href="/"
                 className="inline-flex min-h-10 items-center justify-self-start gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-2 text-[11px] font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] sm:px-3.5 sm:py-1.5 sm:text-xs"
               >
                 <ChevronLeft className="size-4" />
-                <span className="hidden min-[380px]:inline">Back Search</span>
+                <span className="hidden min-[380px]:inline">Back Home</span>
                 <span className="min-[380px]:hidden">Back</span>
               </Link>
               <div className="flex justify-center">

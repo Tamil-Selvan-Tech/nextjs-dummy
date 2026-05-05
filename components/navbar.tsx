@@ -75,7 +75,7 @@ export function Navbar() {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCoursesOpen, setIsCoursesOpen] = useState(false);
-  const [isCoursesCueDimmed, setIsCoursesCueDimmed] = useState(false);
+  const [, setIsCoursesCueDimmed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isPreferenceModalOpen, setIsPreferenceModalOpen] = useState(false);
   const [courseSearch, setCourseSearch] = useState("");
@@ -107,6 +107,7 @@ export function Navbar() {
   const hideBackButton =
     pathname === "/" ||
     pathname.startsWith("/explore") ||
+    pathname.startsWith("/compare") ||
     pathname.startsWith("/college/") ||
     pathname.startsWith("/explore/course/") ||
     pathname.startsWith("/cutoff");
@@ -126,19 +127,43 @@ export function Navbar() {
   useEffect(() => {
     if (!isCoursesOpen) return;
 
+    const scrollY = window.scrollY;
     const previousOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.documentElement.style.overflow = "hidden";
 
     const onMouseDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (!panelRef.current?.contains(target)) setIsCoursesOpen(false);
     };
 
+    const preventTouchMove = (event: TouchEvent) => {
+      const target = event.target as Node;
+      if (!panelRef.current?.contains(target)) {
+        event.preventDefault();
+      }
+    };
+
     document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("touchmove", preventTouchMove, { passive: false });
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("touchmove", preventTouchMove);
+      window.scrollTo(0, scrollY);
     };
   }, [isCoursesOpen]);
 
@@ -182,11 +207,9 @@ export function Navbar() {
   const handleApplyPreference = ({
     city,
     college,
-    collegeId,
   }: {
     city: string;
     college: string;
-    collegeId?: string;
   }) => {
     if (!city) return;
 
@@ -226,8 +249,8 @@ export function Navbar() {
       style={navbarThemeStyles}
     >
       {!hideBackButton ? <div className="mb-3"><PageBackButton /></div> : null}
-      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-3 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4">
-        <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
+      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-2 mr-1 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:pl-3 md:pr-4">
+        <div className="flex flex-wrap items-center gap-5   md:flex-nowrap">
           <Link href="/" className="transition hover:opacity-80">
             <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] sm:text-[17px] md:text-[18px]" iconClassName="size-5 sm:size-[1.35rem] md:size-6" />
           </Link>
@@ -348,7 +371,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <nav className="relative z-20 mt-3 flex flex-col gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-row md:flex-nowrap md:items-center">
+      <nav className="relative z-20 mt-3 flex flex-nowrap items-center gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)]">
         <button
           type="button"
           onClick={openCoursesPanel}
@@ -360,7 +383,7 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
-          className="peer w-full rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:w-auto md:py-1.5"
+          className="peer shrink-0 rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:py-1.5"
         >
           All Courses
         </button>

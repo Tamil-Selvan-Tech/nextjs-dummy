@@ -150,7 +150,7 @@ export default function CollegeDashboardPage() {
   return (
     <CollegePortalShell
       title="College Dashboard"
-      subtitle="Your college profile is editable only when admin-added college email matches your login email."
+      subtitle="Manage your college profile, courses, and enquiries from one dashboard."
       currentUser={currentUser}
       actions={<></>}
     >
@@ -162,10 +162,6 @@ export default function CollegeDashboardPage() {
           <h2 className="mt-1.5 text-lg font-bold text-amber-950">
             College not linked to this email
           </h2>
-          <p className="mt-1.5 text-[13px] leading-5 text-amber-800">
-            Admin college add pannumbodhu, unga login/register email-oda same email set pannina udane
-            inga `Edit Your College` option unlock aagum.
-          </p>
         </article>
       ) : null}
 

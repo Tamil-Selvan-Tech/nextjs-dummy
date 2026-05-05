@@ -3,8 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { PageBackButton } from "@/components/global-back-button";
-import { colleges, courses, normalizeText, type College, type Course } from "@/lib/site-data";
+import {
+  colleges,
+  courses,
+  formatCourseDisplayName,
+  normalizeText,
+  type College,
+  type Course,
+} from "@/lib/site-data";
 
 type ExploreClientProps = {
   query: string;
@@ -31,8 +37,47 @@ export function ExploreClient({
       : "home";
   const [viewMode, setViewMode] = useState<"home" | "colleges" | "courses">(safeInitialView);
   const [showBestOnly, setShowBestOnly] = useState(false);
+  const [showAllCourses, setShowAllCourses] = useState(false);
   const [homeCollegePage, setHomeCollegePage] = useState(0);
   const [allCollegePage, setAllCollegePage] = useState(0);
+
+  const collegesMatchingCourseQuery = useMemo(() => {
+    if (!searchText) return new Set<string>();
+
+    const matchedCourseRows = coursesData.filter((course) =>
+      normalizeText(
+        `${course.course} ${course.specialization} ${course.courseCategory} ${course.courseType} ${course.stream || ""} ${course.college} ${course.university}`,
+      ).includes(searchText),
+    );
+
+    const matchedCollegeIds = new Set<string>();
+    matchedCourseRows.forEach((course) => {
+      const normalizedCollegeName = normalizeText(course.college);
+      const normalizedUniversityName = normalizeText(course.university);
+
+      if (course.collegeId) {
+        matchedCollegeIds.add(course.collegeId);
+      }
+
+      collegesData.forEach((college) => {
+        const tagsText = normalizeText(
+          `${college.courseTags?.join(" ") || ""} ${college.streams.join(" ")}`,
+        );
+
+        if (
+          college.id === course.collegeId ||
+          normalizeText(college.name) === normalizedCollegeName ||
+          (normalizedUniversityName &&
+            normalizeText(college.university) === normalizedUniversityName) ||
+          tagsText.includes(searchText)
+        ) {
+          matchedCollegeIds.add(college.id);
+        }
+      });
+    });
+
+    return matchedCollegeIds;
+  }, [collegesData, coursesData, searchText]);
 
   const groupedCourses = useMemo(() => {
     const grouped = new Map<string, typeof coursesData>();
@@ -60,10 +105,10 @@ export function ExploreClient({
     if (!searchText) return data;
     return data.filter((college) =>
       normalizeText(
-        `${college.name} ${college.university} ${college.description} ${college.state} ${college.district}`,
-      ).includes(searchText),
+        `${college.name} ${college.university} ${college.description} ${college.state} ${college.district} ${(college.courseTags || []).join(" ")} ${college.streams.join(" ")}`,
+      ).includes(searchText) || collegesMatchingCourseQuery.has(college.id),
     );
-  }, [cityFilter, collegesData, searchText, showBestOnly]);
+  }, [cityFilter, collegesData, collegesMatchingCourseQuery, searchText, showBestOnly]);
   const selectedCollege = useMemo(() => {
     if (!collegeFilter) return null;
     const normalizedCollege = normalizeText(collegeFilter);
@@ -167,10 +212,10 @@ export function ExploreClient({
                   <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
                     <tr>
                       <th className="px-3 py-2">Course</th>
-                      <th className="px-3 py-2">Total Fees</th>
-                      <th className="px-3 py-2">Cutoff</th>
-                      <th className="px-3 py-2">Duration</th>
-                      <th className="px-3 py-2">Top</th>
+                      <th className="px-3 py-2 whitespace-nowrap">Total Fees</th>
+                      <th className="px-3 py-2 whitespace-nowrap">Cutoff</th>
+                      <th className="px-3 py-2 whitespace-nowrap">Duration</th>
+                      <th className="px-3 py-2 whitespace-nowrap">Top</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -178,6 +223,12 @@ export function ExploreClient({
                       .filter(([, rows]) => rows.some((row) => row.isTopCourse))
                       .slice(0, 10)
                       .map(([courseName, rows]) => {
+                        const primaryCourse = rows[0];
+                        const displayCourseName = formatCourseDisplayName(
+                          courseName,
+                          primaryCourse?.stream || primaryCourse?.courseCategory,
+                          primaryCourse?.specialization,
+                        );
                         const fees = rows.map((item) => item.totalFees);
                         const cutoffs = rows.map((item) => item.cutoff);
                         const durations = [...new Set(rows.map((item) => item.duration))];
@@ -187,15 +238,15 @@ export function ExploreClient({
                             className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
                             onClick={() => router.push(`/explore/course/${encodeURIComponent(courseName)}`)}
                           >
-                            <td className="px-3 py-2 text-[13px] font-semibold">{courseName}</td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
                               Rs. {Math.min(...fees).toLocaleString()} - {Math.max(...fees).toLocaleString()}
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2 whitespace-nowrap">
                               {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
                             </td>
-                            <td className="px-3 py-2">{durations.join(", ")}</td>
-                            <td className="px-3 py-2">Top</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{durations.join(", ")}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">Top</td>
                           </tr>
                         );
                       })}
@@ -341,14 +392,20 @@ export function ExploreClient({
                 <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
                   <tr>
                     <th className="px-3 py-2">Course</th>
-                    <th className="px-3 py-2">Total Fees</th>
-                    <th className="px-3 py-2">Cutoff</th>
-                    <th className="px-3 py-2">Duration</th>
-                    <th className="px-3 py-2">Top</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Total Fees</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Cutoff</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Duration</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Top</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {groupedCourses.map(([courseName, rows]) => {
+                  {(showAllCourses ? groupedCourses : groupedCourses.slice(0, 10)).map(([courseName, rows]) => {
+                    const primaryCourse = rows[0];
+                    const displayCourseName = formatCourseDisplayName(
+                      courseName,
+                      primaryCourse?.stream || primaryCourse?.courseCategory,
+                      primaryCourse?.specialization,
+                    );
                     const fees = rows.map((item) => item.totalFees);
                     const cutoffs = rows.map((item) => item.cutoff);
                     const durations = [...new Set(rows.map((item) => item.duration))];
@@ -359,24 +416,32 @@ export function ExploreClient({
                         className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
                         onClick={() => router.push(`/explore/course/${encodeURIComponent(courseName)}`)}
                       >
-                        <td className="px-3 py-2 text-[13px] font-semibold">{courseName}</td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
                           Rs. {Math.min(...fees).toLocaleString()} - {Math.max(...fees).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 whitespace-nowrap">
                           {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
                         </td>
-                        <td className="px-3 py-2">{durations.join(", ")}</td>
-                        <td className="px-3 py-2">{isTop ? "Top" : "-"}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{durations.join(", ")}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{isTop ? "Top" : "-"}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-            <div className="mt-5 flex justify-center">
-              <PageBackButton />
-            </div>
+            {groupedCourses.length > 10 ? (
+              <div className="mt-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllCourses((prev) => !prev)}
+                  className="inline-flex items-center justify-center rounded-full border border-[rgba(15,76,129,0.14)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] shadow-[0_12px_28px_rgba(22,50,79,0.08)] transition hover:bg-[rgba(15,76,129,0.04)]"
+                >
+                  {showAllCourses ? "View Less" : "View Courses"}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
         </div>

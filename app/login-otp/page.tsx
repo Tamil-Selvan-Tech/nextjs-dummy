@@ -38,6 +38,7 @@ export default function LoginOtpPage() {
   const [isResending, setIsResending] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
   useStatusToast(status);
 
   useEffect(() => {

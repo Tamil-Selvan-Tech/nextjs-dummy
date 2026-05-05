@@ -39,6 +39,7 @@ type CutoffClientProps = {
   selectedAdmissionType: string;
   enteredCutoff: string;
   studentName: string;
+  submittedDetails: Record<string, string>;
   colleges: College[];
   courses: Course[];
 };
@@ -561,9 +562,9 @@ const SENIOR_GUIDE: Record<
 const clampMark = (value: number) => Math.max(0, Math.min(100, value));
 
 // Predictor scale helper for degree and admission-type based cutoff calculations.
-const getCutoffScale = (degree: string, admissionType: string) => {
+const getCutoffScale = (degree: string, admissionType: string, level: SelectedLevelId) => {
   if (degree === "Medical") return 720;
-  if (degree === "B.Arch") return 400;
+  if (degree === "B.Arch") return level === "11" ? 200 : 400;
   if (degree === "Arts & Science") return 600;
   if (degree === "Law") {
     return admissionType === "CLAT" ? 125 : 300;
@@ -620,7 +621,7 @@ const recommendationForDegree = (degree: string) =>
   JUNIOR_GROUP_RECOMMENDATIONS[degree as keyof typeof JUNIOR_GROUP_RECOMMENDATIONS] ||
   JUNIOR_GROUP_RECOMMENDATIONS.Engineering;
 
-const juniorRecommendationLabel = (_level: StandardId) => "11th";
+const juniorRecommendationLabel = () => "11th";
 
 const predictorTierTheme = (tierId: TierBucket["id"]) => {
   if (tierId === "tier1") {
@@ -723,6 +724,23 @@ const DEGREE_MATCH_ALIASES: Record<string, string[]> = {
 const matchesAnyAlias = (haystack: string, aliases: string[]) =>
   aliases.some((alias) => haystack.includes(normalizeText(alias)));
 
+const isCertificateCourse = (course: Course) => {
+  const haystack = [
+    course.degreeType,
+    course.courseType,
+    course.course,
+    course.courseName,
+    course.specialization,
+    course.stream,
+    course.courseCategory,
+  ]
+    .map((item) => normalizeText(String(item || "")))
+    .filter(Boolean)
+    .join(" ");
+
+  return haystack.includes("certificate");
+};
+
 const degreeMatchesCourse = (course: Course, degree: string) => {
   if (!degree) return true;
   const haystack = [
@@ -737,6 +755,27 @@ const degreeMatchesCourse = (course: Course, degree: string) => {
     .join(" ");
   const degreeToken = normalizeText(degree);
   if (!degreeToken) return true;
+  if (haystack.includes(degreeToken)) return true;
+  const aliases = DEGREE_MATCH_ALIASES[degree] || [degreeToken];
+  return matchesAnyAlias(haystack, aliases);
+};
+
+const degreeMatchesCollege = (college: College, degree: string) => {
+  if (!degree) return true;
+  const degreeToken = normalizeText(degree);
+  if (!degreeToken) return true;
+
+  const haystack = [
+    ...(Array.isArray(college.streams) ? college.streams : []),
+    ...(Array.isArray(college.courseTags) ? college.courseTags : []),
+    college.name,
+    college.university,
+    college.description,
+  ]
+    .map((item) => normalizeText(String(item || "")))
+    .filter(Boolean)
+    .join(" ");
+
   if (haystack.includes(degreeToken)) return true;
   const aliases = DEGREE_MATCH_ALIASES[degree] || [degreeToken];
   return matchesAnyAlias(haystack, aliases);
@@ -862,6 +901,7 @@ export function CutoffClient({
   selectedAdmissionType,
   enteredCutoff,
   studentName,
+  submittedDetails,
   colleges,
   courses,
 }: CutoffClientProps) {
@@ -913,13 +953,33 @@ export function CutoffClient({
   }, [enteredCutoff]);
 
   const predictorBenchmark = selectedCutoffScore ?? analyzedAverage;
-  const predictorPercentage = Math.max(0, Math.min(100, predictorBenchmark));
+  const predictorPercentage = useMemo(() => {
+    const scaleMax =
+      selectedCutoffScore !== null
+        ? getCutoffScale(selectedDegree, selectedAdmissionType, resolvedLevel)
+        : 100;
+    if (!Number.isFinite(predictorBenchmark) || predictorBenchmark <= 0) return 0;
+    if (scaleMax > 100) {
+      return Math.max(0, Math.min(100, Math.round((predictorBenchmark / scaleMax) * 100)));
+    }
+    return Math.max(0, Math.min(100, Math.round(predictorBenchmark)));
+  }, [
+    predictorBenchmark,
+    resolvedLevel,
+    selectedAdmissionType,
+    selectedCutoffScore,
+    selectedDegree,
+  ]);
+  const eligibleCourses = useMemo(
+    () => courses.filter((course) => !isCertificateCourse(course)),
+    [courses],
+  );
   const courseBasedCollegeCards = useMemo(() => {
-    const scaleMax = getCutoffScale(selectedDegree, selectedAdmissionType);
+    const scaleMax = getCutoffScale(selectedDegree, selectedAdmissionType, resolvedLevel);
     const categoryKey = normalizeCategoryKey(selectedCategory);
     const mapped = new Map<string, PredictorCard>();
 
-    courses.forEach((course) => {
+    eligibleCourses.forEach((course) => {
       if (!degreeMatchesCourse(course, selectedDegree)) return;
       if (!courseMatchesSelection(course, selectedCourse, selectedSpecialization)) return;
       if (hasExamBasedCutoffFlow && !courseMatchesExamSelection(course, selectedAdmissionType)) return;
@@ -987,7 +1047,7 @@ export function CutoffClient({
           href: `/college/${college.id}`,
           cutoffLabel: formatCutoffLabel(rawCutoff),
           matchScore,
-          isBestCollege: Boolean(college.isBestCollege),
+          isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
           ranking,
           rankingStart,
           tierId: getTierIdForRanking(ranking),
@@ -1010,7 +1070,7 @@ export function CutoffClient({
 
     const fallbackAggregates = new Map<string, FallbackCollegeAggregate>();
 
-    courses.forEach((course) => {
+    eligibleCourses.forEach((course) => {
       if (!degreeMatchesCourse(course, selectedDegree)) return;
       if ((selectedCourse || selectedSpecialization) && !courseMatchesSelection(course, selectedCourse, selectedSpecialization)) {
         return;
@@ -1102,7 +1162,7 @@ export function CutoffClient({
           href: `/college/${college.id}`,
           cutoffLabel: buildCutoffRangeLabel(minCutoff, maxCutoff),
           matchScore: Math.max(38, Math.min(98, Math.round(100 - Math.max(0, scaledTarget - predictorPercentage) * 1.6))),
-          isBestCollege: Boolean(college.isBestCollege),
+          isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
           ranking: String(college.ranking || ""),
           rankingStart: getRankingStartValue(String(college.ranking || "")),
           tierId: getTierIdForRanking(String(college.ranking || "")),
@@ -1111,8 +1171,7 @@ export function CutoffClient({
       });
 
     const genericFallbackCards = colleges
-      .filter(() => isJuniorLevel || selectedCutoffScore === null)
-      .filter((college) => !selectedDegree || college.streams.some((item) => normalizeText(item).includes(normalizeText(selectedDegree))))
+      .filter((college) => degreeMatchesCollege(college, selectedDegree))
       .filter((college) => collegeTypeMatches(college, selectedCollegeType))
       .slice(0, 12)
       .map((college) => ({
@@ -1123,7 +1182,7 @@ export function CutoffClient({
         href: `/college/${college.id}`,
         cutoffLabel: "Cutoff unavailable",
         matchScore: 55,
-        isBestCollege: Boolean(college.isBestCollege),
+        isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
         ranking: String(college.ranking || ""),
         rankingStart: getRankingStartValue(String(college.ranking || "")),
         tierId: getTierIdForRanking(String(college.ranking || "")),
@@ -1146,30 +1205,30 @@ export function CutoffClient({
     return sortedCards.length ? sortedCards : fallbackCards.length ? fallbackCards : genericFallbackCards;
   }, [
     colleges,
-    courses,
+    eligibleCourses,
     hasExamBasedCutoffFlow,
-    isJuniorLevel,
     isTwelfthStandard,
     predictorPercentage,
     selectedAdmissionType,
     selectedCategory,
     selectedCollegeType,
-    selectedCutoffScore,
     selectedCourse,
     selectedDegree,
+    resolvedLevel,
     selectedSpecialization,
   ]);
 
   // Backend/public data-driven college matching engine.
   const matchingColleges = useMemo(() => {
-    const requiresExactCutoffMatch = !isJuniorLevel && selectedCutoffScore !== null;
+    const requiresExactCutoffMatch = usesFocusedMatchFlow && selectedCutoffScore !== null;
     if (!requiresExactCutoffMatch) return courseBasedCollegeCards;
-    return courseBasedCollegeCards.filter(
+    const exactMatches = courseBasedCollegeCards.filter(
       (college) =>
         college.targetScore !== null &&
         cutoffMatchesScore(college.cutoffLabel, selectedCutoffScore),
     );
-  }, [courseBasedCollegeCards, isJuniorLevel, selectedCutoffScore]);
+    return exactMatches.length ? exactMatches : courseBasedCollegeCards;
+  }, [courseBasedCollegeCards, selectedCutoffScore, usesFocusedMatchFlow]);
 
   // Tier 1 / Tier 2 / Tier 3 predictor grouping.
   const predictorTiers = useMemo<TierBucket[]>(() => {
@@ -1210,6 +1269,12 @@ export function CutoffClient({
 
   // Senior-only roadmap and stretch options.
   const seniorGuide = SENIOR_GUIDE[selectedDegree] || SENIOR_GUIDE.Engineering;
+  const bArchSubmittedBoardTotal = String(submittedDetails.boardTotal || "").trim();
+  const bArchSubmittedConvertedScore = String(
+    submittedDetails.converted12th || enteredCutoff || "",
+  ).trim();
+  const bArchSubmittedNataScore = String(submittedDetails.nata || "").trim();
+  const showBArchResultBreakdown = selectedDegree === "B.Arch" && Boolean(bArchSubmittedBoardTotal);
   const twelfthBestColleges = useMemo(
     () => (usesFocusedMatchFlow && !hasExamBasedCutoffFlow ? matchingColleges.filter((card) => card.isBestCollege) : []),
     [hasExamBasedCutoffFlow, matchingColleges, usesFocusedMatchFlow],
@@ -1290,6 +1355,11 @@ export function CutoffClient({
             }`}
           >
             <div className="relative h-40 w-full overflow-hidden rounded-[1rem] border border-[#dfe7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)]">
+              {college.isBestCollege ? (
+                <div className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
+                  Best College
+                </div>
+              ) : null}
               <Image
                 src={college.image}
                 alt={college.name}
@@ -1330,7 +1400,7 @@ export function CutoffClient({
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(191,219,254,0.38),transparent_28%),radial-gradient(circle_at_top_right,rgba(196,181,253,0.24),transparent_24%),#f8fbff] text-slate-950">
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(191,219,254,0.38),transparent_28%),radial-gradient(circle_at_top_right,rgba(196,181,253,0.24),transparent_24%),#f8fbff] text-slate-800">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
         {/* Header Welcome Section */}
         <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_24px_80px_rgba(59,130,246,0.12)] backdrop-blur-xl">
@@ -1340,7 +1410,7 @@ export function CutoffClient({
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
                   Premium Cutoff Intelligence
                 </p>
-                <h1 className="mt-2 text-[1.8rem] font-black tracking-[-0.05em] text-slate-950 sm:text-[2rem]">
+                <h1 className="mt-2 text-[1.8rem] font-black tracking-[-0.05em] text-[#1e3a8a] sm:text-[2rem]">
                   Hello, {safeStudentName}!
                 </h1>
                 <p className="mt-1.5 max-w-3xl text-sm text-slate-600">
@@ -1373,7 +1443,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">
                       Current Standard
                     </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
+                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#1d4ed8]">
                       {topStandardLabel}
                     </p>
                   </div>
@@ -1382,7 +1452,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">
                       Selected Degree
                     </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
+                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#4338ca]">
                       {selectedDegree || "Engineering"}
                     </p>
                   </div>
@@ -1391,7 +1461,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">
                       Cutoff / Score
                     </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">
+                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#0f766e]">
                       {enteredCutoff || "Pending"}
                     </p>
                   </div>
@@ -1402,7 +1472,7 @@ export function CutoffClient({
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">
                           Prediction Strength
                         </p>
-                        <p className="mt-1.5 text-sm font-semibold text-slate-900">
+                        <p className="mt-1.5 text-sm font-semibold text-[#312e81]">
                           Smarter analysis. Clearer choices.
                         </p>
                       </div>
@@ -1806,11 +1876,11 @@ export function CutoffClient({
             {/* Senior Cutoff Overview */}
             <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
               <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0f766e,#14b8a6)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(20,184,166,0.2)]">
                   Cutoff Overview
                 </div>
 
-                <h2 className="mt-4 text-2xl font-black tracking-[-0.04em] text-slate-950">
+                <h2 className="mt-4 text-2xl font-black tracking-[-0.04em] text-[#1e40af]">
                   {selectedDegree || "Career"} cutoff summary
                 </h2>
 
@@ -1825,7 +1895,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                       Course
                     </p>
-                    <p className="mt-2 text-lg font-black text-slate-950">
+                    <p className="mt-2 text-lg font-black text-[#1d4ed8]">
                       {selectedCourse || selectedDegree || "Not selected"}
                     </p>
                   </div>
@@ -1834,7 +1904,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                       Category
                     </p>
-                    <p className="mt-2 text-lg font-black text-slate-950">
+                    <p className="mt-2 text-lg font-black text-[#4338ca]">
                       {selectedCategory || "Open Category"}
                     </p>
                   </div>
@@ -1843,7 +1913,7 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                       Admission Type
                     </p>
-                    <p className="mt-2 text-lg font-black text-slate-950">
+                    <p className="mt-2 text-lg font-black text-[#0f766e]">
                       {selectedAdmissionType || "General Admission"}
                     </p>
                   </div>
@@ -1852,11 +1922,51 @@ export function CutoffClient({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                       Entered Score
                     </p>
-                    <p className="mt-2 text-lg font-black text-slate-950">
+                    <p className="mt-2 text-lg font-black text-[#c2410c]">
                       {enteredCutoff || "Pending"}
                     </p>
                   </div>
                 </div>
+
+                {showBArchResultBreakdown ? (
+                  <div className="mt-5 rounded-[1.5rem] border border-amber-100 bg-[linear-gradient(180deg,#fffaf0,#ffffff)] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+                      <PenTool className="size-4" />
+                      B.Arch Score Breakdown
+                    </div>
+
+                    <div className={`mt-4 grid gap-3 ${bArchSubmittedNataScore ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                      <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          {resolvedLevel === "11" ? "11th Marks Total" : "12th Marks Total"}
+                        </p>
+                        <p className="mt-2 text-lg font-black text-slate-900">
+                          {bArchSubmittedBoardTotal} / 600
+                        </p>
+                      </div>
+
+                      <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Converted Score
+                        </p>
+                        <p className="mt-2 text-lg font-black text-[#b45309]">
+                          {bArchSubmittedConvertedScore || "Pending"} / 200
+                        </p>
+                      </div>
+
+                      {bArchSubmittedNataScore ? (
+                        <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            NATA Score
+                          </p>
+                          <p className="mt-2 text-lg font-black text-[#b45309]">
+                            {bArchSubmittedNataScore} / 200
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="mt-5 rounded-[1.5rem] border border-sky-100 bg-[linear-gradient(180deg,#eff6ff,#ffffff)] p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -1864,7 +1974,7 @@ export function CutoffClient({
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
                         Prediction Strength
                       </p>
-                      <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
+                      <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#1e3a8a]">
                         {predictorPercentage}%
                       </p>
                     </div>
@@ -1884,10 +1994,10 @@ export function CutoffClient({
               </article>
 
               <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.2)]">
                   Eligibility & Exam Direction
                 </div>
-                <h3 className="mt-4 text-2xl font-black tracking-[-0.04em] text-slate-950">{seniorGuide.title}</h3>
+                <h3 className="mt-4 text-2xl font-black tracking-[-0.04em] text-[#1e40af]">{seniorGuide.title}</h3>
                 <p className="mt-2 text-sm text-slate-600">{seniorGuide.subtitle}</p>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -1936,8 +2046,8 @@ export function CutoffClient({
         {(!isJuniorLevel || showJuniorAnalysis) ? (
           usesFocusedMatchFlow ? (
             <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6 lg:p-7">
-              <div className="flex flex-wrap items-center gap-3 text-slate-900">
-                <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-slate-950">
+              <div className="flex flex-wrap items-center gap-3 text-slate-800">
+                <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-[#1e40af]">
                   College Predictor
                 </h2>
               </div>
@@ -1986,9 +2096,9 @@ export function CutoffClient({
             </section>
           ) : (
             <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6 lg:p-7">
-              <div className="flex flex-wrap items-center gap-3 text-slate-900">
+              <div className="flex flex-wrap items-center gap-3 text-slate-800">
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-slate-950">
+                  <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-[#1e40af]">
                     College Predictor
                   </h2>
                 </div>
@@ -2029,6 +2139,11 @@ export function CutoffClient({
                               className="group box-border w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 rounded-[1rem] border-2 border-[#d8e3ff] bg-white p-3 text-center shadow-[0_12px_28px_rgba(52,86,255,0.08)] transition-[border-color,box-shadow] duration-200 hover:border-[#8fb0ff] hover:shadow-[0_16px_30px_rgba(52,86,255,0.14)]"
                             >
                               <div className="relative mx-auto h-[78px] w-full overflow-hidden rounded-[0.9rem] border-2 border-[#dfe7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                                {college.isBestCollege ? (
+                                  <div className="absolute left-2 top-2 z-10 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.16em] text-white shadow-[0_8px_20px_rgba(249,115,22,0.24)]">
+                                    Best
+                                  </div>
+                                ) : null}
                                 <Image
                                   src={college.image}
                                   alt={college.name}
@@ -2077,7 +2192,14 @@ export function CutoffClient({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-900">{college.name}</p>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{college.name}</p>
+                            {college.isBestCollege ? (
+                              <span className="mt-1 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
+                                Best College
+                              </span>
+                            ) : null}
+                          </div>
                           <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                             {college.matchScore}%
                           </span>
@@ -2099,8 +2221,7 @@ export function CutoffClient({
 
             {!usesFocusedMatchFlow ? (
             <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/20 text-[11px]">5</span>
+              <div className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
                 Aim Higher & More Options
               </div>
               <div className="mt-5">
@@ -2111,9 +2232,14 @@ export function CutoffClient({
                         <Link
                           key={`${college.id}-opportunity`}
                           href={college.href}
-                          className="group box-border w-[84%] min-w-[84%] shrink-0 rounded-[1.4rem] border border-[#f3c44e] bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-3 shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[#e9b52c] hover:shadow-[0_18px_34px_rgba(245,158,11,0.12)] sm:w-[48%] sm:min-w-[48%] lg:w-[calc((100%-2rem)/3)] lg:min-w-[calc((100%-2rem)/3)]"
+                          className="group box-border w-[84%] min-w-[84%] shrink-0 rounded-[1.4rem] border border-[#f5b5b5] bg-[linear-gradient(180deg,#ffffff,#fff7f7)] p-3 shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[#ef4444] hover:shadow-[0_18px_34px_rgba(239,68,68,0.12)] sm:w-[48%] sm:min-w-[48%] lg:w-[calc((100%-2rem)/3)] lg:min-w-[calc((100%-2rem)/3)]"
                         >
                           <div className="relative h-40 w-full overflow-hidden rounded-[1.1rem] bg-slate-100">
+                            {college.isBestCollege ? (
+                              <div className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
+                                Best College
+                              </div>
+                            ) : null}
                             <Image
                               src={college.image}
                               alt={college.name}
@@ -2133,7 +2259,7 @@ export function CutoffClient({
                                 <span className="truncate">{college.location || "Tamil Nadu"}</span>
                               </p>
                             </div>
-                            <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                            <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700">
                               {college.matchScore}% fit
                             </span>
                           </div>

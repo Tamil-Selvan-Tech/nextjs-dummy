@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { MapPin, Star, X } from "lucide-react";
 import Image from "next/image";
 import { getCoursesForCollege, type College } from "@/lib/site-data";
+import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 
 type PopularComparisonsProps = {
   selectedCollege: College | null;
@@ -37,7 +38,6 @@ export function PopularComparisons({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
-  const [submitMessage, setSubmitMessage] = useState("");
 
   const shareButtons = [
     { label: "Facebook", icon: FacebookIcon, className: "bg-[#1877F2]" },
@@ -59,20 +59,33 @@ export function PopularComparisons({
 
   if (!selectedCollege) return null;
 
+  const getFeeRangeFromStructure = (college: College) => {
+    const structure = college.feesStructure as Record<string, unknown> | undefined;
+    if (!structure || typeof structure !== "object") return "";
+
+    const tuition = (structure.tuitionFee as Record<string, unknown> | undefined) || structure;
+    const min = (tuition.minAmount ?? structure.minAmount ?? tuition.min ?? structure.min ?? "") as
+      | string
+      | number;
+    const max = (tuition.maxAmount ?? structure.maxAmount ?? tuition.max ?? structure.max ?? "") as
+      | string
+      | number;
+
+    const feeRange = formatCompactIndianCurrencyRange(min, max);
+    return feeRange === "Not available" ? "" : feeRange;
+  };
+
   const getTopCourseInfo = (college: College) => {
     const courseList = getCoursesForCollege(college.name);
     const topCourse = courseList.find((course) => course.isTopCourse) || courseList[0];
-    const specialization = topCourse?.specialization ? ` in ${topCourse.specialization}` : "";
-    const courseLabel = topCourse ? `${topCourse.course}${specialization}` : "Top course";
     const rating = Math.min(5, Math.max(3.8, Number(((college.placementRate || 0) / 20).toFixed(1))));
     const feesValue = typeof topCourse?.totalFees === "number" ? topCourse.totalFees : null;
     const fees =
       typeof feesValue === "number"
-        ? `₹${(feesValue / 100000).toFixed(1).replace(/\.0$/, "")}L`
-        : "₹-";
+        ? formatCompactIndianCurrencyRange(feesValue, feesValue)
+        : getFeeRangeFromStructure(college) || "-";
 
     return {
-      courseLabel,
       rating,
       fees,
     };
@@ -98,7 +111,6 @@ export function PopularComparisons({
                   type="button"
                   onClick={() => {
                     setSelectedRating(value);
-                    setSubmitMessage("");
                     setIsFeedbackOpen(true);
                   }}
                   aria-label={`Rate ${value}`}
@@ -109,10 +121,7 @@ export function PopularComparisons({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setSubmitMessage("");
-                setIsFeedbackOpen(true);
-              }}
+              onClick={() => setIsFeedbackOpen(true)}
               className="text-sm font-semibold text-[color:var(--text-dark)]"
             >
               Rate Us Now
@@ -156,100 +165,79 @@ export function PopularComparisons({
             {popularColleges.map((college) => {
               const leftInfo = getTopCourseInfo(selectedCollege);
               const rightInfo = getTopCourseInfo(college);
+
               return (
-              <button
-                key={`popular-compare-${selectedCollege.id}-${college.id}`}
-                type="button"
-                onClick={() => onSelectComparison?.(selectedCollege, college)}
-                className="group min-w-[18.5rem] flex-1 rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div
-                    className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] shadow-[0_10px_20px_rgba(22,50,79,0.1)]"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(135deg, #e7edf6 0%, #ffffff 100%), repeating-linear-gradient(45deg, rgba(15,76,129,0.08) 0 6px, rgba(255,255,255,0.9) 6px 12px)",
-                      backgroundBlendMode: "multiply",
-                    }}
-                  >
-                    <Image
-                      src={selectedCollege.logo || selectedCollege.image}
-                      alt={selectedCollege.name}
-                      fill
-                      sizes="56px"
-                      className={selectedCollege.logo ? "object-contain p-2" : "object-cover"}
-                    />
+                <button
+                  key={`popular-compare-${selectedCollege.id}-${college.id}`}
+                  type="button"
+                  onClick={() => onSelectComparison?.(selectedCollege, college)}
+                  className="group min-w-[18.5rem] flex-1 rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
+                      <Image
+                        src={selectedCollege.logo || selectedCollege.image}
+                        alt={selectedCollege.name}
+                        fill
+                        sizes="56px"
+                        className={selectedCollege.logo ? "object-contain p-1.5" : "object-cover"}
+                      />
+                    </div>
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
+                      VS
+                    </span>
+                    <div className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
+                      <Image
+                        src={college.logo || college.image}
+                        alt={college.name}
+                        fill
+                        sizes="56px"
+                        className={college.logo ? "object-contain p-1.5" : "object-cover"}
+                      />
+                    </div>
                   </div>
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
-                    VS
-                  </span>
-                  <div
-                    className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] shadow-[0_10px_20px_rgba(22,50,79,0.1)]"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(135deg, #e7edf6 0%, #ffffff 100%), repeating-linear-gradient(45deg, rgba(15,76,129,0.08) 0 6px, rgba(255,255,255,0.9) 6px 12px)",
-                      backgroundBlendMode: "multiply",
-                    }}
-                  >
-                    <Image
-                      src={college.logo || college.image}
-                      alt={college.name}
-                      fill
-                      sizes="56px"
-                      className={college.logo ? "object-contain p-2" : "object-cover"}
-                    />
-                  </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-                  <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    {selectedCollege.name}
-                  </p>
-                  <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
-                    {college.name}
-                  </p>
-                </div>
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                    <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                      {selectedCollege.name}
+                    </p>
+                    <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                      {college.name}
+                    </p>
+                  </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
-                    <p className="font-semibold text-[color:var(--text-dark)]">
-                      {leftInfo.courseLabel}
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-slate-500">
-                      <MapPin className="size-3" />
-                      {selectedCollege.district}, {selectedCollege.state}
-                    </p>
-                    <p className="mt-2 text-[11.5px] font-semibold text-[color:var(--text-dark)]">
-                      {leftInfo.rating} ★
-                    </p>
-                    <p className="mt-1 text-[11.5px] text-slate-600">
-                      Fees: {leftInfo.fees}
-                    </p>
-                    <p className="text-[11.5px] text-slate-600">
-                      Placement: {selectedCollege.placementRate}%
-                    </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
+                      <p className="inline-flex items-center gap-1 text-[11.5px] text-slate-500">
+                        <MapPin className="size-3" />
+                        {selectedCollege.district}, {selectedCollege.state}
+                      </p>
+                      <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-[color:var(--text-dark)]">
+                        <span>{leftInfo.rating}</span>
+                        <Star className="size-3.5 fill-[#facc15] text-[#facc15]" />
+                      </div>
+                      <div className="mt-2 space-y-1 text-[11.5px] text-slate-600">
+                        <p><span className="font-semibold text-slate-700">Fees:</span> {leftInfo.fees}</p>
+                        <p><span className="font-semibold text-slate-700">Placement:</span> {selectedCollege.placementRate}%</p>
+                      </div>
+                    </div>
+                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
+                      <p className="inline-flex items-center gap-1 text-[11.5px] text-slate-500">
+                        <MapPin className="size-3" />
+                        {college.district}, {college.state}
+                      </p>
+                      <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-[color:var(--text-dark)]">
+                        <span>{rightInfo.rating}</span>
+                        <Star className="size-3.5 fill-[#facc15] text-[#facc15]" />
+                      </div>
+                      <div className="mt-2 space-y-1 text-[11.5px] text-slate-600">
+                        <p><span className="font-semibold text-slate-700">Fees:</span> {rightInfo.fees}</p>
+                        <p><span className="font-semibold text-slate-700">Placement:</span> {college.placementRate}%</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
-                    <p className="font-semibold text-[color:var(--text-dark)]">
-                      {rightInfo.courseLabel}
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-slate-500">
-                      <MapPin className="size-3" />
-                      {college.district}, {college.state}
-                    </p>
-                    <p className="mt-2 text-[11.5px] font-semibold text-[color:var(--text-dark)]">
-                      {rightInfo.rating} ★
-                    </p>
-                    <p className="mt-1 text-[11.5px] text-slate-600">
-                      Fees: {rightInfo.fees}
-                    </p>
-                    <p className="text-[11.5px] text-slate-600">
-                      Placement: {college.placementRate}%
-                    </p>
-                  </div>
-                </div>
-              </button>
-            );
+                </button>
+              );
             })}
           </div>
         </div>
@@ -324,9 +312,9 @@ export function PopularComparisons({
                   <button
                     type="button"
                     onClick={() => {
-                      setSubmitMessage("Submitted successfully.");
                       setFeedbackText("");
                       setSelectedRating(null);
+                      setIsFeedbackOpen(false);
                     }}
                     className="rounded-md bg-slate-400 px-6 py-2 text-sm font-semibold text-white transition hover:bg-slate-500"
                   >
@@ -334,9 +322,6 @@ export function PopularComparisons({
                   </button>
                 ) : null}
               </div>
-              {submitMessage ? (
-                <p className="mt-3 text-sm font-semibold text-emerald-600">{submitMessage}</p>
-              ) : null}
             </div>
           </div>
         </div>

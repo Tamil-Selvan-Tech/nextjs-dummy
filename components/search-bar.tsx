@@ -338,7 +338,7 @@ export function SearchBar() {
       <button
         type="button"
         onClick={handleSearch}
-        className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-accent)] px-4 text-xs font-semibold text-white transition hover:bg-[color:var(--brand-accent-deep)] sm:h-11 sm:min-w-[6.5rem] sm:px-5 sm:text-sm"
+        className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#dc2626_0%,#ef4444_55%,#f87171_100%)] px-4 text-xs font-semibold text-white shadow-[0_12px_24px_rgba(220,38,38,0.22)] transition hover:bg-[linear-gradient(135deg,#b91c1c_0%,#dc2626_55%,#ef4444_100%)] hover:shadow-[0_16px_28px_rgba(220,38,38,0.28)] sm:h-11 sm:min-w-[6.5rem] sm:px-5 sm:text-sm"
       >
         Search
       </button>

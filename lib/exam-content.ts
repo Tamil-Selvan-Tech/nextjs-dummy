@@ -371,7 +371,7 @@ export const examContent: Record<string, ExamDetails> = {
       "It serves as the primary admission route for NITs, IIITs, and other centrally funded technical institutions, and it also acts as the qualifying exam for JEE Advanced.",
     ],
     overviewCards: [
-      { title: "Conducting Body", value: "NTA" },
+      { title: "Conducting Body", value: "National Testing Agency" },
       { title: "Mode of Examination", value: "CBT Mode" },
       { title: "Exam Dates", value: "April 2026" },
       { title: "Total Papers", value: "Paper 1, 2A, 2B" },
@@ -1237,7 +1237,7 @@ export const examContent: Record<string, ExamDetails> = {
       "The final admission process still depends on each university's eligibility rules, merit list preparation, and counselling schedule.",
     ],
     overviewCards: [
-      { title: "Conducting Body", value: "NTA" },
+      { title: "Conducting Body", value: "National Testing Agency" },
       { title: "Mode of Examination", value: "Subject-based test" },
       { title: "Exam Window", value: "May 2026" },
       { title: "Course Type", value: "UG Admissions" },
@@ -1648,7 +1648,7 @@ export const examContent: Record<string, ExamDetails> = {
       "The exam is conducted in pen-and-paper mode and includes Physics, Chemistry, and Biology. The score is used across AIQ and state counselling processes, making it the most important undergraduate medical entrance exam in the country.",
     ],
     overviewCards: [
-      { title: "Conducting Body", value: "NTA" },
+      { title: "Conducting Body", value: "National Testing Agency" },
       { title: "Mode of Examination", value: "Offline Mode" },
       { title: "Exam Date", value: "05 May 2026" },
       { title: "Subjects", value: "PCB" },

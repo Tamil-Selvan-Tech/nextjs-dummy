@@ -80,8 +80,7 @@ export default async function CollegeDetailsPage({
   const relatedCourses = panelData.courses.filter(
     (course) =>
       course.collegeId === college.id ||
-      normalizeText(course.college) === normalizeText(college.name) ||
-      normalizeText(course.university) === normalizeText(college.university),
+      normalizeText(course.college) === normalizeText(college.name),
   );
 
   return (

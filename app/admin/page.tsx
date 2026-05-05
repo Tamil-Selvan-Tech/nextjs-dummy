@@ -62,7 +62,7 @@ type RequestItem = { _id: string; requesterName?: string; requesterEmail?: strin
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
 type SiteSettings = { homeHeroImageUrl?: string; examSchedules?: SavedExamSchedule[] };
-type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
+type CollegeForm = { name: string; establishedYear: string; ownershipType: string; university: string; country: string; state: string; city: string; district: string; address: string; pincode: string; description: string; reviews: string; admissionProcess: string; applicationMode: string; ranking: string; placementRate: string; feeMin: string; feeMax: string; locationLink: string; website: string; contactEmail: string; contactPhone: string; alternatePhone: string; accreditation: string; awardsRecognitions: string; brochurePdfUrl: string; campusVideoUrl: string; isTopCollege: boolean; isBestCollege: boolean; logo: string; coverImage: string; images: string[]; courseTags: string; facilities: string; scholarships: string; highestPackage: string; averagePackage: string; companiesVisited: string; quotas: string; hostelAvailability: string; hostelType: string; hostelFeeMin: string; hostelFeeMax: string; cctvAvailable: string; boysRoomsCount: string; girlsRoomsCount: string; hostelFacilityOptions: string; waterAvailability: string; powerBackup: string; wifiAvailable: string; wifiSpeed: string; wifiPricing: string; foodAvailability: string; foodTimings: string; laundryService: string; roomCleaningFrequency: string; hostelRules: string };
 type CourseExamForm = { examName: string; cutoffScoreOrRank: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; weightage: string; paperOrSyllabus: string; preparationNotes: string };
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
@@ -76,7 +76,7 @@ type CourseOption = { value: string; label: string };
 type CutoffRangeConfig = { max: number; scaleLabel: string; contextLabel: string };
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
-const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
+const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, isBestCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
 const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", cutoffByCategory: [], cutoffCategory: "OC", cutoffValue: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
 const cutoffCategoryOptions = [
   { value: "OC", label: "OC / General" },
@@ -332,6 +332,18 @@ const createEmptyEmbeddedCourseDraft = (university = ""): EmbeddedCourseDraft =>
   entranceExams: [emptyCourseExam()],
 });
 const CUSTOM_STREAM_OPTION = "__custom_stream__";
+const CUSTOM_SPECIALIZATION_OPTION = "__custom_specialization__";
+const CUSTOM_COURSE_NAME_OPTION = "__custom_course_name__";
+type CustomCourseFieldMode = {
+  stream: boolean;
+  specialization: boolean;
+  courseName: boolean;
+};
+const defaultCustomCourseFieldMode: CustomCourseFieldMode = {
+  stream: false,
+  specialization: false,
+  courseName: false,
+};
 const emptySubAdminForm: SubAdminForm = { email: "", password: "", permissions: [] };
 const emptyExamScheduleForm: ExamScheduleForm = {
   examName: "",
@@ -856,6 +868,7 @@ const collegeSteps = [
 ];
 
 const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
+const quotaQuickOptions = ["Management Quota", "Government Quota", "Reservation Quota", "Sports Quota", "Minority Quota", "NRI Quota"];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -882,9 +895,15 @@ export default function AdminPage() {
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editCourseId, setEditCourseId] = useState("");
   const [courseForm, setCourseForm] = useState<CourseForm>(() => createEmptyCourseForm());
+  const [courseCustomFieldMode, setCourseCustomFieldMode] =
+    useState<CustomCourseFieldMode>(defaultCustomCourseFieldMode);
+  const [customCourseCatalog, setCustomCourseCatalog] = useState<CourseCatalogItem[]>([]);
+  const [customStandaloneStreams, setCustomStandaloneStreams] = useState<string[]>([]);
   const [selectedCourseCollegeId, setSelectedCourseCollegeId] = useState("");
   const [embeddedCourses, setEmbeddedCourses] = useState<EmbeddedCourseDraft[]>([]);
   const [embeddedCourseForm, setEmbeddedCourseForm] = useState<EmbeddedCourseDraft>(() => createEmptyEmbeddedCourseDraft());
+  const [embeddedCourseCustomFieldMode, setEmbeddedCourseCustomFieldMode] =
+    useState<CustomCourseFieldMode>(defaultCustomCourseFieldMode);
   const [showEmbeddedCourseEditor, setShowEmbeddedCourseEditor] = useState(false);
   const [editingEmbeddedCourseIndex, setEditingEmbeddedCourseIndex] = useState<number | null>(null);
   const [showSavedCourseList, setShowSavedCourseList] = useState(false);
@@ -903,6 +922,7 @@ export default function AdminPage() {
     lastToastMessageRef.current = statusText;
   }, [statusText]);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
+  const [customQuotaInput, setCustomQuotaInput] = useState("");
   const [showRequestNotifications, setShowRequestNotifications] = useState(false);
   const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
   const [lastSeenNotificationAt, setLastSeenNotificationAt] = useState(0);
@@ -935,6 +955,14 @@ export default function AdminPage() {
         .filter(Boolean),
     [collegeForm.facilities],
   );
+  const selectedQuotas = useMemo(
+    () =>
+      collegeForm.quotas
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [collegeForm.quotas],
+  );
   const hasHostelFacility = useMemo(
     () => collegeForm.hostelAvailability === "available",
     [collegeForm.hostelAvailability],
@@ -948,34 +976,45 @@ export default function AdminPage() {
       })),
     [imageFiles],
   );
+  const availableStreamOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...streamOptions,
+          ...customStandaloneStreams.map((item) => normalizeCourseStream(item)).filter(Boolean),
+          ...customCourseCatalog.map((item) => normalizeCourseStream(item.stream)).filter(Boolean),
+        ]),
+      ),
+    [customCourseCatalog, customStandaloneStreams],
+  );
   const embeddedStreamOptions = useMemo(() => {
     const currentStream = normalizeCourseStream(embeddedCourseForm.stream);
-    return currentStream && !streamOptions.includes(currentStream)
-      ? [currentStream, ...streamOptions]
-      : streamOptions;
-  }, [embeddedCourseForm.stream]);
+    return currentStream && !availableStreamOptions.includes(currentStream)
+      ? [currentStream, ...availableStreamOptions]
+      : availableStreamOptions;
+  }, [availableStreamOptions, embeddedCourseForm.stream]);
   const courseStreamOptionsForForm = useMemo(() => {
     const currentStream = normalizeCourseStream(courseForm.stream);
-    return currentStream && !streamOptions.includes(currentStream)
-      ? [currentStream, ...streamOptions]
-      : streamOptions;
-  }, [courseForm.stream]);
+    return currentStream && !availableStreamOptions.includes(currentStream)
+      ? [currentStream, ...availableStreamOptions]
+      : availableStreamOptions;
+  }, [availableStreamOptions, courseForm.stream]);
   const normalizedEmbeddedStream = normalizeCourseStream(embeddedCourseForm.stream);
   const normalizedCourseStreamValue = normalizeCourseStream(courseForm.stream);
   const embeddedStreamSelectValue = embeddedStreamOptions.includes(normalizedEmbeddedStream)
     ? normalizedEmbeddedStream
-    : embeddedCourseForm.stream
+    : embeddedCourseCustomFieldMode.stream || embeddedCourseForm.stream
       ? CUSTOM_STREAM_OPTION
       : "";
   const courseStreamSelectValue = courseStreamOptionsForForm.includes(normalizedCourseStreamValue)
     ? normalizedCourseStreamValue
-    : courseForm.stream
+    : courseCustomFieldMode.stream || courseForm.stream
       ? CUSTOM_STREAM_OPTION
       : "";
   const getCourseTypeOptionsForSelection = useCallback(
     (stream: string, degreeType: string) => {
       const normalizedStream = normalizeCourseStream(stream);
-      const catalogOptions = courseCatalog
+      const catalogOptions = [...courseCatalog, ...customCourseCatalog]
         .filter((item) => (!normalizedStream || item.stream === normalizedStream) && (!degreeType || item.degreeType === degreeType))
         .map((item) => normalizeArtsScienceCourseType(item.stream, item.courseType, item.specialization));
       const existingOptions = adminState.courses.flatMap((course) => {
@@ -992,13 +1031,13 @@ export default function AdminPage() {
 
       return Array.from(new Set([...catalogOptions, ...existingOptions]));
     },
-    [adminState.courses],
+    [adminState.courses, customCourseCatalog],
   );
   const getSpecializationOptionsForSelection = useCallback(
     (stream: string, degreeType: string, courseType: string) => {
       const normalizedStream = normalizeCourseStream(stream);
       const isArtsAndScienceSelection = normalizedStream === artsAndScienceStream;
-      const catalogOptions = courseCatalog
+      const catalogOptions = [...courseCatalog, ...customCourseCatalog]
         .filter((item) =>
           (!normalizedStream || item.stream === normalizedStream) &&
           (!degreeType || item.degreeType === degreeType) &&
@@ -1041,7 +1080,7 @@ export default function AdminPage() {
 
       return Array.from(optionMap.values());
     },
-    [adminState.courses],
+    [adminState.courses, customCourseCatalog],
   );
   const embeddedCourseTypeOptions = useMemo(
     () => getCourseTypeOptionsForSelection(embeddedCourseForm.stream, embeddedCourseForm.degreeType),
@@ -1077,6 +1116,40 @@ export default function AdminPage() {
       ),
     [courseForm.courseType, courseForm.degreeType, courseForm.stream],
   );
+  const addCustomStreamOption = useCallback((rawValue: string) => {
+    const nextValue = normalizeCourseStream(rawValue);
+    if (!nextValue) return false;
+    setCustomStandaloneStreams((prev) => (prev.includes(nextValue) ? prev : [...prev, nextValue]));
+    return true;
+  }, []);
+  const addCustomCourseCatalogItem = useCallback((item: CourseCatalogItem) => {
+    const normalizedStream = normalizeCourseStream(item.stream);
+    const normalizedCourseType = normalizeAdminOption(item.courseType);
+    const normalizedSpecialization = normalizeAdminOption(item.specialization);
+    const normalizedDegreeType = normalizeAdminOption(item.degreeType);
+    if (!normalizedStream || !normalizedCourseType || !normalizedDegreeType) return false;
+
+    setCustomCourseCatalog((prev) => {
+      const alreadyExists = prev.some(
+        (entry) =>
+          entry.stream === normalizedStream &&
+          entry.degreeType === normalizedDegreeType &&
+          entry.courseType === normalizedCourseType &&
+          normalizeAdminOption(entry.specialization) === normalizedSpecialization,
+      );
+      if (alreadyExists) return prev;
+      return [
+        ...prev,
+        {
+          stream: normalizedStream,
+          degreeType: normalizedDegreeType,
+          courseType: normalizedCourseType,
+          specialization: normalizedSpecialization,
+        },
+      ];
+    });
+    return true;
+  }, []);
   const embeddedResolvedCourseName = useMemo(
     () => embeddedCourseForm.courseType,
     [embeddedCourseForm.courseType],
@@ -1085,6 +1158,28 @@ export default function AdminPage() {
     () => courseForm.courseType,
     [courseForm.courseType],
   );
+  const embeddedCourseNameSelectValue = embeddedCourseTypeOptions.includes(embeddedResolvedCourseName)
+    ? embeddedResolvedCourseName
+    : embeddedResolvedCourseName
+      ? CUSTOM_COURSE_NAME_OPTION
+      : "";
+  const embeddedSpecializationOptionValues = embeddedSpecializationEntries.map((item) => item.value);
+  const courseSpecializationOptionValues = courseSpecializationEntries.map((item) => item.value);
+  const embeddedSpecializationSelectValue = embeddedSpecializationOptionValues.includes(embeddedCourseForm.specialization)
+    ? embeddedCourseForm.specialization
+    : embeddedCourseCustomFieldMode.specialization || embeddedCourseForm.specialization
+      ? CUSTOM_SPECIALIZATION_OPTION
+      : "";
+  const courseNameSelectValue = courseTypeOptions.includes(courseResolvedCourseName)
+    ? courseResolvedCourseName
+    : courseCustomFieldMode.courseName || courseResolvedCourseName
+      ? CUSTOM_COURSE_NAME_OPTION
+      : "";
+  const courseSpecializationSelectValue = courseSpecializationOptionValues.includes(courseForm.specialization)
+    ? courseForm.specialization
+    : courseCustomFieldMode.specialization || courseForm.specialization
+      ? CUSTOM_SPECIALIZATION_OPTION
+      : "";
   const embeddedCutoffRangeConfig = useMemo(
     () =>
       resolveCutoffRangeConfig(
@@ -1391,6 +1486,7 @@ export default function AdminPage() {
 
   const resetEmbeddedCourseEditor = () => {
     setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(collegeForm.university.trim()));
+    setEmbeddedCourseCustomFieldMode(defaultCustomCourseFieldMode);
     setEditingEmbeddedCourseIndex(null);
     setShowEmbeddedCourseEditor(false);
   };
@@ -1506,6 +1602,19 @@ export default function AdminPage() {
         Array.isArray(draft.entranceExams) && draft.entranceExams.length > 0
           ? draft.entranceExams.map((exam) => ({ ...exam }))
           : [emptyCourseExam()],
+    });
+    setEmbeddedCourseCustomFieldMode({
+      stream: !embeddedStreamOptions.includes(normalizeCourseStream(draft.stream)),
+      specialization: !getSpecializationOptionsForSelection(
+        draft.stream,
+        draft.degreeType,
+        draft.courseType,
+      )
+        .map((item) => item.value)
+        .includes(draft.specialization),
+      courseName: !getCourseTypeOptionsForSelection(draft.stream, draft.degreeType).includes(
+        draft.courseType,
+      ),
     });
     setEditingEmbeddedCourseIndex(index);
     setShowEmbeddedCourseEditor(true);
@@ -1647,6 +1756,45 @@ export default function AdminPage() {
       facilities: [...selectedFacilities, nextValue].join(", "),
     }));
     setCustomFacilityInput("");
+  };
+
+  const removeQuota = (value: string) => {
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: prev.quotas
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== value.toLowerCase())
+        .join(", "),
+    }));
+  };
+
+  const toggleQuota = (value: string) => {
+    if (selectedQuotas.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      removeQuota(value);
+      return;
+    }
+
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: [...selectedQuotas, value].join(", "),
+    }));
+  };
+
+  const addCustomQuota = () => {
+    const nextValue = customQuotaInput.trim();
+    if (!nextValue) return;
+    if (selectedQuotas.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomQuotaInput("");
+      return;
+    }
+
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: [...selectedQuotas, nextValue].join(", "),
+    }));
+    setCustomQuotaInput("");
   };
 
   const clearCollegeFieldError = (field: string) => {
@@ -1898,6 +2046,7 @@ export default function AdminPage() {
     setEditCourseId("");
     setSelectedCourseCollegeId("");
     setCourseForm(createEmptyCourseForm(collegeForm.university.trim()));
+    setCourseCustomFieldMode(defaultCustomCourseFieldMode);
   };
 
   const saveCourse = async (event: React.FormEvent) => {
@@ -2069,7 +2218,7 @@ export default function AdminPage() {
             brochurePdfUrl: nextBrochure.trim(),
             campusVideoUrl: collegeForm.campusVideoUrl.trim(),
             isTopCollege: collegeForm.isTopCollege,
-            isBestCollege: collegeForm.isTopCollege,
+            isBestCollege: collegeForm.isBestCollege,
             courseTags: collegeForm.courseTags.trim(),
             facilities: collegeForm.facilities
               .split(",")
@@ -2416,15 +2565,17 @@ export default function AdminPage() {
   ];
   const pendingRequestNotifications = useMemo(
     () =>
-      collegeChangeNotifications.map((item) => ({
-        id: `college-${item._id}-${new Date(String(item.updatedAt || item.createdAt || "")).getTime() || 0}`,
-        kind: "College Change",
-        name: item.payload?.name || item.requesterName || "College update",
-        email: item.requesterEmail || "-",
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        tab: "college-notifications",
-      })),
+      collegeChangeNotifications
+        .filter((item) => String(item.status || "pending").toLowerCase() === "pending")
+        .map((item) => ({
+          id: `college-${item._id}-${new Date(String(item.updatedAt || item.createdAt || "")).getTime() || 0}`,
+          kind: "College Change",
+          name: item.payload?.name || item.requesterName || "College update",
+          email: item.requesterEmail || "-",
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          tab: "college-notifications",
+        })),
     [collegeChangeNotifications],
   );
   const latestPendingNotificationAt = useMemo(
@@ -2863,7 +3014,7 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="bg-white px-4 py-6 text-sm text-slate-500">
-                    Innum yaarum college dashboard edit pannala.
+                    No colleges have updated their dashboard yet.
                   </div>
                 )}
               </div>
@@ -2876,33 +3027,61 @@ export default function AdminPage() {
                   </span>
                 </div>
                 {collegeDashboardEditStatus.notEdited.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {collegeDashboardEditStatus.notEdited.map((college) => (
-                          <tr key={`pending-college-${college._id}`} className="align-middle">
-                            <td className="px-4 py-3 font-semibold text-slate-900">{college.name || "College"}</td>
-                            <td className="px-4 py-3 text-slate-600">{college.contactEmail || college.ownerEmail || "-"}</td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                                Pending
-                              </span>
-                            </td>
+                  <div className="bg-white">
+                    <div className="space-y-3 p-4 sm:hidden">
+                      {collegeDashboardEditStatus.notEdited.map((college) => (
+                        <div
+                          key={`pending-college-mobile-${college._id}`}
+                          className="rounded-[1rem] border border-amber-100 bg-[linear-gradient(135deg,#ffffff_0%,#fffbeb_100%)] p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-900">{college.name || "College"}</p>
+                              <p className="mt-1 break-all text-xs text-slate-500">
+                                {college.contactEmail || college.ownerEmail || "-"}
+                              </p>
+                            </div>
+                            <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                              Pending
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="hidden overflow-x-auto sm:block">
+                      <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
+                        <colgroup>
+                          <col className="w-[34%]" />
+                          <col className="w-[46%]" />
+                          <col className="w-[20%]" />
+                        </colgroup>
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {collegeDashboardEditStatus.notEdited.map((college) => (
+                            <tr key={`pending-college-${college._id}`} className="align-middle">
+                              <td className="px-4 py-3 font-semibold text-slate-900 break-words">{college.name || "College"}</td>
+                              <td className="px-4 py-3 text-slate-600 break-all">{college.contactEmail || college.ownerEmail || "-"}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="inline-flex whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                  Pending
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-white px-4 py-6 text-sm text-slate-500">
-                    Ella colleges-um least once dashboard edit pannirukku.
+                    Every college has updated the dashboard at least once.
                   </div>
                 )}
               </div>
@@ -3303,16 +3482,12 @@ export default function AdminPage() {
                         const cleanedValue = String(rawValue || "")
                           .replace(/[\u2013\u2014]/g, "-")
                           .replace(/[^\d-]/g, "");
-                        const digitsOnly = cleanedValue.replace(/-/g, "");
-                        let normalizedInput = "";
-
-                        if (cleanedValue.includes("-")) {
-                          normalizedInput = normalizeRankingRangeInput(cleanedValue);
-                        } else if (digitsOnly.length > 4) {
-                          normalizedInput = formatRankingRangeForSave(digitsOnly) || digitsOnly.slice(0, 4);
-                        } else {
-                          normalizedInput = digitsOnly ? `${digitsOnly}-` : "";
-                        }
+                        const digitsOnly = cleanedValue.replace(/-/g, "").slice(0, 4);
+                        const normalizedInput = cleanedValue.includes("-")
+                          ? normalizeRankingRangeInput(cleanedValue)
+                          : digitsOnly
+                            ? `${digitsOnly}-`
+                            : "";
 
                         setCollegeForm((prev) => ({
                           ...prev,
@@ -3320,7 +3495,11 @@ export default function AdminPage() {
                         }));
                       }}
                       onBlur={() => {
-                        const formatted = formatRankingRangeForSave(collegeForm.ranking);
+                        const normalizedInput = normalizeRankingRangeInput(collegeForm.ranking);
+                        const formatted =
+                          normalizedInput.includes("-") && isValidRankingRange(normalizedInput)
+                            ? formatRankingRangeForSave(normalizedInput)
+                            : normalizedInput;
                         setCollegeForm((prev) => ({ ...prev, ranking: formatted }));
                         setCollegeFieldErrors((prev) => ({
                           ...prev,
@@ -3379,26 +3558,29 @@ export default function AdminPage() {
                   );
                 })}
               </div>
-              <div className="mt-3 flex gap-2">
-                <input
-                  className={inputClass}
-                  placeholder="Type custom facility and press Enter"
-                  value={customFacilityInput}
-                  onChange={(event) => setCustomFacilityInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addCustomFacility();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={addCustomFacility}
-                  className={softButtonClass}
-                >
-                  Add
-                </button>
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Add Custom Facility</p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className={inputClass}
+                    placeholder="Type custom facility and press Enter"
+                    value={customFacilityInput}
+                    onChange={(event) => setCustomFacilityInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addCustomFacility();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomFacility}
+                    className={`${softButtonClass} min-w-[108px] justify-center`}
+                  >
+                    Add Facility
+                  </button>
+                </div>
               </div>
               <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Selected Facilities</p>
@@ -3420,10 +3602,58 @@ export default function AdminPage() {
                 <p className="text-xs text-slate-500">Admission flow, quotas, scholarships, and fee range details.</p>
               </div>
               <div className={formSectionClass}>
-                <label>
+                <div className="xl:col-span-3">
                   <span className={labelClass}>Quotas</span>
-                  <input className={inputClass} placeholder="Management, Govt, Sports..." value={collegeForm.quotas} onChange={(event) => setCollegeForm((prev) => ({ ...prev, quotas: event.target.value }))} />
-                </label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {quotaQuickOptions.map((option) => {
+                      const isSelected = selectedQuotas.some((item) => item.toLowerCase() === option.toLowerCase());
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => toggleQuota(option)}
+                          className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${isSelected ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Add Custom Quota</p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        className={inputClass}
+                        placeholder="Type custom quota and press Enter"
+                        value={customQuotaInput}
+                        onChange={(event) => setCustomQuotaInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCustomQuota();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomQuota}
+                        className={`${softButtonClass} min-w-[108px] justify-center`}
+                      >
+                        Add Quota
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Selected Quotas</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedQuotas.length > 0 ? selectedQuotas.map((item) => (
+                        <button key={item} type="button" onClick={() => removeQuota(item)} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                          {item}
+                        </button>
+                      )) : <span className="text-xs text-slate-400">No quotas selected</span>}
+                    </div>
+                  </div>
+                </div>
                 <label>
                   <span className={labelClass}>Fee Structure<span className={requiredMarkClass}>*</span></span>
                   <div className="grid grid-cols-2 gap-2">
@@ -3631,6 +3861,11 @@ export default function AdminPage() {
                         onChange={(event) =>
                           setEmbeddedCourseForm((prev) => {
                             if (event.target.value === CUSTOM_STREAM_OPTION) {
+                              setEmbeddedCourseCustomFieldMode({
+                                stream: true,
+                                specialization: false,
+                                courseName: false,
+                              });
                               return {
                                 ...prev,
                                 stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
@@ -3642,6 +3877,11 @@ export default function AdminPage() {
                                 ),
                               };
                             }
+                            setEmbeddedCourseCustomFieldMode({
+                              stream: false,
+                              specialization: false,
+                              courseName: false,
+                            });
                             const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
                             const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
 
@@ -3686,56 +3926,138 @@ export default function AdminPage() {
                           }
                           required
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (addCustomStreamOption(embeddedCourseForm.stream)) {
+                              setEmbeddedCourseForm((prev) => ({ ...prev, stream: normalizeCourseStream(prev.stream) }));
+                            }
+                          }}
+                          className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                        >
+                          Add Custom Stream
+                        </button>
                       </label>
                     ) : null}
                     <label>
                       <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
-                      <input
+                      <select
                         className={inputClass}
-                        placeholder="Select or type specialization"
-                        list="embedded-course-specialization-options"
-                        value={embeddedCourseForm.specialization}
+                        value={embeddedSpecializationSelectValue}
                         onChange={(event) =>
-                          setEmbeddedCourseForm((prev) => ({
-                            ...prev,
-                            specialization: event.target.value,
-                            minimumQualification:
-                              getDefaultMinimumQualification(
-                                prev.courseType,
-                                prev.degreeType,
-                                prev.stream,
-                              ) || prev.minimumQualification,
-                            entranceExamsEnabled:
-                              shouldAutoShowEntranceExams(
-                                prev.courseType,
-                                prev.degreeType,
-                                prev.stream,
-                              ) || prev.entranceExamsEnabled,
-                          }))
+                          setEmbeddedCourseForm((prev) => {
+                            if (event.target.value === CUSTOM_SPECIALIZATION_OPTION) {
+                              setEmbeddedCourseCustomFieldMode((current) => ({
+                                ...current,
+                                specialization: true,
+                              }));
+                              return {
+                                ...prev,
+                                specialization: embeddedSpecializationOptionValues.includes(prev.specialization)
+                                  ? ""
+                                  : prev.specialization,
+                              };
+                            }
+                            return {
+                              ...prev,
+                              specialization: event.target.value,
+                              minimumQualification:
+                                getDefaultMinimumQualification(
+                                  prev.courseType,
+                                  prev.degreeType,
+                                  prev.stream,
+                                ) || prev.minimumQualification,
+                              entranceExamsEnabled:
+                                shouldAutoShowEntranceExams(
+                                  prev.courseType,
+                                  prev.degreeType,
+                                  prev.stream,
+                                ) || prev.entranceExamsEnabled,
+                            };
+                          })
                         }
                         required
-                      />
+                      >
+                        <option value="">Select specialization</option>
+                        {embeddedSpecializationEntries.map((item) => (
+                          <option key={item.label} value={item.value}>{item.label}</option>
+                        ))}
+                        <option value={CUSTOM_SPECIALIZATION_OPTION}>Custom specialization</option>
+                      </select>
                     </label>
-                    <datalist id="embedded-course-specialization-options">
-                      {embeddedSpecializationEntries.map((item) => (
-                        <option key={item.label} value={item.value} />
-                      ))}
-                    </datalist>
+                    {embeddedSpecializationSelectValue === CUSTOM_SPECIALIZATION_OPTION ? (
+                      <label>
+                        <span className={labelClass}>Custom Specialization<span className={requiredMarkClass}>*</span></span>
+                        <input
+                          className={inputClass}
+                          placeholder="Type custom specialization"
+                          value={embeddedCourseForm.specialization}
+                          onChange={(event) =>
+                            setEmbeddedCourseForm((prev) => ({
+                              ...prev,
+                              specialization: event.target.value,
+                              minimumQualification:
+                                getDefaultMinimumQualification(
+                                  prev.courseType,
+                                  prev.degreeType,
+                                  prev.stream,
+                                ) || prev.minimumQualification,
+                              entranceExamsEnabled:
+                                shouldAutoShowEntranceExams(
+                                  prev.courseType,
+                                  prev.degreeType,
+                                  prev.stream,
+                                ) || prev.entranceExamsEnabled,
+                            }))
+                          }
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addCustomCourseCatalogItem({
+                              stream: embeddedCourseForm.stream,
+                              degreeType: embeddedCourseForm.degreeType,
+                              courseType: embeddedCourseForm.courseType,
+                              specialization: embeddedCourseForm.specialization,
+                            });
+                          }}
+                          className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                        >
+                          Add Custom Specialization
+                        </button>
+                      </label>
+                    ) : null}
                     <label>
                       <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
                       <select
                         className={inputClass}
-                        value={embeddedResolvedCourseName}
+                        value={embeddedCourseNameSelectValue}
                         onChange={(event) =>
-                          setEmbeddedCourseForm((prev) => ({
-                            ...prev,
-                            courseType: event.target.value,
-                            specialization: "",
-                            minimumQualification:
-                              getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
-                            entranceExamsEnabled:
-                              shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
-                          }))
+                          setEmbeddedCourseForm((prev) => {
+                            if (event.target.value === CUSTOM_COURSE_NAME_OPTION) {
+                              setEmbeddedCourseCustomFieldMode((current) => ({
+                                ...current,
+                                courseName: true,
+                                specialization: false,
+                              }));
+                              return { ...prev, courseType: embeddedCourseTypeOptions.includes(prev.courseType) ? "" : prev.courseType, specialization: "" };
+                            }
+                            setEmbeddedCourseCustomFieldMode((current) => ({
+                              ...current,
+                              courseName: false,
+                              specialization: false,
+                            }));
+                            return {
+                              ...prev,
+                              courseType: event.target.value,
+                              specialization: "",
+                              minimumQualification:
+                                getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
+                              entranceExamsEnabled:
+                                shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
+                            };
+                          })
                         }
                         required
                       >
@@ -3743,8 +4065,45 @@ export default function AdminPage() {
                         {embeddedCourseTypeOptions.map((item) => (
                           <option key={item} value={item}>{item}</option>
                         ))}
+                        <option value={CUSTOM_COURSE_NAME_OPTION}>Custom course name</option>
                       </select>
                     </label>
+                    {embeddedCourseNameSelectValue === CUSTOM_COURSE_NAME_OPTION ? (
+                      <label>
+                        <span className={labelClass}>Custom Course Name<span className={requiredMarkClass}>*</span></span>
+                        <input
+                          className={inputClass}
+                          placeholder="Type custom course name"
+                          value={embeddedCourseForm.courseType}
+                          onChange={(event) =>
+                            setEmbeddedCourseForm((prev) => ({
+                              ...prev,
+                              courseType: event.target.value,
+                              specialization: "",
+                            }))
+                          }
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              addCustomCourseCatalogItem({
+                                stream: embeddedCourseForm.stream,
+                                degreeType: embeddedCourseForm.degreeType,
+                                courseType: embeddedCourseForm.courseType,
+                                specialization: "",
+                              })
+                            ) {
+                              setEmbeddedCourseForm((prev) => ({ ...prev, courseType: normalizeAdminOption(prev.courseType) }));
+                            }
+                          }}
+                          className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                        >
+                          Add Custom Course Name
+                        </button>
+                      </label>
+                    ) : null}
                     <label>
                       <span className={labelClass}>Duration<span className={requiredMarkClass}>*</span></span>
                       <input className={inputClass} placeholder="4 Years" value={embeddedCourseForm.duration} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, duration: event.target.value, totalFees: calculateTotalFeesFromSemesterFees(prev.semesterFees, event.target.value) || prev.totalFees }))} required />
@@ -3807,7 +4166,7 @@ export default function AdminPage() {
                       <input className={inputClass} placeholder="Total fees" value={embeddedCourseForm.totalFees} onChange={(event) => setEmbeddedCourseForm((prev) => ({ ...prev, totalFees: event.target.value }))} required />
                     </label>
                     <div className="md:col-span-2 xl:col-span-3">
-                      <span className={labelClass}>Cutoff By Category<span className={requiredMarkClass}>*</span></span>
+                      <span className={labelClass}>Cutoff By Category</span>
                       <div className="grid gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
                         <select
                           className={inputClass}
@@ -4272,11 +4631,11 @@ export default function AdminPage() {
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                   <input
                     type="checkbox"
-                    checked={collegeForm.isTopCollege}
+                    checked={collegeForm.isBestCollege}
                     onChange={(event) =>
                       setCollegeForm((prev) => ({
                         ...prev,
-                        isTopCollege: event.target.checked,
+                        isBestCollege: event.target.checked,
                       }))
                     }
                   />
@@ -4418,7 +4777,8 @@ export default function AdminPage() {
                           quotas: Array.isArray(college.quotas) ? college.quotas.join(", ") : (college.quotas || ""),
                           brochurePdfUrl: college.brochurePdfUrl || college.brochureUrl || "",
                           campusVideoUrl: college.campusVideoUrl || "",
-                          isTopCollege: Boolean(college.isTopCollege || college.isBestCollege),
+                          isTopCollege: Boolean(college.isTopCollege),
+                          isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
                           logo: college.logo || "",
                           coverImage: college.image || "",
                           images: Array.isArray(college.images) ? college.images : [],
@@ -4545,6 +4905,11 @@ export default function AdminPage() {
                       onChange={(event) =>
                         setCourseForm((prev) => {
                           if (event.target.value === CUSTOM_STREAM_OPTION) {
+                            setCourseCustomFieldMode({
+                              stream: true,
+                              specialization: false,
+                              courseName: false,
+                            });
                             return {
                               ...prev,
                               stream: streamOptions.includes(prev.stream) ? "" : prev.stream,
@@ -4556,6 +4921,11 @@ export default function AdminPage() {
                               ),
                             };
                           }
+                          setCourseCustomFieldMode({
+                            stream: false,
+                            specialization: false,
+                            courseName: false,
+                          });
                           const nextCourseTypeOptions = getCourseTypeOptionsForSelection(event.target.value, prev.degreeType);
                           const nextCourseType = nextCourseTypeOptions.includes(prev.courseType) ? prev.courseType : nextCourseTypeOptions[0] || "";
 
@@ -4600,56 +4970,138 @@ export default function AdminPage() {
                         }
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (addCustomStreamOption(courseForm.stream)) {
+                            setCourseForm((prev) => ({ ...prev, stream: normalizeCourseStream(prev.stream) }));
+                          }
+                        }}
+                        className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        Add Custom Stream
+                      </button>
                     </label>
                   ) : null}
                   <label>
                     <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
-                    <input
-                      className={inputClass}
-                      placeholder="Select or type specialization"
-                      list="course-specialization-options"
-                      value={courseForm.specialization}
-                      onChange={(event) =>
-                        setCourseForm((prev) => ({
-                          ...prev,
-                          specialization: event.target.value,
-                          minimumQualification:
-                            getDefaultMinimumQualification(
-                              prev.courseType,
-                              prev.degreeType,
-                              prev.stream,
-                            ) || prev.minimumQualification,
-                          entranceExamsEnabled:
-                            shouldAutoShowEntranceExams(
-                              prev.courseType,
-                              prev.degreeType,
-                              prev.stream,
-                            ) || prev.entranceExamsEnabled,
-                        }))
-                      }
-                      required
-                    />
-                  </label>
-                  <datalist id="course-specialization-options">
-                    {courseSpecializationEntries.map((item) => (
-                      <option key={item.label} value={item.value} />
-                    ))}
-                  </datalist>
-                  <label>
-                      <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
                     <select
                       className={inputClass}
-                      value={courseResolvedCourseName}
+                      value={courseSpecializationSelectValue}
                       onChange={(event) =>
-                        setCourseForm((prev) => ({
-                          ...prev,
-                          courseType: event.target.value,
-                          specialization: "",
-                          minimumQualification:
-                            getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
-                          entranceExamsEnabled:
-                            shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
-                        }))
+                        setCourseForm((prev) => {
+                          if (event.target.value === CUSTOM_SPECIALIZATION_OPTION) {
+                            setCourseCustomFieldMode((current) => ({
+                              ...current,
+                              specialization: true,
+                            }));
+                            return {
+                              ...prev,
+                              specialization: courseSpecializationOptionValues.includes(prev.specialization)
+                                ? ""
+                                : prev.specialization,
+                            };
+                          }
+                          return {
+                            ...prev,
+                            specialization: event.target.value,
+                            minimumQualification:
+                              getDefaultMinimumQualification(
+                                prev.courseType,
+                                prev.degreeType,
+                                prev.stream,
+                              ) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(
+                                prev.courseType,
+                                prev.degreeType,
+                                prev.stream,
+                              ) || prev.entranceExamsEnabled,
+                          };
+                        })
+                      }
+                      required
+                    >
+                      <option value="">Select specialization</option>
+                      {courseSpecializationEntries.map((item) => (
+                        <option key={item.label} value={item.value}>{item.label}</option>
+                      ))}
+                      <option value={CUSTOM_SPECIALIZATION_OPTION}>Custom specialization</option>
+                    </select>
+                  </label>
+                  {courseSpecializationSelectValue === CUSTOM_SPECIALIZATION_OPTION ? (
+                    <label>
+                      <span className={labelClass}>Custom Specialization<span className={requiredMarkClass}>*</span></span>
+                      <input
+                        className={inputClass}
+                        placeholder="Type custom specialization"
+                        value={courseForm.specialization}
+                        onChange={(event) =>
+                          setCourseForm((prev) => ({
+                            ...prev,
+                            specialization: event.target.value,
+                            minimumQualification:
+                              getDefaultMinimumQualification(
+                                prev.courseType,
+                                prev.degreeType,
+                                prev.stream,
+                              ) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(
+                                prev.courseType,
+                                prev.degreeType,
+                                prev.stream,
+                              ) || prev.entranceExamsEnabled,
+                          }))
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addCustomCourseCatalogItem({
+                            stream: courseForm.stream,
+                            degreeType: courseForm.degreeType,
+                            courseType: courseForm.courseType,
+                            specialization: courseForm.specialization,
+                          });
+                        }}
+                        className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        Add Custom Specialization
+                      </button>
+                    </label>
+                  ) : null}
+                  <label>
+                    <span className={labelClass}>Course Name<span className={requiredMarkClass}>*</span></span>
+                    <select
+                      className={inputClass}
+                      value={courseNameSelectValue}
+                      onChange={(event) =>
+                        setCourseForm((prev) => {
+                          if (event.target.value === CUSTOM_COURSE_NAME_OPTION) {
+                            setCourseCustomFieldMode((current) => ({
+                              ...current,
+                              courseName: true,
+                              specialization: false,
+                            }));
+                            return { ...prev, courseType: courseTypeOptions.includes(prev.courseType) ? "" : prev.courseType, specialization: "" };
+                          }
+                          setCourseCustomFieldMode((current) => ({
+                            ...current,
+                            courseName: false,
+                            specialization: false,
+                          }));
+                          return {
+                            ...prev,
+                            courseType: event.target.value,
+                            specialization: "",
+                            minimumQualification:
+                              getDefaultMinimumQualification(event.target.value, prev.degreeType, prev.stream) || prev.minimumQualification,
+                            entranceExamsEnabled:
+                              shouldAutoShowEntranceExams(event.target.value, prev.degreeType, prev.stream) || prev.entranceExamsEnabled,
+                          };
+                        })
                       }
                       required
                     >
@@ -4657,8 +5109,45 @@ export default function AdminPage() {
                       {courseTypeOptions.map((item) => (
                         <option key={item} value={item}>{item}</option>
                       ))}
+                      <option value={CUSTOM_COURSE_NAME_OPTION}>Custom course name</option>
                     </select>
                   </label>
+                  {courseNameSelectValue === CUSTOM_COURSE_NAME_OPTION ? (
+                    <label>
+                      <span className={labelClass}>Custom Course Name<span className={requiredMarkClass}>*</span></span>
+                      <input
+                        className={inputClass}
+                        placeholder="Type custom course name"
+                        value={courseForm.courseType}
+                        onChange={(event) =>
+                          setCourseForm((prev) => ({
+                            ...prev,
+                            courseType: event.target.value,
+                            specialization: "",
+                          }))
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            addCustomCourseCatalogItem({
+                              stream: courseForm.stream,
+                              degreeType: courseForm.degreeType,
+                              courseType: courseForm.courseType,
+                              specialization: "",
+                            })
+                          ) {
+                            setCourseForm((prev) => ({ ...prev, courseType: normalizeAdminOption(prev.courseType) }));
+                          }
+                        }}
+                        className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        Add Custom Course Name
+                      </button>
+                    </label>
+                  ) : null}
                   <label>
                     <span className={labelClass}>Duration<span className={requiredMarkClass}>*</span></span>
                     <input className={inputClass} placeholder="4 Years" value={courseForm.duration} onChange={(event) => setCourseForm((prev) => ({ ...prev, duration: event.target.value, details: Object.fromEntries(Object.entries(prev.details).map(([collegeId, detail]) => [collegeId, { ...detail, totalFees: calculateTotalFeesFromSemesterFees(detail.semesterFees, event.target.value) || detail.totalFees }])) }))} required />
@@ -5297,6 +5786,32 @@ export default function AdminPage() {
                           colleges: collegeIds,
                           details,
                         });
+                        setCourseCustomFieldMode({
+                          stream: !courseStreamOptionsForForm.includes(
+                            normalizeCourseStream(course.stream || course.courseCategory || ""),
+                          ),
+                          specialization: !getSpecializationOptionsForSelection(
+                            course.stream || course.courseCategory || "",
+                            course.degreeType || "",
+                            normalizeArtsScienceCourseType(
+                              course.stream || course.courseCategory || "",
+                              course.courseType || course.course || "",
+                              course.specialization || course.courseName || "",
+                            ),
+                          )
+                            .map((item) => item.value)
+                            .includes(course.specialization || course.courseName || ""),
+                          courseName: !getCourseTypeOptionsForSelection(
+                            course.stream || course.courseCategory || "",
+                            course.degreeType || "",
+                          ).includes(
+                            normalizeArtsScienceCourseType(
+                              course.stream || course.courseCategory || "",
+                              course.courseType || course.course || "",
+                              course.specialization || course.courseName || "",
+                            ),
+                          ),
+                        });
                       }}
                       className={solidBlueButtonClass}
                     >
@@ -5792,7 +6307,7 @@ export default function AdminPage() {
 
       {showSavedCourseList ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onClick={() => setShowSavedCourseList(false)}>
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
             <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
               <h3 className="text-base font-bold text-slate-900 md:text-lg">Saved Course List</h3>
               <button
@@ -5914,10 +6429,11 @@ export default function AdminPage() {
                   {
                     key: "actions",
                     label: "Action",
+                    className: "whitespace-nowrap",
                     render: (_, row, index) => {
                       const item = row as EmbeddedCourseDraft & { _id?: string };
                       return (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap justify-end gap-2 xl:flex-nowrap">
                           <button
                             type="button"
                             onClick={() => {
@@ -5948,9 +6464,29 @@ export default function AdminPage() {
                   const item = row as EmbeddedCourseDraft;
                   return (
                     <div className="grid gap-3 text-sm">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="font-semibold text-slate-700">Degree:</p>
+                          <p className="mt-1 break-words text-slate-600">{item.degreeType || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-700">Stream:</p>
+                          <p className="mt-1 break-words text-slate-600">{item.stream || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-700">Duration:</p>
+                          <p className="mt-1 break-words text-slate-600">{item.duration || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-700">Qualification:</p>
+                          <p className="mt-1 break-words text-slate-600">
+                            {formatQualificationLabel(String(item.minimumQualification || "")) || "-"}
+                          </p>
+                        </div>
+                      </div>
                       <div>
                         <p className="font-semibold text-slate-700">Lateral Entry:</p>
-                        <p className="mt-1 text-slate-600">
+                        <p className="mt-1 break-words text-slate-600">
                           {item.lateralEntryAvailable
                             ? `Available${item.lateralEntryDetails ? ` - ${item.lateralEntryDetails}` : ""}`
                             : "Not available"}
@@ -5959,6 +6495,30 @@ export default function AdminPage() {
                       <div>
                         <p className="font-semibold text-slate-700">Description:</p>
                         <p className="mt-1 break-words text-slate-600">{item.description || "-"}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSavedCourseList(false);
+                            const courseIndex = embeddedCourses.findIndex((course) => course.id === item.id);
+                            if (courseIndex >= 0) {
+                              editEmbeddedCourse(courseIndex);
+                            }
+                          }}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEmbeddedCourses((prev) => prev.filter((course) => course.id !== item.id))
+                          }
+                          className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   );

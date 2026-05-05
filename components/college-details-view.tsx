@@ -12,7 +12,6 @@ import {
   Globe,
   GraduationCap,
   ImageIcon,
-  IndianRupee,
   MessageCircle,
   Phone,
   Mail,
@@ -114,6 +113,14 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     const formatted = formatCompactIndianCurrency(value);
     return formatted === "-" ? "Not available" : formatted;
   };
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
   const renderCutoffDetails = (course: Course) => {
     if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
       const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
@@ -141,8 +148,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     const structure = college.feesStructure as Record<string, unknown> | undefined;
     if (!structure || typeof structure !== "object") return "";
     const tuition = (structure.tuitionFee as Record<string, unknown> | undefined) || structure;
-    const min = (tuition.minAmount ?? structure.minAmount ?? "") as string | number;
-    const max = (tuition.maxAmount ?? structure.maxAmount ?? "") as string | number;
+    const min = (tuition.minAmount ?? structure.minAmount ?? tuition.min ?? structure.min ?? "") as
+      | string
+      | number;
+    const max = (tuition.maxAmount ?? structure.maxAmount ?? tuition.max ?? structure.max ?? "") as
+      | string
+      | number;
     if (!min && !max) return "";
     return `${formatMoney(min)} - ${formatMoney(max)}`;
   };
@@ -169,11 +180,18 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const getCourseTitle = (course: Course) => {
     const specialization = String(course.specialization || "").trim();
     const baseCourse = String(course.course || "").trim();
-    if (specialization && baseCourse.toLowerCase().includes(specialization.toLowerCase())) {
-      return baseCourse;
+    const streamLabel = String(course.stream || course.courseCategory || "").trim();
+    const normalizedBaseCourse = streamLabel
+      ? baseCourse
+          .split(" - ")
+          .filter((part) => part.trim().toLowerCase() !== streamLabel.toLowerCase())
+          .join(" - ")
+          .trim()
+      : baseCourse;
+    if (specialization && normalizedBaseCourse.toLowerCase().includes(specialization.toLowerCase())) {
+      return normalizedBaseCourse;
     }
-    const streamLabel = course.stream || course.courseCategory;
-    return [baseCourse, streamLabel, specialization].filter(Boolean).join(" - ");
+    return [normalizedBaseCourse, specialization].filter(Boolean).join(" - ");
   };
 
   const galleryImages = Array.from(
@@ -238,31 +256,242 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       return;
     }
 
-    const text = [
-      college.name,
-      college.university,
-      `Location: ${college.district}, ${college.state}`,
-      `Accreditation: ${college.accreditation}`,
-      `Ranking: ${fixedRankingDisplay}`,
-      `Placement Rate: ${college.placementRate}%`,
-      `Hostel: ${college.hasHostel ? "Available" : "Not available"}`,
-      `Facilities: ${college.facilities.join(", ")}`,
-      `Streams: ${college.streams.join(", ")}`,
-      `Quotas: ${college.quotas.join(", ")}`,
-      `Fees Range: ${feesRange}`,
-      `Cutoff Range: ${cutoffRange}`,
-      "",
-      ...relatedCourses.map((course) => `${course.course} | ${course.specialization} | ${course.duration} | ${formatCompactIndianCurrency(course.totalFees)} | ${course.cutoff}`),
-    ].join("\n");
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${college.id}-brochure.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    const courseRows = relatedCourses
+      .map(
+        (course) => `
+          <tr>
+            <td>${escapeHtml(getCourseTitle(course))}</td>
+            <td>${escapeHtml(course.duration || "-")}</td>
+            <td>${escapeHtml(formatCompactIndianCurrency(course.totalFees))}</td>
+            <td>${escapeHtml(course.cutoff ? String(course.cutoff) : "-")}</td>
+          </tr>`,
+      )
+      .join("");
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=850");
+    if (!printWindow) return;
+
+    const printableHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>${escapeHtml(college.name)} - Print</title>
+          <style>
+            :root {
+              color-scheme: light;
+            }
+            * {
+              box-sizing: border-box;
+            }
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+            }
+            .sheet {
+              max-width: 980px;
+              margin: 0 auto;
+            }
+            .hero {
+              border: 1px solid #cbd5e1;
+              border-radius: 20px;
+              padding: 24px;
+              background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+            }
+            .eyebrow {
+              display: inline-block;
+              margin-bottom: 10px;
+              font-size: 11px;
+              font-weight: 700;
+              letter-spacing: 0.16em;
+              text-transform: uppercase;
+              color: #0f4c81;
+            }
+            h1 {
+              margin: 0;
+              font-size: 30px;
+              line-height: 1.2;
+            }
+            .subhead {
+              margin: 8px 0 0;
+              font-size: 15px;
+              color: #475569;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 14px;
+              margin-top: 22px;
+            }
+            .meta-card {
+              border: 1px solid #dbe4ef;
+              border-radius: 16px;
+              padding: 14px 16px;
+              background: #fff;
+            }
+            .label {
+              font-size: 11px;
+              font-weight: 700;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+              color: #64748b;
+            }
+            .value {
+              margin-top: 6px;
+              font-size: 15px;
+              font-weight: 700;
+              color: #0f172a;
+            }
+            .section {
+              margin-top: 24px;
+              border: 1px solid #dbe4ef;
+              border-radius: 20px;
+              padding: 20px 22px;
+            }
+            .section h2 {
+              margin: 0 0 12px;
+              font-size: 20px;
+            }
+            .section p {
+              margin: 0;
+              line-height: 1.7;
+              color: #334155;
+            }
+            .chips {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 8px;
+              margin-top: 12px;
+            }
+            .chip {
+              border: 1px solid #dbe4ef;
+              border-radius: 999px;
+              padding: 6px 12px;
+              font-size: 12px;
+              font-weight: 700;
+              color: #0f4c81;
+              background: #f8fbff;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 12px;
+            }
+            th, td {
+              border-bottom: 1px solid #e2e8f0;
+              padding: 12px 10px;
+              text-align: left;
+              vertical-align: top;
+              font-size: 14px;
+            }
+            th {
+              font-size: 11px;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+              color: #64748b;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .sheet {
+                max-width: none;
+              }
+              .hero, .section {
+                break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="sheet">
+            <section class="hero">
+              <div class="eyebrow">College Profile</div>
+              <h1>${escapeHtml(college.name)}</h1>
+              <p class="subhead">${escapeHtml(college.university || "University details not available")}</p>
+              <div class="meta-grid">
+                <div class="meta-card">
+                  <div class="label">Location</div>
+                  <div class="value">${escapeHtml([college.district, college.state].filter(Boolean).join(", ") || "Not available")}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Ranking</div>
+                  <div class="value">${escapeHtml(fixedRankingDisplay)}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Placement Rate</div>
+                  <div class="value">${escapeHtml(`${college.placementRate || "-"}%`)}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Fees Range</div>
+                  <div class="value">${escapeHtml(adminFeeRange || feesRange)}</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>About</h2>
+              <p>${escapeHtml(college.description || "No description available.")}</p>
+            </section>
+
+            <section class="section">
+              <h2>Contact & Campus Details</h2>
+              <div class="meta-grid">
+                <div class="meta-card">
+                  <div class="label">Official Email</div>
+                  <div class="value">${escapeHtml(college.contactEmail || "Not available")}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Phone</div>
+                  <div class="value">${escapeHtml(contactNumber || "Not available")}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Address</div>
+                  <div class="value">${escapeHtml([compactAddressLineOne, compactAddressLineTwo].filter(Boolean).join(", ") || "Not available")}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="label">Hostel</div>
+                  <div class="value">${escapeHtml(college.hasHostel ? "Available" : "Not available")}</div>
+                </div>
+              </div>
+              <div class="chips">
+                ${(college.facilities || []).map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("") || '<span class="chip">Facilities not available</span>'}
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Courses Offered</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Course</th>
+                    <th>Duration</th>
+                    <th>Total Fees</th>
+                    <th>Cutoff</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${courseRows || '<tr><td colspan="4">No course details available.</td></tr>'}
+                </tbody>
+              </table>
+            </section>
+          </div>
+          <script>
+            window.addEventListener('load', function () {
+              window.print();
+            });
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(printableHtml);
+    printWindow.document.close();
   };
 
   const topInfoCards = [
@@ -292,6 +521,23 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   };
 
   useEffect(() => {
+    const hasActiveOverlay =
+      isGalleryOpen || Boolean(expandedCourseKey) || Boolean(expandedFeeKey);
+    if (!hasActiveOverlay) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [expandedCourseKey, expandedFeeKey, isGalleryOpen]);
+
+  useEffect(() => {
     if (!isGalleryOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -312,11 +558,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
     };
   }, [galleryImages.length, isGalleryOpen]);
 
@@ -447,22 +691,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <div className="relative flex w-full flex-1 flex-col">
                   <div className="flex items-center gap-4 rounded-[1.35rem] border border-[rgba(15,76,129,0.08)] bg-white/92 p-4 shadow-[0_12px_24px_rgba(22,50,79,0.05)]">
                     {college.logo ? (
-                      <div
-                        className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[1.15rem] border border-[rgba(15,76,129,0.16)] shadow-[0_10px_22px_rgba(22,50,79,0.12)] ring-1 ring-[rgba(255,255,255,0.8)]"
-                        style={{
-                          backgroundImage:
-                            "linear-gradient(135deg, #e7edf6 0%, #ffffff 100%), repeating-linear-gradient(45deg, rgba(15,76,129,0.08) 0 6px, rgba(255,255,255,0.9) 6px 12px)",
-                          backgroundBlendMode: "multiply",
-                        }}
-                      >
+                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.98),rgba(231,240,250,0.96))] shadow-[0_16px_28px_rgba(22,50,79,0.15)] ring-1 ring-[rgba(255,255,255,0.88)] sm:h-24 sm:w-24">
+                        <div className="absolute inset-[-0.4rem] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.18),rgba(255,255,255,0))] blur-md" />
+                        <div className="absolute inset-[0.3rem] rounded-full border border-[rgba(37,99,235,0.16)] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" />
                         <img
                           src={college.logo}
                           alt={`${college.name} logo`}
-                          className="h-full w-full object-contain p-2"
+                          className="relative z-10 h-[72%] w-[72%] object-contain sm:h-[74%] sm:w-[74%]"
                         />
                       </div>
                     ) : (
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.15rem] bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] text-lg font-bold uppercase text-white shadow-[0_12px_24px_rgba(22,50,79,0.18)]">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] text-xl font-bold uppercase text-white shadow-[0_16px_26px_rgba(22,50,79,0.18)] sm:h-24 sm:w-24">
                         {college.name
                           .split(" ")
                           .slice(0, 2)
@@ -525,7 +764,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
                     <button type="button" onClick={downloadBrochure} className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)]">
                       <Download className="size-4" />
-                      {brochureUrl ? "Open Brochure" : "Download Brochure"}
+                      {brochureUrl ? "Open Brochure" : "Download / Print"}
                     </button>
                     <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-5 py-3 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)]">
                       Compare College
@@ -858,12 +1097,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
               {activeTab === "fees" ? (
                 <div className="mt-6 space-y-4">
-                  {adminFeeRange ? (
-                    <div className="rounded-[1.5rem] border border-[rgba(255,138,61,0.2)] bg-[rgba(255,138,61,0.08)] p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Application Fee Range</p>
-                      <p className="mt-2 text-lg font-bold text-[color:var(--brand-accent-deep)]">{adminFeeRange}</p>
-                    </div>
-                  ) : null}
                   <div className="grid gap-4 md:grid-cols-2">
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
                       <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--text-dark)]">Fee Summary</h3>
