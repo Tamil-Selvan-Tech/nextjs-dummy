@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BadgeIndianRupee,
@@ -165,7 +165,7 @@ const getCollegeByIdFromList = (list: College[], id: string | null) => {
   return list.find((college) => college.id === id) || null;
 };
 
-export default function ComparePage() {
+function ComparePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialCollegeId = searchParams.get("college");
@@ -863,5 +863,13 @@ export default function ComparePage() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={null}>
+      <ComparePageContent />
+    </Suspense>
   );
 }

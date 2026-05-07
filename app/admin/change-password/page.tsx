@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { KeyRound, MailCheck, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
 
-export default function AdminChangePasswordPage() {
+function AdminChangePasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -242,5 +242,13 @@ export default function AdminChangePasswordPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function AdminChangePasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminChangePasswordPageContent />
+    </Suspense>
   );
 }

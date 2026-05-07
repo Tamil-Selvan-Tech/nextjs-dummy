@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
 
-export default function SetPasswordPage() {
+function SetPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -246,5 +246,13 @@ export default function SetPasswordPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <SetPasswordPageContent />
+    </Suspense>
   );
 }

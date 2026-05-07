@@ -18,7 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { readCurrentUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
@@ -88,7 +88,7 @@ function AuthIllustration({ accountType }: { accountType: "student" | "college" 
   );
 }
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -341,5 +341,13 @@ export default function SignupPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   );
 }

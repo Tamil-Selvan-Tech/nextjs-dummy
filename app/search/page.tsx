@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ChevronLeft,
@@ -23,7 +23,7 @@ type SearchResultState = {
   cities: Array<{ id: string; name: string; state: string }>;
 };
 
-export default function SearchPage() {
+function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("q") || "";
@@ -445,5 +445,13 @@ export default function SearchPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={null}>
+      <SearchPageContent />
+    </Suspense>
   );
 }

@@ -3,7 +3,7 @@
 import { ArrowRight, Clock3, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   persistAuth,
@@ -18,7 +18,7 @@ const OTP_LENGTH = 6;
 const OTP_DURATION_SECONDS = 5 * 60;
 const RESEND_COOLDOWN_SECONDS = 5;
 
-export default function LoginOtpPage() {
+function LoginOtpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accountType = searchParams.get("type") || "student";
@@ -322,5 +322,13 @@ export default function LoginOtpPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function LoginOtpPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginOtpPageContent />
+    </Suspense>
   );
 }

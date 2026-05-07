@@ -3,12 +3,12 @@
 import { CheckCircle, LoaderCircle, MailX, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { request } from "@/lib/api";
 import { showToast } from "@/lib/toast";
 
-export default function VerifyEmailPage() {
+function VerifyEmailPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -144,5 +144,13 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailPageContent />
+    </Suspense>
   );
 }
