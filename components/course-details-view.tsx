@@ -95,11 +95,11 @@ export function CourseDetailsView({
       const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
       if (cutoffItems.length > 0) {
         return (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {cutoffItems.map((item) => (
               <span
                 key={`${course.id}-${item.category}`}
-                className="inline-flex items-center gap-1 rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2.5 py-1 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2.5 py-1 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
               >
                 <span className="font-semibold text-slate-700">{item.category}</span>
                 <span className="text-slate-500">:</span>
@@ -185,7 +185,9 @@ export function CourseDetailsView({
                           </div>
                         </div>
                         <p className="mt-3 text-[15px] font-semibold leading-6 text-[color:var(--text-dark)] [text-wrap:balance]">
-                          {item.value}
+                          <span className={item.label === "Fees Range" ? "whitespace-nowrap" : ""}>
+                            {item.value}
+                          </span>
                         </p>
                       </article>
                     );
@@ -315,15 +317,15 @@ export function CourseDetailsView({
               </div>
             ) : null}
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredRows.map(({ course, college, location }) =>
                 college ? (
                   <article
                     key={course.id}
                     className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.96))] shadow-[0_16px_36px_rgba(22,50,79,0.06)] transition hover:-translate-y-1 hover:shadow-[0_24px_48px_rgba(22,50,79,0.1)]"
                   >
-                    <img src={college.image} alt={college.name} className="h-48 w-full object-cover" />
-                    <div className="p-5">
+                    <img src={college.image} alt={college.name} className="h-28 w-full object-cover" />
+                    <div className="p-3.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                           {course.courseCategory}
@@ -332,39 +334,39 @@ export function CourseDetailsView({
                           {course.duration}
                         </span>
                       </div>
-                      <h3 className="mt-4 text-lg font-bold text-[color:var(--text-dark)] md:text-xl">{college.name}</h3>
-                      <p className="mt-1 text-sm text-[color:var(--text-muted)]">{college.university}</p>
-                      <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{course.specialization}</p>
+                      <h3 className="mt-2.5 line-clamp-2 text-[15px] font-bold leading-5 text-[color:var(--text-dark)]">{college.name}</h3>
+                      <p className="mt-1 line-clamp-1 text-[12px] text-[color:var(--text-muted)]">{college.university}</p>
+                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-[color:var(--text-muted)]">{course.specialization}</p>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Total Fees</p>
-                          <p className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">{formatCompactIndianCurrency(course.totalFees)}</p>
+                          <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{formatCompactIndianCurrency(course.totalFees)}</p>
                         </div>
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-4">
+                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Cutoff</p>
-                          <div className="mt-2 text-sm font-semibold text-[color:var(--text-dark)] md:text-base">
+                          <div className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">
                             {renderCutoffDetails(course)}
                           </div>
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-start gap-2 text-sm text-[color:var(--text-muted)]">
+                      <div className="mt-2.5 flex items-start gap-2 text-[13px] text-[color:var(--text-muted)]">
                         <MapPin className="mt-0.5 size-4 shrink-0 text-[color:var(--brand-accent-deep)]" />
-                        <span>{location || "Location not available"}</span>
+                        <span className="line-clamp-1">{location || "Location not available"}</span>
                       </div>
 
-                      <div className="mt-5 flex flex-wrap gap-3">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <Link
                           href={`/college/${college.id}?course=${encodeURIComponent(course.course)}`}
-                          className="shine-button inline-flex items-center justify-center gap-2 rounded-full bg-[#0f4c81] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0c3d6b]"
+                          className="shine-button inline-flex items-center justify-center gap-2 rounded-full bg-[#0f4c81] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0c3d6b]"
                         >
                           View College
                           <ArrowRight className="size-4" />
                         </Link>
                         <Link
                           href={`/compare?college=${encodeURIComponent(college.id)}`}
-                          className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:bg-[rgba(255,138,61,0.12)]"
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-4 py-2 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:bg-[rgba(255,138,61,0.12)]"
                         >
                           Compare
                         </Link>

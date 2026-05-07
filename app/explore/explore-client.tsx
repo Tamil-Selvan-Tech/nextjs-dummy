@@ -14,6 +14,7 @@ import {
 
 type ExploreClientProps = {
   query: string;
+  streamFilter?: string;
   initialView?: string;
   cityFilter?: string;
   collegeFilter?: string;
@@ -21,8 +22,87 @@ type ExploreClientProps = {
   coursesData?: Course[];
 };
 
+const STREAM_QUERY_ALIASES: Record<string, string[]> = {
+  Engineering: ["engineering", "be", "b.e", "btech", "b.tech", "mtech", "m.tech"],
+  "Arts & Science": [
+    "arts & science",
+    "arts and science",
+    "arts",
+    "science",
+    "bsc",
+    "b.sc",
+    "ba",
+    "b.a",
+    "bcom",
+    "b.com",
+    "bba",
+    "bca",
+    "msc",
+    "m.sc",
+    "computer applications",
+    "management",
+  ],
+  Medical: ["medical", "paramedical", "mbbs", "bds", "bams", "bhms", "bums", "bpt", "bpharm", "mpharm"],
+  Law: ["law", "llb", "ba llb", "ba_llb", "bba llb", "bba_llb", "llm"],
+};
+
+const normalizeSearchValue = (value: string) =>
+  normalizeText(value).replace(/[^a-z0-9]+/g, " ").trim();
+
+const matchesAlias = (value: string, alias: string) => {
+  const normalizedValue = normalizeSearchValue(value);
+  const normalizedAlias = normalizeSearchValue(alias);
+
+  if (!normalizedValue || !normalizedAlias) return false;
+
+  if (normalizedAlias.includes(" ")) {
+    return normalizedValue.includes(normalizedAlias);
+  }
+
+  return normalizedValue.split(" ").includes(normalizedAlias);
+};
+
+const getMatchedStreamAliases = (query: string) => {
+  const normalizedQuery = normalizeText(query);
+  const matchedKey = Object.keys(STREAM_QUERY_ALIASES).find(
+    (key) => normalizeText(key) === normalizedQuery,
+  );
+
+  return matchedKey ? STREAM_QUERY_ALIASES[matchedKey] : [];
+};
+
+const matchesStreamAliases = (value: string, aliases: string[]) =>
+  aliases.some((alias) => matchesAlias(value, alias));
+
+const matchesCourseQuery = (
+  course: Course,
+  searchText: string,
+  matchedStreamAliases: string[],
+  hasStreamFilter: boolean,
+) => {
+  const courseText = normalizeText(
+    `${course.course} ${course.specialization} ${course.courseCategory} ${course.courseType} ${course.stream || ""} ${course.degreeType || ""} ${course.college} ${course.university}`,
+  );
+  const courseStreamText = normalizeText(
+    `${course.course} ${course.specialization} ${course.courseCategory} ${course.courseType} ${course.stream || ""} ${course.degreeType || ""}`,
+  );
+
+  if (hasStreamFilter && matchedStreamAliases.length > 0) {
+    return matchesStreamAliases(courseStreamText, matchedStreamAliases);
+  }
+
+  if (!searchText) return true;
+
+  if (matchedStreamAliases.length > 0) {
+    return matchesStreamAliases(courseText, matchedStreamAliases);
+  }
+
+  return courseText.includes(searchText);
+};
+
 export function ExploreClient({
   query,
+  streamFilter = "",
   initialView = "",
   cityFilter = "",
   collegeFilter = "",
@@ -31,6 +111,12 @@ export function ExploreClient({
 }: ExploreClientProps) {
   const router = useRouter();
   const searchText = normalizeText(query);
+  const normalizedStreamFilter = normalizeText(streamFilter);
+  const hasStreamFilter = Boolean(normalizedStreamFilter);
+  const matchedStreamAliases = useMemo(
+    () => getMatchedStreamAliases(hasStreamFilter ? streamFilter : query),
+    [hasStreamFilter, query, streamFilter],
+  );
   const safeInitialView =
     initialView === "colleges" || initialView === "courses" || initialView === "home"
       ? initialView
@@ -42,12 +128,10 @@ export function ExploreClient({
   const [allCollegePage, setAllCollegePage] = useState(0);
 
   const collegesMatchingCourseQuery = useMemo(() => {
-    if (!searchText) return new Set<string>();
+    if (!searchText && !hasStreamFilter) return new Set<string>();
 
     const matchedCourseRows = coursesData.filter((course) =>
-      normalizeText(
-        `${course.course} ${course.specialization} ${course.courseCategory} ${course.courseType} ${course.stream || ""} ${course.college} ${course.university}`,
-      ).includes(searchText),
+      matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter),
     );
 
     const matchedCollegeIds = new Set<string>();
@@ -63,13 +147,18 @@ export function ExploreClient({
         const tagsText = normalizeText(
           `${college.courseTags?.join(" ") || ""} ${college.streams.join(" ")}`,
         );
+        const matchesTextSearch = searchText ? tagsText.includes(searchText) : false;
+        const matchesStreamAlias =
+          matchedStreamAliases.length > 0 &&
+          matchesStreamAliases(tagsText, matchedStreamAliases);
 
         if (
           college.id === course.collegeId ||
           normalizeText(college.name) === normalizedCollegeName ||
           (normalizedUniversityName &&
             normalizeText(college.university) === normalizedUniversityName) ||
-          tagsText.includes(searchText)
+          matchesTextSearch ||
+          matchesStreamAlias
         ) {
           matchedCollegeIds.add(college.id);
         }
@@ -77,19 +166,16 @@ export function ExploreClient({
     });
 
     return matchedCollegeIds;
-  }, [collegesData, coursesData, searchText]);
+  }, [collegesData, coursesData, hasStreamFilter, matchedStreamAliases, searchText]);
 
   const groupedCourses = useMemo(() => {
     const grouped = new Map<string, typeof coursesData>();
     coursesData.forEach((course) => {
-      const matches =
-        !searchText ||
-        normalizeText(`${course.course} ${course.college} ${course.university} ${course.specialization}`).includes(searchText);
-      if (!matches) return;
+      if (!matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter)) return;
       grouped.set(course.course, [...(grouped.get(course.course) || []), course]);
     });
     return [...grouped.entries()];
-  }, [coursesData, searchText]);
+  }, [coursesData, hasStreamFilter, matchedStreamAliases, searchText]);
 
   const filteredColleges = useMemo(() => {
     let data = collegesData;
@@ -102,13 +188,28 @@ export function ExploreClient({
           normalizeText(college.state) === normalizedCity,
       );
     }
-    if (!searchText) return data;
-    return data.filter((college) =>
-      normalizeText(
-        `${college.name} ${college.university} ${college.description} ${college.state} ${college.district} ${(college.courseTags || []).join(" ")} ${college.streams.join(" ")}`,
-      ).includes(searchText) || collegesMatchingCourseQuery.has(college.id),
-    );
-  }, [cityFilter, collegesData, collegesMatchingCourseQuery, searchText, showBestOnly]);
+    if (searchText || hasStreamFilter) {
+      data = data.filter((college) => {
+        const searchableText = normalizeText(
+          `${college.name} ${college.university} ${college.description} ${college.state} ${college.district} ${(college.courseTags || []).join(" ")} ${college.streams.join(" ")}`,
+        );
+        const tagsText = normalizeText(
+          `${college.courseTags?.join(" ") || ""} ${college.streams.join(" ")}`,
+        );
+        const matchesTextSearch = searchText ? searchableText.includes(searchText) : false;
+        const matchesStreamAlias =
+          matchedStreamAliases.length > 0 &&
+          matchesStreamAliases(tagsText, matchedStreamAliases);
+
+        return matchesTextSearch || matchesStreamAlias || collegesMatchingCourseQuery.has(college.id);
+      });
+    }
+    if (collegeFilter) {
+      const normalizedCollege = normalizeText(collegeFilter);
+      data = data.filter((college) => normalizeText(college.name) === normalizedCollege);
+    }
+    return data;
+  }, [cityFilter, collegeFilter, collegesData, collegesMatchingCourseQuery, hasStreamFilter, matchedStreamAliases, searchText, showBestOnly]);
   const selectedCollege = useMemo(() => {
     if (!collegeFilter) return null;
     const normalizedCollege = normalizeText(collegeFilter);
@@ -139,6 +240,13 @@ export function ExploreClient({
   const visibleColleges = orderedColleges.slice(
     currentAllCollegePage * collegesPerPage,
     currentAllCollegePage * collegesPerPage + collegesPerPage,
+  );
+  const featuredCourses = useMemo(
+    () =>
+      (searchText || hasStreamFilter
+        ? groupedCourses
+        : groupedCourses.filter(([, rows]) => rows.some((row) => row.isTopCourse))).slice(0, 10),
+    [groupedCourses, hasStreamFilter, searchText],
   );
 
   return (
@@ -201,7 +309,9 @@ export function ExploreClient({
           <div>
             <div className="mb-12">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[color:var(--text-dark)] md:text-xl">Top Courses</h2>
+                <h2 className="text-lg font-bold text-[color:var(--text-dark)] md:text-xl">
+                  {searchText || hasStreamFilter ? "Matching Courses" : "Top Courses"}
+                </h2>
                 <button type="button" onClick={() => setViewMode("courses")} className="text-sm font-semibold text-[color:var(--brand-primary)] hover:text-[color:var(--brand-primary-soft)]">
                   View More &rarr;
                 </button>
@@ -219,10 +329,7 @@ export function ExploreClient({
                     </tr>
                   </thead>
                   <tbody>
-                    {groupedCourses
-                      .filter(([, rows]) => rows.some((row) => row.isTopCourse))
-                      .slice(0, 10)
-                      .map(([courseName, rows]) => {
+                    {featuredCourses.map(([courseName, rows]) => {
                         const primaryCourse = rows[0];
                         const displayCourseName = formatCourseDisplayName(
                           courseName,
@@ -246,7 +353,9 @@ export function ExploreClient({
                               {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">{durations.join(", ")}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">Top</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {rows.some((row) => row.isTopCourse) ? "Top" : "-"}
+                            </td>
                           </tr>
                         );
                       })}

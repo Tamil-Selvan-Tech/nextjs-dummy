@@ -23,6 +23,13 @@ const InstagramIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const topStreamLinks = [
+  { label: "Engineering", href: "/explore?stream=Engineering" },
+  { label: "Arts & Science", href: "/explore?stream=Arts%20%26%20Science" },
+  { label: "Medical", href: "/explore?stream=Medical" },
+  { label: "Law", href: "/explore?stream=Law" },
+];
+
 export function Footer() {
   const pathname = usePathname();
   const hiddenFooterRoutes = [
@@ -93,18 +100,23 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-dark)]">Top Streams</h4>
             <ul className="mt-4 space-y-2">
-              <li><Link href="/explore?q=Engineering" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Engineering</Link></li>
-              <li><Link href="/explore?q=Management" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Management</Link></li>
-              <li><Link href="/explore?q=Medical" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Medical</Link></li>
-              <li><Link href="/explore?q=Law" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Law</Link></li>
+              {topStreamLinks.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
             <h4 className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-dark)]">Tools</h4>
             <ul className="mt-4 space-y-2">
-              <li><Link href="/find" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Find Colleges</Link></li>
-              <li><Link href="/cutoff" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Cutoff Lookup</Link></li>
+              <li><Link href="/find" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Cutoff Lookup</Link></li>
               <li><Link href="/contact" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Contact Us</Link></li>
               <li><Link href="/services" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Services</Link></li>
             </ul>
@@ -116,7 +128,6 @@ export function Footer() {
               <li><Link href="/about-us" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">About Us</Link></li>
               <li><Link href="/advertising" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Advertising</Link></li>
               <li><Link href="/careers" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Careers</Link></li>
-              <li><Link href="/privacy-policy" className="text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--brand-primary)]">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>

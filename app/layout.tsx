@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import { AppToastProvider } from "@/components/app-toast-provider";
 import { Footer } from "@/components/footer";
 import { RouteHistoryTracker } from "@/components/route-history-tracker";
@@ -29,9 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        <Suspense fallback={null}>
-          <RouteHistoryTracker />
-        </Suspense>
+        <RouteHistoryTracker />
         <main className="flex-1">{children}</main>
         <AppToastProvider />
         <Footer />

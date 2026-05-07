@@ -16,6 +16,17 @@ type StudyPreferenceModalProps = {
 const cityOfCollege = (college: (typeof colleges)[number]) =>
   String((college as { city?: string })?.city || college?.district || college?.state || "").trim();
 
+const normalizeCityKey = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+
+const toTitleCase = (value: string) =>
+  value.replace(/\w\S*/g, (segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase());
+
+const pickCityLabel = (current: string | undefined, candidate: string) => {
+  if (!current) return candidate === candidate.toLowerCase() ? toTitleCase(candidate) : candidate;
+  if (current === current.toLowerCase() && candidate !== candidate.toLowerCase()) return candidate;
+  return current;
+};
+
 export function StudyPreferenceModal({
   isOpen,
   selectedCity,
@@ -35,8 +46,18 @@ export function StudyPreferenceModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    const scrollY = window.scrollY;
     const previousOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.documentElement.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -45,7 +66,12 @@ export function StudyPreferenceModal({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      window.scrollTo(0, scrollY);
     };
   }, [isOpen, onClose]);
 
@@ -71,28 +97,46 @@ export function StudyPreferenceModal({
     };
   }, [isOpen]);
 
-  const cityList = useMemo(() => {
-    const unique = [...new Set(availableColleges.map((item) => cityOfCollege(item)).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    );
+  const cityOptions = useMemo(() => {
+    const uniqueCities = new Map<string, string>();
 
+    availableColleges.forEach((item) => {
+      const city = cityOfCollege(item);
+      if (!city) return;
+      const key = normalizeCityKey(city);
+      uniqueCities.set(key, pickCityLabel(uniqueCities.get(key), city));
+    });
+
+    return [...uniqueCities.entries()]
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [availableColleges]);
+
+  const resolvedChosenCity = useMemo(() => {
+    if (!chosenCity) return "";
+    return cityOptions.find((city) => city.key === normalizeCityKey(chosenCity))?.label ?? chosenCity;
+  }, [chosenCity, cityOptions]);
+
+  const cityList = useMemo(() => {
     const query = cityQuery.trim().toLowerCase();
-    if (!query) return unique;
-    return unique.filter((city) => city.toLowerCase().includes(query));
-  }, [availableColleges, cityQuery]);
+    if (!query) return cityOptions;
+
+    return cityOptions.filter((city) => city.label.toLowerCase().includes(query));
+  }, [cityOptions, cityQuery]);
 
   const cityColleges = useMemo(() => {
     if (!chosenCity) return [];
 
+    const chosenCityKey = normalizeCityKey(resolvedChosenCity);
     const query = collegeQuery.trim().toLowerCase();
     return availableColleges
-      .filter((item) => cityOfCollege(item) === chosenCity)
+      .filter((item) => normalizeCityKey(cityOfCollege(item)) === chosenCityKey)
       .filter((item) => {
         if (!query) return true;
         return String(item.name || "").toLowerCase().includes(query);
       })
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-  }, [availableColleges, chosenCity, collegeQuery]);
+  }, [availableColleges, chosenCity, collegeQuery, resolvedChosenCity]);
 
   if (!isOpen) return null;
 
@@ -102,10 +146,10 @@ export function StudyPreferenceModal({
       onClick={onClose}
     >
       <div
-        className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.97))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
+        className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.99))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-[rgba(15,76,129,0.08)] px-4 py-4 sm:px-6 sm:py-5">
+        <div className="relative overflow-hidden border-b border-[rgba(15,76,129,0.08)] bg-[rgba(250,252,255,0.98)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(237,246,255,0.96))]" />
           <div className="absolute left-[-2rem] top-0 h-28 w-28 rounded-full bg-[rgba(60,126,182,0.12)] blur-3xl" />
           <div className="absolute right-[-1rem] top-2 h-24 w-24 rounded-full bg-[rgba(255,138,61,0.14)] blur-3xl" />
@@ -134,8 +178,8 @@ export function StudyPreferenceModal({
           </div>
         </div>
 
-        <div className="grid flex-1 gap-0 overflow-y-auto lg:grid-cols-[0.95fr_1.05fr]">
-          <section className="border-b border-[rgba(15,76,129,0.08)] p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-6">
+        <div className="grid min-h-0 flex-1 gap-0 bg-[rgba(248,251,255,0.98)] lg:grid-cols-[0.95fr_1.05fr]">
+          <section className="min-h-0 border-b border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-6">
             <div className="mb-4 flex items-start gap-3">
               <div className="rounded-2xl bg-[rgba(15,76,129,0.08)] p-3 text-[color:var(--brand-primary)]">
                 <MapPin className="size-5" />
@@ -159,29 +203,29 @@ export function StudyPreferenceModal({
               />
             </div>
 
-            <div className="grid max-h-[17rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:max-h-[21rem]">
+            <div className="grid max-h-[17rem] min-h-0 grid-cols-2 gap-2.5 overflow-y-auto pr-1 overscroll-contain sm:max-h-[21rem]">
               {cityList.map((city) => (
                 <button
-                  key={city}
+                  key={city.key}
                   type="button"
                   onClick={() => {
-                    setChosenCity(city);
+                    setChosenCity(city.label);
                     setChosenCollege("");
                     setChosenCollegeId("");
                   }}
                   className={`rounded-[1rem] border px-3 py-3 text-left text-sm font-medium transition ${
-                    chosenCity === city
+                    normalizeCityKey(resolvedChosenCity) === city.key
                       ? "border-[rgba(60,126,182,0.35)] bg-[rgba(60,126,182,0.1)] text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(60,126,182,0.12)]"
                       : "border-[rgba(15,76,129,0.08)] bg-white hover:border-[rgba(15,76,129,0.16)] hover:bg-[rgba(15,76,129,0.03)]"
                   }`}
                 >
-                  {city}
+                  {city.label}
                 </button>
               ))}
             </div>
           </section>
 
-          <section className="p-4 sm:p-5 lg:p-6">
+          <section className="min-h-0 bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:p-6">
             <div className="mb-4 flex items-start gap-3">
               <div className="rounded-2xl bg-[rgba(255,138,61,0.12)] p-3 text-[color:var(--brand-accent-deep)]">
                 <Building2 className="size-5" />
@@ -214,7 +258,7 @@ export function StudyPreferenceModal({
                 Select a city first to view colleges.
               </div>
             ) : (
-              <div className="space-y-2.5 overflow-y-auto pr-1 sm:max-h-[21rem]">
+              <div className="max-h-[17rem] min-h-0 space-y-2.5 overflow-y-auto pr-1 overscroll-contain sm:max-h-[21rem]">
                 <button
                   type="button"
                   onClick={() => {
@@ -232,7 +276,7 @@ export function StudyPreferenceModal({
                       <Building2 className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[color:var(--text-dark)]">All Colleges In {chosenCity}</p>
+                      <p className="text-sm font-bold text-[color:var(--text-dark)]">All Colleges In {resolvedChosenCity}</p>
                       <p className="text-xs text-[color:var(--text-muted)]">Show every college in the selected city</p>
                     </div>
                   </div>
@@ -260,10 +304,10 @@ export function StudyPreferenceModal({
           </section>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[rgba(15,76,129,0.08)] bg-white/70 px-4 py-4 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-[color:var(--text-muted)]">
+        <div className="flex flex-col gap-3 border-t border-[rgba(15,76,129,0.08)] bg-[rgba(255,255,255,0.98)] px-4 py-4 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
+          <p className="max-w-3xl text-sm leading-6 text-[color:var(--text-muted)]">
             {chosenCity
-              ? `City: ${chosenCity}${chosenCollege ? ` | College: ${chosenCollege}` : " | College: All Colleges"}`
+              ? `City: ${resolvedChosenCity}${chosenCollege ? ` | College: ${chosenCollege}` : " | College: All Colleges"}`
               : "City: Choose City | College: Choose College"}
           </p>
           <div className="flex gap-3">
@@ -276,7 +320,7 @@ export function StudyPreferenceModal({
             </button>
             <button
               type="button"
-              onClick={() => onApply({ city: chosenCity, college: chosenCollege, collegeId: chosenCollegeId })}
+              onClick={() => onApply({ city: resolvedChosenCity, college: chosenCollege, collegeId: chosenCollegeId })}
               disabled={!chosenCity}
               className="shine-button rounded-full bg-[color:var(--brand-primary)] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-primary-soft)]"
             >

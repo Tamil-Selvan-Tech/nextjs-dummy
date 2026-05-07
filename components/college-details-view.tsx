@@ -159,6 +159,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   };
 
   const adminFeeRange = getFeeRangeFromStructure();
+  const scholarshipDisplayItems = college.scholarships?.trim()
+    ? college.scholarships
+        .split(/[,\n\u2022]+/)
+        .map((item) => item.trim().replace(/^[^\w(]+/, ""))
+        .filter(Boolean)
+    : [];
 
   const groupedCourses = useMemo(() => {
     const groups = new Map<string, Course[]>();
@@ -236,6 +242,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     ? college.scholarships
         .split(/[•\n]+/)
         .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+  const reviewItems = college.reviews?.trim()
+    ? college.reviews
+        .split(/[.\n]+/)
+        .map((item) => item.trim().replace(/^[â€¢•\-\u2022]+\s*/, ""))
         .filter(Boolean)
     : [];
   const overviewDetailItems = [
@@ -793,20 +805,35 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </section>
 
                 <section className="rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_16px_34px_rgba(22,50,79,0.06)] md:p-6">
-                  {college.reviews?.trim() ? (
-                    <div className="rounded-[1.2rem] border border-[rgba(255,138,61,0.2)] bg-[linear-gradient(180deg,rgba(255,245,236,0.92),rgba(255,255,255,0.98))] p-4 shadow-[0_12px_26px_rgba(255,138,61,0.12)]">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-accent-deep)] text-white shadow-[0_10px_20px_rgba(255,138,61,0.4)] ring-2 ring-white/70">
-                          <MessageCircle className="size-5" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Reviews</p>
-                          <p className="mt-1 text-sm leading-6 text-[color:var(--text-dark)]">{college.reviews}</p>
-                        </div>
+                  <div className="rounded-[1.15rem] border border-[rgba(255,138,61,0.14)] bg-[linear-gradient(180deg,rgba(255,245,236,0.72),rgba(255,255,255,0.98))] p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(255,138,61,0.14)] text-[color:var(--brand-accent-deep)]">
+                        <MessageCircle className="size-4" />
                       </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Reviews</p>
                     </div>
-                  ) : null}
-                  <div className={college.reviews?.trim() ? "mt-4 rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4" : "rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4"}>
+                    <div className="mt-3 space-y-2.5">
+                      {reviewItems.length ? (
+                        reviewItems.map((item, index) => (
+                          <div
+                            key={`${college.id || college.name}-review-${index}`}
+                            className="flex items-start gap-2.5 rounded-[1rem] border border-[rgba(255,138,61,0.14)] bg-white px-3.5 py-3"
+                          >
+                            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(255,138,61,0.14)] text-[color:var(--brand-accent-deep)]">
+                              <Sparkles className="size-3.5" />
+                            </div>
+                            <p className="text-sm leading-6 text-[color:var(--text-dark)]">{item}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm leading-6 text-[color:var(--text-muted)]">Reviews not available</p>
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_16px_34px_rgba(22,50,79,0.06)] md:p-6">
+                  <div className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(15,76,129,0.12)] text-[color:var(--brand-primary)]">
                         <MapPin className="size-4" />
@@ -1139,12 +1166,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         <h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Scholarships</h3>
                       </div>
                       <span className="rounded-full bg-[rgba(15,76,129,0.08)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                        {scholarshipItems.length ? `${scholarshipItems.length} types` : "Not available"}
+                        {scholarshipDisplayItems.length ? `${scholarshipDisplayItems.length} types` : "Not available"}
                       </span>
                     </div>
                     <div className="mt-5 flex flex-wrap gap-2">
-                      {scholarshipItems.length ? (
-                        scholarshipItems.map((item) => (
+                      {scholarshipDisplayItems.length ? (
+                        scholarshipDisplayItems.map((item) => (
                           <span
                             key={item}
                             className="rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--brand-primary)]"

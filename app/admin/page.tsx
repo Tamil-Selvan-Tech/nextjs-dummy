@@ -593,7 +593,7 @@ const getDefaultDuration = (stream: string, degreeType: string) =>
 const getDefaultCourseName = (stream: string, degreeType: string) =>
   streamCourseNameByDegreeType[stream]?.[degreeType] || "";
 const getResolvedCourseName = (stream: string, degreeType: string, currentValue: string) =>
-  getDefaultCourseName(stream, degreeType) || currentValue;
+  normalizeAdminOption(currentValue) || getDefaultCourseName(stream, degreeType) || "";
 const formatQualificationLabel = (value?: string) => qualificationLabelMap[String(value || "").trim()] || String(value || "").trim();
 const resolveCutoffRangeConfig = (
   courseName: string,
@@ -869,6 +869,7 @@ const collegeSteps = [
 
 const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
 const quotaQuickOptions = ["Management Quota", "Government Quota", "Reservation Quota", "Sports Quota", "Minority Quota", "NRI Quota"];
+const scholarshipQuickOptions = ["Merit Scholarship", "Government Scholarship", "Minority Scholarship", "Sports Scholarship", "Need Based Scholarship", "First Graduate Scholarship"];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -923,6 +924,7 @@ export default function AdminPage() {
   }, [statusText]);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [customQuotaInput, setCustomQuotaInput] = useState("");
+  const [customScholarshipInput, setCustomScholarshipInput] = useState("");
   const [showRequestNotifications, setShowRequestNotifications] = useState(false);
   const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
   const [lastSeenNotificationAt, setLastSeenNotificationAt] = useState(0);
@@ -962,6 +964,14 @@ export default function AdminPage() {
         .map((item) => item.trim())
         .filter(Boolean),
     [collegeForm.quotas],
+  );
+  const selectedScholarships = useMemo(
+    () =>
+      collegeForm.scholarships
+        .split(/[\n,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [collegeForm.scholarships],
   );
   const hasHostelFacility = useMemo(
     () => collegeForm.hostelAvailability === "available",
@@ -1471,18 +1481,54 @@ export default function AdminPage() {
     };
   };
 
+  const getEmbeddedCourseDraftTitle = (draft: Pick<EmbeddedCourseDraft, "courseType" | "specialization">) =>
+    [normalizeAdminOption(draft.courseType), normalizeAdminOption(draft.specialization)]
+      .filter(Boolean)
+      .join(" - ") || "This course";
+
+  const getEmbeddedCourseIdentitySignature = (draft: EmbeddedCourseDraft) =>
+    [
+      normalizeCourseStream(draft.stream),
+      normalizeAdminOption(draft.degreeType).toLowerCase(),
+      normalizeAdminOption(draft.courseType).toLowerCase(),
+      normalizeAdminOption(draft.specialization).toLowerCase(),
+      normalizeAdminOption(draft.duration).toLowerCase(),
+    ].join("|");
+
+  const getEmbeddedCourseDraftSignature = (draft: EmbeddedCourseDraft) =>
+    [
+      getEmbeddedCourseIdentitySignature(draft),
+      normalizeAdminOption(draft.university).toLowerCase(),
+      normalizeAdminOption(draft.totalFees).toLowerCase(),
+    ].join("|");
+
+  const dedupeEmbeddedCourses = (drafts: EmbeddedCourseDraft[]) => {
+    const seen = new Set<string>();
+    return drafts.filter((draft) => {
+      const signature = getEmbeddedCourseDraftSignature(draft);
+      if (!signature) return true;
+      if (seen.has(signature)) {
+        return false;
+      }
+      seen.add(signature);
+      return true;
+    });
+  };
+
   const buildEmbeddedCoursesForCollege = (collegeId: string) =>
-    adminState.courses
-      .filter((course) =>
-        (course.colleges || []).some((item) => {
-          const linkedCollegeId =
-            typeof item === "string" ? item : String(item?._id || "");
-          return linkedCollegeId === collegeId;
-        }) ||
-        (course.collegeDetails || []).some((item) =>
-          (typeof item.college === "string" ? item.college : String(item.college?._id || "")) === collegeId),
-      )
-      .map((course) => buildEmbeddedCourseDraft(course, collegeId));
+    dedupeEmbeddedCourses(
+      adminState.courses
+        .filter((course) =>
+          (course.colleges || []).some((item) => {
+            const linkedCollegeId =
+              typeof item === "string" ? item : String(item?._id || "");
+            return linkedCollegeId === collegeId;
+          }) ||
+          (course.collegeDetails || []).some((item) =>
+            (typeof item.college === "string" ? item.college : String(item.college?._id || "")) === collegeId),
+        )
+        .map((course) => buildEmbeddedCourseDraft(course, collegeId)),
+    );
 
   const resetEmbeddedCourseEditor = () => {
     setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(collegeForm.university.trim()));
@@ -1707,13 +1753,22 @@ export default function AdminPage() {
         .map((exam) => createCourseExamDraft(normalizeCourseExamDraftForSave(exam))),
     };
 
+    const duplicateDraftIndex = embeddedCourses.findIndex((item, index) =>
+      index !== editingEmbeddedCourseIndex &&
+      getEmbeddedCourseIdentitySignature(item) === getEmbeddedCourseIdentitySignature(normalizedDraft),
+    );
+    if (duplicateDraftIndex >= 0) {
+      setStatusText(`${getEmbeddedCourseDraftTitle(normalizedDraft)} is already added for this college`);
+      return;
+    }
+
     setEmbeddedCourses((prev) => {
       const next = [...prev];
       if (editingEmbeddedCourseIndex !== null && next[editingEmbeddedCourseIndex]) {
         next[editingEmbeddedCourseIndex] = normalizedDraft;
-        return next;
+        return dedupeEmbeddedCourses(next);
       }
-      return [...next, normalizedDraft];
+      return dedupeEmbeddedCourses([...next, normalizedDraft]);
     });
     setStatusText(editingEmbeddedCourseIndex !== null ? "College course updated" : "College course added");
     resetEmbeddedCourseEditor();
@@ -1756,6 +1811,45 @@ export default function AdminPage() {
       facilities: [...selectedFacilities, nextValue].join(", "),
     }));
     setCustomFacilityInput("");
+  };
+
+  const removeScholarship = (value: string) => {
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: prev.scholarships
+        .split(/[\n,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== value.toLowerCase())
+        .join(", "),
+    }));
+  };
+
+  const toggleScholarship = (value: string) => {
+    if (selectedScholarships.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      removeScholarship(value);
+      return;
+    }
+
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: [...selectedScholarships, value].join(", "),
+    }));
+  };
+
+  const addCustomScholarship = () => {
+    const nextValue = customScholarshipInput.trim();
+    if (!nextValue) return;
+    if (selectedScholarships.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomScholarshipInput("");
+      return;
+    }
+
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: [...selectedScholarships, nextValue].join(", "),
+    }));
+    setCustomScholarshipInput("");
   };
 
   const removeQuota = (value: string) => {
@@ -2038,6 +2132,9 @@ export default function AdminPage() {
     setBrochureFile(null);
     setShowCourseForm(false);
     setShowSavedCourseList(false);
+    setCustomFacilityInput("");
+    setCustomQuotaInput("");
+    setCustomScholarshipInput("");
     resetEmbeddedCourseEditor();
   };
 
@@ -2266,8 +2363,9 @@ export default function AdminPage() {
       );
 
       const savedCollegeId = String(data?.college?._id || editCollegeId || "");
-      if (savedCollegeId && embeddedCourses.length > 0) {
-        for (const draft of embeddedCourses) {
+      const uniqueEmbeddedCourses = dedupeEmbeddedCourses(embeddedCourses);
+      if (savedCollegeId && uniqueEmbeddedCourses.length > 0) {
+        for (const draft of uniqueEmbeddedCourses) {
           const normalizedDraftStream = normalizeCourseStream(draft.stream);
           const payload = {
             course: `${getResolvedCourseName(normalizedDraftStream, draft.degreeType, draft.courseType)} - ${normalizedDraftStream} - ${draft.specialization}`,
@@ -3533,6 +3631,19 @@ export default function AdminPage() {
                   <span className={labelClass}>Awards & Recognitions</span>
                   <input className={inputClass} placeholder="Awards and recognitions" value={collegeForm.awardsRecognitions} onChange={(event) => setCollegeForm((prev) => ({ ...prev, awardsRecognitions: event.target.value }))} />
                 </label>
+                <label className="xl:col-span-3">
+                  <span className={labelClass}>Reviews</span>
+                  <textarea
+                    className={inputClass}
+                    rows={3}
+                    placeholder="Good placement support. Clean hostel rooms. Helpful faculty guidance."
+                    value={collegeForm.reviews}
+                    onChange={(event) => setCollegeForm((prev) => ({ ...prev, reviews: event.target.value }))}
+                  />
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    Separate each review point with a full stop. It will be shown as bullet points on the college page.
+                  </span>
+                </label>
               </div>
               <datalist id="college-accreditation-options">
                 {COLLEGE_ACCREDITATION_OPTIONS.map((option) => (
@@ -3685,15 +3796,66 @@ export default function AdminPage() {
                   </select>
                   {collegeFieldErrors.applicationMode ? <span className={errorTextClass}>{collegeFieldErrors.applicationMode}</span> : null}
                 </label>
+                <div className="xl:col-span-3">
+                  <span className={labelClass}>Scholarships</span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {scholarshipQuickOptions.map((option) => {
+                      const isSelected = selectedScholarships.some((item) => item.toLowerCase() === option.toLowerCase());
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => toggleScholarship(option)}
+                          className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${isSelected ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600"}`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Add Custom Scholarship</p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        className={inputClass}
+                        placeholder="Type custom scholarship and press Enter"
+                        value={customScholarshipInput}
+                        onChange={(event) => setCustomScholarshipInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCustomScholarship();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomScholarship}
+                        className={`${softButtonClass} min-w-[108px] justify-center`}
+                      >
+                        Add Scholarship
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Selected Scholarships</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedScholarships.length > 0 ? selectedScholarships.map((item) => (
+                        <button key={item} type="button" onClick={() => removeScholarship(item)} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                          {item}
+                        </button>
+                      )) : <span className="text-xs text-slate-400">No scholarships selected</span>}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <textarea className={`${inputClass} mt-2`} rows={2} placeholder="Scholarships" value={collegeForm.scholarships} onChange={(event) => setCollegeForm((prev) => ({ ...prev, scholarships: event.target.value }))} />
               </>
               ) : null}
 
               {collegeStep === 7 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">H. Placement Details</p>
+                <p className="text-sm font-semibold text-slate-900">Placement Details</p>
                 <p className="text-xs text-slate-500">Placement numbers and package information.</p>
               </div>
               <div className={formSectionClass}>
@@ -3717,7 +3879,7 @@ export default function AdminPage() {
               {collegeStep === 8 ? (
               <>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">I. Hostel Details</p>
+                <p className="text-sm font-semibold text-slate-900">Hostel Details</p>
                 <p className="text-xs text-slate-500">Hostel type, fee structure, CCTV, and hostel-specific facilities.</p>
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
@@ -3905,40 +4067,8 @@ export default function AdminPage() {
                         {embeddedStreamOptions.map((item) => (
                           <option key={item} value={item}>{item}</option>
                         ))}
-                        <option value={CUSTOM_STREAM_OPTION}>Custom stream</option>
-                      </select>
-                    </label>
-                    {embeddedStreamSelectValue === CUSTOM_STREAM_OPTION ? (
-                      <label>
-                        <span className={labelClass}>Custom Stream<span className={requiredMarkClass}>*</span></span>
-                        <input
-                          className={inputClass}
-                          placeholder="Type custom stream"
-                          value={embeddedCourseForm.stream}
-                          onChange={(event) =>
-                            setEmbeddedCourseForm((prev) => ({
-                              ...prev,
-                              stream: event.target.value,
-                              courseType: "",
-                              specialization: "",
-                              entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
-                            }))
-                          }
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (addCustomStreamOption(embeddedCourseForm.stream)) {
-                              setEmbeddedCourseForm((prev) => ({ ...prev, stream: normalizeCourseStream(prev.stream) }));
-                            }
-                          }}
-                          className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
-                        >
-                          Add Custom Stream
-                        </button>
-                      </label>
-                    ) : null}
+                    </select>
+                  </label>
                     <label>
                       <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
                       <select
@@ -4746,6 +4876,9 @@ export default function AdminPage() {
                         setShowCollegeForm(true);
                         setBrochureFile(null);
                         setCoverImageFile(null);
+                        setCustomFacilityInput("");
+                        setCustomQuotaInput("");
+                        setCustomScholarshipInput("");
                         resetEmbeddedCourseEditor();
                         setEmbeddedCourses(buildEmbeddedCoursesForCollege(college._id));
                         setCollegeForm({
@@ -4949,40 +5082,8 @@ export default function AdminPage() {
                       {courseStreamOptionsForForm.map((item) => (
                         <option key={item} value={item}>{item}</option>
                       ))}
-                      <option value={CUSTOM_STREAM_OPTION}>Custom stream</option>
                     </select>
                   </label>
-                  {courseStreamSelectValue === CUSTOM_STREAM_OPTION ? (
-                    <label>
-                      <span className={labelClass}>Custom Stream<span className={requiredMarkClass}>*</span></span>
-                      <input
-                        className={inputClass}
-                        placeholder="Type custom stream"
-                        value={courseForm.stream}
-                        onChange={(event) =>
-                          setCourseForm((prev) => ({
-                            ...prev,
-                            stream: event.target.value,
-                            courseType: "",
-                            specialization: "",
-                            entranceExams: syncCourseExamsForStream(event.target.value, prev.entranceExams),
-                          }))
-                        }
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (addCustomStreamOption(courseForm.stream)) {
-                            setCourseForm((prev) => ({ ...prev, stream: normalizeCourseStream(prev.stream) }));
-                          }
-                        }}
-                        className="mt-2 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
-                      >
-                        Add Custom Stream
-                      </button>
-                    </label>
-                  ) : null}
                   <label>
                     <span className={labelClass}>Specialization<span className={requiredMarkClass}>*</span></span>
                     <select
@@ -6325,14 +6426,15 @@ export default function AdminPage() {
                   {
                     key: "course",
                     label: "Course",
+                    className: "whitespace-nowrap",
                     render: (_, row) => {
                       const item = row as EmbeddedCourseDraft;
                       return (
-                        <div>
-                          <p className="font-semibold text-slate-900">
+                        <div className="min-w-max">
+                          <p className="whitespace-nowrap font-semibold text-slate-900">
                             {[item.courseType, item.specialization].filter(Boolean).join(" - ") || "Course"}
                           </p>
-                          <p className="mt-1 text-[11px] text-slate-500">{item.mode || "-"}</p>
+                          <p className="mt-1 whitespace-nowrap text-[11px] text-slate-500">{item.mode || "-"}</p>
                         </div>
                       );
                     },
@@ -6371,6 +6473,7 @@ export default function AdminPage() {
                   {
                     key: "cutoff",
                     label: "Cutoff",
+                    className: "whitespace-nowrap",
                     render: (_, row) => {
                       const item = row as EmbeddedCourseDraft;
                       const categoryCutoffs = normalizeCategoryCutoffs(item.cutoffByCategory);
@@ -6378,7 +6481,7 @@ export default function AdminPage() {
                         return (
                           <div className="space-y-1 text-[11px] text-slate-600">
                             {categoryCutoffs.map((cutoffItem) => (
-                              <p key={cutoffItem.category}>
+                              <p key={cutoffItem.category} className="whitespace-nowrap">
                                 <span className="font-semibold text-slate-800">{cutoffItem.category}</span>: {cutoffItem.cutoff}
                               </p>
                             ))}

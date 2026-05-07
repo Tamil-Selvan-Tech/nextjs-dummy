@@ -31,12 +31,12 @@ export default function CareersPage() {
         <div className="relative z-10">
           <Navbar />
           <div className="page-container-full pb-16 pt-10 px-4 sm:px-6 md:pt-14">
-            <div className="max-w-4xl">
+            <div className="max-w-5xl">
               <div className="editorial-kicker">
                 <Sparkles className="size-3.5" />
                 Careers
               </div>
-              <h1 className="mt-6 font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.35rem] md:text-[2.8rem] md:whitespace-nowrap">
+              <h1 className="mt-6 max-w-5xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.35rem] md:text-[2.8rem] lg:max-w-4xl [text-wrap:balance]">
                 Join us to build student-first products for higher education
                 discovery.
               </h1>

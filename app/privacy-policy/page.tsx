@@ -1,6 +1,8 @@
 import { LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 
+const supportEmailHref = "https://mail.google.com/mail/?view=cm&fs=1&to=support@collegeedwiser.com";
+
 export default function PrivacyPolicyPage() {
   return (
     <>
@@ -93,9 +95,14 @@ export default function PrivacyPolicyPage() {
                   If you have any questions regarding our Privacy Policy, feel free to
                   contact us.
                 </p>
-                <p className="mt-4 text-base font-semibold text-[color:var(--brand-primary)]">
+                <a
+                  href={supportEmailHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex text-base font-semibold text-[color:var(--brand-primary)] transition hover:text-[color:var(--brand-primary-soft)]"
+                >
                   support@collegeedwiser.com
-                </p>
+                </a>
               </div>
             </div>
           </div>

@@ -1845,7 +1845,7 @@ export function CutoffClient({
 
                 <article className="h-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
                   <div className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                    Recommended Group for {juniorRecommendationLabel()}
+                    Recommended Group for {juniorRecommendationLabel(resolvedLevel as StandardId)}
                   </div>
                   <div className="mt-5 rounded-[1.6rem] border border-[#dce5ff] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5">
                     <div className="flex items-start gap-4">

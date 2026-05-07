@@ -8,6 +8,7 @@ export default async function ExplorePage({
 }) {
   const params = await searchParams;
   const query = Array.isArray(params.q) ? params.q[0] || "" : params.q || "";
+  const stream = Array.isArray(params.stream) ? params.stream[0] || "" : params.stream || "";
   const view = Array.isArray(params.view) ? params.view[0] || "" : params.view || "";
   const city = Array.isArray(params.city) ? params.city[0] || "" : params.city || "";
   const college = Array.isArray(params.college) ? params.college[0] || "" : params.college || "";
@@ -16,6 +17,7 @@ export default async function ExplorePage({
   return (
     <ExploreClient
       query={query}
+      streamFilter={stream}
       initialView={view}
       cityFilter={city}
       collegeFilter={college}

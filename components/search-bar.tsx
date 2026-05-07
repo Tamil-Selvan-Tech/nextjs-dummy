@@ -10,7 +10,7 @@ import {
   Search,
   TrendingUp,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import { colleges, courses } from "@/lib/site-data";
 import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
@@ -76,6 +76,8 @@ const NAVBAR_EXAMS: SearchExam[] = [
 
 export function SearchBar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [keyword, setKeyword] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -182,6 +184,17 @@ export function SearchBar() {
     [searchData.courses],
   );
 
+  const routeKeyword = useMemo(() => {
+    const queryKeyword = searchParams.get("q")?.trim();
+    const pathnameKeyword = pathname?.startsWith("/explore/course/")
+      ? decodeURIComponent(pathname.split("/").pop() || "")
+      : "";
+
+    return queryKeyword || pathnameKeyword || "";
+  }, [pathname, searchParams]);
+
+  const activeKeyword = isOpen ? keyword : routeKeyword || keyword;
+
   const trendingSearchItems = useMemo(
     () =>
       [
@@ -201,12 +214,12 @@ export function SearchBar() {
   );
 
   const results = useMemo<RankedSearchState>(() => {
-    if (!keyword.trim()) {
+    if (!activeKeyword.trim()) {
       return { courses: [], colleges: [], cities: [], exams: [] };
     }
 
-    const ranked = getRankedSearchResults(keyword, searchData.colleges, uniqueCourses, searchData.cities);
-    const normalizedQuery = normalizeSearchText(keyword);
+    const ranked = getRankedSearchResults(activeKeyword, searchData.colleges, uniqueCourses, searchData.cities);
+    const normalizedQuery = normalizeSearchText(activeKeyword);
     const queryTokens = normalizedQuery.split(" ").filter(Boolean);
     const rankedExams = NAVBAR_EXAMS.filter((exam) => {
       const examText = normalizeSearchText(`${exam.name} ${exam.slug} ${exam.mode} ${exam.level}`);
@@ -236,10 +249,10 @@ export function SearchBar() {
       cities: ranked.cities.slice(0, 5),
       exams: rankedExams,
     };
-  }, [keyword, searchData.colleges, searchData.cities, uniqueCourses]);
+  }, [activeKeyword, searchData.colleges, searchData.cities, uniqueCourses]);
 
   const handleSearch = () => {
-    const value = keyword.trim();
+    const value = activeKeyword.trim();
     if (!value) return;
 
     const query = normalizeSearchText(value);
@@ -279,15 +292,15 @@ export function SearchBar() {
   };
 
   const highlightText = (text: string) => {
-    if (!keyword.trim()) return text;
-    const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+    if (!activeKeyword.trim()) return text;
+    const regex = new RegExp(`(${activeKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
     const parts = text.split(regex);
 
     return parts.map((part, index) => (
       <span
         key={`${text}-${index}`}
         className={
-          normalizeSearchText(part) === normalizeSearchText(keyword)
+          normalizeSearchText(part) === normalizeSearchText(activeKeyword)
             ? "font-semibold text-[color:var(--brand-accent-deep)]"
             : ""
         }
@@ -317,12 +330,15 @@ export function SearchBar() {
 
       <input
         type="text"
-        value={keyword}
+        value={activeKeyword}
         onChange={(event) => {
           setKeyword(event.target.value);
           setIsOpen(true);
         }}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          setKeyword(routeKeyword || keyword);
+          setIsOpen(true);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -355,7 +371,7 @@ export function SearchBar() {
       {isOpen ? (
         <div className="fixed left-1/2 top-[7.5rem] z-[210] w-[calc(100vw-1.5rem)] max-w-[78rem] -translate-x-1/2 sm:top-[8rem] sm:w-[calc(100vw-2.5rem)] lg:top-[8.5rem] lg:w-[calc(100vw-4rem)]">
           <div className="max-h-[78vh] overflow-y-auto rounded-[1.35rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(244,249,255,0.98))] p-3 shadow-[0_26px_54px_rgba(22,50,79,0.18)] sm:p-3.5">
-              {!keyword.trim() ? (
+              {!activeKeyword.trim() ? (
                 <div>
                   <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
                     <TrendingUp className="size-4 text-[color:var(--brand-accent)]" />

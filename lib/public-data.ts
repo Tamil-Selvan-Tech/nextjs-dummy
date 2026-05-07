@@ -267,8 +267,8 @@ const mapExamSchedules = (siteSettingsData?: BackendSiteSettings): PublicExamSch
         .filter((item) => item.examName)
     : [];
 
-const mapCourses = (records: BackendCourse[]): Course[] =>
-  records.map((item, index) => {
+const mapCourses = (records: BackendCourse[]): Course[] => {
+  const mappedCourses = records.map((item, index) => {
     const cutoffByCategory = mapCutoffByCategory(item.cutoffByCategory);
 
     const collegeDetails = Array.isArray(item.collegeDetails)
@@ -333,6 +333,31 @@ const mapCourses = (records: BackendCourse[]): Course[] =>
       collegeDetails,
     };
   });
+
+  const seenCourseSignatures = new Set<string>();
+
+  return mappedCourses.filter((course) => {
+    const signature = [
+      normalizeText(course.course),
+      normalizeText(course.college),
+      normalizeText(course.university),
+      normalizeText(course.specialization),
+      normalizeText(course.duration),
+      normalizeText(course.courseCategory),
+      normalizeText(course.courseType),
+      normalizeText(course.stream),
+      String(course.totalFees || 0),
+      String(course.cutoff || 0),
+    ].join("|");
+
+    if (seenCourseSignatures.has(signature)) {
+      return false;
+    }
+
+    seenCourseSignatures.add(signature);
+    return true;
+  });
+};
 
 const getFallbackCollegeImage = (item: BackendCollege) => {
   const matchedCollege = fallbackColleges.find(

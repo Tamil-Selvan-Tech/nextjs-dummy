@@ -70,6 +70,18 @@ const navbarThemeStyles = {
   "--text-muted": "#475569",
 } as CSSProperties;
 
+const BACK_BUTTON_UNDER_NAV_ROUTES = new Set([
+  "/about-us",
+  "/advertising",
+  "/careers",
+  "/contact",
+  "/disclaimer",
+  "/find",
+  "/privacy-policy",
+  "/terms",
+  "/services",
+]);
+
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -110,12 +122,14 @@ export function Navbar() {
     pathname.startsWith("/compare") ||
     pathname.startsWith("/college/") ||
     pathname.startsWith("/explore/course/") ||
-    pathname.startsWith("/cutoff");
+    pathname.startsWith("/cutoff") ||
+    BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const showBackUnderNav =
     pathname?.startsWith("/explore") ||
     pathname?.startsWith("/college/") ||
     pathname?.startsWith("/compare") ||
-    pathname?.startsWith("/cutoff");
+    pathname?.startsWith("/cutoff") ||
+    BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
   const filteredCourses = useMemo(() => {
