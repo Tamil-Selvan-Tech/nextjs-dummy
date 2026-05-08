@@ -48,7 +48,7 @@ function StudentIllustration() {
   return (
     <div className="relative h-[26rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,#ffffff,#eff6ff)] shadow-[0_20px_44px_rgba(22,50,79,0.08)] sm:h-[30rem]">
       <Image
-        src="/student.png"
+        src="/stu.png"
         alt="Student Login"
         fill
         className="object-cover"
@@ -66,17 +66,20 @@ function StudentIllustration() {
 
 function CollegeIllustration() {
   return (
-    <div className="relative h-[26rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] sm:h-[30rem]">
-      <div className="absolute inset-x-6 bottom-8 h-3 rounded-full bg-[rgba(15,124,116,0.12)] blur-md" />
-      <div className="absolute left-1/2 top-8 h-0 w-0 -translate-x-1/2 border-x-[7rem] border-b-[2.6rem] border-x-transparent border-b-[color:var(--brand-support)]" />
-      <div className="absolute left-1/2 top-24 h-32 w-[15rem] -translate-x-1/2 rounded-[1.4rem] bg-white shadow-[0_20px_44px_rgba(15,124,116,0.14)]" />
-      <div className="absolute left-[26%] top-[7.6rem] grid grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <span key={index} className="h-8 w-8 rounded-md bg-[rgba(15,124,116,0.16)]" />
-        ))}
-      </div>
-      <div className="absolute left-1/2 top-[12.3rem] h-16 w-12 -translate-x-1/2 rounded-t-xl bg-[color:var(--brand-support)]" />
-      <div className="absolute bottom-7 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/60 bg-white/78 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-support)] shadow-[0_14px_34px_rgba(15,124,116,0.12)]">
+    <div className="relative h-[26rem] overflow-hidden rounded-[1.7rem] border border-[rgba(15,124,116,0.12)] bg-[linear-gradient(180deg,#fbfefc,#eef9f6)] shadow-[0_20px_44px_rgba(15,124,116,0.08)] sm:h-[30rem]">
+      
+      <Image
+        src="/collimg.png"
+        alt="College Portal"
+        fill
+        className="object-cover"
+        sizes="(min-width: 1024px) 420px, 100vw"
+        priority
+      />
+
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,20,38,0.02),rgba(7,20,38,0.16))]" />
+
+      <div className="absolute bottom-7 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/60 bg-white/78 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#158A84] shadow-[0_14px_34px_rgba(15,124,116,0.12)]">
         <Building2 className="size-4" />
         College Portal
       </div>
@@ -197,14 +200,14 @@ function LoginPageContent() {
   };
 
   return (
-    <section className="relative min-h-screen overflow-hidden text-[color:var(--text-dark)]">
+    <section className="relative min-h-screen overflow-x-hidden text-[color:var(--text-dark)]">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_56%,#edf5fb_100%)]" />
       <div className="mesh-bg opacity-70" />
       <div className="hero-grid absolute inset-0 opacity-[0.07]" />
 
       <div className="page-container relative z-10 py-6 sm:py-10">
-        <div className="mx-auto grid min-h-[88vh] max-w-6xl overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,251,255,0.95))] shadow-[0_30px_80px_rgba(4,12,26,0.14)] lg:grid-cols-[0.95fr_1.05fr] lg:rounded-[2.2rem]">
-          <aside className="relative hidden overflow-hidden border-r border-[rgba(15,76,129,0.08)] p-6 lg:flex lg:flex-col lg:justify-between xl:p-8">
+        <div className="mx-auto grid min-h-[88vh] max-w-6xl overflow-visible rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,251,255,0.95))] shadow-[0_30px_80px_rgba(4,12,26,0.14)] lg:grid-cols-[0.95fr_1.05fr] lg:rounded-[2.2rem]">
+          <aside className="relative hidden overflow-visible border-r border-[rgba(15,76,129,0.08)] p-6 lg:flex lg:flex-col lg:justify-between xl:p-8">
             <div className="absolute left-[-4rem] top-12 h-44 w-44 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
             <div className="absolute bottom-0 right-[-3rem] h-40 w-40 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
             <div className="relative z-10 flex items-center gap-4">
@@ -226,25 +229,31 @@ function LoginPageContent() {
             </div>
           </aside>
 
-          <main className="flex items-start justify-center p-4 pt-6 sm:p-6 sm:pt-8 md:p-8 md:pt-10 lg:p-10 lg:pt-12 xl:p-12 xl:pt-14">
-            <div className="w-full max-w-md sm:max-w-lg lg:max-w-md">
-              <button
-                type="button"
-                onClick={() => navigateToSafeBack(router, currentRoute, "/")}
-                className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(4,12,26,0.08)] transition hover:border-[color:var(--brand-primary-soft)] hover:text-[color:var(--text-dark)]"
-              >
-                <ArrowLeft className="size-3.5" />
-                Back
-              </button>
-              <div className="mb-7 text-center">
-                <BrandLogo variant="tab" className="mx-auto mb-4" />
+          <main className="flex items-start justify-center p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+            <div className="w-full max-w-md rounded-[1.45rem] border border-[rgba(15,76,129,0.08)] bg-white/88 p-4 shadow-[0_18px_40px_rgba(22,50,79,0.08)] backdrop-blur-sm sm:max-w-xl sm:p-6 lg:max-w-md lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+              <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
+                <BrandLogo textColor="dark" className="h-9" />
+                <div className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${mode.badgeClass}`}>
+                  {mode.label} Access
+                </div>
+              </div>
 
-                <div className="mb-5 flex justify-center">
-                  <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1">
+              <div className="mb-6 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigateToSafeBack(router, currentRoute, "/")}
+                  className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)] shadow-[0_10px_24px_rgba(4,12,26,0.08)] transition hover:border-[color:var(--brand-primary-soft)] hover:text-[color:var(--text-dark)]"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  Back
+                </button>
+
+                <div className="flex justify-center lg:justify-start">
+                  <div className="inline-flex w-full max-w-sm rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1">
                     <button
                       type="button"
                       onClick={() => setAccountType("student")}
-                      className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
                         accountType === "student"
                           ? "bg-[color:var(--brand-primary)] text-white"
                           : "text-[color:var(--text-muted)] hover:bg-white"
@@ -256,7 +265,7 @@ function LoginPageContent() {
                     <button
                       type="button"
                       onClick={() => setAccountType("college")}
-                      className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
                         accountType === "college"
                           ? "bg-[color:var(--brand-support)] text-white"
                           : "text-[color:var(--text-muted)] hover:bg-white"
@@ -267,9 +276,18 @@ function LoginPageContent() {
                     </button>
                   </div>
                 </div>
+              </div>
 
-                <h1 className="text-3xl font-bold text-[color:var(--text-dark)]">{mode.title}</h1>
-                <p className="mt-2 text-sm text-[color:var(--text-muted)]">{mode.subtitle}</p>
+              <div className="mb-7 text-center">
+                <div>
+                  <h1 className="text-2xl font-bold text-[color:var(--text-dark)] sm:text-3xl">
+                    {mode.title}
+                  </h1>
+
+                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                    {mode.subtitle}
+                  </p>
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">

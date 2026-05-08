@@ -146,10 +146,10 @@ export function StudyPreferenceModal({
       onClick={onClose}
     >
       <div
-        className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.99))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
+        className="mx-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.99))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-[rgba(15,76,129,0.08)] bg-[rgba(250,252,255,0.98)] px-4 py-4 sm:px-6 sm:py-5">
+        <div className="relative shrink-0 overflow-hidden border-b border-[rgba(15,76,129,0.08)] bg-[rgba(250,252,255,0.98)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(237,246,255,0.96))]" />
           <div className="absolute left-[-2rem] top-0 h-28 w-28 rounded-full bg-[rgba(60,126,182,0.12)] blur-3xl" />
           <div className="absolute right-[-1rem] top-2 h-24 w-24 rounded-full bg-[rgba(255,138,61,0.14)] blur-3xl" />
@@ -178,8 +178,8 @@ export function StudyPreferenceModal({
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-0 bg-[rgba(248,251,255,0.98)] lg:grid-cols-[0.95fr_1.05fr]">
-          <section className="min-h-0 border-b border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-6">
+        <div className="grid min-h-0 overflow-hidden bg-[rgba(248,251,255,0.98)] lg:grid-cols-[0.95fr_1.05fr]">
+          <section className="flex min-h-0 flex-col border-b border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-6">
             <div className="mb-4 flex items-start gap-3">
               <div className="rounded-2xl bg-[rgba(15,76,129,0.08)] p-3 text-[color:var(--brand-primary)]">
                 <MapPin className="size-5" />
@@ -203,7 +203,7 @@ export function StudyPreferenceModal({
               />
             </div>
 
-            <div className="grid max-h-[17rem] min-h-0 grid-cols-2 gap-2.5 overflow-y-auto pr-1 overscroll-contain sm:max-h-[21rem]">
+            <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2.5 overflow-y-auto pr-1 overscroll-contain">
               {cityList.map((city) => (
                 <button
                   key={city.key}
@@ -225,7 +225,7 @@ export function StudyPreferenceModal({
             </div>
           </section>
 
-          <section className="min-h-0 bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:p-6">
+          <section className="flex min-h-0 flex-col bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:p-6">
             <div className="mb-4 flex items-start gap-3">
               <div className="rounded-2xl bg-[rgba(255,138,61,0.12)] p-3 text-[color:var(--brand-accent-deep)]">
                 <Building2 className="size-5" />
@@ -258,7 +258,7 @@ export function StudyPreferenceModal({
                 Select a city first to view colleges.
               </div>
             ) : (
-              <div className="max-h-[17rem] min-h-0 space-y-2.5 overflow-y-auto pr-1 overscroll-contain sm:max-h-[21rem]">
+              <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 overscroll-contain">
                 <button
                   type="button"
                   onClick={() => {
@@ -304,7 +304,8 @@ export function StudyPreferenceModal({
           </section>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[rgba(15,76,129,0.08)] bg-[rgba(255,255,255,0.98)] px-4 py-4 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
+        <div className="shrink-0 border-t border-[rgba(15,76,129,0.08)] bg-[rgba(255,255,255,0.98)] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="max-w-3xl text-sm leading-6 text-[color:var(--text-muted)]">
             {chosenCity
               ? `City: ${resolvedChosenCity}${chosenCollege ? ` | College: ${chosenCollege}` : " | College: All Colleges"}`
@@ -326,6 +327,7 @@ export function StudyPreferenceModal({
             >
               Apply
             </button>
+          </div>
           </div>
         </div>
       </div>

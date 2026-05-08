@@ -32,6 +32,8 @@ const topStreamLinks = [
 
 export function Footer() {
   const pathname = usePathname();
+  const footerEmail = "infocollege@collegeedwiser.com";
+  const footerEmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${footerEmail}`;
   const hiddenFooterRoutes = [
     "/search",
     "/search-results",
@@ -43,15 +45,17 @@ export function Footer() {
     "/set-password",
     "/verify-email",
     "/college-dashboard",
+    "/college/enquiries",
+    "/college/manage",
+    "/college/requests",
   ];
   const shouldHideFooter =
     hiddenFooterRoutes.includes(pathname) ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/college/");
+    pathname.startsWith("/admin");
   const socialLinks = [
     { href: "https://www.facebook.com/collegeEdwiser/", label: "Facebook", icon: FacebookIcon },
     { href: "https://www.collegeedwiser.com", label: "Website", icon: BadgeCheck },
-    { href: "mailto:info@collegeedwiser.com", label: "Email", icon: Mail },
+    { href: footerEmailHref, label: "Email", icon: Mail },
     { href: "https://www.instagram.com/collegeedwiser/", label: "Instagram", icon: InstagramIcon },
   ];
 
@@ -150,8 +154,8 @@ export function Footer() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
                   <Mail className="size-4 text-[color:var(--brand-primary-soft)]" />
-                  <a href="mailto:info@collegeedwiser.com" className="transition hover:text-[color:var(--brand-primary)]">
-                    info@collegeedwiser.com
+                  <a href={footerEmailHref} className="transition hover:text-[color:var(--brand-primary)]">
+                    {footerEmail}
                   </a>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">

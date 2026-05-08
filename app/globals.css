@@ -52,6 +52,10 @@ body {
   text-size-adjust: 100%;
 }
 
+html {
+  font-size: clamp(14px, 13.2px + 0.24vw, 16px);
+}
+
 body {
   margin: 0;
   width: 100%;
@@ -292,7 +296,7 @@ button,
 .breaking-news-track {
   align-items: center;
   gap: 0;
-  animation-duration: 24s;
+  animation-duration: 34s;
 }
 
 .breaking-news-shell:hover .breaking-news-track {
@@ -942,6 +946,10 @@ button,
     --text-body: 0.92rem;
   }
 
+  html {
+    font-size: 14px;
+  }
+
   .page-container {
     padding-inline: 0.9rem;
   }
@@ -978,24 +986,25 @@ button,
   }
 
   .breaking-news-shell {
-    align-items: center;
-    flex-direction: row;
-    gap: 0.45rem;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.55rem;
     padding: 0.72rem 0.8rem;
   }
 
   .breaking-news-label {
     font-size: 0.62rem;
     letter-spacing: 0.09em;
+    width: 100%;
   }
 
   .breaking-news-viewport {
-    width: auto;
-    flex: 1;
+    width: 100%;
+    flex: none;
   }
 
   .breaking-news-track {
-    animation-duration: 20s;
+    animation-duration: 32s;
   }
 
   .breaking-news-entry {
@@ -1031,6 +1040,10 @@ button,
 }
 
 @media (max-width: 479px) {
+  html {
+    font-size: 13.5px;
+  }
+
   .page-container,
   .page-container-full {
     padding-inline: 0.75rem;

@@ -1,6 +1,5 @@
 "use client";
 
-import { LoaderCircle, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 
 type LoadingProps = {
@@ -9,7 +8,7 @@ type LoadingProps = {
 };
 
 export function Loading({
-  label = "Loading your next step...",
+  label = "Loading...",
   fullScreen = true,
 }: LoadingProps) {
   return (
@@ -28,27 +27,30 @@ export function Loading({
           fullScreen ? "min-h-screen" : "min-h-[24rem]"
         }`}
       >
-        <div className="w-full max-w-md rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.96))] p-6 text-center shadow-[0_28px_64px_rgba(22,50,79,0.12)] md:p-8">
-          <div className="mx-auto flex max-w-sm flex-col items-center">
-            <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white px-5 py-4 shadow-[0_18px_40px_rgba(22,50,79,0.08)]">
-              <BrandLogo textColor="dark" />
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto flex flex-col items-center">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute h-28 w-28 rounded-full border border-[rgba(15,76,129,0.14)] animate-ping" />
+              <div className="absolute h-36 w-36 rounded-full border-2 border-dashed border-[rgba(47,106,163,0.25)] animate-spin" />
+              <div className="absolute h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0))] blur-2xl" />
+              <div className="relative rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white/94 px-6 py-5 shadow-[0_24px_56px_rgba(22,50,79,0.12)] backdrop-blur-sm">
+                <BrandLogo textColor="dark" className="h-10" />
+              </div>
             </div>
 
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
-              <Sparkles className="size-3.5" />
-              Loading
+            <div className="mt-7 flex items-center gap-3">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-primary)]" />
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-primary-soft)] [animation-delay:180ms]" />
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-accent)] [animation-delay:360ms]" />
             </div>
 
-            <div className="mt-5 flex items-center gap-3">
-              <LoaderCircle className="size-5 animate-spin text-[color:var(--brand-primary)]" />
-              <p className="text-sm font-semibold text-[color:var(--text-dark)] md:text-base">
-                {label}
-              </p>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">
-              Preparing the page with the same clean College EdwiseR experience.
+            <p className="mt-5 bg-[linear-gradient(90deg,var(--brand-primary),var(--brand-primary-soft),var(--brand-accent-deep))] bg-clip-text text-sm font-bold tracking-[0.18em] text-transparent uppercase">
+              {label}
             </p>
+
+            <div className="mt-4 h-1.5 w-36 overflow-hidden rounded-full bg-white/70 shadow-[inset_0_1px_2px_rgba(15,76,129,0.08)]">
+              <div className="h-full w-1/2 rounded-full bg-[linear-gradient(90deg,var(--brand-primary),var(--brand-accent))] animate-pulse" />
+            </div>
           </div>
         </div>
       </div>

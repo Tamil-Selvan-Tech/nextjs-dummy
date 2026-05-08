@@ -475,8 +475,25 @@ function TableSection({
 }) {
   return (
     <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-      <h3 className="text-[2rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
-      <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+      <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
+      <div className="mt-5 space-y-3 md:hidden">
+        {rows.map((row) => (
+          <article
+            key={`${row.key}-${row.value}`}
+            className="rounded-[1.1rem] border border-[#dbe5f5] bg-[#fbfdff] p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
+          >
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[0]}</p>
+              <p className="mt-1 text-[0.96rem] font-semibold leading-7 text-[#1f2937]">{renderHighlightedText(row.key)}</p>
+            </div>
+            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[1]}</p>
+              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.value)}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-5 hidden overflow-hidden rounded-[1.35rem] border border-[#cfe0ff] md:block">
         <div className="grid grid-cols-2 bg-[#dfeafe] text-base font-semibold text-[#172033]">
           <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
           <div className="px-5 py-4">{columns[1]}</div>
@@ -1331,28 +1348,32 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
                   )}
                 </section>
 
-                <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-                  <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Get More Info About {details.title.replace(/\s+\d{4}$/, "")}</h3>
-                  {details.studyHub?.practiceLinks?.[0] ? (
-                    <a
-                      href={details.studyHub.practiceLinks[0].href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
-                    >
-                      Download Sample Papers
-                      <Download className="size-5" />
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-6 py-5 text-xl font-semibold text-white transition hover:bg-[#245fc5]"
-                    >
-                      Download Sample Papers
-                      <Download className="size-5" />
-                    </button>
-                  )}
-                </section>
+                <section className="rounded-[1.5rem] sm:rounded-[2rem] bg-white p-4 sm:p-5 lg:p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+  <h3 className="break-words text-[1rem] sm:text-[1.1rem] lg:text-[1.2rem] font-bold leading-7 text-[#2a2f37]">
+    Get More Info About{" "}
+    {details.title.replace(/\s+\d{4}$/, "")}
+  </h3>
+
+  {details.studyHub?.practiceLinks?.[0] ? (
+    <a
+      href={details.studyHub.practiceLinks[0].href}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-5 sm:mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-lg lg:text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+    >
+      <span className="truncate">Download Sample Papers</span>
+      <Download className="size-4 sm:size-5 shrink-0" />
+    </a>
+  ) : (
+    <button
+      type="button"
+      className="mt-5 sm:mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#2f6edb] px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-lg lg:text-xl font-semibold text-white transition hover:bg-[#245fc5]"
+    >
+      <span className="truncate">Download Sample Papers</span>
+      <Download className="size-4 sm:size-5 shrink-0" />
+    </button>
+  )}
+</section>
 
                 <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
                   <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Important Timeline</h3>
@@ -1434,8 +1455,29 @@ function TripleTableSection({
 }) {
   return (
     <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
-      <h3 className="text-[2rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
-      <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+      <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
+      <div className="mt-5 space-y-3 md:hidden">
+        {rows.map((row) => (
+          <article
+            key={`${row.first}-${row.second}-${row.third}`}
+            className="rounded-[1.1rem] border border-[#dbe5f5] bg-[#fbfdff] p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
+          >
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[0]}</p>
+              <p className="mt-1 text-[0.96rem] font-semibold leading-7 text-[#1f2937]">{renderHighlightedText(row.first)}</p>
+            </div>
+            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[1]}</p>
+              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.second)}</p>
+            </div>
+            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[2]}</p>
+              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.third)}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-5 hidden overflow-hidden rounded-[1.35rem] border border-[#cfe0ff] md:block">
         <div className="grid grid-cols-3 bg-[#dfeafe] text-base font-semibold text-[#172033]">
           <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
           <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[1]}</div>

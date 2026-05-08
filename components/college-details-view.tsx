@@ -514,6 +514,14 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     { label: "Hostel", value: college.hasHostel ? "Available" : "No", icon: Building2 },
     { label: "Accreditation", value: college.accreditation, icon: ShieldCheck },
   ];
+  const topInfoCardMobileOrder: Record<string, string> = {
+    Placement: "order-1 sm:order-none",
+    Accreditation: "order-2 sm:order-none",
+    Ranking: "order-3 sm:order-none",
+    Courses: "order-4 sm:order-none",
+    "Application Mode": "order-5 sm:order-none",
+    Hostel: "order-6 sm:order-none",
+  };
 
   const openGallery = (index: number) => {
     setActiveGalleryIndex(index);
@@ -603,7 +611,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
       <div className="relative z-10">
         <Navbar />
-        <div className="page-container-full py-7 px-4 sm:px-6 md:py-10">
+        <div className="page-container-full px-3 py-5 sm:px-6 md:py-10">
           <div className="mx-auto w-full overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] shadow-[0_22px_48px_rgba(22,50,79,0.1)]">
             <div className="grid border-b border-[rgba(15,76,129,0.08)] lg:grid-cols-[1.08fr_0.92fr]">
               <div className="relative overflow-hidden bg-[linear-gradient(180deg,#d8e7f4_0%,#edf4fb_100%)] p-4 md:p-5">
@@ -628,7 +636,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   <button
                     type="button"
                     onClick={() => openGallery(0)}
-                    className="group relative block h-52 w-full overflow-hidden rounded-[1.25rem] border border-white/60"
+                    className="group relative block h-44 w-full overflow-hidden sm:h-52 rounded-[1.25rem] border border-white/60"
                   >
                     <img
                       src={mainImage}
@@ -726,8 +734,8 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
                         College Profile
                       </p>
-                      <h2 className="mt-1 text-lg font-bold leading-7 text-[color:var(--text-dark)] md:text-[1.35rem]">
-                        {college.name}
+<h2 className="mt-1 text-base font-bold leading-6 text-[color:var(--text-dark)] sm:text-lg md:text-[1.35rem]">
+                          {college.name}
                       </h2>
                       <p className="mt-1 text-sm text-[color:var(--text-muted)]">{college.university}</p>
                       {establishedYear ? (
@@ -738,13 +746,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2.5 md:gap-3">
+                  <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3">
                     {topInfoCards.map((item) => {
                       const Icon = item.icon;
                       return (
                         <article
                           key={item.label}
-                          className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/95 p-2.5 shadow-[0_12px_24px_rgba(22,50,79,0.05)] sm:rounded-[1.15rem] sm:p-4"
+                          className={`${topInfoCardMobileOrder[item.label] || ""} rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white/95 p-2.5 shadow-[0_12px_24px_rgba(22,50,79,0.05)] sm:rounded-[1.15rem] sm:p-4`}
                         >
                           <div className="flex flex-col items-center gap-2 text-center sm:gap-3">
                             <div className="rounded-[0.9rem] bg-[rgba(15,76,129,0.08)] p-2 text-[color:var(--brand-primary)] sm:rounded-[1rem] sm:p-2.5">
@@ -774,7 +782,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
                   <div className="mt-auto pt-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <button type="button" onClick={downloadBrochure} className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)]">
+                    <button type="button" onClick={downloadBrochure} className="inline-flex min-w-full flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)]">
                       <Download className="size-4" />
                       {brochureUrl ? "Open Brochure" : "Download / Print"}
                     </button>

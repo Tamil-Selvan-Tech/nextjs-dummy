@@ -9,6 +9,7 @@ import {
   normalizeText,
 } from "@/lib/site-data";
 
+
 export default async function CourseDetailsPage({
   params,
 }: {

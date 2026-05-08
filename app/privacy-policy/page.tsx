@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
       <section className="relative overflow-hidden text-slate-800">
         <div className="absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)]" />
         <div className="mesh-bg" />
-        <div className="relative z-10">
+        <div className="relative ">
           <Navbar />
           <div className="page-container-full pb-16 pt-10 px-4 sm:px-6 md:pt-14">
             <div className="max-w-4xl">

@@ -1271,7 +1271,7 @@ export function HomePage({
             {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
           </span>
         </div>
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
           <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-2.5">
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-primary-soft)]">
               Placement
@@ -1279,7 +1279,7 @@ export function HomePage({
             <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
               {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
             </p>
-            <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+            <p className="mt-0.5 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
               Recent placement performance
             </p>
           </div>
@@ -1290,17 +1290,17 @@ export function HomePage({
             <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
               {activeCollege?.accreditation || "-"}
             </p>
-            <p className="mt-0.5 text-[10px] leading-4 text-[color:var(--text-muted)]">
+            <p className="mt-0.5 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
               Latest approved accreditation status
             </p>
           </div>
         </div>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => openCollegeProfile(activeCollege?.id)}
             disabled={!activeCollege?.id}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_55%,#38bdf8_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(37,99,235,0.26)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_55%,#38bdf8_100%)] px-3 py-2.5 text-center text-[13px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(37,99,235,0.26)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4 sm:text-sm"
           >
             Browse College
             <ArrowRight className="size-4" />
@@ -1308,7 +1308,7 @@ export function HomePage({
           <button
             type="button"
             onClick={() => router.push("/explore?view=colleges")}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white px-3 py-2.5 text-center text-[13px] font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] sm:w-auto sm:px-4 sm:text-sm"
           >
             View All Colleges
           </button>
@@ -1731,8 +1731,7 @@ export function HomePage({
                             onClick={() => router.push("/exams")}
                             className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
                           >
-                            Explore all
-                            <ArrowRight className="size-4" />
+                            
                           </button>
                         </div>
 

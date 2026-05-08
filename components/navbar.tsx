@@ -121,12 +121,14 @@ export function Navbar() {
     pathname.startsWith("/explore") ||
     pathname.startsWith("/compare") ||
     pathname.startsWith("/college/") ||
+    pathname.startsWith("/exams/") ||
     pathname.startsWith("/explore/course/") ||
     pathname.startsWith("/cutoff") ||
     BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const showBackUnderNav =
     pathname?.startsWith("/explore") ||
     pathname?.startsWith("/college/") ||
+    pathname?.startsWith("/exams/") ||
     pathname?.startsWith("/compare") ||
     pathname?.startsWith("/cutoff") ||
     BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
@@ -387,7 +389,7 @@ export function Navbar() {
         </div>
       </div>
 
-      <nav className="relative z-20 mt-3 flex flex-nowrap items-center gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)]">
+      <nav className="relative z-20 mt-3 flex flex-col items-stretch gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-nowrap md:flex-row md:items-center">
         <button
           type="button"
           onClick={openCoursesPanel}
@@ -399,11 +401,11 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
-          className="peer shrink-0 rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:py-1.5"
+          className="peer w-full shrink-0 rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:w-auto md:py-1.5"
         >
           All Courses
         </button>
-        <div className="breaking-news-shell min-w-0 flex-1">
+        <div className="breaking-news-shell min-w-0 w-full flex-1">
           <div className="breaking-news-label">
             <Bell className="breaking-news-label-icon" />
             Breaking Updates
