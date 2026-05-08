@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { navigateToSafeBack } from "@/lib/safe-back";
 
@@ -12,14 +12,12 @@ type PageBackButtonProps = {
 export function PageBackButton({ className = "" }: PageBackButtonProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const currentRoute = useMemo(() => {
     if (!pathname) return "/";
-    const query =
-      typeof window === "undefined"
-        ? ""
-        : window.location.search.replace(/^\?/, "").trim();
+    const query = searchParams.toString();
     return query ? `${pathname}?${query}` : pathname;
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   if (!pathname || pathname === "/") return null;
 

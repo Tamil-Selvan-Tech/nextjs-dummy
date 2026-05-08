@@ -562,9 +562,9 @@ const SENIOR_GUIDE: Record<
 const clampMark = (value: number) => Math.max(0, Math.min(100, value));
 
 // Predictor scale helper for degree and admission-type based cutoff calculations.
-const getCutoffScale = (degree: string, admissionType: string, level: SelectedLevelId) => {
+const getCutoffScale = (degree: string, admissionType: string) => {
   if (degree === "Medical") return 720;
-  if (degree === "B.Arch") return level === "11" ? 200 : 400;
+  if (degree === "B.Arch") return 400;
   if (degree === "Arts & Science") return 600;
   if (degree === "Law") {
     return admissionType === "CLAT" ? 125 : 300;
@@ -909,7 +909,10 @@ export function CutoffClient({
   const resolvedLevel = normalizeSelectedLevel(selectedLevel);
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(resolvedLevel);
   const isTwelfthStandard = resolvedLevel === "12";
-  const usesFocusedMatchFlow = !isJuniorLevel && (isTwelfthStandard || selectedDegree === "Law");
+  // Keep the focused predictor layout for true 12th-standard flows only.
+  // 11th-level students should continue to see the tiered predictor experience,
+  // even when they choose degree tracks like Law.
+  const usesFocusedMatchFlow = !isJuniorLevel && isTwelfthStandard;
   const hasExamBasedCutoffFlow = usesFocusedMatchFlow && isExamBasedAdmissionType(selectedAdmissionType);
   const initialJuniorStandard = (isJuniorLevel ? resolvedLevel : "10") as StandardId;
   const [activeStandard, setActiveStandard] = useState<StandardId>(initialJuniorStandard);
@@ -956,7 +959,7 @@ export function CutoffClient({
   const predictorPercentage = useMemo(() => {
     const scaleMax =
       selectedCutoffScore !== null
-        ? getCutoffScale(selectedDegree, selectedAdmissionType, resolvedLevel)
+        ? getCutoffScale(selectedDegree, selectedAdmissionType)
         : 100;
     if (!Number.isFinite(predictorBenchmark) || predictorBenchmark <= 0) return 0;
     if (scaleMax > 100) {
@@ -975,7 +978,7 @@ export function CutoffClient({
     [courses],
   );
   const courseBasedCollegeCards = useMemo(() => {
-    const scaleMax = getCutoffScale(selectedDegree, selectedAdmissionType, resolvedLevel);
+    const scaleMax = getCutoffScale(selectedDegree, selectedAdmissionType);
     const categoryKey = normalizeCategoryKey(selectedCategory);
     const mapped = new Map<string, PredictorCard>();
 
@@ -1950,7 +1953,7 @@ export function CutoffClient({
                           Converted Score
                         </p>
                         <p className="mt-2 text-lg font-black text-[#b45309]">
-                          {bArchSubmittedConvertedScore || "Pending"} / 200
+                          {bArchSubmittedConvertedScore || "Pending"} / {resolvedLevel === "11" ? "400" : "200"}
                         </p>
                       </div>
 

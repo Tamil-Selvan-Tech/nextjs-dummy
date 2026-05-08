@@ -27,6 +27,12 @@ export const normalizeSearchText = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const normalizeCompactSearchText = (value: string) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+
 export const getSearchTokens = (value: string) =>
   normalizeSearchText(value)
     .split(" ")
@@ -140,15 +146,24 @@ const isRelevantCollege = (college: College, query: string, tokens: string[]) =>
 
 const scoreCourse = (course: Course, query: string, tokens: string[]) => {
   const courseName = normalizeSearchText(course.course);
+  const compactCourseName = normalizeCompactSearchText(course.course);
   const specialization = normalizeSearchText(course.specialization);
+  const compactSpecialization = normalizeCompactSearchText(course.specialization);
   const college = normalizeSearchText(course.college);
   const university = normalizeSearchText(course.university);
   const category = normalizeSearchText(course.courseCategory);
   const haystack = normalizeSearchText(
     `${course.course} ${course.specialization} ${course.college} ${course.university} ${course.courseCategory} ${course.stream || ""}`,
   );
+  const compactQuery = normalizeCompactSearchText(query);
+  const isShortSingleTokenQuery = tokens.length === 1 && compactQuery.length > 0 && compactQuery.length <= 3;
 
   let score = 0;
+  if (isShortSingleTokenQuery) {
+    if (compactCourseName === compactQuery) score += 240;
+    if (compactCourseName.startsWith(compactQuery)) score += 200;
+    if (compactSpecialization.startsWith(compactQuery)) score += 90;
+  }
   if (query === courseName) score += 160;
   if (haystack.includes(query)) score += 70;
   if (includesAllTokens(haystack, tokens)) score += 55;
@@ -166,13 +181,21 @@ const scoreCourse = (course: Course, query: string, tokens: string[]) => {
 
 const isRelevantCourse = (course: Course, query: string, tokens: string[]) => {
   const courseName = normalizeSearchText(course.course);
+  const compactCourseName = normalizeCompactSearchText(course.course);
   const specialization = normalizeSearchText(course.specialization);
+  const compactSpecialization = normalizeCompactSearchText(course.specialization);
   const college = normalizeSearchText(course.college);
   const university = normalizeSearchText(course.university);
   const category = normalizeSearchText(course.courseCategory);
   const haystack = normalizeSearchText(
     `${course.course} ${course.specialization} ${course.college} ${course.university} ${course.courseCategory} ${course.stream || ""}`,
   );
+  const compactQuery = normalizeCompactSearchText(query);
+  const isShortSingleTokenQuery = tokens.length === 1 && compactQuery.length > 0 && compactQuery.length <= 3;
+
+  if (isShortSingleTokenQuery) {
+    return compactCourseName.startsWith(compactQuery) || compactSpecialization.startsWith(compactQuery);
+  }
 
   if (query === courseName) return true;
   if (haystack.includes(query) && query.length >= 4) return true;

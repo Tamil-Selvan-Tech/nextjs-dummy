@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MapPin, Star, X } from "lucide-react";
-import Image from "next/image";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { getCoursesForCollege, type College } from "@/lib/site-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 
@@ -174,27 +174,21 @@ export function PopularComparisons({
                   className="group min-w-[18.5rem] flex-1 rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)]"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
-                      <Image
-                        src={selectedCollege.logo || selectedCollege.image}
-                        alt={selectedCollege.name}
-                        fill
-                        sizes="56px"
-                        className={selectedCollege.logo ? "object-contain p-1.5" : "object-cover"}
-                      />
-                    </div>
+                    <CollegeLogoBadge
+                      src={selectedCollege.logo || selectedCollege.image}
+                      alt={selectedCollege.name}
+                      mode={selectedCollege.logo ? "logo" : "cover"}
+                      className="h-14 w-14 rounded-[1rem]"
+                    />
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
                       VS
                     </span>
-                    <div className="relative h-14 w-14 overflow-hidden rounded-[1rem] border border-[rgba(15,76,129,0.16)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
-                      <Image
-                        src={college.logo || college.image}
-                        alt={college.name}
-                        fill
-                        sizes="56px"
-                        className={college.logo ? "object-contain p-1.5" : "object-cover"}
-                      />
-                    </div>
+                    <CollegeLogoBadge
+                      src={college.logo || college.image}
+                      alt={college.name}
+                      mode={college.logo ? "logo" : "cover"}
+                      className="h-14 w-14 rounded-[1rem]"
+                    />
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-4 text-center">

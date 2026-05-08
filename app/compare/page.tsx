@@ -11,7 +11,6 @@ import {
   Hospital,
   Heart,
   Laptop,
-  List,
   Library,
   MapPin,
   Medal,
@@ -24,9 +23,9 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { Navbar } from "@/components/navbar";
 import { PopularComparisons } from "@/components/popular-comparisons";
 import { readAuthToken } from "@/lib/auth-storage";
@@ -153,11 +152,6 @@ const getCourseSummary = (college: College, courseData: Course[] = fallbackCours
         : "-"),
     cutoff: topCourse?.cutoff ? `${topCourse.cutoff}` : "-",
   };
-};
-
-const scoreCollege = (college: College) => {
-  const summary = getCourseSummary(college);
-  return (college.placementRate || 0) + (summary.topCourse?.cutoff || 0) / 10;
 };
 
 const getCollegeByIdFromList = (list: College[], id: string | null) => {
@@ -328,15 +322,13 @@ function ComparePageContent() {
               <X className="size-3.5" />
             </button>
           </div>
-          <div className="relative h-12 w-24 overflow-hidden rounded-[0.9rem] border border-[rgba(15,76,129,0.14)] bg-white shadow-[0_8px_18px_rgba(22,50,79,0.1)]">
-            <Image
-              src={college.logo || college.image}
-              alt={college.name}
-              fill
-              sizes="96px"
-              className={college.logo ? "object-contain p-1" : "object-cover"}
-            />
-          </div>
+          <CollegeLogoBadge
+            src={college.logo || college.image}
+            alt={college.name}
+            mode={college.logo ? "logo" : "cover"}
+            className="h-12 w-24 rounded-[0.9rem]"
+            imageClassName={college.logo ? "p-1" : ""}
+          />
           <h3 className="line-clamp-3 text-sm font-semibold leading-5 text-[color:var(--brand-primary)]">
             {college.name}
           </h3>
@@ -469,15 +461,12 @@ function ComparePageContent() {
                     </div>
 
                     <div className="mt-4 flex items-center gap-4">
-                      <div className="relative h-16 w-16 overflow-hidden rounded-[1.2rem] border border-[rgba(15,76,129,0.14)] bg-white shadow-[0_10px_20px_rgba(22,50,79,0.1)]">
-                        <Image
-                          src={college.logo || college.image}
-                          alt={college.name}
-                          fill
-                          sizes="64px"
-                          className={college.logo ? "object-contain p-1.5" : "object-cover"}
-                        />
-                      </div>
+                      <CollegeLogoBadge
+                        src={college.logo || college.image}
+                        alt={college.name}
+                        mode={college.logo ? "logo" : "cover"}
+                        className="h-16 w-16 rounded-[1.2rem]"
+                      />
                       <div className="min-w-0">
                         <h2 className="text-lg font-bold text-[color:var(--text-dark)]">
                           {college.name}
@@ -794,15 +783,13 @@ function ComparePageContent() {
                     className="flex w-full items-start justify-between gap-4 rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-4 text-left transition hover:border-[rgba(255,138,61,0.35)] hover:bg-[rgba(15,76,129,0.03)]"
                   >
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[0.95rem] border border-[rgba(15,76,129,0.08)] bg-white">
-                        <Image
-                          src={college.logo || college.image}
-                          alt={college.name}
-                          fill
-                          sizes="48px"
-                          className={college.logo ? "object-contain p-1" : "object-cover"}
-                        />
-                      </div>
+                      <CollegeLogoBadge
+                        src={college.logo || college.image}
+                        alt={college.name}
+                        mode={college.logo ? "logo" : "cover"}
+                        className="h-12 w-12 shrink-0 rounded-[0.95rem]"
+                        imageClassName={college.logo ? "p-1" : ""}
+                      />
                       <div className="min-w-0">
                       <p className="font-semibold text-[color:var(--text-dark)]">{college.name}</p>
                       <p className="mt-1 text-sm text-slate-500">{college.university}</p>

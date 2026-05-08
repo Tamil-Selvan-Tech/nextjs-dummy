@@ -26,6 +26,7 @@ import { Navbar } from "@/components/navbar";
 import {
   colleges as fallbackColleges,
   courses as fallbackCourses,
+  findBestCourseLookupMatch,
   formatCourseDisplayName,
   type College,
   type Course,
@@ -286,16 +287,12 @@ export function HomePage({
       return;
     }
 
-    if (hasCourse && !hasCollege && !hasLocation) {
-      const matchedCourse = coursesData.find(
-        (course) =>
-          normalizeSearchText(course.course) === normalizedCourseQuery ||
-          normalizeSearchText(course.course).includes(normalizedCourseQuery),
-      );
-      if (matchedCourse) {
-        router.push(`/explore/course/${encodeURIComponent(matchedCourse.course)}`);
-        return;
-      }
+      if (hasCourse && !hasCollege && !hasLocation) {
+        const matchedCourse = findBestCourseLookupMatch(coursesData, courseValue);
+        if (matchedCourse) {
+          router.push(`/explore/course/${encodeURIComponent(matchedCourse.course)}`);
+          return;
+        }
 
       router.push(`/search-results?q=${encodeURIComponent(courseValue)}`);
       return;
@@ -378,16 +375,12 @@ export function HomePage({
       return;
     }
 
-    if (hasCourse) {
-      const exactCourseMatch = coursesData.find(
-        (course) =>
-          normalizeSearchText(course.course) === normalizedCourseQuery ||
-          normalizeSearchText(course.course).includes(normalizedCourseQuery),
-      );
-      if (exactCourseMatch) {
-        router.push(`/explore/course/${encodeURIComponent(exactCourseMatch.course)}`);
-        return;
-      }
+      if (hasCourse) {
+        const exactCourseMatch = findBestCourseLookupMatch(coursesData, courseValue);
+        if (exactCourseMatch) {
+          router.push(`/explore/course/${encodeURIComponent(exactCourseMatch.course)}`);
+          return;
+        }
     }
 
     router.push(`/search-results?q=${encodeURIComponent(combinedQuery)}`);

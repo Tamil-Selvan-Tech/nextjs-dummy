@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import { colleges, courses } from "@/lib/site-data";
 import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
@@ -374,19 +375,19 @@ function SearchPageContent() {
                           >
                             <div className="flex min-w-0 items-center gap-3">
                               {String(college.logo || college.image || "").trim() && !brokenCollegeLogos[college.id] ? (
-                                <span className="inline-flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_6px_16px_rgba(15,76,129,0.08)]">
-                                  <img
-                                    src={String(college.logo || college.image || "")}
-                                    alt={college.name}
-                                    className="h-full w-full object-cover"
-                                    onError={() =>
-                                      setBrokenCollegeLogos((current) => ({
-                                        ...current,
-                                        [college.id]: true,
-                                      }))
-                                    }
-                                  />
-                                </span>
+                                <CollegeLogoBadge
+                                  src={String(college.logo || college.image || "")}
+                                  alt={college.name}
+                                  mode={college.logo ? "logo" : "cover"}
+                                  className="h-10 w-10 shrink-0 rounded-full"
+                                  imageClassName={college.logo ? "p-2" : ""}
+                                  onError={() =>
+                                    setBrokenCollegeLogos((current) => ({
+                                      ...current,
+                                      [college.id]: true,
+                                    }))
+                                  }
+                                />
                               ) : (
                                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
                                   <GraduationCap className="size-4.5" />

@@ -19,7 +19,8 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPortalShell } from "@/components/admin-portal-shell";
-import { ResponsiveTableWrapper, type TableColumn } from "@/components/responsive-table-wrapper";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
+import { ResponsiveTableWrapper } from "@/components/responsive-table-wrapper";
 import {
   clearAuth,
   readAuthToken,
@@ -2949,7 +2950,7 @@ function AdminPageContent() {
                 </div>
                 <h3 className="mt-3 text-lg font-bold text-slate-900">Change the home page hero background image</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Admin overview-la indha section use panni new background image upload panna mudiyum. Save aana udane home page hero background change aagum.
+                  Use this section in the Admin Overview to upload a new hero background image. Once you save it, the home page hero background will update immediately.
                 </p>
                 {currentUser?.isSuperAdmin ? (
                   <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -4834,8 +4835,12 @@ function AdminPageContent() {
                       ) : null}
                     </div>
                     {college.logo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={college.logo} alt={college.name || "College"} className="h-14 w-14 rounded-[1rem] border border-white bg-white p-2 object-contain shadow-[0_10px_18px_rgba(148,163,184,0.12)]" />
+                      <CollegeLogoBadge
+                        src={college.logo}
+                        alt={college.name || "College"}
+                        className="h-14 w-14 rounded-[1rem]"
+                        imageClassName="p-2"
+                      />
                     ) : (
                       <div className="flex h-14 w-14 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#eff6ff_0%,#fff7ed_100%)]">
                         <Building2 className="size-7 text-[#0f4c81]" />

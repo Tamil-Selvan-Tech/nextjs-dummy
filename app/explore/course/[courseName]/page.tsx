@@ -3,6 +3,7 @@ import { CourseDetailsView } from "@/components/course-details-view";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import {
   colleges,
+  courseMatchesLookup,
   formatCourseDisplayName,
   getRelatedCourses,
   normalizeText,
@@ -17,7 +18,7 @@ export default async function CourseDetailsPage({
   const decodedName = decodeURIComponent(courseName);
   const panelData = await fetchPublicPanelData();
   const relatedCourses = panelData.courses.filter(
-    (course) => normalizeText(course.course) === normalizeText(decodedName),
+    (course) => courseMatchesLookup(course.course, decodedName),
   );
 
   const safeRelatedCourses = relatedCourses.length ? relatedCourses : getRelatedCourses(decodedName);

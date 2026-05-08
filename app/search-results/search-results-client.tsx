@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import {
   colleges as fallbackColleges,
   courses as fallbackCourses,
@@ -62,6 +63,7 @@ export function SearchResultsClient({
   const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(initialKeyword);
+  const [brokenCollegeLogos, setBrokenCollegeLogos] = useState<Record<string, boolean>>({});
 
   const colleges = collegesData.length ? collegesData : fallbackColleges;
   const courses = coursesData.length ? coursesData : fallbackCourses;
@@ -269,13 +271,37 @@ export function SearchResultsClient({
                         onClick={() => router.push(`/college/${college.id}`)}
                         className="group rounded-[1.1rem] border border-[rgba(15,76,129,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(245,249,255,0.96))] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.22)] hover:shadow-[0_16px_28px_rgba(22,50,79,0.08)]"
                       >
-                        <p className="text-sm font-semibold text-[color:var(--text-dark)] transition group-hover:text-[color:var(--brand-primary)]">
-                          {college.name}
-                        </p>
-                        <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">{college.university}</p>
-                        <p className="mt-3 text-[11px] text-[color:var(--text-muted)]">
-                          {college.district}, {college.state}
-                        </p>
+                        <div className="flex items-start gap-3">
+                          {String(college.logo || college.image || "").trim() && !brokenCollegeLogos[college.id] ? (
+                            <CollegeLogoBadge
+                              src={String(college.logo || college.image || "")}
+                              alt={college.name}
+                              mode={college.logo ? "logo" : "cover"}
+                              className="h-14 w-14 shrink-0 rounded-[1rem]"
+                              imageClassName={college.logo ? "p-2" : ""}
+                              onError={() =>
+                                setBrokenCollegeLogos((current) => ({
+                                  ...current,
+                                  [college.id]: true,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[1rem] bg-[rgba(15,76,129,0.08)] text-lg font-bold text-[color:var(--brand-primary)]">
+                              {college.name.trim().charAt(0).toUpperCase() || "C"}
+                            </span>
+                          )}
+
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[color:var(--text-dark)] transition group-hover:text-[color:var(--brand-primary)]">
+                              {college.name}
+                            </p>
+                            <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">{college.university}</p>
+                            <p className="mt-3 text-[11px] text-[color:var(--text-muted)]">
+                              {college.district}, {college.state}
+                            </p>
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>

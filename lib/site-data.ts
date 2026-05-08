@@ -511,6 +511,105 @@ export const normalizeText = (value: string | null | undefined) =>
     .trim()
     .toLowerCase();
 
+export const normalizeCourseLookupText = (value: string | null | undefined) =>
+  normalizeText(value).replace(/[^a-z0-9]+/g, "");
+
+const normalizeCourseAliasText = (value: string | null | undefined) =>
+  normalizeCourseLookupText(value)
+    .replace(/^btech/, "be")
+    .replace(/^betech/, "be")
+    .replace(/^bachelorofengineering/, "be")
+    .replace(/^be/, "be")
+    .replace(/^mtech/, "me")
+    .replace(/^masterofengineering/, "me")
+    .replace(/^me/, "me");
+
+const getCourseLookupTokens = (value: string | null | undefined) =>
+  normalizeText(value)
+    .split(/[^a-z0-9]+/g)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+export const courseMatchesLookup = (courseName: string, query: string) => {
+  const normalizedCourse = normalizeText(courseName);
+  const normalizedQuery = normalizeText(query);
+  const compactCourse = normalizeCourseLookupText(courseName);
+  const compactQuery = normalizeCourseLookupText(query);
+  const aliasCourse = normalizeCourseAliasText(courseName);
+  const aliasQuery = normalizeCourseAliasText(query);
+  const courseTokens = getCourseLookupTokens(courseName);
+  const queryTokens = getCourseLookupTokens(query);
+
+  if (
+    !normalizedCourse ||
+    !normalizedQuery ||
+    !compactCourse ||
+    !compactQuery ||
+    !aliasCourse ||
+    !aliasQuery
+  ) {
+    return false;
+  }
+
+  if (
+    normalizedCourse === normalizedQuery ||
+    compactCourse === compactQuery ||
+    aliasCourse === aliasQuery
+  ) {
+    return true;
+  }
+
+  if (queryTokens.length === 1) {
+    const [queryToken] = queryTokens;
+    const tokenAlias = normalizeCourseAliasText(queryToken);
+    if (courseTokens.some((token) => normalizeCourseAliasText(token) === tokenAlias)) {
+      return true;
+    }
+  }
+
+  return compactQuery.length <= 3 && aliasCourse.startsWith(aliasQuery);
+};
+
+export const findBestCourseLookupMatch = <T extends { course: string }>(
+  courseRows: T[],
+  query: string,
+) => {
+  const normalizedQuery = normalizeText(query);
+  const compactQuery = normalizeCourseLookupText(query);
+  const aliasQuery = normalizeCourseAliasText(query);
+  const queryTokens = getCourseLookupTokens(query);
+
+  if (!normalizedQuery || !compactQuery || !aliasQuery) return undefined;
+
+  return courseRows
+    .map((course) => {
+      const normalizedCourse = normalizeText(course.course);
+      const compactCourse = normalizeCourseLookupText(course.course);
+      const aliasCourse = normalizeCourseAliasText(course.course);
+      const courseTokens = getCourseLookupTokens(course.course);
+      const exactTokenMatch = queryTokens.some((token) =>
+        courseTokens.some(
+          (courseToken) =>
+            normalizeCourseAliasText(courseToken) === normalizeCourseAliasText(token),
+        ),
+      );
+
+      let score = 0;
+
+      if (normalizedCourse === normalizedQuery) score += 500;
+      if (compactCourse === compactQuery) score += 450;
+      if (aliasCourse === aliasQuery) score += 420;
+      if (exactTokenMatch) score += 260;
+      if (compactQuery.length > 3 && normalizedCourse.includes(normalizedQuery)) score += 180;
+      if (compactQuery.length <= 3 && aliasCourse.startsWith(aliasQuery)) score += 120;
+
+      return score > 0 ? { course, score } : null;
+    })
+    .filter((item): item is { course: T; score: number } => Boolean(item))
+    .sort((left, right) => right.score - left.score || left.course.course.length - right.course.course.length)[0]
+    ?.course;
+};
+
 export const getCollegeById = (id: string) =>
   colleges.find((college) => college.id === id);
 
@@ -518,4 +617,4 @@ export const getCoursesForCollege = (collegeName: string) =>
   courses.filter((course) => course.college === collegeName);
 
 export const getRelatedCourses = (courseName: string) =>
-  courses.filter((course) => normalizeText(course.course) === normalizeText(courseName));
+  courses.filter((course) => courseMatchesLookup(course.course, courseName));

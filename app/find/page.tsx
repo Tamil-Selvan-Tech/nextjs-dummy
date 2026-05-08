@@ -279,8 +279,9 @@ export default function FindPage() {
     if (!showBArchFields) return "";
     const total = Number(boardMarksTotal);
     if (!Number.isFinite(total)) return "";
+    if (isLevel11) return ((total / 600) * 400).toFixed(1);
     return (total / 3).toFixed(1);
-  }, [boardMarksTotal, showBArchFields]);
+  }, [boardMarksTotal, isLevel11, showBArchFields]);
 
   const bArchCombinedScore = useMemo(() => {
     if (!showBArchNataField) return "";
@@ -506,11 +507,11 @@ export default function FindPage() {
       if (isLevel11) {
         return {
           comparisonTitle: "B.Arch Board Score",
-          scaleHint: "11th converted score is shown out of 200.",
-          expectedCutoff: 140,
-          scoreMax: 200,
+          scaleHint: "11th total is converted from 600 to 400 scale.",
+          expectedCutoff: 280,
+          scoreMax: 400,
           subjectMetrics: [
-            { label: "11th Conv.", score: Number(bArchConvertedScore) || 0, expected: 140, max: 200 },
+            { label: "11th Conv.", score: Number(bArchConvertedScore) || 0, expected: 280, max: 400 },
           ] as PerformanceMetric[],
         };
       }
@@ -1251,13 +1252,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     formula={
                       showBArchNataField
                         ? "12th (out of 600) to (out of 200) + NATA (out of 200)"
-                        : "11th mark total (out of 600) is converted to (out of 200)"
+                        : "(11th total / 600) x 400"
                     }
                     primaryLabel="Calculated Cutoff"
                     primaryValue={
                       showBArchNataField
                         ? `${bArchCombinedScore || "0.0"} / 400`
-                        : `${bArchConvertedScore || "0.0"} / 200`
+                        : `${bArchConvertedScore || "0.0"} / 400`
                     }
                     secondaryLabel={showBArchNataField ? "12th Converted" : undefined}
                     secondaryValue={showBArchNataField ? `${bArchConvertedScore || "0.0"} / 200` : undefined}
@@ -1743,7 +1744,11 @@ function FieldShell({
           : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
       }`}
     >
-      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+      <div
+        className={`grid min-h-[50px] items-center gap-3 ${
+          invalid ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]"
+        }`}
+      >
         <div
           className={`flex size-8 items-center justify-center rounded-[10px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
             invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
@@ -1755,9 +1760,11 @@ function FieldShell({
           <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
           {children}
         </div>
-        <div className="flex items-center justify-center">
-          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : null}
-        </div>
+        {invalid ? (
+          <div className="flex items-center justify-center">
+            <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} />
+          </div>
+        ) : null}
       </div>
       {error ? (
         <div className="mt-2 flex items-center gap-2 text-[0.9rem] font-medium text-[#ff4d5e]">
@@ -1949,7 +1956,7 @@ function BarChart({
 const inputClassName =
   "w-full h-[44px] sm:h-auto border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
 const academicInputClassName =
-  "w-full border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none transition placeholder:text-[#7e97c8]";
+  "w-full border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.8rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.92rem]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
 

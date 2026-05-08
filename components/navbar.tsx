@@ -262,11 +262,7 @@ export function Navbar() {
       className="page-container-full relative z-30 pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
       style={navbarThemeStyles}
     >
-      {!hideBackButton ? (
-        <Suspense fallback={null}>
-          <div className="mb-3"><PageBackButton /></div>
-        </Suspense>
-      ) : null}
+      {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
       <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-2 mr-1 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:pl-3 md:pr-4">
         <div className="flex flex-wrap items-center gap-5   md:flex-nowrap">
           <Link href="/" className="transition hover:opacity-80">
@@ -447,11 +443,11 @@ export function Navbar() {
         </div>
       </nav>
       {showBackUnderNav ? (
-        <Suspense fallback={null}>
-          <div className="mt-3 flex justify-start">
+        <div className="mt-3 flex justify-start">
+          <Suspense fallback={null}>
             <PageBackButton />
-          </div>
-        </Suspense>
+          </Suspense>
+        </div>
       ) : null}
 
       {isDrawerOpen ? (

@@ -454,7 +454,7 @@ export function ExploreClient({
                   onClick={() => router.push(`/college/${college.id}`)}
                   className={`group cursor-pointer overflow-hidden rounded-[1.15rem] border bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)] transition hover:-translate-y-0.5 ${
                     isSelectedCollege
-                      ? "border-[rgba(255,138,61,0.45)] ring-1 ring-[rgba(255,138,61,0.2)]"
+                      ? "border-[rgba(255,138,61,0.72)] ring-2 ring-[rgba(255,138,61,0.28)] shadow-[0_18px_34px_rgba(255,138,61,0.18)]"
                       : "border-[rgba(15,76,129,0.08)] hover:border-[rgba(255,138,61,0.28)]"
                   }`}
                 >
@@ -466,7 +466,7 @@ export function ExploreClient({
                       </div>
                     ) : null}
                     {isSelectedCollege ? (
-                      <div className="absolute left-2 top-2 rounded-full bg-[rgba(255,138,61,0.12)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-accent-deep)]">
+                      <div className="absolute left-2 top-2 rounded-full border border-[rgba(255,255,255,0.82)] bg-[linear-gradient(135deg,#ea580c,#fb923c)] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.2em] text-white shadow-[0_12px_24px_rgba(234,88,12,0.32)]">
                         Selected
                       </div>
                     ) : null}
