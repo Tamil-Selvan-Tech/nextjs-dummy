@@ -161,7 +161,7 @@ export function PopularComparisons({
             </div>
           </div>
 
-          <div className="mt-6 flex gap-4 overflow-x-auto overflow-y-visible pb-4 pt-2">
+          <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 pt-2">
             {popularColleges.map((college) => {
               const leftInfo = getTopCourseInfo(selectedCollege);
               const rightInfo = getTopCourseInfo(college);
@@ -171,14 +171,14 @@ export function PopularComparisons({
                   key={`popular-compare-${selectedCollege.id}-${college.id}`}
                   type="button"
                   onClick={() => onSelectComparison?.(selectedCollege, college)}
-                  className="group min-w-[18.5rem] flex-1 rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-5 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)]"
+                  className="group h-full w-[calc(100vw-4rem)] max-w-[22rem] shrink-0 snap-start rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-4 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] sm:min-w-[18.5rem] sm:max-w-none sm:p-5 md:w-[19rem] md:flex-1 md:snap-none"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                     <CollegeLogoBadge
                       src={selectedCollege.logo || selectedCollege.image}
                       alt={selectedCollege.name}
                       mode={selectedCollege.logo ? "logo" : "cover"}
-                      className="h-14 w-14 rounded-[1rem]"
+                      className="h-14 w-14 justify-self-start rounded-[1rem]"
                     />
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
                       VS
@@ -187,21 +187,21 @@ export function PopularComparisons({
                       src={college.logo || college.image}
                       alt={college.name}
                       mode={college.logo ? "logo" : "cover"}
-                      className="h-14 w-14 rounded-[1rem]"
+                      className="h-14 w-14 justify-self-end rounded-[1rem]"
                     />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-                    <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                  <div className="mt-4 grid grid-cols-2 items-start gap-4 text-center">
+                    <p className="min-h-[2.75rem] line-clamp-2 text-sm font-semibold leading-5 text-[color:var(--text-dark)]">
                       {selectedCollege.name}
                     </p>
-                    <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text-dark)]">
+                    <p className="min-h-[2.75rem] line-clamp-2 text-sm font-semibold leading-5 text-[color:var(--text-dark)]">
                       {college.name}
                     </p>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
+                    <div className="flex h-full flex-col rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
                       <p className="inline-flex items-center gap-1 text-[11.5px] text-slate-500">
                         <MapPin className="size-3" />
                         {selectedCollege.district}, {selectedCollege.state}
@@ -215,7 +215,7 @@ export function PopularComparisons({
                         <p><span className="font-semibold text-slate-700">Placement:</span> {selectedCollege.placementRate}%</p>
                       </div>
                     </div>
-                    <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
+                    <div className="flex h-full flex-col rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
                       <p className="inline-flex items-center gap-1 text-[11.5px] text-slate-500">
                         <MapPin className="size-3" />
                         {college.district}, {college.state}

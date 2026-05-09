@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import {
   colleges,
@@ -126,6 +126,16 @@ export function ExploreClient({
   const [showAllCourses, setShowAllCourses] = useState(false);
   const [homeCollegePage, setHomeCollegePage] = useState(0);
   const [allCollegePage, setAllCollegePage] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#all-courses") return;
+    if (safeInitialView !== "courses") return;
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("all-courses")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [safeInitialView]);
 
   const collegesMatchingCourseQuery = useMemo(() => {
     if (!searchText && !hasStreamFilter) return new Set<string>();
@@ -494,7 +504,7 @@ export function ExploreClient({
         ) : null}
 
         {viewMode === "courses" ? (
-          <div>
+          <div id="all-courses" className="scroll-mt-32">
               <h2 className="mb-5 text-lg font-bold text-[color:var(--text-dark)] md:text-xl">All Courses</h2>
             <div className="overflow-x-auto rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
               <table className="w-full min-w-[680px] text-left text-[13px]">

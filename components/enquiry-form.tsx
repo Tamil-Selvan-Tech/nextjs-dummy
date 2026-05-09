@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, MessageSquareText, Phone, UserRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { College, Course } from "@/lib/site-data";
+import { formatCourseDisplayName, type College, type Course } from "@/lib/site-data";
 import { readAuthToken, readCurrentUser } from "@/lib/auth-storage";
 import { request, withAuth } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
@@ -104,9 +104,11 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
     const optionSet = new Set<string>();
 
     filteredCourses.forEach((course) => {
-      const label = [String(course.course || "").trim(), String(course.specialization || "").trim()]
-        .filter(Boolean)
-        .join(" - ");
+      const label = formatCourseDisplayName(
+        String(course.course || "").trim(),
+        String(course.stream || course.courseCategory || "").trim(),
+        String(course.specialization || "").trim(),
+      );
 
       if (label) optionSet.add(label);
     });

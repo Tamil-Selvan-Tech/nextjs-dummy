@@ -621,16 +621,8 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
         return "Location: fill all required fields.";
       }
     }
-    if (stepIndex === 2) {
-      if (!formState.contactEmail.trim() || !formState.contactPhone.trim()) {
-        return "Contact: fill all required fields.";
-      }
-      if (!isValidIndianPhone(formState.contactPhone)) {
-        return "Contact: enter a valid 10 digit phone number.";
-      }
-      if (formState.alternatePhone.trim() && !isValidIndianPhone(formState.alternatePhone)) {
-        return "Contact: alternate phone must be a valid 10 digit number.";
-      }
+    if (stepIndex === 2 && !formState.contactEmail.trim()) {
+      return "Contact: official email is required.";
     }
     if (stepIndex === 3) {
       if (!formState.logo.trim() || !formState.coverImage.trim() || formState.images.length < 2) {
@@ -684,9 +676,7 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
       const next = { ...form, logo: uploaded.logo || form.logo, coverImage: uploaded.coverImage || form.coverImage, images: uploaded.images.length ? mergeUniqueValues(form.images, uploaded.images) : form.images, brochurePdfUrl: uploaded.brochurePdfUrl || form.brochurePdfUrl, ranking: formatRankingRangeForSave(form.ranking) };
       if (!next.name.trim() || !next.description.trim() || !next.establishedYear.trim() || !next.university.trim()) return setStatus({ type: "error", text: "Basic Info fields are required" });
       if (!next.country.trim() || !next.state.trim() || !next.city.trim() || !next.address.trim() || !next.pincode.trim()) return setStatus({ type: "error", text: "Location fields are required" });
-      if (!next.contactEmail.trim() || !next.contactPhone.trim()) return setStatus({ type: "error", text: "Contact fields are required" });
-      if (!isValidIndianPhone(next.contactPhone)) return setStatus({ type: "error", text: "Enter a valid 10 digit contact phone number" });
-      if (next.alternatePhone.trim() && !isValidIndianPhone(next.alternatePhone)) return setStatus({ type: "error", text: "Enter a valid 10 digit alternate phone number" });
+      if (!next.contactEmail.trim()) return setStatus({ type: "error", text: "Official email is required" });
       if (!next.logo.trim() || !next.coverImage.trim() || next.images.length < 2) return setStatus({ type: "error", text: "Logo, cover image, and at least 2 college images are required" });
       if (next.ranking.trim() && !parseRankingRange(next.ranking)) return setStatus({ type: "error", text: "Ranking format should be like 25-50" });
       if (!next.feeMin.trim() || !next.feeMax.trim() || !next.admissionProcess.trim() || !next.applicationMode.trim()) return setStatus({ type: "error", text: "Admission fields are required" });
@@ -846,10 +836,6 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
               <span className={labelClass}>Application Fee</span>
               <input className={inputClass} value={courseForm.applicationFee} onChange={(e) => setCourseField("applicationFee", e.target.value)} placeholder="Application fee" />
             </label>
-            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-              <input type="checkbox" checked={courseForm.isTopCourse} onChange={(e) => setCourseField("isTopCourse", e.target.checked)} />
-              Top Course
-            </label>
             <label className="md:col-span-2 xl:col-span-3">
               <span className={labelClass}>Admission Process</span>
               <textarea className={inputClass} rows={2} value={courseForm.admissionProcess} onChange={(e) => setCourseField("admissionProcess", e.target.value)} />
@@ -957,30 +943,6 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
                     placeholder="Official college email"
                     value={form.contactEmail}
                     onChange={(e) => setField("contactEmail", e.target.value)}
-                  />
-                </label>
-                <label>
-                  <span className={labelClass}>Phone Number *</span>
-                  <input
-                    className={inputClass}
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="10 digit mobile number"
-                    value={form.contactPhone}
-                    onChange={(e) => setField("contactPhone", normalizeIndianPhoneInput(e.target.value))}
-                  />
-                </label>
-                <label>
-                  <span className={labelClass}>Alternate Phone</span>
-                  <input
-                    className={inputClass}
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="10 digit alternate number"
-                    value={form.alternatePhone}
-                    onChange={(e) => setField("alternatePhone", normalizeIndianPhoneInput(e.target.value))}
                   />
                 </label>
                 <label>
@@ -1092,7 +1054,7 @@ export function CollegeDashboardAddCollegeForm({ token, currentUser, college, co
               </div>
             </div>
           ) : null}
-          {step === 4 ? <div className={sectionClass}><label><span className={labelClass}>Ranking</span><input className={inputClass} value={form.ranking} onChange={(e) => setField("ranking", normalizeRankingRangeInput(e.target.value))} onBlur={() => setField("ranking", formatRankingRangeForSave(form.ranking))} /></label><label><span className={labelClass}>Accreditation</span><input className={inputClass} list="college-accreditation-options" value={form.accreditation} onChange={(e) => setField("accreditation", e.target.value)} /></label><label><span className={labelClass}>Awards & Recognitions</span><input className={inputClass} value={form.awardsRecognitions} onChange={(e) => setField("awardsRecognitions", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Reviews</span><textarea className={inputClass} rows={3} value={form.reviews} onChange={(e) => setField("reviews", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Course Tags</span><input className={inputClass} value={form.courseTags} onChange={(e) => setField("courseTags", e.target.value)} /></label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isTopCollege} onChange={(e) => setField("isTopCollege", e.target.checked)} /> Top College</label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isBestCollege} onChange={(e) => setField("isBestCollege", e.target.checked)} /> Best College</label></div> : null}
+          {step === 4 ? <div className={sectionClass}><label><span className={labelClass}>Ranking</span><input className={inputClass} value={form.ranking} onChange={(e) => setField("ranking", normalizeRankingRangeInput(e.target.value))} onBlur={() => setField("ranking", formatRankingRangeForSave(form.ranking))} /></label><label><span className={labelClass}>Accreditation</span><input className={inputClass} list="college-accreditation-options" value={form.accreditation} onChange={(e) => setField("accreditation", e.target.value)} /></label><label><span className={labelClass}>Awards & Recognitions</span><input className={inputClass} value={form.awardsRecognitions} onChange={(e) => setField("awardsRecognitions", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Reviews</span><textarea className={inputClass} rows={3} value={form.reviews} onChange={(e) => setField("reviews", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Course Tags</span><input className={inputClass} value={form.courseTags} onChange={(e) => setField("courseTags", e.target.value)} /></label><label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.isTopCollege} onChange={(e) => setField("isTopCollege", e.target.checked)} /> Top College</label></div> : null}
           {step === 5 ? <div className="space-y-4"><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{facilityOptions.map((item) => { const selected = selectedFacilities.some((value) => value.toLowerCase() === item.toLowerCase()); const next = selected ? selectedFacilities.filter((value) => value.toLowerCase() !== item.toLowerCase()) : [...selectedFacilities, item]; return <button key={item} type="button" onClick={() => setField("facilities", next.join(", "))} className={`rounded-[1rem] border px-3 py-2 text-sm font-semibold transition ${selected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700"}`}>{item}</button>; })}</div><label><span className={labelClass}>Facilities</span><input className={inputClass} value={form.facilities} onChange={(e) => setField("facilities", e.target.value)} /></label></div> : null}
           {step === 6 ? <div className={sectionClass}><label><span className={labelClass}>Quotas</span><input className={inputClass} value={form.quotas} onChange={(e) => setField("quotas", e.target.value)} /></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Fees Structure *</span><div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={form.feeMin} onChange={(e) => setField("feeMin", e.target.value)} placeholder="Minimum fee" /><input className={inputClass} value={form.feeMax} onChange={(e) => setField("feeMax", e.target.value)} placeholder="Maximum fee" /></div></label><label className="md:col-span-2 xl:col-span-2"><span className={labelClass}>Admission Process *</span><textarea className={inputClass} rows={3} value={form.admissionProcess} onChange={(e) => setField("admissionProcess", e.target.value)} /></label><label><span className={labelClass}>Application Mode *</span><select className={inputClass} value={form.applicationMode} onChange={(e) => setField("applicationMode", e.target.value)}><option value="">Select application mode</option>{applicationModeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="md:col-span-2 xl:col-span-3"><span className={labelClass}>Scholarships</span><textarea className={inputClass} rows={2} value={form.scholarships} onChange={(e) => setField("scholarships", e.target.value)} /></label></div> : null}
           {step === 7 ? <div className="space-y-3"><div className="rounded-[1rem] border border-emerald-200 bg-emerald-50 p-3"><p className={`${labelClass} mb-1 text-emerald-700`}>Placement Percentage</p><input className={`${inputClass} border-emerald-200 bg-white`} value={form.placementRate} onChange={(e) => setField("placementRate", e.target.value)} placeholder="Placement %" /><p className="mt-2 text-xs text-emerald-700">Keep this as a key highlight point while submitting the college profile.</p></div><div className={sectionClass}><label><span className={labelClass}>Average Package</span><input className={inputClass} value={form.averagePackage} onChange={(e) => setField("averagePackage", e.target.value)} /></label><label><span className={labelClass}>Highest Package</span><input className={inputClass} value={form.highestPackage} onChange={(e) => setField("highestPackage", e.target.value)} /></label><label><span className={labelClass}>Companies Visited</span><input className={inputClass} value={form.companyCount} onChange={(e) => setField("companyCount", e.target.value)} /></label></div></div> : null}

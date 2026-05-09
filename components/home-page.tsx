@@ -230,6 +230,10 @@ export function HomePage({
   const [showRightArrowColleges, setShowRightArrowColleges] = useState(true);
   const [activeTrendingCourseIndex, setActiveTrendingCourseIndex] = useState(0);
 
+  const openAllCoursesPage = useCallback(() => {
+    router.push("/explore?view=courses#all-courses");
+  }, [router]);
+
   // Search bar submit and focus handlers
   const handleHeroSearch = useCallback(() => {
     if (searchFieldBlurTimeoutRef.current !== null) {
@@ -1966,7 +1970,7 @@ export function HomePage({
             </div>
             <button
               type="button"
-              onClick={() => router.push("/explore")}
+              onClick={openAllCoursesPage}
               className="scroll-fade-in scroll-delay-2 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]"
               data-scroll-animate
             >
@@ -1984,13 +1988,11 @@ export function HomePage({
               }
               className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
             >
-              {exploreCourseCards.slice(0, 10).map((course, index) => {
-                const delays = ["", "scroll-delay-1", "scroll-delay-2", "scroll-delay-3", "scroll-delay-4"];
+              {exploreCourseCards.slice(0, 10).map((course) => {
                 return (
                   <article
                     key={course.id}
-                    className={`luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] scroll-fade-in ${delays[index % 5]}`}
-                    data-scroll-animate
+                    className="luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem]"
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
@@ -2017,10 +2019,10 @@ export function HomePage({
                     <button
                       type="button"
                       onClick={() => router.push(course.href)}
-                      className="mt-auto inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)]"
+                      className="mt-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-1.5 text-[0.78rem] font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                     >
                       Course Overview
-                      <ArrowRight className="size-4" />
+                      <ArrowRight className="size-3.5 sm:size-4" />
                     </button>
                   </article>
                 );

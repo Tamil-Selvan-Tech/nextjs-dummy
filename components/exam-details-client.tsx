@@ -358,23 +358,24 @@ function RoutineTable({
         <h3 className="text-[1.6rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[180px_minmax(300px,1.2fr)_minmax(320px,1fr)] bg-[#dfeafe] text-sm font-semibold text-[#172033]">
-            <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
-            <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[1]}</div>
-            <div className="px-5 py-4">{columns[2]}</div>
-          </div>
-          {rows.map((row) => (
-            <div
-              key={`${row.time}-${row.activity}`}
-              className="grid grid-cols-[180px_minmax(300px,1.2fr)_minmax(320px,1fr)] border-t border-[#e5edf8] text-sm text-[#425066]"
-            >
-              <div className="border-r border-[#e5edf8] bg-[#fbfdff] px-5 py-4 font-semibold text-[#172033]">{row.time}</div>
-              <div className="border-r border-[#e5edf8] px-5 py-4 leading-7">{row.activity}</div>
-              <div className="px-5 py-4 leading-7">{row.notes}</div>
-            </div>
-          ))}
-        </div>
+        <table className="min-w-[900px] w-full border-collapse text-left text-sm text-[#425066]">
+          <thead>
+            <tr className="bg-[#dfeafe] text-[#172033]">
+              <th className="w-[180px] border-r border-[#cfe0ff] px-5 py-4 font-semibold">{columns[0]}</th>
+              <th className="w-[300px] border-r border-[#cfe0ff] px-5 py-4 font-semibold">{columns[1]}</th>
+              <th className="w-[320px] px-5 py-4 font-semibold">{columns[2]}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.time}-${row.activity}`} className="border-t border-[#e5edf8] align-top">
+                <td className="border-r border-[#e5edf8] bg-[#fbfdff] px-5 py-4 font-semibold text-[#172033]">{row.time}</td>
+                <td className="border-r border-[#e5edf8] px-5 py-4 leading-7">{row.activity}</td>
+                <td className="px-5 py-4 leading-7">{row.notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );
@@ -476,34 +477,33 @@ function TableSection({
   return (
     <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
       <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
-      <div className="mt-5 space-y-3 md:hidden">
-        {rows.map((row) => (
-          <article
-            key={`${row.key}-${row.value}`}
-            className="rounded-[1.1rem] border border-[#dbe5f5] bg-[#fbfdff] p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-          >
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[0]}</p>
-              <p className="mt-1 text-[0.96rem] font-semibold leading-7 text-[#1f2937]">{renderHighlightedText(row.key)}</p>
-            </div>
-            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[1]}</p>
-              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.value)}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="mt-5 hidden overflow-hidden rounded-[1.35rem] border border-[#cfe0ff] md:block">
-        <div className="grid grid-cols-2 bg-[#dfeafe] text-base font-semibold text-[#172033]">
-          <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
-          <div className="px-5 py-4">{columns[1]}</div>
+      <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+        <div className="overflow-x-auto">
+          <table className="min-w-[34rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+            <thead>
+              <tr className="bg-[#dfeafe] text-[#172033]">
+                <th className="w-[38%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                  {columns[0]}
+                </th>
+                <th className="px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                  {columns[1]}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.key}-${row.value}`} className="border-t border-[#dbe5f5] bg-white align-top">
+                  <td className="border-r border-[#dbe5f5] px-3 py-3 font-medium leading-6 text-[#1f2937] sm:px-5 sm:py-4 sm:leading-7">
+                    {renderHighlightedText(row.key)}
+                  </td>
+                  <td className="px-3 py-3 leading-6 sm:px-5 sm:py-4 sm:leading-7">
+                    {renderHighlightedText(row.value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {rows.map((row) => (
-          <div key={`${row.key}-${row.value}`} className="grid grid-cols-2 border-t border-[#dbe5f5] bg-white text-[1rem] text-[#425066]">
-            <div className="border-r border-[#dbe5f5] px-5 py-4 font-medium">{renderHighlightedText(row.key)}</div>
-            <div className="px-5 py-4">{renderHighlightedText(row.value)}</div>
-          </div>
-        ))}
       </div>
     </section>
   );
@@ -1026,16 +1026,32 @@ function GenericSectionContent({ section, details }: { section: ExamSection; det
                   {section.tableTitle ?? section.title}
                 </h3>
               </div>
-              <div className="grid grid-cols-2 bg-[#dfeafe] text-base font-semibold text-[#172033]">
-                <div className="border-r border-[#cfe0ff] px-5 py-4">{section.tableColumns[0]}</div>
-                <div className="px-5 py-4">{section.tableColumns[1]}</div>
+              <div className="overflow-x-auto">
+                <table className="min-w-[34rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+                  <thead>
+                    <tr className="bg-[#dfeafe] text-[#172033]">
+                      <th className="w-[38%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                        {section.tableColumns[0]}
+                      </th>
+                      <th className="px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                        {section.tableColumns[1]}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.tableRows.map((row) => (
+                      <tr key={`${row.key}-${row.value}`} className="border-t border-[#dbe5f5] bg-white align-top">
+                        <td className="border-r border-[#dbe5f5] px-3 py-3 font-medium leading-6 text-[#1f2937] sm:px-5 sm:py-4 sm:leading-7">
+                          {renderHighlightedText(row.key)}
+                        </td>
+                        <td className="px-3 py-3 leading-6 sm:px-5 sm:py-4 sm:leading-7">
+                          {renderHighlightedText(row.value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              {section.tableRows.map((row) => (
-                <div key={`${row.key}-${row.value}`} className="grid grid-cols-2 border-t border-[#dbe5f5] bg-white text-[1rem] text-[#425066]">
-                  <div className="border-r border-[#dbe5f5] px-5 py-4 font-medium">{renderHighlightedText(row.key)}</div>
-                  <div className="px-5 py-4">{renderHighlightedText(row.value)}</div>
-                </div>
-              ))}
             </div>
           </div>
         </section>
@@ -1456,40 +1472,39 @@ function TripleTableSection({
   return (
     <section className="rounded-[1.8rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
       <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
-      <div className="mt-5 space-y-3 md:hidden">
-        {rows.map((row) => (
-          <article
-            key={`${row.first}-${row.second}-${row.third}`}
-            className="rounded-[1.1rem] border border-[#dbe5f5] bg-[#fbfdff] p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-          >
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[0]}</p>
-              <p className="mt-1 text-[0.96rem] font-semibold leading-7 text-[#1f2937]">{renderHighlightedText(row.first)}</p>
-            </div>
-            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[1]}</p>
-              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.second)}</p>
-            </div>
-            <div className="mt-3 border-t border-[#e2e8f0] pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">{columns[2]}</p>
-              <p className="mt-1 text-[0.95rem] leading-7 text-[#425066]">{renderHighlightedText(row.third)}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="mt-5 hidden overflow-hidden rounded-[1.35rem] border border-[#cfe0ff] md:block">
-        <div className="grid grid-cols-3 bg-[#dfeafe] text-base font-semibold text-[#172033]">
-          <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[0]}</div>
-          <div className="border-r border-[#cfe0ff] px-5 py-4">{columns[1]}</div>
-          <div className="px-5 py-4">{columns[2]}</div>
+      <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
+        <div className="overflow-x-auto">
+          <table className="min-w-[52rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+            <thead>
+              <tr className="bg-[#dfeafe] text-[#172033]">
+                <th className="w-[20%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                  {columns[0]}
+                </th>
+                <th className="w-[42%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                  {columns[1]}
+                </th>
+                <th className="w-[38%] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
+                  {columns[2]}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.first}-${row.second}-${row.third}`} className="border-t border-[#dbe5f5] bg-white align-top">
+                  <td className="border-r border-[#dbe5f5] px-3 py-3 font-medium leading-6 text-[#1f2937] sm:px-5 sm:py-4 sm:leading-7">
+                    {renderHighlightedText(row.first)}
+                  </td>
+                  <td className="border-r border-[#dbe5f5] px-3 py-3 leading-6 sm:px-5 sm:py-4 sm:leading-7">
+                    {renderHighlightedText(row.second)}
+                  </td>
+                  <td className="px-3 py-3 leading-6 sm:px-5 sm:py-4 sm:leading-7">
+                    {renderHighlightedText(row.third)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {rows.map((row) => (
-          <div key={`${row.first}-${row.second}-${row.third}`} className="grid grid-cols-3 border-t border-[#dbe5f5] bg-white text-[1rem] text-[#425066]">
-            <div className="border-r border-[#dbe5f5] px-5 py-4 font-medium">{renderHighlightedText(row.first)}</div>
-            <div className="border-r border-[#dbe5f5] px-5 py-4">{renderHighlightedText(row.second)}</div>
-            <div className="px-5 py-4">{renderHighlightedText(row.third)}</div>
-          </div>
-        ))}
       </div>
     </section>
   );

@@ -142,11 +142,11 @@ export function StudyPreferenceModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1200] flex items-start justify-center bg-[rgba(7,20,38,0.42)] px-3 pb-4 pt-10 backdrop-blur-[4px] sm:px-4 sm:pb-6 sm:pt-16"
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-[rgba(7,20,38,0.42)] px-3 py-3 backdrop-blur-[4px] sm:items-start sm:px-4 sm:pb-6 sm:pt-16"
       onClick={onClose}
     >
       <div
-        className="mx-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.99))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
+        className="mx-auto grid max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,248,255,0.99))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.18)] sm:max-h-[calc(100dvh-4rem)] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="relative shrink-0 overflow-hidden border-b border-[rgba(15,76,129,0.08)] bg-[rgba(250,252,255,0.98)] px-4 py-4 sm:px-6 sm:py-5">
@@ -178,7 +178,7 @@ export function StudyPreferenceModal({
           </div>
         </div>
 
-        <div className="grid min-h-0 overflow-hidden bg-[rgba(248,251,255,0.98)] lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid min-h-0 overflow-y-auto bg-[rgba(248,251,255,0.98)] lg:grid-cols-[0.95fr_1.05fr] lg:overflow-hidden">
           <section className="flex min-h-0 flex-col border-b border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.98)] p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-6">
             <div className="mb-4 flex items-start gap-3">
               <div className="rounded-2xl bg-[rgba(15,76,129,0.08)] p-3 text-[color:var(--brand-primary)]">

@@ -782,11 +782,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
                   <div className="mt-auto pt-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <button type="button" onClick={downloadBrochure} className="inline-flex min-w-full flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)]">
+                    <button type="button" onClick={downloadBrochure} className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] md:flex-1">
                       <Download className="size-4" />
                       {brochureUrl ? "Open Brochure" : "Download / Print"}
                     </button>
-                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-5 py-3 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)]">
+                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-5 py-3 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] md:flex-1">
                       Compare College
                       <ArrowRight className="size-4" />
                     </button>
@@ -1288,70 +1288,68 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   Scroll horizontally to view all course columns.
                 </div>
                 <div className="responsive-data-table">
-                <div className="grid grid-cols-[minmax(240px,2.2fr)_minmax(90px,0.9fr)_minmax(90px,0.9fr)_minmax(250px,2fr)_minmax(90px,0.9fr)_minmax(190px,1.5fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(110px,0.9fr)] gap-0 divide-x divide-[rgba(15,76,129,0.22)] border-b border-[rgba(15,76,129,0.22)] bg-[rgba(15,76,129,0.06)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                  <div className="px-3 py-2">Course</div>
-                  <div className="px-3 py-2 text-center whitespace-nowrap">Mode</div>
-                  <div className="px-3 py-2 text-center whitespace-nowrap">Duration</div>
-                  <div className="px-3 py-2 text-left whitespace-nowrap">Cutoff</div>
-                  <div className="px-3 py-2 text-center whitespace-nowrap">Intake</div>
-                  <div className="px-3 py-2 text-center whitespace-nowrap">Min Qualification</div>
-                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">Semester Fee</div>
-                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">Total Fee</div>
-                  <div className="bg-[rgba(15,76,129,0.12)] px-3 py-2 text-center whitespace-nowrap">App Fee</div>
-                </div>
-                <div className="divide-y divide-[rgba(15,76,129,0.2)]">
-                  {(groupedCourses.find((group) => group.key === expandedCourseKey)?.courses || []).map((course) => (
-                    <div key={`modal-${course.id}`} className="grid grid-cols-[minmax(240px,2.2fr)_minmax(90px,0.9fr)_minmax(90px,0.9fr)_minmax(250px,2fr)_minmax(90px,0.9fr)_minmax(190px,1.5fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(110px,0.9fr)] gap-0 divide-x divide-[rgba(15,76,129,0.16)] bg-white text-sm text-[color:var(--text-dark)]">
-                      <div className="px-3 py-3 font-semibold">{getCourseTitle(course)}</div>
-                      <div className="px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</div>
-                      <div className="px-3 py-3 text-left text-xs leading-5 text-[color:var(--text-muted)]">
-                        {renderCutoffDetails(course)}
-                      </div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {course.minimumQualification || "-"}
-                      </div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {formatCompactIndianCurrency(course.semesterFees)}
-                      </div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {formatCompactIndianCurrency(course.totalFees)}
-                      </div>
-                      <div className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">
-                        {formatCompactIndianCurrency(course.applicationFee)}
-                      </div>
-                      {course.description ? (
-                        <div className="col-span-full border-t border-[rgba(15,76,129,0.2)] bg-[rgba(15,76,129,0.02)] px-3 py-3 text-xs text-[color:var(--text-muted)]">
-                          <span className="inline-flex rounded-full bg-[rgba(15,76,129,0.1)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                            Course Description
-                          </span>
-                          <p className="mt-2 text-xs leading-5 text-[color:var(--text-muted)]">{course.description}</p>
-                        </div>
-                      ) : null}
-                      {course.entranceExams?.length ? (
-                        <div className="col-span-12">
-                          <details className="rounded-[0.85rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
-                            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                              Entrance Exams
-                            </summary>
-                            <div className="mt-2 space-y-2">
-                              {course.entranceExams.map((exam, index) => (
-                                <div key={`${course.id}-exam-${index}`} className="rounded-[0.75rem] border border-[rgba(15,76,129,0.08)] bg-white px-3 py-2">
-                                  <p className="text-xs font-semibold text-[color:var(--text-dark)]">{exam.examName || `Exam ${index + 1}`}</p>
-                                  {exam.cutoffScoreOrRank ? <p className="mt-1 text-[11px]">Cutoff: {exam.cutoffScoreOrRank}</p> : null}
-                                  {exam.weightage ? <p className="text-[11px]">Weightage: {exam.weightage}</p> : null}
-                                  {exam.paperOrSyllabus ? <p className="text-[11px]">Paper: {exam.paperOrSyllabus}</p> : null}
-                                  {exam.preparationNotes ? <p className="mt-1 text-[11px]">{exam.preparationNotes}</p> : null}
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
+                  <table className="min-w-[82rem] w-full border-collapse text-left text-sm text-[color:var(--text-dark)]">
+                    <thead>
+                      <tr className="bg-[rgba(15,76,129,0.08)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                        <th className="w-[240px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2">Course</th>
+                        <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Mode</th>
+                        <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Duration</th>
+                        <th className="w-[250px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-left whitespace-nowrap">Cutoff</th>
+                        <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Intake</th>
+                        <th className="w-[190px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Min Qualification</th>
+                        <th className="w-[130px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Semester Fee</th>
+                        <th className="w-[130px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Total Fee</th>
+                        <th className="w-[110px] px-3 py-2 text-center whitespace-nowrap">App Fee</th>
+                      </tr>
+                    </thead>
+                      {(groupedCourses.find((group) => group.key === expandedCourseKey)?.courses || []).map((course) => (
+                        <tbody key={`modal-${course.id}`}>
+                          <tr className="border-t border-[rgba(15,76,129,0.2)] bg-white align-top">
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 font-semibold">{getCourseTitle(course)}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-left text-xs leading-5 text-[color:var(--text-muted)]">{renderCutoffDetails(course)}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.minimumQualification || "-"}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.semesterFees)}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.totalFees)}</td>
+                            <td className="px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.applicationFee)}</td>
+                          </tr>
+                          {course.description ? (
+                            <tr key={`modal-${course.id}-description`} className="border-t border-[rgba(15,76,129,0.2)] bg-[rgba(15,76,129,0.02)]">
+                              <td colSpan={9} className="px-3 py-3 text-xs text-[color:var(--text-muted)]">
+                                <span className="inline-flex rounded-full bg-[rgba(15,76,129,0.1)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                                  Course Description
+                                </span>
+                                <p className="mt-2 text-xs leading-5 text-[color:var(--text-muted)]">{course.description}</p>
+                              </td>
+                            </tr>
+                          ) : null}
+                          {course.entranceExams?.length ? (
+                            <tr key={`modal-${course.id}-entrance`} className="border-t border-[rgba(15,76,129,0.2)] bg-white">
+                              <td colSpan={9} className="px-3 py-3">
+                                <details className="rounded-[0.85rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
+                                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                                    Entrance Exams
+                                  </summary>
+                                  <div className="mt-2 space-y-2">
+                                    {course.entranceExams.map((exam, index) => (
+                                      <div key={`${course.id}-exam-${index}`} className="rounded-[0.75rem] border border-[rgba(15,76,129,0.08)] bg-white px-3 py-2">
+                                        <p className="text-xs font-semibold text-[color:var(--text-dark)]">{exam.examName || `Exam ${index + 1}`}</p>
+                                        {exam.cutoffScoreOrRank ? <p className="mt-1 text-[11px]">Cutoff: {exam.cutoffScoreOrRank}</p> : null}
+                                        {exam.weightage ? <p className="text-[11px]">Weightage: {exam.weightage}</p> : null}
+                                        {exam.paperOrSyllabus ? <p className="text-[11px]">Paper: {exam.paperOrSyllabus}</p> : null}
+                                        {exam.preparationNotes ? <p className="mt-1 text-[11px]">{exam.preparationNotes}</p> : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      ))}
+                  </table>
                 </div>
               </div>
             </div>
