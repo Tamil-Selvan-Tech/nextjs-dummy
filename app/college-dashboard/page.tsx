@@ -223,11 +223,11 @@ export default function CollegeDashboardPage() {
       {portalState.college ? (
         <article className="luxe-card reveal-up delay-2 rounded-[1.2rem] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                 College Details
               </p>
-              <h2 className="mt-1.5 text-lg font-bold text-slate-900 sm:text-xl">
+              <h2 className="mt-1.5 break-words text-lg font-bold text-slate-900 sm:text-xl">
                 {portalState.college.name || "Your College"}
               </h2>
               <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
@@ -250,7 +250,7 @@ export default function CollegeDashboardPage() {
                 }, 50);
               }}
               disabled={!hasExistingCollege || isEditCooldownActive}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               Edit Your College
               <ArrowRight className="size-4" />
