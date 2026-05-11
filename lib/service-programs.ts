@@ -1,5 +1,15 @@
+export const serviceProgramSlugs = [
+  "career-guidance",
+  "skill-programs",
+  "placements",
+  "internships",
+  "study-abroad",
+] as const;
+
+export type ServiceProgramSlug = (typeof serviceProgramSlugs)[number];
+
 export type ServiceProgram = {
-  slug: string;
+  slug: ServiceProgramSlug;
   menuLabel: string;
   title: string;
   description: string;

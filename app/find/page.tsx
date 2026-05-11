@@ -810,30 +810,14 @@ export default function FindPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
-<div className="px-2 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
-  <div className="mx-auto grid w-full max-w-[1440px] gap-4 sm:gap-5 md:gap-6 
-grid-cols-1 md:grid-cols-2 items-start">
- <section className="w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 
+<div className="px-2 py-4 sm:px-4 sm:py-6 md:px-5 md:py-8 xl:px-6">
+  <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-4 sm:gap-5 md:gap-5 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
+ <section className="min-w-0 w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 xl:max-w-[760px] xl:justify-self-start
 p-3 sm:p-4 md:p-6 xl:p-7">
             <div className="flex flex-col gap-4 sm:gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                {/* <div className="flex items-center gap-3 text-[#2d5bff]">
-                  <GraduationCap className="size-7 fill-[#2d5bff] stroke-[1.6]" />
-                  <span className="text-[1.05rem] font-bold tracking-tight">CUTOFF ZONE</span>
-                </div> */}
-                <h1 className="mt-4 max-w-[680px] text-[1.3rem] font-bold leading-tight tracking-[-0.04em] text-[#11275d] sm:text-[1.5rem] md:mt-5 md:text-[2rem] whitespace-nowrap">
-  Find the best colleges for your future.
-</h1>
-                <p className="mt-2.5 text-[0.94rem] text-[#4f689b] md:text-[0.98rem]">
-                  Enter your details and get{" "}
-                  <span className="font-semibold text-[#355cff]">accurate college predictions</span>{" "}
-                  in seconds
-                </p>
-              </div>
-
               {/* <div className="inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2 self-start rounded-[14px] border-2 border-[#8fd9bc] bg-[#effaf5] px-3.5 py-2 text-[0.82rem] font-semibold text-[#0f7b5c] shadow-[0_10px_24px_rgba(20,138,103,0.08)] sm:w-auto sm:justify-start">
                 <ShieldCheck className="size-4" />
                 100% Safe &amp; Secure
@@ -887,13 +871,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
                 router.push(`/cutoff?${params.toString()}`);
               }}
-              className="mt-3 rounded-[22px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#fdfefe_100%)] p-3.5 shadow-[0_20px_48px_rgba(89,107,168,0.12)] sm:p-4 md:p-5"
+              className="mt-3 p-0"
             >
-              <div className="mb-6">
-                <h2 className="text-[1.55rem] font-bold tracking-[-0.04em] text-[#162b62]">Personal Details</h2>
-                <p className="mt-1.5 text-[0.92rem] text-[#4f689b]">Enter your basic information to get started</p>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldShell fieldId="name" icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
                   <input
@@ -984,13 +963,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   </FieldShell>
                 ) : null}
 
-                <div
-                  className={
-                    showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields || showParamedicalFields
-                      ? ""
-                      : "md:col-span-2"
-                  }
-                >
+                <div>
                   <FieldShell fieldId="degree" icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
                     <select
                       value={selectedDegree}
@@ -1602,15 +1575,15 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               {trustItems.map((item) => (
                 <div
                   key={item.title}
-                  className="rounded-[20px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9ff_100%)] px-4 py-4 shadow-[0_14px_30px_rgba(76,104,205,0.1)]"
+                  className="rounded-[18px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9ff_100%)] px-3 py-2.5 shadow-[0_12px_24px_rgba(76,104,205,0.1)]"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-full border border-[#c8d8ff] bg-[linear-gradient(180deg,#eef3ff_0%,#e5ecff_100%)] text-[#355cff] shadow-[0_10px_20px_rgba(76,104,205,0.12)]">
-                      <item.icon className="size-6 stroke-[2.2]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-10 items-center justify-center rounded-full border border-[#c8d8ff] bg-[linear-gradient(180deg,#eef3ff_0%,#e5ecff_100%)] text-[#355cff] shadow-[0_8px_16px_rgba(76,104,205,0.12)]">
+                      <item.icon className="size-5 stroke-[2.2]" />
                     </div>
                     <div>
-                      <div className="text-[0.94rem] font-semibold tracking-[-0.03em] text-[#172b60]">{item.title}</div>
-                      <div className="mt-0.5 text-[0.84rem] text-[#4f689b]">{item.description}</div>
+                      <div className="text-[0.88rem] font-semibold tracking-[-0.03em] text-[#172b60]">{item.title}</div>
+                      <div className="mt-0.5 text-[0.78rem] leading-snug text-[#4f689b]">{item.description}</div>
                     </div>
                   </div>
                 </div>
@@ -1618,9 +1591,9 @@ p-3 sm:p-4 md:p-6 xl:p-7">
             </div>
           </div>
         </section>
-<aside className="w-full order-1 md:order-2 mt-4 md:mt-0 md:sticky md:top-4">
-          <div className="mt-2 space-y-2">
-  <div className="rounded-[20px] border border-[#b6ccff] bg-white/95 p-3 shadow-[0_8px_20px_rgba(88,113,196,0.06)]">
+<aside className="min-w-0 w-full order-1 mt-4 md:order-2 md:mt-0 md:sticky md:top-4">
+          <div className="mt-2 grid gap-3 xl:grid-cols-2 xl:items-stretch">
+  <div className="min-w-0 rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3 shadow-[0_12px_30px_rgba(88,113,196,0.08)] xl:min-h-[500px]">
     
     <div className="flex items-center gap-2 text-[#17306f]">
       <TrendingUp className="size-4 text-[#2f63ff]" />
@@ -1649,77 +1622,71 @@ p-3 sm:p-4 md:p-6 xl:p-7">
       {chartConfig.scaleHint}
     </div>
 
-    <div className="-mt-4">
+    <div className="-mt-4 xl:min-h-[310px]">
       <BarChart metrics={chartConfig.subjectMetrics} />
     </div>
 
   </div>
-</div>
-
-          
-
-            <div className="rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3 shadow-[0_12px_30px_rgba(88,113,196,0.08)]">
+            <div className="min-w-0 rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-2.5 shadow-[0_12px_30px_rgba(88,113,196,0.08)] xl:min-h-[500px]">
               <h3 className="text-[1rem] font-semibold text-[#17306f]">Your Cutoff Score</h3>
-              <p className="mt-1 text-[0.82rem] text-[#5f79b1]">
+              <p className="mt-0.5 text-[0.76rem] text-[#5f79b1]">
                 Check your eligibility and college chances based on your score
               </p>
-              <div className="mt-2.5 rounded-[22px] border border-[#d9e4ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-2.5 shadow-[inset_0_0_0_1px_rgba(232,239,255,0.7)]">
-                <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.92fr)] md:items-center">
-                  <div className="px-1.5 text-center">
-                    <div className="text-[0.88rem] font-semibold text-[#506aa3]">Your Cutoff Score</div>
-                    <div className="mt-2.5 flex items-end justify-center gap-2 text-[#17306f]">
-                      <span className="text-[2.9rem] font-bold leading-none tracking-[-0.06em] text-[#2f63ff]">
+              <div className="mt-2 rounded-[20px] border border-[#d9e4ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-2 shadow-[inset_0_0_0_1px_rgba(232,239,255,0.7)]">
+                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.92fr)] md:items-center">
+                  <div className="px-1 text-center">
+                    <div className="text-[0.8rem] font-semibold text-[#506aa3]">Your Cutoff Score</div>
+                    <div className="mt-1.5 flex items-end justify-center gap-1.5 text-[#17306f]">
+                      <span className="text-[2.35rem] font-bold leading-none tracking-[-0.06em] text-[#2f63ff]">
                         {Math.round(liveCutoffValue)}
                       </span>
-                      <span className="pb-1 text-[1.05rem] font-semibold text-[#6f86b7]">/ {cutoffScaleMax}</span>
+                      <span className="pb-0.5 text-[0.92rem] font-semibold text-[#6f86b7]">/ {cutoffScaleMax}</span>
                     </div>
-                    <div className="mx-auto mt-3 h-2.5 w-full max-w-[220px] overflow-hidden rounded-full bg-[#e5ecfa]">
+                    <div className="mx-auto mt-2 h-2 w-full max-w-[190px] overflow-hidden rounded-full bg-[#e5ecfa]">
                       <div
                         className="h-full rounded-full bg-[linear-gradient(90deg,#2f63ff_0%,#3e79ff_100%)]"
                         style={{ width: `${scoreProgress}%` }}
                       />
                     </div>
-                    <div className="mt-2.5 text-[0.8rem] font-medium text-[#4f689b]">{scoreFeedback}</div>
+                    <div className="mt-1.5 text-[0.72rem] font-medium leading-snug text-[#4f689b]">{scoreFeedback}</div>
                   </div>
                   <div className="h-px w-full bg-[#dfe7ff] md:hidden" />
                   <div className="hidden h-full w-px bg-[#dfe7ff] md:block" />
-                  <div className="px-1.5 text-center">
-                    <div className="text-[0.88rem] font-semibold text-[#506aa3]">Your Mood</div>
-                    <div className="mt-2 text-[3.3rem] leading-none">{activeMood.emoji}</div>
-                    <div className="mt-1.5 text-[1.45rem] font-bold tracking-[-0.04em] text-[#2f63ff]">{activeMood.label}</div>
-                    <div className="mt-1 text-[0.78rem] font-medium text-[#5f79b1]">{activeMood.summary}</div>
+                  <div className="px-1 text-center">
+                    <div className="text-[0.8rem] font-semibold text-[#506aa3]">Your Mood</div>
+                    <div className="mt-1.5 text-[2.55rem] leading-none">{activeMood.emoji}</div>
+                    <div className="mt-1 text-[1.15rem] font-bold tracking-[-0.04em] text-[#2f63ff]">{activeMood.label}</div>
+                    <div className="mt-0.5 text-[0.72rem] font-medium leading-snug text-[#5f79b1]">{activeMood.summary}</div>
                   </div>
                 </div>
               </div>
-              <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-3">
                 {moodOptions.map((item) => {
                   const isActive = item.label === activeMood.label;
 
                   return (
                     <div
                       key={item.label}
-                      className={`relative rounded-[18px] border bg-white px-2 py-3 text-center shadow-[0_8px_18px_rgba(88,113,196,0.06)] sm:px-2.5 ${
+                      className={`relative flex min-h-[92px] flex-col items-center justify-center rounded-[16px] border bg-white px-1.5 py-2 text-center shadow-[0_8px_18px_rgba(88,113,196,0.06)] sm:px-2 xl:min-h-[102px] ${
                         isActive ? "border-[#7aa3ff] shadow-[0_10px_24px_rgba(47,99,255,0.12)]" : "border-[#d9e4ff]"
                       }`}
                     >
                       {isActive ? (
-                        <div className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#2f63ff] text-[0.8rem] font-bold text-white">
+                        <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#2f63ff] text-[0.72rem] font-bold text-white">
                           {"\u2713"}
                         </div>
                       ) : null}
-                      <div className="text-[2.35rem] leading-none">{item.emoji}</div>
-                      <div className="mt-2 text-[0.78rem] font-semibold text-[#17306f] sm:text-[0.82rem]">{item.label}</div>
+                      <div className="text-[1.9rem] leading-none">{item.emoji}</div>
+                      <div className="mt-1 text-[0.72rem] font-semibold text-[#17306f] sm:text-[0.76rem]">{item.label}</div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-2.5 flex items-center gap-2.5 rounded-[18px] bg-[linear-gradient(180deg,#f2f6ff_0%,#ebf1ff_100%)] px-3 py-2 text-[#17306f]">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#2f63ff] shadow-[0_6px_16px_rgba(47,99,255,0.12)]">
-                  <Sparkles className="size-4.5" />
-                </div>
-                <p className="text-[0.76rem] font-medium leading-relaxed text-[#27477c]">{moodTip}</p>
+              <div className="mt-2 flex items-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#f2f6ff_0%,#ebf1ff_100%)] px-2.5 py-1.5 text-[#17306f]">
+                
               </div>
             </div>
+          </div>
         </aside>
         </div>
       </div>
@@ -1745,19 +1712,19 @@ function FieldShell({
   return (
     <label
       data-field-id={fieldId}
-      className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+      className={`block rounded-[14px] border-2 px-2.5 py-1 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
           : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
       }`}
     >
       <div
-        className={`grid min-h-[50px] items-center gap-3 ${
+        className={`grid min-h-[36px] items-center gap-2 ${
           invalid ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]"
         }`}
       >
         <div
-          className={`flex size-8 items-center justify-center rounded-[10px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
+          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
             invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
           }`}
         >
@@ -1803,15 +1770,15 @@ function AcademicShell({
   return (
     <label
       data-field-id={fieldId}
-      className={`block rounded-[14px] border-2 px-3.5 py-2 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+      className={`block rounded-[14px] border-2 px-2.5 py-1 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
           : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
       }`}
     >
-      <div className="grid min-h-[50px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+      <div className="grid min-h-[36px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <div
-          className={`flex size-8 items-center justify-center rounded-[10px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
+          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
             invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
           }`}
         >
@@ -1821,7 +1788,7 @@ function AcademicShell({
           <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
           {hint ? (
             <div
-              className={`mb-1 inline-flex rounded-full px-2.5 py-1 text-[0.73rem] font-semibold tracking-[0.01em] ${
+              className={`mb-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[0.66rem] font-semibold tracking-[0.01em] ${
                 invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#2f63ff]"
               }`}
             >
@@ -1860,15 +1827,15 @@ function ScoreHighlight({
   secondaryValue?: string;
 }) {
   return (
-    <div className="rounded-[18px] border-2 border-[#8fb3ff] bg-[linear-gradient(135deg,#edf4ff_0%,#f7fbff_55%,#eef3ff_100%)] px-4 py-3 shadow-[0_12px_28px_rgba(76,104,205,0.12)]">
+    <div className="rounded-[18px] border-2 border-[#8fb3ff] bg-[linear-gradient(135deg,#edf4ff_0%,#f7fbff_55%,#eef3ff_100%)] px-4 py-2.5 shadow-[0_12px_28px_rgba(76,104,205,0.12)]">
       <div className="flex items-center gap-2 text-[#17306f]">
         <div className="flex size-8 items-center justify-center rounded-full border border-[#bdd1ff] bg-white text-[#2f63ff] shadow-[0_6px_16px_rgba(76,104,205,0.12)]">
           <Calculator className="size-4" />
         </div>
         <span className="text-[0.84rem] font-semibold uppercase tracking-[0.18em]">{title}</span>
       </div>
-      <p className="mt-2 text-[0.84rem] text-[#4f689b]">{formula}</p>
-      <div className="mt-2.5 grid gap-2 rounded-[14px] border border-[#bcd0ff] bg-white/90 px-3.5 py-2.5 shadow-[inset_0_0_0_1px_rgba(191,212,255,0.7)] md:grid-cols-2">
+      <p className="mt-1.5 text-[0.84rem] text-[#4f689b]">{formula}</p>
+      <div className="mt-2 grid gap-2 rounded-[14px] border border-[#bcd0ff] bg-white/90 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(191,212,255,0.7)] md:grid-cols-2">
         <div className="min-w-0">
           <div className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#2f63ff]">{primaryLabel}</div>
           <div className="mt-1 text-[1.28rem] font-bold tracking-[-0.04em] text-[#17306f]">{primaryValue}</div>
@@ -1961,9 +1928,9 @@ function BarChart({
 }
 
 const inputClassName =
-  "w-full h-[44px] sm:h-auto border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
+  "w-full h-[32px] sm:h-[34px] border-0 bg-transparent p-0 text-[0.88rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
 const academicInputClassName =
-  "w-full border-0 bg-transparent p-0 text-[0.92rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.8rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.92rem]";
+  "w-full h-[32px] sm:h-[34px] border-0 bg-transparent p-0 text-[0.88rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.76rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.88rem]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
 

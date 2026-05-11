@@ -1,23 +1,32 @@
-import { ArrowRight, BookOpen, BriefcaseBusiness, Globe2, Rocket, Sparkles, Target } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  BriefcaseBusiness,
+  Globe2,
+  Rocket,
+  Sparkles,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
-import { servicePrograms } from "@/lib/service-programs";
+import { servicePrograms, type ServiceProgramSlug } from "@/lib/service-programs";
 
-const iconMap = {
+const iconMap: Record<ServiceProgramSlug, LucideIcon> = {
   "career-guidance": Target,
   "skill-programs": BookOpen,
   placements: BriefcaseBusiness,
   internships: Rocket,
   "study-abroad": Globe2,
-} as const;
+};
 
-const iconClassMap = {
+const iconClassMap: Record<ServiceProgramSlug, string> = {
   "career-guidance": "bg-[rgba(239,68,68,0.12)] text-[#ef4444]",
   "skill-programs": "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
   placements: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
   internships: "bg-[rgba(139,92,246,0.12)] text-[#8b5cf6]",
   "study-abroad": "bg-[rgba(14,165,233,0.12)] text-[#0284c7]",
-} as const;
+};
 
 export default function ServicesPage() {
   return (

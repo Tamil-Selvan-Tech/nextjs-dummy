@@ -179,7 +179,7 @@ export function Navbar() {
     pathname?.startsWith("/compare") ||
     pathname?.startsWith("/cutoff") ||
     isServicesRoute ||
-    BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
+    (pathname !== "/find" && BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname));
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
   const filteredCourses = useMemo(() => {
