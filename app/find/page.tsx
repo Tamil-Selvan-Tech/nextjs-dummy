@@ -813,17 +813,17 @@ export default function FindPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
-      <div className="px-2 pt-4 sm:px-4 sm:pt-5 md:px-5 md:pt-6 xl:px-6">
+      <div className="px-2 pt-2 sm:px-4 sm:pt-3 md:px-5 md:pt-4 xl:px-6">
         <div className="mx-auto w-full max-w-[1320px]">
           <PageBackButton />
         </div>
       </div>
-<div className="px-2 py-4 sm:px-4 sm:py-6 md:px-5 md:py-8 xl:px-6">
-  <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-4 sm:gap-5 md:gap-5 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
+<div className="px-2 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3 md:px-5 md:pb-5 md:pt-4 xl:px-6">
+  <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-3 sm:gap-4 md:gap-4 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
  <section className="min-w-0 w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 xl:max-w-[760px] xl:justify-self-start
-p-3 sm:p-4 md:p-6 xl:p-7">
-            <div className="flex flex-col gap-4 sm:gap-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+p-3 sm:p-4 md:p-5 xl:p-5">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               {/* <div className="inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2 self-start rounded-[14px] border-2 border-[#8fd9bc] bg-[#effaf5] px-3.5 py-2 text-[0.82rem] font-semibold text-[#0f7b5c] shadow-[0_10px_24px_rgba(20,138,103,0.08)] sm:w-auto sm:justify-start">
                 <ShieldCheck className="size-4" />
                 100% Safe &amp; Secure
@@ -877,9 +877,9 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
                 router.push(`/cutoff?${params.toString()}`);
               }}
-              className="mt-3 p-0"
+              className="mt-1.5 p-0"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FieldShell fieldId="name" icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
                   <input
                     type="text"
@@ -1020,8 +1020,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               </div>
 
               {showEngineeringFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                       <select
                         value={selectedAdmissionType}
@@ -1048,7 +1048,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
 
                   {showEngineeringPcmFields ? (
                     <>
-                      <div className="grid gap-3.5 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
                         <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
                           <input
                             type="number"
@@ -1106,7 +1106,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
 
                   {showEngineeringJeeMainFields ? (
                     <>
-                      <div className="grid gap-3.5 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
                         <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
@@ -1134,7 +1134,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
 
                   {showEngineeringJeeAdvancedFields ? (
                     <>
-                      <div className="grid gap-3.5 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
                         <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
@@ -1163,8 +1163,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showMedicalFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean(hasSubmitted && validationErrors.neet)} error={hasSubmitted ? validationErrors.neet : undefined}>
                       <input
                         type="number"
@@ -1191,8 +1191,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showBArchFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
                       <input
                         type="number"
@@ -1246,8 +1246,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showLawFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                       <select
                         value={selectedAdmissionType}
@@ -1290,8 +1290,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                   </div>
 
                   {showLawMarksFields ? (
-                    <div className="space-y-3.5">
-                      <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="space-y-3">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)} error={hasSubmitted ? validationErrors.bestSubject1 : undefined}>
                           <input
                             type="number"
@@ -1359,9 +1359,9 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showArtsScienceFields ? (
-                <div className="mt-5 space-y-3.5">
+                <div className="mt-4 space-y-3">
                   {showArtsScienceAdmissionTypeField ? (
-                    <div className="grid gap-3.5 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
                         <select
                           value={selectedAdmissionType}
@@ -1385,7 +1385,7 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                     </div>
                   ) : null}
 
-                  <div className="grid gap-3.5 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     {showArtsScienceCuetField ? (
                       <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)} error={hasSubmitted ? validationErrors.artsScienceCuet : undefined}>
                         <input
@@ -1438,8 +1438,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showParamedicalFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)} error={hasSubmitted ? validationErrors.paramedicalBiology : undefined}>
                       <input
                         type="number"
@@ -1498,8 +1498,8 @@ p-3 sm:p-4 md:p-6 xl:p-7">
               ) : null}
 
               {showAgricultureFields ? (
-                <div className="mt-5 space-y-3.5">
-                  <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)} error={hasSubmitted ? validationErrors.agricultureBiology : undefined}>
                       <input
                         type="number"
@@ -1557,39 +1557,39 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 </div>
               ) : null}
 
-              <div className="mt-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="inline-flex w-full items-center gap-3 rounded-[16px] bg-[#f2f1ff] px-4 py-3 text-left shadow-[inset_0_0_0_1px_rgba(152,146,255,0.08)] sm:w-fit">
-                  <Sparkles className="size-5 text-[#ffb21f]" />
+              <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="inline-flex w-full items-center gap-2.5 rounded-[16px] bg-[#f2f1ff] px-3.5 py-2.5 text-left shadow-[inset_0_0_0_1px_rgba(152,146,255,0.08)] sm:w-fit">
+                  <Sparkles className="size-4.5 text-[#ffb21f]" />
                   <div>
-                    <div className="text-[0.92rem] font-semibold text-[#254bbd]">Takes less than 2 minutes</div>
-                    <div className="text-[0.8rem] text-[#4f689b]">Get your results instantly</div>
+                    <div className="text-[0.88rem] font-semibold text-[#254bbd]">Takes less than 2 minutes</div>
+                    <div className="text-[0.76rem] text-[#4f689b]">Get your results instantly</div>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-[18px] border-2 border-[#2f63ff] bg-[linear-gradient(90deg,#2d5bff_0%,#9d55f7_100%)] px-7 text-[0.98rem] font-semibold text-white shadow-[0_20px_34px_rgba(92,93,255,0.24)] transition hover:-translate-y-0.5 sm:w-auto"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-[18px] border-2 border-[#2f63ff] bg-[linear-gradient(90deg,#2d5bff_0%,#9d55f7_100%)] px-6 text-[0.94rem] font-semibold text-white shadow-[0_18px_30px_rgba(92,93,255,0.24)] transition hover:-translate-y-0.5 sm:w-auto"
                 >
-                  <Sparkles className="size-5" />
+                  <Sparkles className="size-4.5" />
                   Get My Compatible Colleges
-                  <ArrowRight className="size-5" />
+                  <ArrowRight className="size-4.5" />
                 </button>
               </div>
             </form>
 
-            <div className="grid gap-3.5 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
               {trustItems.map((item) => (
                 <div
                   key={item.title}
-                  className="rounded-[18px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9ff_100%)] px-3 py-2.5 shadow-[0_12px_24px_rgba(76,104,205,0.1)]"
+                  className="rounded-[18px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9ff_100%)] px-3 py-2 shadow-[0_10px_20px_rgba(76,104,205,0.1)]"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-10 items-center justify-center rounded-full border border-[#c8d8ff] bg-[linear-gradient(180deg,#eef3ff_0%,#e5ecff_100%)] text-[#355cff] shadow-[0_8px_16px_rgba(76,104,205,0.12)]">
-                      <item.icon className="size-5 stroke-[2.2]" />
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-9 items-center justify-center rounded-full border border-[#c8d8ff] bg-[linear-gradient(180deg,#eef3ff_0%,#e5ecff_100%)] text-[#355cff] shadow-[0_8px_16px_rgba(76,104,205,0.12)]">
+                      <item.icon className="size-4.5 stroke-[2.2]" />
                     </div>
                     <div>
-                      <div className="text-[0.88rem] font-semibold tracking-[-0.03em] text-[#172b60]">{item.title}</div>
-                      <div className="mt-0.5 text-[0.78rem] leading-snug text-[#4f689b]">{item.description}</div>
+                      <div className="text-[0.84rem] font-semibold tracking-[-0.03em] text-[#172b60]">{item.title}</div>
+                      <div className="mt-0.5 text-[0.74rem] leading-snug text-[#4f689b]">{item.description}</div>
                     </div>
                   </div>
                 </div>
@@ -1782,7 +1782,7 @@ function AcademicShell({
           : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
       }`}
     >
-      <div className="grid min-h-[36px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+      <div className="grid min-h-[32px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5">
         <div
           className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
             invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
@@ -1791,10 +1791,10 @@ function AcademicShell({
           <Icon className="size-4 stroke-[2.3]" />
         </div>
         <div className="min-w-0">
-          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
+          <div className={`text-[0.8rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
           {hint ? (
             <div
-              className={`mb-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[0.66rem] font-semibold tracking-[0.01em] ${
+              className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[0.64rem] font-semibold tracking-[0.01em] ${
                 invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#2f63ff]"
               }`}
             >
@@ -1808,7 +1808,7 @@ function AcademicShell({
         </div>
       </div>
       {error ? (
-        <div className="mt-2 flex items-center gap-2 text-[0.9rem] font-medium text-[#ff4d5e]">
+        <div className="mt-1.5 flex items-center gap-1.5 text-[0.82rem] font-medium text-[#ff4d5e]">
           <CircleAlert className="size-5 shrink-0" strokeWidth={2.2} />
           <span>{error}</span>
         </div>
@@ -1934,9 +1934,9 @@ function BarChart({
 }
 
 const inputClassName =
-  "w-full h-[32px] sm:h-[34px] border-0 bg-transparent p-0 text-[0.88rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
+  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
 const academicInputClassName =
-  "w-full h-[32px] sm:h-[34px] border-0 bg-transparent p-0 text-[0.88rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.76rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.88rem]";
+  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.74rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.84rem]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
 
