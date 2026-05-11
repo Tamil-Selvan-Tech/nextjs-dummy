@@ -18,8 +18,21 @@ export default async function CourseDetailsPage({
   const { courseName } = await params;
   const decodedName = decodeURIComponent(courseName);
   const panelData = await fetchPublicPanelData();
+  const normalizedDecodedName = normalizeText(decodedName);
   const relatedCourses = panelData.courses.filter(
-    (course) => courseMatchesLookup(course.course, decodedName),
+    (course) => {
+      const displayLabel = formatCourseDisplayName(
+        course.course,
+        course.stream || course.courseCategory,
+        course.specialization,
+      );
+
+      return (
+        normalizeText(displayLabel) === normalizedDecodedName ||
+        normalizeText(course.course) === normalizedDecodedName ||
+        courseMatchesLookup(course.course, decodedName)
+      );
+    },
   );
 
   const safeRelatedCourses = relatedCourses.length ? relatedCourses : getRelatedCourses(decodedName);
@@ -34,7 +47,7 @@ export default async function CourseDetailsPage({
   );
   const primaryCourse = safeRelatedCourses[0];
   const displayCourseName = formatCourseDisplayName(
-    decodedName,
+    primaryCourse?.course || decodedName,
     primaryCourse?.stream || primaryCourse?.courseCategory,
     primaryCourse?.specialization,
   );

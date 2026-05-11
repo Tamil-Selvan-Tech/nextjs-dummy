@@ -32,7 +32,7 @@ import {
   type Course,
 } from "@/lib/site-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
-import { normalizeSearchText } from "@/lib/search-utils";
+import { getRankedSearchResults, normalizeSearchText, type SearchCity } from "@/lib/search-utils";
 
 // Custom hook for scroll animations
 function useScrollAnimation() {
@@ -234,6 +234,27 @@ export function HomePage({
     router.push("/explore?view=courses#all-courses");
   }, [router]);
 
+  const heroLocationOptions = useMemo<SearchCity[]>(() => {
+    const unique = new Map<string, SearchCity>();
+    collegesData.forEach((college) => {
+      const state = String(college.state || "").trim();
+      const candidates = [
+        String(college.city || "").trim(),
+        String(college.district || "").trim(),
+        state,
+      ];
+
+      candidates.forEach((name) => {
+        if (!name) return;
+        const key = normalizeSearchText(`${name} ${state}`);
+        if (!key || unique.has(key)) return;
+        unique.set(key, { id: `location:${key}`, name, state });
+      });
+    });
+
+    return [...unique.values()];
+  }, [collegesData]);
+
   // Search bar submit and focus handlers
   const handleHeroSearch = useCallback(() => {
     if (searchFieldBlurTimeoutRef.current !== null) {
@@ -254,51 +275,52 @@ export function HomePage({
     const hasCollege = Boolean(normalizedCollegeQuery);
     const hasCourse = Boolean(normalizedCourseQuery);
     const hasLocation = Boolean(normalizedLocationQuery);
+    const rankedCourseResults = hasCourse
+      ? getRankedSearchResults(courseValue, [], coursesData, []).courses
+      : [];
+    const rankedLocationResults = hasLocation
+      ? getRankedSearchResults(locationValue, [], [], heroLocationOptions).cities
+      : [];
+    const matchedCourse = hasCourse
+      ? rankedCourseResults[0] ||
+        findBestCourseLookupMatch(coursesData, courseValue)
+      : undefined;
+    const matchedCourseRoute = matchedCourse
+      ? formatCourseDisplayName(
+          matchedCourse.course,
+          matchedCourse.stream || matchedCourse.courseCategory,
+          matchedCourse.specialization,
+        )
+      : "";
+    const matchedLocation = hasLocation
+      ? rankedLocationResults[0] ||
+        heroLocationOptions.find((item) => {
+          const normalizedName = normalizeSearchText(item.name);
+          const normalizedLabel = normalizeSearchText(`${item.name} ${item.state}`);
+          return normalizedName === normalizedLocationQuery || normalizedLabel === normalizedLocationQuery;
+        })
+      : undefined;
+    const resolvedLocationFilter = matchedLocation?.name || locationValue;
 
     if (hasLocation && !hasCollege && !hasCourse) {
-      const matchedLocationCollege = collegesData.find((college) => {
-        const district = normalizeSearchText(college.district);
-        const state = normalizeSearchText(college.state);
-        const city = normalizeSearchText(college.city || "");
-        const fullLocation = normalizeSearchText([college.district, college.state].filter(Boolean).join(" "));
-        return (
-          district === normalizedLocationQuery ||
-          state === normalizedLocationQuery ||
-          city === normalizedLocationQuery ||
-          fullLocation === normalizedLocationQuery ||
-          district.includes(normalizedLocationQuery) ||
-          state.includes(normalizedLocationQuery) ||
-          city.includes(normalizedLocationQuery) ||
-          fullLocation.includes(normalizedLocationQuery)
-        );
-      });
-
-      if (matchedLocationCollege) {
-        const cityFilterValue =
-          normalizeSearchText(matchedLocationCollege.district) === normalizedLocationQuery ||
-            normalizeSearchText(matchedLocationCollege.district).includes(normalizedLocationQuery)
-            ? matchedLocationCollege.district
-            : normalizeSearchText(matchedLocationCollege.city || "") === normalizedLocationQuery ||
-              normalizeSearchText(matchedLocationCollege.city || "").includes(normalizedLocationQuery)
-              ? matchedLocationCollege.city || matchedLocationCollege.district
-              : matchedLocationCollege.state;
-
-        router.push(`/explore?view=colleges&city=${encodeURIComponent(cityFilterValue)}`);
-        return;
-      }
-
-      router.push(`/explore?view=colleges&city=${encodeURIComponent(locationValue)}`);
+      router.push(`/explore?view=colleges&city=${encodeURIComponent(resolvedLocationFilter)}`);
       return;
     }
 
-      if (hasCourse && !hasCollege && !hasLocation) {
-        const matchedCourse = findBestCourseLookupMatch(coursesData, courseValue);
-        if (matchedCourse) {
-          router.push(`/explore/course/${encodeURIComponent(matchedCourse.course)}`);
-          return;
-        }
+    if (hasCourse && !hasCollege && !hasLocation) {
+      if (matchedCourse) {
+        router.push(`/explore/course/${encodeURIComponent(matchedCourseRoute)}`);
+        return;
+      }
 
       router.push(`/search-results?q=${encodeURIComponent(courseValue)}`);
+      return;
+    }
+
+    if (hasCourse && hasLocation && !hasCollege) {
+      router.push(
+        `/explore?view=colleges&city=${encodeURIComponent(resolvedLocationFilter)}&q=${encodeURIComponent(matchedCourseRoute || courseValue)}`,
+      );
       return;
     }
 
@@ -306,6 +328,12 @@ export function HomePage({
       const exactCollegeMatch = collegesData.find(
         (college) => normalizeSearchText(college.name) === normalizedCollegeQuery,
       );
+      if (exactCollegeMatch && hasLocation && !hasCourse) {
+        router.push(
+          `/explore?view=colleges&city=${encodeURIComponent(resolvedLocationFilter)}&college=${encodeURIComponent(exactCollegeMatch.name)}`,
+        );
+        return;
+      }
       if (exactCollegeMatch) {
         router.push(`/college/${exactCollegeMatch.id}`);
         return;
@@ -379,16 +407,15 @@ export function HomePage({
       return;
     }
 
-      if (hasCourse) {
-        const exactCourseMatch = findBestCourseLookupMatch(coursesData, courseValue);
-        if (exactCourseMatch) {
-          router.push(`/explore/course/${encodeURIComponent(exactCourseMatch.course)}`);
-          return;
-        }
+    if (hasCourse) {
+      if (matchedCourse) {
+        router.push(`/explore/course/${encodeURIComponent(matchedCourseRoute)}`);
+        return;
+      }
     }
 
     router.push(`/search-results?q=${encodeURIComponent(combinedQuery)}`);
-  }, [collegeSearchInput, collegesData, courseSearchInput, coursesData, locationSearchInput, router]);
+  }, [collegeSearchInput, collegesData, courseSearchInput, coursesData, heroLocationOptions, locationSearchInput, router]);
   const activateSearchField = useCallback((field: "college" | "location" | "course") => {
     if (searchFieldBlurTimeoutRef.current !== null) {
       window.clearTimeout(searchFieldBlurTimeoutRef.current);
@@ -451,7 +478,7 @@ export function HomePage({
         cutoffRange: minCutoff === maxCutoff ? `${minCutoff}` : `${minCutoff} - ${maxCutoff}`,
         isTopCourse: rows.some((row) => row.isTopCourse),
         icon: iconMap[courseName as keyof typeof iconMap] ?? CourseIcon,
-        href: `/explore/course/${encodeURIComponent(courseName)}`,
+        href: `/explore/course/${encodeURIComponent(displayCourseName)}`,
       };
     });
   }, [coursesData]);
@@ -461,15 +488,19 @@ export function HomePage({
       coursesData
         .filter((course) => course.isTopCourse)
         .filter((course, index, arr) => arr.findIndex((item) => item.course === course.course) === index)
-        .map((course) => ({
-          id: course.id,
-          course: formatCourseDisplayName(
-            course.course,
-            course.stream || course.courseCategory,
-            course.specialization,
-          ),
-          hrefCourse: course.course,
-        })),
+         .map((course) => ({
+           id: course.id,
+           course: formatCourseDisplayName(
+             course.course,
+             course.stream || course.courseCategory,
+             course.specialization,
+           ),
+           hrefCourse: formatCourseDisplayName(
+             course.course,
+             course.stream || course.courseCategory,
+             course.specialization,
+           ),
+         })),
     [coursesData],
   );
   const trendingCourseCards = useMemo(() => {
@@ -667,37 +698,45 @@ export function HomePage({
   }, [examSchedules]);
   // Search suggestion data for course, college, and location fields
   const locationSuggestions = useMemo(() => {
-    const unique = new Map<string, { id: string; label: string; district: string; state: string }>();
-    collegesData.forEach((college) => {
-      const district = String(college.district || "").trim();
-      const state = String(college.state || "").trim();
-      const label = [district, state].filter(Boolean).join(", ");
-      const key = label.toLowerCase();
-      if (!label || unique.has(key)) return;
-      unique.set(key, { id: `location:${key}`, label, district, state });
-    });
+    const query = locationSearchInput.trim();
+    if (!query) {
+      return heroLocationOptions.slice(0, 8).map((item) => ({
+        id: item.id,
+        label: item.name,
+        state: item.state,
+      }));
+    }
 
-    const query = locationSearchInput.trim().toLowerCase();
-    return [...unique.values()]
-      .filter((item) => !query || item.label.toLowerCase().includes(query))
-      .slice(0, 8);
-  }, [collegesData, locationSearchInput]);
+    return getRankedSearchResults(query, [], [], heroLocationOptions).cities
+      .slice(0, 8)
+      .map((item) => ({
+        id: item.id,
+        label: item.name,
+        state: item.state,
+      }));
+  }, [heroLocationOptions, locationSearchInput]);
   const courseSuggestions = useMemo(() => {
-    const unique = new Map<string, { id: string; label: string }>();
-    coursesData.forEach((course) => {
+    const unique = new Map<string, { id: string; label: string; meta: string }>();
+    const rankedCourses = courseSearchInput.trim()
+      ? getRankedSearchResults(courseSearchInput, [], coursesData, []).courses
+      : coursesData;
+
+    rankedCourses.forEach((course) => {
       const label = formatCourseDisplayName(
         String(course.course || "").trim(),
         course.stream || course.courseCategory,
         course.specialization,
       );
-      const key = label.toLowerCase();
+      const key = normalizeSearchText(label);
       if (!label || unique.has(key)) return;
-      unique.set(key, { id: `course:${key}`, label });
+      unique.set(key, {
+        id: `course:${course.id || key}`,
+        label,
+        meta: course.college || course.university || "Course",
+      });
     });
 
-    const query = courseSearchInput.trim().toLowerCase();
     return [...unique.values()]
-      .filter((item) => !query || item.label.toLowerCase().includes(query))
       .slice(0, 8);
   }, [courseSearchInput, coursesData]);
   const collegeSuggestions = useMemo(() => {
@@ -718,7 +757,7 @@ export function HomePage({
         imageSrc: item.logo || item.image,
         onSelect: () => {
           setCollegeSearchInput(item.name);
-          activateSearchField("college");
+          setActiveSearchField(null);
         },
       }));
     }
@@ -726,11 +765,11 @@ export function HomePage({
       return locationSuggestions.map((item) => ({
         id: item.id,
         label: item.label,
-        meta: "Location",
+        meta: item.state || "Location",
         imageSrc: "",
         onSelect: () => {
           setLocationSearchInput(item.label);
-          activateSearchField("location");
+          setActiveSearchField(null);
         },
       }));
     }
@@ -738,11 +777,11 @@ export function HomePage({
       return courseSuggestions.map((item) => ({
         id: item.id,
         label: item.label,
-        meta: "Course",
+        meta: item.meta,
         imageSrc: "",
         onSelect: () => {
           setCourseSearchInput(item.label);
-          activateSearchField("course");
+          setActiveSearchField(null);
         },
       }));
     }
@@ -1095,10 +1134,27 @@ export function HomePage({
 
       <div className="relative flex h-full flex-col justify-between">
         <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(59,130,246,0.18)] bg-[rgba(59,130,246,0.08)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2563eb]">
-            <CourseIcon className="size-3.5" />
-            Cutoff Zone
-          </span>
+          <button
+            type="button"
+            onClick={() => router.push("/find")}
+            className="
+              inline-flex items-center justify-center gap-2
+              rounded-full
+              bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
+              px-3.5 py-1.5
+              text-[9px] font-semibold uppercase tracking-[0.14em]
+              text-white
+              shadow-[0_16px_28px_rgba(37,99,235,0.24)]
+              transition
+              hover:-translate-y-0.5
+            "
+          >
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+              <Rocket className="size-3" />
+            </span>
+            Check My Cutoff
+            <ArrowRight className="size-3" />
+          </button>
           <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] shadow-sm">
             Fast Match
           </span>
@@ -1136,39 +1192,21 @@ export function HomePage({
             </div>
           </div>
 
-          <div className="mx-auto flex w-full max-w-[16.75rem] justify-center md:mx-0 md:max-w-[18rem] md:justify-end lg:max-w-[22rem]">
+          <div className="mx-auto flex w-full max-w-[15.5rem] justify-center md:mx-0 md:max-w-[16.5rem] md:justify-end lg:max-w-[19.5rem]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/cutoff-banner.png"
+              src="/cutoff-banner-image.png"
               alt="Cutoff banner illustration"
-              className="h-auto w-full scale-[1.08] object-contain md:scale-[1.1]"
+              className="h-auto w-full scale-[0.96] object-contain md:scale-100"
             />
           </div>
         </div>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            onClick={() => router.push("/find")}
-            className="
-              inline-flex w-full items-center justify-center gap-2.5
-              rounded-[1rem]
-              bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
-              px-5 py-3
-              text-sm font-semibold
-              text-white
-              shadow-[0_16px_28px_rgba(37,99,235,0.24)]
-              transition
-              hover:-translate-y-0.5
-              sm:w-auto
-            "
-          >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-              <Rocket className="size-4" />
-            </span>
-            Check My Cutoff
-            <ArrowRight className="size-4" />
-          </button>
+          <span className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(59,130,246,0.18)] bg-[rgba(59,130,246,0.08)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2563eb] sm:w-auto sm:justify-start">
+            <CourseIcon className="size-4" />
+            Cutoff Zone
+          </span>
 
           <div className="flex items-center justify-center gap-3 text-sm text-[color:var(--text-muted)] sm:justify-end">
             <div className="flex -space-x-2">
@@ -1408,44 +1446,6 @@ export function HomePage({
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.14)] blur-3xl" />
 
                   <div className="relative space-y-0.5">
-                    <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-2">
-                      {/* Hero introduction */}
-                      <div className="flex h-full flex-col justify-center space-y-2.5 lg:space-y-2 lg:pr-1">
-                        <div className="max-w-full py-1 px-0 text-center lg:px-0 lg:text-left">
-                          <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
-                            Find Your{" "}
-                            <span className="text-[#2563eb]">
-                              Future College
-                            </span>{" "}
-                            Smartly.
-                          </h1>
-
-                          <p className="mx-auto mt-2.5 max-w-[34rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
-                            Discover colleges, courses, exams, and cities from one premium
-                            search flow built to help you shortlist faster and decide with
-                            more confidence.
-                          </p>
-                        </div>
-
-                        {/* Hero feature spotlight */}
-                        <div className="relative mx-auto w-full max-w-full px-0.5 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
-                          <div
-                            key={`${activeFeature.title}-${activeFeatureCard}`}
-                            className="feature-pop-card absolute inset-0"
-                          >
-                            {renderFeatureCard(activeFeature, "hero")}
-                          </div>
-
-                          <div className="min-h-[10.9rem] sm:min-h-[8.15rem]" />
-                        </div>
-                      </div>
-
-                      {/* Hero cutoff banner */}
-                      <div className="w-full lg:max-w-[42rem] lg:justify-self-end">
-                        {renderHeroCutoffBanner()}
-                      </div>
-                    </div>
-
                     {/* Hero search module */}
                     <div className="hero-search-shell group relative z-[70] mx-auto mt-3 w-full max-w-none px-0 py-2 sm:mt-4 sm:py-2.5">
                     <div
@@ -1721,6 +1721,44 @@ export function HomePage({
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-1.5 pt-3 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-2">
+                      {/* Hero introduction */}
+                      <div className="flex h-full flex-col justify-center space-y-2.5 lg:space-y-2 lg:pr-1">
+                        <div className="max-w-full py-1 px-0 text-center lg:px-0 lg:text-left">
+                          <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
+                            Find Your{" "}
+                            <span className="text-[#2563eb]">
+                              Future College
+                            </span>{" "}
+                            Smartly.
+                          </h1>
+
+                          <p className="mx-auto mt-2.5 max-w-[34rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
+                            Discover colleges, courses, exams, and cities from one premium
+                            search flow built to help you shortlist faster and decide with
+                            more confidence.
+                          </p>
+                        </div>
+
+                        {/* Hero feature spotlight */}
+                        <div className="relative mx-auto w-full max-w-full px-0.5 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
+                          <div
+                            key={`${activeFeature.title}-${activeFeatureCard}`}
+                            className="feature-pop-card absolute inset-0"
+                          >
+                            {renderFeatureCard(activeFeature, "hero")}
+                          </div>
+
+                          <div className="min-h-[10.9rem] sm:min-h-[8.15rem]" />
+                        </div>
+                      </div>
+
+                      {/* Hero cutoff banner */}
+                      <div className="w-full lg:max-w-[42rem] lg:justify-self-end">
+                        {renderHeroCutoffBanner()}
+                      </div>
                     </div>
 
                     {/* Top exams overview */}

@@ -2,13 +2,19 @@
 
 import {
   Bell,
+  BookOpen,
+  BriefcaseBusiness,
   Building2,
+  Globe2,
+  GraduationCap,
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
   LogIn,
   Menu,
+  Rocket,
   School,
+  Target,
   UserPlus,
   X,
 } from "lucide-react";
@@ -24,7 +30,6 @@ import {
   CURRENT_USER_KEY,
   type SafeAuthUser,
 } from "@/lib/auth-storage";
-import { SearchBar } from "@/components/search-bar";
 import { BREAKING_NEWS_ITEMS } from "@/lib/breaking-news";
 import { allCoursesList } from "@/lib/site-data";
 import {
@@ -82,11 +87,50 @@ const BACK_BUTTON_UNDER_NAV_ROUTES = new Set([
   "/services",
 ]);
 
+const serviceMenuItems = [
+  {
+    label: "Career Guidance",
+    description: "Plan the right path with expert counseling",
+    href: "/services/career-guidance",
+    icon: Target,
+    iconClassName: "bg-[rgba(239,68,68,0.12)] text-[#ef4444]",
+  },
+  {
+    label: "Skill Programs",
+    description: "Build job-ready technical and domain skills",
+    href: "/services/skill-programs",
+    icon: BookOpen,
+    iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
+  },
+  {
+    label: "Placements",
+    description: "Connect students with real hiring opportunities",
+    href: "/services/placements",
+    icon: BriefcaseBusiness,
+    iconClassName: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
+  },
+  {
+    label: "Internships",
+    description: "Gain practical exposure through live projects",
+    href: "/services/internships",
+    icon: Rocket,
+    iconClassName: "bg-[rgba(139,92,246,0.12)] text-[#8b5cf6]",
+  },
+  {
+    label: "Study Abroad",
+    description: "Get support for global education and careers",
+    href: "/services/study-abroad",
+    icon: Globe2,
+    iconClassName: "bg-[rgba(14,165,233,0.12)] text-[#0284c7]",
+  },
+] as const;
+
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCoursesOpen, setIsCoursesOpen] = useState(false);
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [, setIsCoursesCueDimmed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isPreferenceModalOpen, setIsPreferenceModalOpen] = useState(false);
@@ -103,6 +147,7 @@ export function Navbar() {
     getMountServerSnapshot,
   );
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const servicesMenuRef = useRef<HTMLDivElement | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const currentUser = useMemo<SafeAuthUser | null>(() => {
     if (!currentUserRaw) return null;
@@ -116,6 +161,7 @@ export function Navbar() {
   const isAdminUser = currentUser?.role === "admin";
   const accountHref = isAdminUser ? "/admin" : isCollegeUser ? "/college-dashboard" : "/account";
   const accountLabel = isAdminUser ? "Admin" : "Account";
+  const isServicesRoute = pathname?.startsWith("/services") ?? false;
   const hideBackButton =
     pathname === "/" ||
     pathname.startsWith("/explore") ||
@@ -124,6 +170,7 @@ export function Navbar() {
     pathname.startsWith("/exams/") ||
     pathname.startsWith("/explore/course/") ||
     pathname.startsWith("/cutoff") ||
+    isServicesRoute ||
     BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const showBackUnderNav =
     pathname?.startsWith("/explore") ||
@@ -131,6 +178,7 @@ export function Navbar() {
     pathname?.startsWith("/exams/") ||
     pathname?.startsWith("/compare") ||
     pathname?.startsWith("/cutoff") ||
+    isServicesRoute ||
     BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
 
@@ -184,6 +232,18 @@ export function Navbar() {
   }, [isCoursesOpen]);
 
   useEffect(() => {
+    if (!isServicesOpen) return;
+
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!servicesMenuRef.current?.contains(target)) setIsServicesOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [isServicesOpen]);
+
+  useEffect(() => {
     if (!isAccountMenuOpen) return;
 
     const onMouseDown = (event: MouseEvent) => {
@@ -198,6 +258,7 @@ export function Navbar() {
   const goTo = (href: string) => {
     router.push(href);
     setIsDrawerOpen(false);
+    setIsServicesOpen(false);
     setIsAccountMenuOpen(false);
     setIsPreferenceModalOpen(false);
   };
@@ -253,6 +314,7 @@ export function Navbar() {
   };
 
   const mobileLinks = [
+    { label: "Services", href: "/services" },
     { label: "About Us", href: "/about-us" },
     { label: "Explore", href: "/explore" },
     { label: "Contact", href: "/contact" },
@@ -265,16 +327,19 @@ export function Navbar() {
       style={navbarThemeStyles}
     >
       {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
-      <div className="rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-2 mr-1 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:pl-3 md:pr-4">
-        <div className="flex flex-wrap items-center gap-5   md:flex-nowrap">
-          <Link href="/" className="transition hover:opacity-80">
-            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] sm:text-[17px] md:text-[18px]" iconClassName="size-5 sm:size-[1.35rem] md:size-6" />
+      <div className="mr-1 rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-2 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4 lg:px-5">
+        <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
+          <Link
+            href="/"
+            className="rounded-full px-1.5 py-1 shadow-[0_10px_24px_rgba(37,99,235,0.08),0_0_18px_rgba(255,255,255,0.75)] transition hover:opacity-80"
+          >
+            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[17px] md:text-[18px]" iconClassName="size-5 drop-shadow-[0_4px_8px_rgba(245,158,11,0.2)] sm:size-[1.35rem] md:size-6" />
           </Link>
 
-          <button
-            type="button"
-            onClick={openPreferenceModal}
-            className="hidden min-w-40 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:flex md:flex-col"
+              <button
+                type="button"
+                onClick={openPreferenceModal}
+            className="hidden min-w-[270px] rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2.5 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:ml-3 md:flex md:flex-col lg:ml-5"
           >
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
@@ -286,29 +351,79 @@ export function Navbar() {
             </div>
           </button>
 
-          <div className="order-3 w-full md:order-none md:mt-0 md:flex-[1.35] lg:flex-[1.55]">
-            <Suspense fallback={null}>
-              <SearchBar />
-            </Suspense>
+          <div
+            ref={servicesMenuRef}
+            className="relative order-3 hidden min-w-0 flex-1 items-center justify-center md:order-none md:pl-4 md:flex lg:pl-8"
+            onMouseLeave={() => setIsServicesOpen(false)}
+          >
+            <div className="flex min-w-0 items-center gap-3 lg:gap-4">
+              <button
+                type="button"
+                onClick={() => setIsServicesOpen((current) => !current)}
+                onMouseEnter={() => setIsServicesOpen(true)}
+                className={`inline-flex min-w-[10.75rem] items-center justify-center gap-1.5 rounded-full border px-6 py-2 text-sm font-semibold transition ${
+                  isServicesOpen
+                    ? "border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent-deep)]"
+                    : "border-[rgba(15,76,129,0.1)] bg-white text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.04)]"
+                }`}
+                aria-expanded={isServicesOpen}
+              >
+                <GraduationCap className="size-4 text-[color:var(--brand-accent-deep)]" />
+                Services
+                <ChevronDown className={`size-4 transition ${isServicesOpen ? "rotate-180" : ""}`} />
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo("/about-us")}
+                className="flex min-w-[10rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2 font-semibold transition hover:bg-[rgba(15,76,129,0.04)]"
+              >
+                <CircleHelp className="size-4 text-[color:var(--brand-accent-deep)]" />
+                About
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo("/explore")}
+                className="flex min-w-[10rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2 transition hover:bg-[rgba(15,76,129,0.04)]"
+              >
+                <Building2 className="size-4 text-[color:var(--brand-primary)]" />
+                Explore
+              </button>
+            </div>
+
+            <div
+              className={`absolute left-1/2 top-[calc(100%+1.65rem)] z-40 w-[min(74rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] -translate-x-[68%] rounded-[1.85rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,255,0.98))] p-4 shadow-[0_22px_55px_rgba(30,78,121,0.16)] transition-all duration-200 ${
+                isServicesOpen
+                  ? "pointer-events-auto translate-y-0 opacity-100"
+                  : "pointer-events-none -translate-y-2 opacity-0"
+              }`}
+              onMouseEnter={() => setIsServicesOpen(true)}
+            >
+              <div className="grid grid-cols-5 gap-4">
+                {serviceMenuItems.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => goTo(item.href)}
+                      className="flex h-full min-h-[132px] items-start gap-4 rounded-[1.35rem] border border-[rgba(15,76,129,0.08)] bg-white px-5 py-5 text-left shadow-[0_10px_25px_rgba(30,78,121,0.06)] transition hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.24)] hover:shadow-[0_16px_35px_rgba(30,78,121,0.1)]"
+                    >
+                      <span className={`mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-2xl ${item.iconClassName}`}>
+                        <Icon className="size-5.5" />
+                      </span>
+                      <span className="block">
+                        <span className="block text-[1rem] font-semibold text-[color:var(--text-dark)]">{item.label}</span>
+                        <span className="mt-1.5 block text-[0.88rem] leading-6 text-[color:var(--text-muted)]">{item.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          <div className="ml-auto hidden items-center gap-4 text-sm md:flex">
-            <button
-              type="button"
-              onClick={() => goTo("/about-us")}
-              className="flex items-center gap-1 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-2 font-semibold transition hover:bg-[rgba(15,76,129,0.04)]"
-            >
-              <CircleHelp className="size-4 text-[color:var(--brand-accent-deep)]" />
-              About
-            </button>
-            <button
-              type="button"
-              onClick={() => goTo("/explore")}
-              className="flex items-center gap-1 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-3 py-2 transition hover:bg-[rgba(15,76,129,0.04)]"
-            >
-              <Building2 className="size-4 text-[color:var(--brand-primary)]" />
-              Explore
-            </button>
+          <div className="ml-auto hidden items-center gap-3 text-sm md:flex lg:gap-4">
             <button
               type="button"
               className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white p-2 hover:bg-[rgba(15,76,129,0.04)]"
@@ -387,6 +502,23 @@ export function Navbar() {
             </button>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={openPreferenceModal}
+          className="mt-3 flex w-full rounded-[1.2rem] border border-[rgba(15,76,129,0.1)] bg-white px-4 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:hidden"
+        >
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
+              <School className="size-3.5" />
+              City
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-sm font-medium text-[color:var(--text-dark)]">
+              <span className="truncate">{visibleStudyPreference.city} / {visibleStudyPreference.college}</span>
+              <ChevronDown className="size-4 shrink-0" />
+            </div>
+          </div>
+        </button>
       </div>
 
       <nav className="relative z-20 mt-3 flex flex-col items-stretch gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-nowrap md:flex-row md:items-center">
@@ -486,21 +618,41 @@ export function Navbar() {
               ))}
               <button
                 type="button"
-                onClick={openPreferenceModal}
-                className="w-full rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
-              >
-                City & College
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   setIsDrawerOpen(false);
+                  setIsServicesOpen(false);
                   openCoursesPanel();
                 }}
                 className="w-full rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
               >
                 All Courses
               </button>
+            </div>
+
+            <div className="mt-5 space-y-2 border-b border-[rgba(15,76,129,0.12)] pb-5">
+              <div className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
+                Services
+              </div>
+              {serviceMenuItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => goTo(item.href)}
+                    className="flex w-full items-start gap-3 rounded-[1.2rem] border border-[rgba(15,76,129,0.1)] bg-white px-4 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
+                  >
+                    <span className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${item.iconClassName}`}>
+                      <Icon className="size-4.5" />
+                    </span>
+                    <span className="block">
+                      <span className="block text-sm font-semibold text-[color:var(--text-dark)]">{item.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-[color:var(--text-muted)]">{item.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-5 space-y-2">

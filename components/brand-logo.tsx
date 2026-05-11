@@ -23,16 +23,12 @@ export function BrandLogo({
     <div
       role="img"
       aria-label={alt}
-      className={`inline-flex items-center gap-1 font-extrabold leading-none tracking-[0.01em] ${sizeClass} ${className}`}
+      className={`inline-flex items-center gap-2 font-extrabold leading-none tracking-normal ${sizeClass} ${className}`}
     >
       <GraduationCap className={`${iconClass} text-[#f4ae35] ${iconClassName}`} strokeWidth={2.2} />
-      <span>
-        <span className={collegeTextColor}>
-          College{" "}
-        </span>
-        <span className="text-[#f4ae35]">
-          EdwiseR
-        </span>
+      <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+        <span className={collegeTextColor}>College</span>
+        <span className="text-[#f4ae35]">EdwiseR</span>
       </span>
     </div>
   );

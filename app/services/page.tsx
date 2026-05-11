@@ -1,32 +1,23 @@
-import { BanknoteArrowDown, BriefcaseBusiness, FolderKanban, Landmark, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, BriefcaseBusiness, Globe2, Rocket, Sparkles, Target } from "lucide-react";
+import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { servicePrograms } from "@/lib/service-programs";
 
-const services = [
-  {
-    title: "Funding Assistance",
-    description:
-      "Guidance to help students explore education funding support, scholarships, and practical financial pathways for higher studies.",
-    icon: BanknoteArrowDown,
-  },
-  {
-    title: "Internships",
-    description:
-      "Industry-linked internship opportunities that help students build workplace exposure, confidence, and employability while studying.",
-    icon: BriefcaseBusiness,
-  },
-  {
-    title: "Academic Projects",
-    description:
-      "Support for academic and industry-oriented project work so students can apply classroom learning to real-world problem solving.",
-    icon: FolderKanban,
-  },
-  {
-    title: "Government Schemes",
-    description:
-      "Access to awareness and guidance around relevant government schemes that can benefit students in education and career development.",
-    icon: Landmark,
-  },
-];
+const iconMap = {
+  "career-guidance": Target,
+  "skill-programs": BookOpen,
+  placements: BriefcaseBusiness,
+  internships: Rocket,
+  "study-abroad": Globe2,
+} as const;
+
+const iconClassMap = {
+  "career-guidance": "bg-[rgba(239,68,68,0.12)] text-[#ef4444]",
+  "skill-programs": "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
+  placements: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
+  internships: "bg-[rgba(139,92,246,0.12)] text-[#8b5cf6]",
+  "study-abroad": "bg-[rgba(14,165,233,0.12)] text-[#0284c7]",
+} as const;
 
 export default function ServicesPage() {
   return (
@@ -45,12 +36,11 @@ export default function ServicesPage() {
                 Services
               </div>
               <h1 className="mt-6 max-w-3xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.35rem] md:text-[2.8rem]">
-                Student support services designed to connect education with real
-                industry outcomes.
+                Five focused student services built to connect education decisions with real outcomes.
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
-                We help students move beyond admission discovery through funding,
-                practical experience, guided projects, and public support programs.
+                Explore career guidance, skill development, placements, internships,
+                and study abroad support under one consistent College EdwiseR experience.
               </p>
             </div>
           </div>
@@ -64,27 +54,33 @@ export default function ServicesPage() {
               What We Offer
             </p>
             <h2 className="mt-3 text-2xl font-bold leading-tight text-[color:var(--text-dark)] md:text-[2rem]">
-              Practical services that support both academic growth and career readiness
+              Dedicated programs students can explore and act on immediately
             </h2>
           </div>
 
-          <div className="mt-10 space-y-6">
-            {services.map((service) => {
-              const Icon = service.icon;
+          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {servicePrograms.map((service) => {
+              const Icon = iconMap[service.slug];
               return (
-                <div key={service.title} className="flex flex-col gap-3 border-b border-emerald-100/80 pb-6 last:border-b-0 last:pb-0 md:flex-row md:items-start">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(15,124,116,0.12)] text-[color:var(--brand-support)]">
+                <Link
+                  key={service.slug}
+                  href={`/services/${service.slug}`}
+                  className="group flex h-full flex-col rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white/88 p-5 shadow-[0_16px_34px_rgba(22,50,79,0.08)] transition hover:-translate-y-1 hover:shadow-[0_22px_40px_rgba(22,50,79,0.14)]"
+                >
+                  <div className={`inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-2xl ${iconClassMap[service.slug]}`}>
                     <Icon className="size-6" />
                   </div>
-                  <div>
-                    <h3 className="font-[family:var(--font-display)] text-xl leading-snug text-[color:var(--text-dark)] md:text-2xl">
-                      {service.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {service.description}
-                    </p>
+                  <h3 className="mt-4 font-[family:var(--font-display)] text-xl leading-snug text-[color:var(--text-dark)] md:text-[1.45rem]">
+                    {service.menuLabel}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {service.description}
+                  </p>
+                  <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-primary)]">
+                    View Service
+                    <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -98,11 +94,11 @@ export default function ServicesPage() {
               Why It Matters
             </p>
             <h2 className="mt-4 max-w-3xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] md:text-[2.45rem]">
-              The platform supports students with opportunities that link learning to real-world progress.
+              Every service page now follows the same premium theme while focusing on a specific student outcome.
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
-              College EdwiseR brings together college guidance and industry-facing support
-              so students can build stronger academic confidence and career exposure.
+              This keeps the experience consistent for users while clearly separating counseling,
+              upskilling, hiring, internships, and global education opportunities.
             </p>
           </div>
         </div>

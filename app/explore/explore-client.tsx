@@ -194,6 +194,7 @@ export function ExploreClient({
       const normalizedCity = normalizeText(cityFilter);
       data = data.filter(
         (college) =>
+          normalizeText(college.city || "") === normalizedCity ||
           normalizeText(college.district) === normalizedCity ||
           normalizeText(college.state) === normalizedCity,
       );
@@ -353,7 +354,7 @@ export function ExploreClient({
                           <tr
                             key={courseName}
                             className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
-                            onClick={() => router.push(`/explore/course/${encodeURIComponent(courseName)}`)}
+                            onClick={() => router.push(`/explore/course/${encodeURIComponent(displayCourseName)}`)}
                           >
                             <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
@@ -533,7 +534,7 @@ export function ExploreClient({
                       <tr
                         key={courseName}
                         className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
-                        onClick={() => router.push(`/explore/course/${encodeURIComponent(courseName)}`)}
+                        onClick={() => router.push(`/explore/course/${encodeURIComponent(displayCourseName)}`)}
                       >
                         <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
                         <td className="px-3 py-2 whitespace-nowrap">

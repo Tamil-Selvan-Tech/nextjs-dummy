@@ -820,13 +820,13 @@ p-3 sm:p-4 md:p-6 xl:p-7">
             <div className="flex flex-col gap-4 sm:gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="flex items-center gap-3 text-[#2d5bff]">
+                {/* <div className="flex items-center gap-3 text-[#2d5bff]">
                   <GraduationCap className="size-7 fill-[#2d5bff] stroke-[1.6]" />
                   <span className="text-[1.05rem] font-bold tracking-tight">CUTOFF ZONE</span>
-                </div>
-                <h1 className="mt-4 max-w-[680px] text-[1.72rem] font-bold leading-tight tracking-[-0.04em] text-[#11275d] sm:text-[1.95rem] md:mt-5 md:text-[2.55rem]">
-                  Let&apos;s find the best colleges for you
-                </h1>
+                </div> */}
+                <h1 className="mt-4 max-w-[680px] text-[1.3rem] font-bold leading-tight tracking-[-0.04em] text-[#11275d] sm:text-[1.5rem] md:mt-5 md:text-[2rem] whitespace-nowrap">
+  Find the best colleges for your future.
+</h1>
                 <p className="mt-2.5 text-[0.94rem] text-[#4f689b] md:text-[0.98rem]">
                   Enter your details and get{" "}
                   <span className="font-semibold text-[#355cff]">accurate college predictions</span>{" "}
@@ -834,10 +834,10 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 </p>
               </div>
 
-              <div className="inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2 self-start rounded-[14px] border-2 border-[#8fd9bc] bg-[#effaf5] px-3.5 py-2 text-[0.82rem] font-semibold text-[#0f7b5c] shadow-[0_10px_24px_rgba(20,138,103,0.08)] sm:w-auto sm:justify-start">
+              {/* <div className="inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2 self-start rounded-[14px] border-2 border-[#8fd9bc] bg-[#effaf5] px-3.5 py-2 text-[0.82rem] font-semibold text-[#0f7b5c] shadow-[0_10px_24px_rgba(20,138,103,0.08)] sm:w-auto sm:justify-start">
                 <ShieldCheck className="size-4" />
                 100% Safe &amp; Secure
-              </div>
+              </div> */}
             </div>
 
             <form
@@ -1619,36 +1619,44 @@ p-3 sm:p-4 md:p-6 xl:p-7">
           </div>
         </section>
 <aside className="w-full order-1 md:order-2 mt-4 md:mt-0 md:sticky md:top-4">
-          <div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_top,#eef2ff_0%,#d9e3ff_38%,#aebfe6_68%,#6f7f9d_100%)] p-3 sm:p-4">
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04),rgba(255,255,255,0.22),rgba(255,255,255,0.04))]" />
-<div className="relative w-full h-full flex items-center justify-center">
-             <Image
-  src="/cutoff.png"
-  alt="Student using laptop"
-  width={900}
-  height={900}
-  className="w-full h-auto object-contain max-h-[300px] md:max-h-[380px]"
-  priority
-/>
-            </div>
-          </div>
+          <div className="mt-2 space-y-2">
+  <div className="rounded-[20px] border border-[#b6ccff] bg-white/95 p-3 shadow-[0_8px_20px_rgba(88,113,196,0.06)]">
+    
+    <div className="flex items-center gap-2 text-[#17306f]">
+      <TrendingUp className="size-4 text-[#2f63ff]" />
+      <h3 className="text-[1rem] font-semibold">
+        Score vs Expected Cutoff
+      </h3>
+    </div>
 
-          <div className="mt-4 space-y-3.5">
-            <div className="rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3.5 shadow-[0_12px_30px_rgba(88,113,196,0.08)]">
-              <div className="flex items-center gap-2 text-[#17306f]">
-                <TrendingUp className="size-5 text-[#2f63ff]" />
-                <h3 className="text-[1rem] font-semibold">Score vs Expected Cutoff</h3>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.78rem] text-[#5f79b1]">
-                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-4 rounded-full bg-[#2f63ff]" />Your Score</span>
-                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-4 rounded-full bg-[#9b75ff]" />Expected Cutoff</span>
-              </div>
-              <div className="mt-2 text-[0.76rem] text-[#5f79b1]">
-                {chartConfig.comparisonTitle} scale: 0 to {cutoffScaleMax}
-              </div>
-              <div className="mt-1 text-[0.74rem] text-[#6b7fb0]">{chartConfig.scaleHint}</div>
-              <BarChart metrics={chartConfig.subjectMetrics} />
-            </div>
+    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.74rem] text-[#5f79b1]">
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2 w-3 rounded-full bg-[#2f63ff]" />
+        Your Score
+      </span>
+
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2 w-3 rounded-full bg-[#9b75ff]" />
+        Expected Cutoff
+      </span>
+    </div>
+
+    <div className="mt-1 text-[0.72rem] text-[#5f79b1]">
+      {chartConfig.comparisonTitle} scale: 0 to {cutoffScaleMax}
+    </div>
+
+    <div className="mt-0.5 text-[0.7rem] text-[#6b7fb0]">
+      {chartConfig.scaleHint}
+    </div>
+
+    <div className="-mt-4">
+      <BarChart metrics={chartConfig.subjectMetrics} />
+    </div>
+
+  </div>
+</div>
+
+          
 
             <div className="rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3 shadow-[0_12px_30px_rgba(88,113,196,0.08)]">
               <h3 className="text-[1rem] font-semibold text-[#17306f]">Your Cutoff Score</h3>
@@ -1712,7 +1720,6 @@ p-3 sm:p-4 md:p-6 xl:p-7">
                 <p className="text-[0.76rem] font-medium leading-relaxed text-[#27477c]">{moodTip}</p>
               </div>
             </div>
-          </div>
         </aside>
         </div>
       </div>

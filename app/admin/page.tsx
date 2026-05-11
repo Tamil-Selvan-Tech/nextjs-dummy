@@ -1901,6 +1901,33 @@ function AdminPageContent() {
     });
   };
 
+  const normalizedRankingInput = useMemo(
+    () => normalizeRankingRangeInput(collegeForm.ranking),
+    [collegeForm.ranking],
+  );
+  const [rankingStartInput = "", rankingEndInput = ""] = normalizedRankingInput.split("-");
+
+  const updateCollegeRankingPart = useCallback(
+    (part: "start" | "end", rawValue: string) => {
+      clearCollegeFieldError("ranking");
+      const nextPart = String(rawValue || "").replace(/\D/g, "").slice(0, 4);
+
+      setCollegeForm((prev) => {
+        const currentInput = normalizeRankingRangeInput(prev.ranking);
+        const [currentStart = "", currentEnd = ""] = currentInput.split("-");
+        const nextStart = part === "start" ? nextPart : currentStart;
+        const nextEnd = part === "end" ? nextPart : currentEnd;
+        const nextRanking = nextStart || nextEnd ? `${nextStart}-${nextEnd}` : "";
+
+        return {
+          ...prev,
+          ranking: nextRanking,
+        };
+      });
+    },
+    [clearCollegeFieldError],
+  );
+
   const applyCollegeValidation = (validation: { step: number | null; message: string; field?: string }) => {
     if (!validation.message) {
       setCollegeFieldErrors({});
@@ -3568,31 +3595,15 @@ function AdminPageContent() {
               <div className={formSectionClass}>
                 <label>
                   <span className={labelClass}>Ranking (NIRF / State rank)</span>
-                  <div className="relative">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                     <input
                       className={`${getCollegeInputClass("ranking")} text-center`}
-                      placeholder="101-150"
+                      placeholder="101"
                       inputMode="numeric"
-                      maxLength={9}
-                      value={collegeForm.ranking}
-                      onChange={(event) => {
-                        clearCollegeFieldError("ranking");
-                        const rawValue = event.target.value;
-                        const cleanedValue = String(rawValue || "")
-                          .replace(/[\u2013\u2014]/g, "-")
-                          .replace(/[^\d-]/g, "");
-                        const digitsOnly = cleanedValue.replace(/-/g, "").slice(0, 4);
-                        const normalizedInput = cleanedValue.includes("-")
-                          ? normalizeRankingRangeInput(cleanedValue)
-                          : digitsOnly
-                            ? `${digitsOnly}-`
-                            : "";
-
-                        setCollegeForm((prev) => ({
-                          ...prev,
-                          ranking: normalizedInput,
-                        }));
-                      }}
+                      maxLength={4}
+                      aria-label="Ranking start"
+                      value={rankingStartInput}
+                      onChange={(event) => updateCollegeRankingPart("start", event.target.value)}
                       onBlur={() => {
                         const normalizedInput = normalizeRankingRangeInput(collegeForm.ranking);
                         const formatted =
@@ -3608,9 +3619,33 @@ function AdminPageContent() {
                         }));
                       }}
                     />
-                    <span className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center text-base font-semibold text-slate-400">
+                    <span className="inline-flex h-11 items-center justify-center px-1 text-base font-semibold text-slate-400">
                       -
                     </span>
+                    <input
+                      className={`${getCollegeInputClass("ranking")} text-center disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
+                      placeholder="150"
+                      inputMode="numeric"
+                      maxLength={4}
+                      aria-label="Ranking end"
+                      value={rankingEndInput}
+                      disabled={!rankingStartInput}
+                      onChange={(event) => updateCollegeRankingPart("end", event.target.value)}
+                      onBlur={() => {
+                        const normalizedInput = normalizeRankingRangeInput(collegeForm.ranking);
+                        const formatted =
+                          normalizedInput.includes("-") && isValidRankingRange(normalizedInput)
+                            ? formatRankingRangeForSave(normalizedInput)
+                            : normalizedInput;
+                        setCollegeForm((prev) => ({ ...prev, ranking: formatted }));
+                        setCollegeFieldErrors((prev) => ({
+                          ...prev,
+                          ranking: isValidRankingRange(formatted)
+                            ? ""
+                            : "Use NIRF format like 101-150. Both numbers must be between 1 and 9999.",
+                        }));
+                      }}
+                    />
                   </div>
                   <span className="mt-1.5 block text-center text-[11px] text-slate-400">
                     Enter a ranking range like `25 - 50`
