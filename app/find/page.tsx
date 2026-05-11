@@ -20,6 +20,7 @@ import {
   User,
   Users,
 } from "lucide-react";
+import { PageBackButton } from "@/components/global-back-button";
 import { Navbar } from "@/components/navbar";
 import { degreeOptions, engineeringCourseOptions, medicalCourseOptions } from "@/lib/site-data";
 
@@ -812,6 +813,11 @@ export default function FindPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
       <Navbar />
+      <div className="px-2 pt-4 sm:px-4 sm:pt-5 md:px-5 md:pt-6 xl:px-6">
+        <div className="mx-auto w-full max-w-[1320px]">
+          <PageBackButton />
+        </div>
+      </div>
 <div className="px-2 py-4 sm:px-4 sm:py-6 md:px-5 md:py-8 xl:px-6">
   <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-4 sm:gap-5 md:gap-5 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
  <section className="min-w-0 w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 xl:max-w-[760px] xl:justify-self-start
