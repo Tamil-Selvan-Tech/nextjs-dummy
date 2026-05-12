@@ -1133,7 +1133,7 @@ export function HomePage({
       <div className="pointer-events-none absolute -bottom-16 right-8 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.14)] blur-3xl" />
 
       <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => router.push("/find")}
@@ -1160,10 +1160,10 @@ export function HomePage({
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_16.25rem] md:items-center lg:grid-cols-[minmax(0,1fr)_19.5rem]">
-          <div className="min-w-0">
-            <h3 className="text-[1.08rem] font-black leading-[1.12] tracking-[-0.035em] text-[#14213d] sm:text-[1.18rem] lg:text-[1.34rem]">
-              <span className="block whitespace-nowrap">
+        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_16.5rem] md:items-center lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 self-center">
+            <h3 className="max-w-[18rem] text-[1.08rem] font-black leading-[1.12] tracking-[-0.035em] text-[#14213d] sm:max-w-[20rem] sm:text-[1.18rem] lg:max-w-[22rem] lg:text-[1.34rem]">
+              <span className="block">
                 Unlock Your Future College.
               </span>
               <span className="mt-1 block text-[#3b82f6]">
@@ -1171,12 +1171,12 @@ export function HomePage({
               </span>
             </h3>
 
-            <p className="mt-2.5 max-w-none text-[10px] leading-[1.05rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-[1.2rem] lg:text-[12px] lg:leading-5">
+            <p className="mt-2.5 max-w-[20rem] text-[10px] leading-[1.05rem] text-[color:var(--text-muted)] sm:max-w-[22rem] sm:text-[11px] sm:leading-[1.2rem] lg:max-w-[24rem] lg:text-[12px] lg:leading-5">
               Enter your marks and preferences to find better college matches.
               Get clearer cutoff guidance in one simple flow.
             </p>
 
-            <div className="mt-3 grid grid-cols-3 items-stretch gap-0 rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-white/88 text-[8.5px] font-semibold text-[color:var(--brand-primary)] shadow-sm sm:max-w-[19rem] sm:text-[9px]">
+            <div className="mt-3 grid max-w-[20rem] grid-cols-3 items-stretch gap-0 rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-white/88 text-[8.5px] font-semibold text-[color:var(--brand-primary)] shadow-sm sm:max-w-[20.5rem] sm:text-[9px]">
               <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 px-2 py-2 text-center">
                 <Sparkles className="size-3.5 shrink-0 text-[#f59e0b]" />
                 <span>Instant results</span>
@@ -1192,12 +1192,12 @@ export function HomePage({
             </div>
           </div>
 
-          <div className="mx-auto flex w-full max-w-[15.5rem] justify-center md:mx-0 md:max-w-[16.5rem] md:justify-end lg:max-w-[19.5rem]">
+          <div className="mx-auto flex w-full max-w-[15.75rem] items-center justify-center md:mx-0 md:max-w-[17rem] md:justify-end lg:max-w-[20rem]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/cutoff-banner-image.png"
               alt="Cutoff banner illustration"
-              className="h-auto w-full scale-[0.96] object-contain md:scale-100"
+              className="h-auto w-full object-contain"
             />
           </div>
         </div>
@@ -1715,8 +1715,8 @@ export function HomePage({
                               <item.icon className="size-3 sm:size-4" />
                             </span>
                             <div className="min-w-0 text-center sm:text-left">
-                              <p className="text-[0.78rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
-                              <p className="mt-1 text-[7px] font-medium leading-[0.7rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
+                              <p className="text-[0.9rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
+                              <p className="mt-1 text-[8.5px] font-medium leading-[0.8rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
                             </div>
                           </div>
                         </div>

@@ -3101,7 +3101,7 @@ function AdminPageContent() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-5 grid gap-4">
               <div className="overflow-hidden rounded-[1.25rem] border border-emerald-200">
                 <div className="flex items-center justify-between gap-3 border-b border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] px-4 py-3">
                   <p className="text-sm font-bold text-emerald-900">Edited Colleges</p>

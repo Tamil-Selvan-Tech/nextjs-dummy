@@ -83,6 +83,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     .filter(Boolean)
     .join(", ");
   const contactNumber = college.contactPhone?.trim() || college.alternatePhone?.trim() || "";
+  const placementDetails = (college.placements as Record<string, unknown> | undefined) || {};
+  const placementRateValue = Number(
+    college.placementRate || placementDetails.placementRate || 0,
+  );
+  const placementRateDisplay = placementRateValue > 0 ? `${placementRateValue}%` : "Not available";
   const rankingDisplay = String(college.ranking || "")
     .split(/\s*[-–—]+\s*/)
     .map((item) => item.trim())
@@ -126,16 +131,16 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
       if (cutoffItems.length > 0) {
         return (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid min-w-[22.5rem]  grid-cols-2  gap-2">
             {cutoffItems.map((item) => (
-              <span
+              <div
                 key={`${course.id}-${item.category}`}
-                className="inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-3 py-1.5 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
+                className="grid min-w-0 grid-cols-[2.7rem_auto_minmax(0,1fr)] items-center gap-1 rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-3 py-1.5 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
               >
                 <span className="shrink-0 font-semibold text-slate-700">{item.category}</span>
                 <span className="shrink-0 text-slate-500">:</span>
-                <span className="shrink-0">{item.cutoff}</span>
-              </span>
+                <span className="shrink-0 whitespace-nowrap text-slate-600">{item.cutoff}</span>
+              </div>
             ))}
           </div>
         );
@@ -221,19 +226,29 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
         "Complete the college application and document verification based on the chosen course.",
       ];
   const hostelDetails = (college.hostelDetails as Record<string, unknown> | undefined) || {};
+  const hostelAvailability =
+    String(hostelDetails.availability || "").trim().toLowerCase() === "available";
+  const hasHostel = college.hasHostel || hostelAvailability;
   const hostelFees =
-    (hostelDetails.hostelFees as Record<string, unknown> | undefined) || {};
-  const hostelFacilityOptions = Array.isArray(hostelDetails.facilityOptions)
+    (hostelDetails.hostelFees as Record<string, unknown> | undefined) ||
+    (hostelDetails.feesStructure as Record<string, unknown> | undefined) ||
+    {};
+  const hostelFeeMin = hostelFees.minAmount ?? hostelFees.min ?? "";
+  const hostelFeeMax = hostelFees.maxAmount ?? hostelFees.max ?? "";
+  const hostelFacilitySource = Array.isArray(hostelDetails.facilityOptions)
     ? hostelDetails.facilityOptions
-        .map((item) => String(item || "").trim())
-        .filter(Boolean)
-    : [];
+    : Array.isArray(hostelDetails.facilities)
+      ? hostelDetails.facilities
+      : [];
+  const hostelFacilityOptions = hostelFacilitySource
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
   const hostelMetaItems = [
     { label: "General Info", value: String(hostelDetails.rules || "").trim() || "Not available" },
     { label: "Hostel Type", value: String(hostelDetails.hostelType || "").trim() || "Not available" },
     {
       label: "Hostel Fees Structure",
-      value: `${formatMoney(hostelFees.minAmount)} - ${formatMoney(hostelFees.maxAmount)}`,
+      value: `${formatMoney(hostelFeeMin)} - ${formatMoney(hostelFeeMax)}`,
     },
     { label: "CCTV Availability", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available" },
     { label: "Facilities", value: hostelFacilityOptions.length ? hostelFacilityOptions.join(", ") : "Not available" },
@@ -436,7 +451,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
                 <div class="meta-card">
                   <div class="label">Placement Rate</div>
-                  <div class="value">${escapeHtml(`${college.placementRate || "-"}%`)}</div>
+                  <div class="value">${escapeHtml(placementRateDisplay)}</div>
                 </div>
                 <div class="meta-card">
                   <div class="label">Fees Range</div>
@@ -467,7 +482,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
                 <div class="meta-card">
                   <div class="label">Hostel</div>
-                  <div class="value">${escapeHtml(college.hasHostel ? "Available" : "Not available")}</div>
+                  <div class="value">${escapeHtml(hasHostel ? "Available" : "Not available")}</div>
                 </div>
               </div>
               <div class="chips">
@@ -508,10 +523,10 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
 
   const topInfoCards = [
     { label: "Ranking", value: fixedRankingDisplay, icon: Trophy },
-    { label: "Placement", value: `${college.placementRate}%`, icon: BadgeCheck },
+    { label: "Placement", value: placementRateDisplay, icon: BadgeCheck },
     { label: "Courses", value: String(courseCount), icon: BookOpen },
     { label: "Application Mode", value: college.applicationMode?.trim() || "Not available", icon: BadgeCheck },
-    { label: "Hostel", value: college.hasHostel ? "Available" : "No", icon: Building2 },
+    { label: "Hostel", value: hasHostel ? "Available" : "No", icon: Building2 },
     { label: "Accreditation", value: college.accreditation, icon: ShieldCheck },
   ];
   const topInfoCardMobileOrder: Record<string, string> = {
@@ -614,7 +629,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
         <div className="page-container-full px-3 py-5 sm:px-6 md:py-10">
           <div className="mx-auto w-full overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] shadow-[0_22px_48px_rgba(22,50,79,0.1)]">
             <div className="grid border-b border-[rgba(15,76,129,0.08)] lg:grid-cols-[1.08fr_0.92fr]">
-              <div className="relative overflow-hidden bg-[linear-gradient(180deg,#d8e7f4_0%,#edf4fb_100%)] p-4 md:p-5">
+              <div className="order-2 relative overflow-hidden bg-[linear-gradient(180deg,#d8e7f4_0%,#edf4fb_100%)] p-4 md:p-5 lg:order-1">
                 <div className="absolute left-6 top-6 z-10 h-20 w-20 rounded-full bg-[rgba(255,255,255,0.24)] blur-2xl" />
                 <div className="absolute bottom-6 right-6 z-10 h-24 w-24 rounded-full bg-[rgba(255,138,61,0.18)] blur-3xl" />
                 <div className="relative rounded-[1.5rem] border border-[rgba(255,255,255,0.55)] bg-white/30 p-3 shadow-[0_20px_40px_rgba(22,50,79,0.1)] backdrop-blur-sm">
@@ -705,7 +720,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               </div>
 
-              <div className="relative flex overflow-hidden bg-[linear-gradient(180deg,#f9fbff_0%,#eef5fc_100%)] p-5 md:p-7">
+              <div className="order-1 relative flex overflow-hidden bg-[linear-gradient(180deg,#f9fbff_0%,#eef5fc_100%)] p-5 md:p-7 lg:order-2">
                 <div className="absolute right-[-3rem] top-[-2rem] h-32 w-32 rounded-full bg-[rgba(255,138,61,0.14)] blur-3xl" />
                 <div className="absolute bottom-[-2rem] left-[-2rem] h-32 w-32 rounded-full bg-[rgba(60,126,182,0.12)] blur-3xl" />
                 <div className="relative flex w-full flex-1 flex-col">
@@ -781,19 +796,19 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   </div>
 
                   <div className="mt-auto pt-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <button type="button" onClick={downloadBrochure} className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] md:flex-1">
-                      <Download className="size-4" />
-                      {brochureUrl ? "Open Brochure" : "Download / Print"}
-                    </button>
-                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-5 py-3 text-sm font-semibold text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] md:flex-1">
+                  <div className="grid grid-cols-[0.95fr_0.75fr_1.3fr] gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
+                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[7.75rem] md:flex-none md:px-3.5">
+                      <Globe className="size-3.5 sm:size-4" />
+                      Website
+                    </a>
+                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[6.75rem] md:flex-none md:px-3.5">
+                      <MapPin className="size-3.5 sm:size-4" />
+                      Map
+                    </a>
+                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:gap-2 sm:px-5 sm:py-3 sm:text-sm md:flex-1">
                       Compare College
-                      <ArrowRight className="size-4" />
+                      <ArrowRight className="size-3.5 sm:size-4" />
                     </button>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-4 py-2 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"><Globe className="size-4" />Website</a>
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.08)] bg-white px-4 py-2 text-xs font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)]"><MapPin className="size-4" />Map</a>
                   </div>
                   </div>
                 </div>
@@ -1046,10 +1061,10 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   </div>
                   <div className="overflow-hidden rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_16px_34px_rgba(22,50,79,0.06)]">
-                    <div className="border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
+                    <div className="border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden ">
                       Scroll horizontally to compare course details.
                     </div>
-                    <div className="responsive-data-table">
+                    <div className="responsive-data-table ">
                     <div className="grid grid-cols-[minmax(260px,2fr)_minmax(150px,0.85fr)_minmax(140px,0.6fr)] gap-0 border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                       <div>Course</div>
                       <div className="w-full justify-self-center text-center">Total Fees</div>
@@ -1108,7 +1123,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               {activeTab === "career" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Placement Rate</p><p className="mt-2 text-xl font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p></article>
+                    <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Placement Rate</p><p className="mt-2 text-xl font-bold text-[color:var(--brand-primary)]">{placementRateDisplay}</p></article>
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Highest Package</p><p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{formatMoney((college.placements as Record<string, unknown> | undefined)?.highestPackage)}</p></article>
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Average Package</p><p className="mt-2 text-lg font-bold text-[color:var(--brand-primary)]">{formatMoney((college.placements as Record<string, unknown> | undefined)?.averagePackage)}</p></article>
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
@@ -1142,7 +1157,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         </div>
                         <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] p-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Hostel Fee Range</p>
-                          <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{`${formatMoney(hostelFees.minAmount)} - ${formatMoney(hostelFees.maxAmount)}`}</p>
+                          <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{`${formatMoney(hostelFeeMin)} - ${formatMoney(hostelFeeMax)}`}</p>
                         </div>
                       </div>
                     </article>
@@ -1199,9 +1214,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <div className="mt-6 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.96))] p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Residential Life</p><h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Hostel Details</h3></div>
-                    <span className={`rounded-full px-4 py-2 text-sm font-semibold ${college.hasHostel ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{college.hasHostel ? "Hostel Available" : "Hostel Not Available"}</span>
+                    <span className={`rounded-full px-4 py-2 text-sm font-semibold ${hasHostel ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{hasHostel ? "Hostel Available" : "Hostel Not Available"}</span>
                   </div>
-                  {college.hasHostel ? (
+                  {hasHostel ? (
                     <div className="mt-6 space-y-4">
                       <div className="grid gap-3 sm:grid-cols-2">
                         {hostelMetaItems.map((item) => (
@@ -1288,13 +1303,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   Scroll horizontally to view all course columns.
                 </div>
                 <div className="responsive-data-table">
-                  <table className="min-w-[82rem] w-full border-collapse text-left text-sm text-[color:var(--text-dark)]">
+                  <table className="min-w-[92rem] w-full border-collapse text-left text-sm text-[color:var(--text-dark)]">
                     <thead>
                       <tr className="bg-[rgba(15,76,129,0.08)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                         <th className="w-[240px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2">Course</th>
                         <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Mode</th>
                         <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Duration</th>
-                        <th className="w-[250px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-left whitespace-nowrap">Cutoff</th>
+                        <th className="w-[460px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-left whitespace-nowrap">Cutoff</th>
                         <th className="w-[90px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Intake</th>
                         <th className="w-[190px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Min Qualification</th>
                         <th className="w-[130px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2 text-center whitespace-nowrap">Semester Fee</th>
@@ -1308,7 +1323,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 font-semibold">{getCourseTitle(course)}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</td>
-                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-left text-xs leading-5 text-[color:var(--text-muted)]">{renderCutoffDetails(course)}</td>
+                            <td className="min-w-[24rem] border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-left align-top text-xs leading-5 text-[color:var(--text-muted)]">{renderCutoffDetails(course)}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.minimumQualification || "-"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.semesterFees)}</td>

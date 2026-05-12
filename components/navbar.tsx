@@ -4,9 +4,8 @@ import {
   Bell,
   BookOpen,
   BriefcaseBusiness,
-  Building2,
+  Compass,
   Globe2,
-  GraduationCap,
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
@@ -89,6 +88,8 @@ const BACK_BUTTON_UNDER_NAV_ROUTES = new Set([
 
 const serviceMenuItems = [
   {
+    navLabel: "Career",
+    navIconClassName: "text-[#ef4444]",
     label: "Career Guidance",
     description: "Plan the right path with expert counseling",
     href: "/services/career-guidance",
@@ -96,6 +97,8 @@ const serviceMenuItems = [
     iconClassName: "bg-[rgba(239,68,68,0.12)] text-[#ef4444]",
   },
   {
+    navLabel: "Skills",
+    navIconClassName: "text-[#2563eb]",
     label: "Skill Programs",
     description: "Build job-ready technical and domain skills",
     href: "/services/skill-programs",
@@ -103,6 +106,8 @@ const serviceMenuItems = [
     iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
   },
   {
+    navLabel: "Placements",
+    navIconClassName: "text-[#f97316]",
     label: "Placements",
     description: "Connect students with real hiring opportunities",
     href: "/services/placements",
@@ -110,6 +115,8 @@ const serviceMenuItems = [
     iconClassName: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
   },
   {
+    navLabel: "Internships",
+    navIconClassName: "text-[#8b5cf6]",
     label: "Internships",
     description: "Gain practical exposure through live projects",
     href: "/services/internships",
@@ -117,6 +124,8 @@ const serviceMenuItems = [
     iconClassName: "bg-[rgba(139,92,246,0.12)] text-[#8b5cf6]",
   },
   {
+    navLabel: "Abroad",
+    navIconClassName: "text-[#0284c7]",
     label: "Study Abroad",
     description: "Get support for global education and careers",
     href: "/services/study-abroad",
@@ -130,7 +139,6 @@ export function Navbar() {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCoursesOpen, setIsCoursesOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [, setIsCoursesCueDimmed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isPreferenceModalOpen, setIsPreferenceModalOpen] = useState(false);
@@ -147,7 +155,6 @@ export function Navbar() {
     getMountServerSnapshot,
   );
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const servicesMenuRef = useRef<HTMLDivElement | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const currentUser = useMemo<SafeAuthUser | null>(() => {
     if (!currentUserRaw) return null;
@@ -232,18 +239,6 @@ export function Navbar() {
   }, [isCoursesOpen]);
 
   useEffect(() => {
-    if (!isServicesOpen) return;
-
-    const onMouseDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!servicesMenuRef.current?.contains(target)) setIsServicesOpen(false);
-    };
-
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [isServicesOpen]);
-
-  useEffect(() => {
     if (!isAccountMenuOpen) return;
 
     const onMouseDown = (event: MouseEvent) => {
@@ -258,7 +253,6 @@ export function Navbar() {
   const goTo = (href: string) => {
     router.push(href);
     setIsDrawerOpen(false);
-    setIsServicesOpen(false);
     setIsAccountMenuOpen(false);
     setIsPreferenceModalOpen(false);
   };
@@ -313,6 +307,43 @@ export function Navbar() {
     setIsCoursesCueDimmed(false);
   };
 
+  const desktopPrimaryNavItems = [
+    ...serviceMenuItems.map((item) => ({
+      label: item.navLabel,
+      title: item.label,
+      href: item.href,
+      icon: item.icon,
+      iconClassName: item.navIconClassName,
+    })),
+    {
+      label: "Careers",
+      title: "Careers",
+      href: "/careers",
+      icon: Rocket,
+      iconClassName: "text-[#8b5cf6]",
+    },
+    {
+      label: "About",
+      title: "About Us",
+      href: "/about-us",
+      icon: CircleHelp,
+      iconClassName: "text-[#ef4444]",
+    },
+    {
+      label: "Explore",
+      title: "Explore",
+      href: "/explore",
+      icon: Compass,
+      iconClassName: "text-[#1e4e79]",
+    },
+  ] as const;
+
+  const isDesktopNavItemActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === "/explore") return pathname.startsWith("/explore");
+    return pathname === href;
+  };
+
   const mobileLinks = [
     { label: "Services", href: "/services" },
     { label: "About Us", href: "/about-us" },
@@ -351,75 +382,30 @@ export function Navbar() {
             </div>
           </button>
 
-          <div
-            ref={servicesMenuRef}
-            className="relative order-3 hidden min-w-0 flex-1 items-center justify-center md:order-none md:pl-4 md:flex lg:pl-8"
-            onMouseLeave={() => setIsServicesOpen(false)}
-          >
-            <div className="flex min-w-0 items-center gap-3 lg:gap-4">
-              <button
-                type="button"
-                onClick={() => setIsServicesOpen((current) => !current)}
-                onMouseEnter={() => setIsServicesOpen(true)}
-                className={`inline-flex min-w-[10.75rem] items-center justify-center gap-1.5 rounded-full border px-6 py-2 text-sm font-semibold transition ${
-                  isServicesOpen
-                    ? "border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.08)] text-[color:var(--brand-accent-deep)]"
-                    : "border-[rgba(15,76,129,0.1)] bg-white text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.04)]"
-                }`}
-                aria-expanded={isServicesOpen}
-              >
-                <GraduationCap className="size-4 text-[color:var(--brand-accent-deep)]" />
-                Services
-                <ChevronDown className={`size-4 transition ${isServicesOpen ? "rotate-180" : ""}`} />
-              </button>
-              <button
-                type="button"
-                onClick={() => goTo("/about-us")}
-                className="flex min-w-[10rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2 font-semibold transition hover:bg-[rgba(15,76,129,0.04)]"
-              >
-                <CircleHelp className="size-4 text-[color:var(--brand-accent-deep)]" />
-                About
-              </button>
-              <button
-                type="button"
-                onClick={() => goTo("/explore")}
-                className="flex min-w-[10rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2 transition hover:bg-[rgba(15,76,129,0.04)]"
-              >
-                <Building2 className="size-4 text-[color:var(--brand-primary)]" />
-                Explore
-              </button>
-            </div>
+          <div className="order-3 hidden min-w-0 flex-1 items-center justify-center md:order-none md:flex md:px-1 lg:px-3">
+            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {desktopPrimaryNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isDesktopNavItemActive(item.href);
 
-            <div
-              className={`absolute left-1/2 top-[calc(100%+1.65rem)] z-40 w-[min(74rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] -translate-x-[68%] rounded-[1.85rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,255,0.98))] p-4 shadow-[0_22px_55px_rgba(30,78,121,0.16)] transition-all duration-200 ${
-                isServicesOpen
-                  ? "pointer-events-auto translate-y-0 opacity-100"
-                  : "pointer-events-none -translate-y-2 opacity-0"
-              }`}
-              onMouseEnter={() => setIsServicesOpen(true)}
-            >
-              <div className="grid grid-cols-5 gap-4">
-                {serviceMenuItems.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => goTo(item.href)}
-                      className="flex h-full min-h-[132px] items-start gap-4 rounded-[1.35rem] border border-[rgba(15,76,129,0.08)] bg-white px-5 py-5 text-left shadow-[0_10px_25px_rgba(30,78,121,0.06)] transition hover:-translate-y-0.5 hover:border-[rgba(239,68,68,0.24)] hover:shadow-[0_16px_35px_rgba(30,78,121,0.1)]"
-                    >
-                      <span className={`mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-2xl ${item.iconClassName}`}>
-                        <Icon className="size-5.5" />
-                      </span>
-                      <span className="block">
-                        <span className="block text-[1rem] font-semibold text-[color:var(--text-dark)]">{item.label}</span>
-                        <span className="mt-1.5 block text-[0.88rem] leading-6 text-[color:var(--text-muted)]">{item.description}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => goTo(item.href)}
+                    className={`group inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
+                      isActive
+                        ? "bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]"
+                        : "text-[color:var(--text-muted)] hover:bg-[rgba(15,76,129,0.05)] hover:text-[color:var(--text-dark)]"
+                    }`}
+                    aria-label={item.title}
+                    title={item.title}
+                  >
+                    <Icon className={`size-4 shrink-0 ${item.iconClassName}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -620,7 +606,6 @@ export function Navbar() {
                 type="button"
                 onClick={() => {
                   setIsDrawerOpen(false);
-                  setIsServicesOpen(false);
                   openCoursesPanel();
                 }}
                 className="w-full rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"

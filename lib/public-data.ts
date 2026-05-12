@@ -396,6 +396,15 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       (rawPlacements as Record<string, unknown>).averagePackage ?? item.averagePackage ?? "";
     const companiesVisited =
       (rawPlacements as Record<string, unknown>).companiesVisited ?? item.companiesVisited ?? "";
+    const placementRate =
+      (rawPlacements as Record<string, unknown>).placementRate ?? item.placementRate ?? "";
+    const rawHostelDetails =
+      item.hostelDetails && typeof item.hostelDetails === "object" ? item.hostelDetails : {};
+    const hasHostel =
+      Boolean(item.hasHostel) ||
+      String((rawHostelDetails as Record<string, unknown>).availability || "")
+        .trim()
+        .toLowerCase() === "available";
 
     return {
       id: String(item._id || `college-${index}`),
@@ -427,8 +436,8 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       isTopCollege: Boolean(item.isTopCollege || item.isBestCollege),
       accreditation: String(item.accreditation || "Not available"),
       ranking: String(item.ranking || "Not ranked"),
-      placementRate: toNumber(item.placementRate),
-      hasHostel: Boolean(item.hasHostel),
+      placementRate: toNumber(placementRate),
+      hasHostel,
       facilities: toList(item.facilities),
       quotas: toList(item.quotas),
       courseTags: toList(item.courseTags),
@@ -455,8 +464,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
         averagePackage,
         companiesVisited,
       },
-      hostelDetails:
-        item.hostelDetails && typeof item.hostelDetails === "object" ? item.hostelDetails : {},
+      hostelDetails: rawHostelDetails,
     };
   });
 

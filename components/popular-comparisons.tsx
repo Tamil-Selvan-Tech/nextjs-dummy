@@ -18,9 +18,9 @@ const FacebookIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const MailIcon = ({ className }: { className?: string }) => (
+const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z" />
+    <path d="M12 2.2a9.8 9.8 0 0 0-8.4 14.9L2 22l5.1-1.5A9.8 9.8 0 1 0 12 2.2Zm0 17.8a8 8 0 0 1-4.1-1.1l-.3-.2-3 .9.9-2.9-.2-.3A8 8 0 1 1 12 20Zm4.4-6c-.2-.1-1.2-.6-1.4-.7-.2-.1-.3-.1-.5.1l-.4.5c-.1.1-.3.2-.5.1-.2-.1-1-.4-1.8-1.2-.7-.7-1.1-1.5-1.2-1.7-.1-.2 0-.3.1-.4l.3-.3.2-.3.1-.3c0-.1 0-.3 0-.4l-.7-1.6c-.2-.4-.4-.4-.5-.4h-.4c-.1 0-.4.1-.6.3-.2.2-.8.8-.8 1.9 0 1.1.8 2.1.9 2.2.1.1 1.5 2.4 3.7 3.2 2.1.8 2.1.5 2.5.5.4 0 1.2-.5 1.4-1 .2-.5.2-.9.1-1 0-.1-.2-.2-.4-.3Z" />
   </svg>
 );
 
@@ -42,7 +42,7 @@ export function PopularComparisons({
   const shareButtons = [
     { label: "Facebook", icon: FacebookIcon, className: "bg-[#1877F2]" },
     { label: "Instagram", icon: InstagramIcon, className: "bg-[#E4405F]" },
-    { label: "Email", icon: MailIcon, className: "bg-[#1f2937]" },
+    { label: "WhatsApp", icon: WhatsAppIcon, className: "bg-[#25D366]" },
   ];
   const ratingLabels = ["Bad", "Poor", "Okay", "Very Good", "Excellent"];
   const trimmedFeedback = feedbackText.trim();
