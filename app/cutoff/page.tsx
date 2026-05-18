@@ -42,10 +42,12 @@ export default async function CutoffPage({
   return (
     <CutoffClient
       selectedLevel={pick(params.level) || pick(params.standard) || pick(params.class)}
+      selectedState={pick(params.state) || "Tamil Nadu"}
       selectedDegree={pick(params.degree)}
       selectedCourse={pick(params.course)}
       selectedSpecialization={pick(params.specialization)}
       selectedCategory={pick(params.category)}
+      selectedDreamCollege={pick(params.dreamCollege)}
       selectedCollegeType={pick(params.collegeType)}
       selectedAdmissionType={pick(params.admissionType)}
       enteredCutoff={enteredScore}
