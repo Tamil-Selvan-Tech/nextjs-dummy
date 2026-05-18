@@ -360,7 +360,7 @@ const emptyExamScheduleForm: ExamScheduleForm = {
 const examScheduleNameOptions = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
 const examScheduleNameOptionsByStream: Record<string, string[]> = {
   Engineering: ["JEE Main", "JEE Advanced"],
-  Architecture: ["JEE Main", "JEE Advanced"],
+  Architecture: ["NATA", "JEE Main", "JEE Advanced"],
   Law: ["CLAT"],
   "Medical / Health": ["NEET"],
   Agriculture: ["ICAR AIEEA"],
@@ -375,6 +375,9 @@ const getExamScheduleNameOptions = (stream: string) =>
   examScheduleNameOptionsByStream[normalizeCourseStream(stream)] || examScheduleNameOptions;
 const resolveExamCutoffRangeConfig = (stream: string, examName: string): CutoffRangeConfig => {
   const normalizedExamName = normalizeExamScheduleName(examName);
+  if (normalizedExamName === normalizeExamScheduleName("NATA")) {
+    return { max: 200, scaleLabel: "out of 200", contextLabel: "NATA" };
+  }
   if (normalizedExamName === normalizeExamScheduleName("JEE Main")) {
     return { max: 300, scaleLabel: "out of 300", contextLabel: "JEE Main" };
   }
@@ -3723,7 +3726,7 @@ function AdminPageContent() {
                   <button
                     type="button"
                     onClick={addCustomFacility}
-                    className={`${softButtonClass} min-w-[108px] justify-center`}
+                    className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
                   >
                     Add Facility
                   </button>
@@ -3784,7 +3787,7 @@ function AdminPageContent() {
                       <button
                         type="button"
                         onClick={addCustomQuota}
-                        className={`${softButtonClass} min-w-[108px] justify-center`}
+                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
                       >
                         Add Quota
                       </button>
@@ -3867,7 +3870,7 @@ function AdminPageContent() {
                       <button
                         type="button"
                         onClick={addCustomScholarship}
-                        className={`${softButtonClass} min-w-[108px] justify-center`}
+                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
                       >
                         Add Scholarship
                       </button>
@@ -4863,7 +4866,7 @@ function AdminPageContent() {
                         </p>
                         <p className="mt-1 text-xs text-slate-500">Tags: {college.courseTags || "-"}</p>
                         <p className="mt-1 text-xs text-slate-500">Facilities: {Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || "-")}</p>
-                        <p className="mt-1 text-xs text-slate-500">Placement: {String(college.placements?.placementRate || college.placementRate || "-")}</p>
+                        <p className="mt-1 text-xs text-slate-500">Placement: {String((college.placements?.placementRate ?? college.placementRate) || "-")}</p>
                         <p className="mt-1 text-xs text-slate-500">Contact: {college.contactPhone || college.phone || "-"}</p>
                         <p className="mt-1 text-xs text-slate-500">{college.isTopCollege || college.isBestCollege ? "Best college" : "Standard listing"}</p>
                         </>
@@ -4894,11 +4897,11 @@ function AdminPageContent() {
                               : [...prev, college._id],
                           )
                         }
-                        className={`${softButtonClass} w-[132px] justify-center px-3 py-1.5 text-xs`}
+                        className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-xs sm:w-auto sm:min-w-[132px]`}
                       >
                         {isExpanded ? "Hide Info" : "See Details"}
                       </button>
-                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-[132px] justify-center px-3 py-1.5 text-sm`}>
+                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-sm sm:w-auto sm:min-w-[132px]`}>
                         View
                         <ExternalLink className="size-4" />
                       </Link>
@@ -4937,7 +4940,7 @@ function AdminPageContent() {
                           admissionProcess: college.admissionProcess || "",
                           applicationMode: college.applicationMode || "",
                           ranking: formatRankingRangeForSave(String(college.ranking || "")),
-                          placementRate: String(college.placementRate || ""),
+                          placementRate: String(placementData.placementRate ?? college.placementRate ?? ""),
                           feeMin: rangeData.min,
                           feeMax: rangeData.max,
                           locationLink: college.locationLink || college.mapUrl || "",

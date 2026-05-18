@@ -358,7 +358,7 @@ function RoutineTable({
         <h3 className="text-[1.6rem] font-bold tracking-[-0.03em] text-[#172033]">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[900px] w-full border-collapse text-left text-sm text-[#425066]">
+        <table className="w-full min-w-[40rem] border-collapse text-left text-sm text-[#425066] md:min-w-[48rem]">
           <thead>
             <tr className="bg-[#dfeafe] text-[#172033]">
               <th className="w-[180px] border-r border-[#cfe0ff] px-5 py-4 font-semibold">{columns[0]}</th>
@@ -479,7 +479,7 @@ function TableSection({
       <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
       <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
         <div className="overflow-x-auto">
-          <table className="min-w-[34rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+          <table className="w-full min-w-[30rem] border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-[34rem] lg:min-w-full sm:text-[1rem]">
             <thead>
               <tr className="bg-[#dfeafe] text-[#172033]">
                 <th className="w-[38%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
@@ -1027,7 +1027,7 @@ function GenericSectionContent({ section, details }: { section: ExamSection; det
                 </h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-[34rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+                <table className="w-full min-w-[30rem] border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-[34rem] lg:min-w-full sm:text-[1rem]">
                   <thead>
                     <tr className="bg-[#dfeafe] text-[#172033]">
                       <th className="w-[38%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">
@@ -1474,7 +1474,7 @@ function TripleTableSection({
       <h3 className="text-[1.4rem] font-bold tracking-[-0.03em] text-[#172033] sm:text-[1.65rem] md:text-[2rem]">{title}</h3>
       <div className="mt-5 overflow-hidden rounded-[1.35rem] border border-[#cfe0ff]">
         <div className="overflow-x-auto">
-          <table className="min-w-[52rem] w-full table-fixed border-collapse text-left text-[0.95rem] text-[#425066] sm:min-w-full sm:text-[1rem]">
+          <table className="w-full min-w-[34rem] border-collapse text-left text-[0.95rem] text-[#425066] md:min-w-[44rem] lg:min-w-full sm:text-[1rem]">
             <thead>
               <tr className="bg-[#dfeafe] text-[#172033]">
                 <th className="w-[20%] border-r border-[#cfe0ff] px-3 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.14em] sm:px-5 sm:py-4 sm:text-base">

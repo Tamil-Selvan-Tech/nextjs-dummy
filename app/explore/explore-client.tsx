@@ -329,7 +329,7 @@ export function ExploreClient({
               </div>
 
               <div className="overflow-x-auto rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                <table className="w-full min-w-[680px] text-left text-[13px]">
+                <table className="w-full min-w-[36rem] text-left text-[13px] sm:min-w-[40rem]">
                   <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
                     <tr>
                       <th className="px-3 py-2">Course</th>
@@ -508,7 +508,7 @@ export function ExploreClient({
           <div id="all-courses" className="scroll-mt-32">
               <h2 className="mb-5 text-lg font-bold text-[color:var(--text-dark)] md:text-xl">All Courses</h2>
             <div className="overflow-x-auto rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-              <table className="w-full min-w-[680px] text-left text-[13px]">
+              <table className="w-full min-w-[36rem] text-left text-[13px] sm:min-w-[40rem]">
                 <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
                   <tr>
                     <th className="px-3 py-2">Course</th>

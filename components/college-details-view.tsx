@@ -85,7 +85,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const contactNumber = college.contactPhone?.trim() || college.alternatePhone?.trim() || "";
   const placementDetails = (college.placements as Record<string, unknown> | undefined) || {};
   const placementRateValue = Number(
-    college.placementRate || placementDetails.placementRate || 0,
+    placementDetails.placementRate ?? college.placementRate ?? 0,
   );
   const placementRateDisplay = placementRateValue > 0 ? `${placementRateValue}%` : "Not available";
   const rankingDisplay = String(college.ranking || "")
@@ -115,6 +115,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     if (typeof value !== "string" && typeof value !== "number") {
       return "Not available";
     }
+    const raw = String(value ?? "").trim();
+    if (!raw) {
+      return "Not available";
+    }
+    if (typeof value === "string" && /[a-zA-Z]/.test(raw)) {
+      return raw;
+    }
     const formatted = formatCompactIndianCurrency(value);
     return formatted === "-" ? "Not available" : formatted;
   };
@@ -131,7 +138,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
       if (cutoffItems.length > 0) {
         return (
-          <div className="grid min-w-[22.5rem]  grid-cols-2  gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {cutoffItems.map((item) => (
               <div
                 key={`${course.id}-${item.category}`}
@@ -1303,7 +1310,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   Scroll horizontally to view all course columns.
                 </div>
                 <div className="responsive-data-table">
-                  <table className="min-w-[92rem] w-full border-collapse text-left text-sm text-[color:var(--text-dark)]">
+                  <table className="w-full min-w-[72rem] border-collapse text-left text-sm text-[color:var(--text-dark)] lg:min-w-[84rem]">
                     <thead>
                       <tr className="bg-[rgba(15,76,129,0.08)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                         <th className="w-[240px] border-r border-[rgba(15,76,129,0.22)] px-3 py-2">Course</th>
@@ -1323,7 +1330,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 font-semibold">{getCourseTitle(course)}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs font-semibold text-[color:var(--brand-primary)]">{course.mode || "Full-time"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.duration}</td>
-                            <td className="min-w-[24rem] border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-left align-top text-xs leading-5 text-[color:var(--text-muted)]">{renderCutoffDetails(course)}</td>
+                            <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-left align-top text-xs leading-5 text-[color:var(--text-muted)] min-w-[16rem] sm:min-w-[20rem]">{renderCutoffDetails(course)}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.intake || "-"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{course.minimumQualification || "-"}</td>
                             <td className="border-r border-[rgba(15,76,129,0.16)] px-3 py-3 text-center text-xs text-[color:var(--text-muted)]">{formatCompactIndianCurrency(course.semesterFees)}</td>

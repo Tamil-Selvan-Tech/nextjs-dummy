@@ -16,6 +16,12 @@ export function PageBackButton({ className = "" }: PageBackButtonProps) {
 
   const handleBack = () => {
     const query = typeof window !== "undefined" ? window.location.search : "";
+    if (pathname === "/cutoff") {
+      const destination = query ? `/find${query}` : "/find";
+      router.replace(destination);
+      return;
+    }
+
     const currentRoute = query ? `${pathname}${query}` : pathname;
     navigateToSafeBack(router, currentRoute, "/");
   };

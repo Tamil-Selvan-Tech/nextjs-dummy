@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -23,6 +24,9 @@
   --container-max-wide: 1320px;
   --font-body: "Poppins", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-display: "Poppins", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-inter: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-manrope: "Manrope", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-poppins: "Poppins", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --text-h1: clamp(1.75rem, 3.4vw, 2.9rem);
   --text-h2: clamp(1.5rem, 2.5vw, 2.4rem);
   --text-body: clamp(0.95rem, 1.05vw, 1.02rem);
@@ -70,6 +74,71 @@ body {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.home-theme {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-optical-sizing: auto;
+}
+
+.home-theme p,
+.home-theme span,
+.home-theme a,
+.home-theme li,
+.home-theme label,
+.home-theme input,
+.home-theme small,
+.home-theme dd,
+.home-theme dt {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-theme button {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 600;
+}
+
+.home-theme h1,
+.home-theme h2,
+.home-theme h3,
+.home-theme h4,
+.home-theme h5,
+.home-theme h6 {
+  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-hero-title {
+  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 800;
+}
+
+.home-section-title {
+  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 700;
+}
+
+.home-course-card {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-course-card-title {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 500;
+}
+
+.site-footer {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 400;
+  font-optical-sizing: auto;
+}
+
+.site-footer h1,
+.site-footer h2,
+.site-footer h3,
+.site-footer h4,
+.site-footer h5,
+.site-footer h6 {
+  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
 .loading-core-float {
@@ -202,16 +271,16 @@ button,
 
 .page-container {
   margin-inline: auto;
-  width: min(100%, var(--container-max));
-  max-width: var(--container-max);
+  width: 100%;
+  max-width: 80rem;
   padding-inline: 1rem;
 }
 
 .page-container-full {
   margin-inline: auto;
-  width: min(100%, var(--container-max-wide));
-  max-width: var(--container-max-wide);
-  padding-inline: 0.9rem;
+  width: 100%;
+  max-width: 80rem;
+  padding-inline: 1rem;
 }
 
 .page-section {
@@ -241,7 +310,7 @@ button,
 }
 
 .responsive-data-table > * {
-  min-width: 40rem;
+  min-width: 100%;
 }
 
 .section-title {
@@ -320,13 +389,16 @@ button,
 .breaking-news-shell {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.1rem;
   overflow: hidden;
-  border: 1px solid rgba(37, 99, 235, 0.08);
-  border-radius: 0.9rem;
-  background: linear-gradient(180deg, rgba(248, 250, 255, 0.98), rgba(244, 247, 253, 0.98));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  padding: 0.62rem 0.9rem;
+  min-height: 3.05rem;
+  border: 1px solid rgba(177, 202, 244, 0.78);
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 10px 24px rgba(30, 78, 121, 0.07);
+  padding: 0.72rem 1.15rem;
 }
 
 .breaking-news-label {
@@ -334,18 +406,18 @@ button,
   align-items: center;
   gap: 0.38rem;
   flex-shrink: 0;
-  color: #2563eb;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  color: #1f63ff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   padding-right: 0.1rem;
   text-transform: uppercase;
 }
 
 .breaking-news-label-icon {
-  height: 0.82rem;
-  width: 0.82rem;
-  stroke-width: 2.2;
+  height: 0.95rem;
+  width: 0.95rem;
+  stroke-width: 2.35;
 }
 
 .breaking-news-viewport {
@@ -368,12 +440,12 @@ button,
 
 .breaking-news-viewport::before {
   left: 0;
-  background: linear-gradient(90deg, rgba(248, 251, 255, 0.98), rgba(248, 251, 255, 0));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
 }
 
 .breaking-news-viewport::after {
   right: 0;
-  background: linear-gradient(270deg, rgba(245, 248, 253, 0.98), rgba(245, 248, 253, 0));
+  background: linear-gradient(270deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
 }
 
 .breaking-news-track {
@@ -389,8 +461,8 @@ button,
 .breaking-news-entry {
   display: inline-flex;
   align-items: center;
-  gap: 0.32rem;
-  padding-right: 0.95rem;
+  gap: 0.34rem;
+  padding-right: 1.25rem;
 }
 
 .breaking-news-link {
@@ -417,8 +489,8 @@ button,
   align-items: center;
   gap: 0.33rem;
   flex-shrink: 0;
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 900;
   letter-spacing: 0.01em;
   padding: 0;
   text-transform: uppercase;
@@ -432,31 +504,32 @@ button,
 }
 
 .breaking-news-status-danger {
-  color: #dc2626;
+  color: #1f63ff;
 }
 
 .breaking-news-status-success {
-  color: #16a34a;
+  color: #2e9f34;
 }
 
 .breaking-news-status-warning {
-  color: #d97706;
+  color: #2e9f34;
 }
 
 .breaking-news-status-info {
-  color: #2563eb;
+  color: #1f63ff;
 }
 
 .breaking-news-dash {
-  color: #64748b;
-  font-size: 0.84rem;
+  color: #243b65;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .breaking-news-headline {
   white-space: nowrap;
-  color: #334155;
-  font-size: 0.82rem;
-  font-weight: 500;
+  color: #243b65;
+  font-size: 0.9rem;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -468,8 +541,8 @@ button,
   width: 0.28rem;
   flex-shrink: 0;
   border-radius: 999px;
-  margin-left: 0.8rem;
-  background: rgba(96, 165, 250, 0.7);
+  margin-left: 1rem;
+  background: #5f8eff;
 }
 
 .luxe-card,
@@ -664,6 +737,28 @@ button,
 
 .shine-button:hover::after {
   transform: translateX(220%) rotate(18deg);
+}
+
+@keyframes suggestCtaPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow:
+      0 18px 34px rgba(23, 102, 217, 0.2),
+      0 0 0 0 rgba(44, 131, 246, 0.22);
+  }
+  50% {
+    transform: translateY(-2px);
+    box-shadow:
+      0 22px 40px rgba(23, 102, 217, 0.26),
+      0 0 0 8px rgba(44, 131, 246, 0);
+  }
+}
+
+.suggest-college-cta {
+  position: relative;
+  overflow: hidden;
+  animation: suggestCtaPulse 2.4s ease-in-out infinite;
 }
 
 .feature-highlight-shell {
@@ -987,7 +1082,7 @@ button,
   }
 
   .page-container-full {
-    padding-inline: 1.4rem;
+    padding-inline: 1.5rem;
   }
 
   .responsive-topbar {
@@ -1002,11 +1097,11 @@ button,
 
 @media (min-width: 1280px) {
   .page-container {
-    padding-inline: 1.75rem;
+    padding-inline: 2rem;
   }
 
   .page-container-full {
-    padding-inline: 1.75rem;
+    padding-inline: 2rem;
   }
 }
 
@@ -1034,11 +1129,11 @@ button,
   }
 
   .page-container {
-    padding-inline: 0.9rem;
+    padding-inline: 1rem;
   }
 
   .page-container-full {
-    padding-inline: 0.9rem;
+    padding-inline: 1rem;
   }
 
   body {
@@ -1118,7 +1213,7 @@ button,
   }
 
   .responsive-data-table > * {
-    min-width: 34rem;
+    min-width: 36rem;
   }
 }
 
@@ -1129,7 +1224,7 @@ button,
 
   .page-container,
   .page-container-full {
-    padding-inline: 0.75rem;
+    padding-inline: 1rem;
   }
 
   .page-section {
@@ -1147,12 +1242,28 @@ button,
   }
 }
 
+.cutoff-calculator-float {
+  transition:
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    border-color 180ms ease;
+}
+
+.cutoff-calculator-float:hover,
+.cutoff-calculator-float:focus-visible {
+  border-color: #4c6cff;
+  filter: saturate(1.08);
+  box-shadow: -14px 20px 34px rgba(20, 42, 99, 0.34);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-orb,
   .reveal-up,
   .marquee-track,
   [class*="floatCard"],
-  .feature-pop-card {
+  .feature-pop-card,
+  .cutoff-calculator-float,
+  .suggest-college-cta {
     animation: none !important;
   }
 }

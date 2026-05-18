@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight,
-  BarChart3,
   Bell,
   BookOpen,
   BrainCircuit,
@@ -909,8 +908,32 @@ const getTierIdForRanking = (ranking: string): TierBucket["id"] => {
 const cutoffMatchesScore = (cutoffValue: string | number, score: number) => {
   const parsed = parseCutoffValue(cutoffValue);
   if (!parsed) return false;
-  if (parsed.start === parsed.end) return score >= parsed.start;
-  return score >= parsed.start && score <= parsed.end;
+  const start = Math.min(parsed.start, parsed.end);
+  const end = Math.max(parsed.start, parsed.end);
+  if (start === end) return score >= start;
+  return score >= start && score <= end;
+};
+
+const compareScoreToCutoff = (
+  cutoffValue: string | number,
+  score: number | null,
+): { status: "match" | "below" | "above" | "unavailable"; distance: number | null } => {
+  if (score === null) return { status: "unavailable", distance: null };
+  const parsed = parseCutoffValue(cutoffValue);
+  if (!parsed) return { status: "unavailable", distance: null };
+
+  const start = Math.min(parsed.start, parsed.end);
+  const end = Math.max(parsed.start, parsed.end);
+
+  if (start === end) {
+    return score >= start
+      ? { status: "match", distance: score - start }
+      : { status: "below", distance: score - start };
+  }
+
+  if (score < start) return { status: "below", distance: score - start };
+  if (score > end) return { status: "above", distance: score - end };
+  return { status: "match", distance: 0 };
 };
 
 export function CutoffClient({
@@ -945,11 +968,12 @@ export function CutoffClient({
   const [hasAnalyzedJunior, setHasAnalyzedJunior] = useState(false);
   const [showSuggestedColleges, setShowSuggestedColleges] = useState(false);
   const juniorAnalysisRef = useRef<HTMLElement | null>(null);
+  const whatsNextSectionRef = useRef<HTMLElement | null>(null);
   const suggestedCollegesButtonRef = useRef<HTMLButtonElement | null>(null);
   const suggestedCollegesSectionRef = useRef<HTMLElement | null>(null);
 
   const handleArrowScrollToSuggestedColleges = useCallback(() => {
-    suggestedCollegesButtonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    whatsNextSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   const handleSuggestCollegesAction = useCallback(() => {
@@ -1517,49 +1541,105 @@ export function CutoffClient({
     selectedCourseForCollege?.cutoffByCategory ||
     []
   ).find((item) => normalizeCategoryKey(item.category) === normalizeCategoryKey(selectedCategory))?.cutoff;
+  const selectedExamCutoff = hasExamBasedCutoffFlow
+    ? getExamCutoffValue(
+        selectedCourseForCollege
+          ? getSelectedExamForCourse(selectedCourseForCollege, selectedAdmissionType)
+          : undefined,
+        normalizeCategoryKey(selectedCategory),
+      )
+    : "";
   const rawSelectedCollegeCutoff =
+    selectedExamCutoff ||
     selectedCategoryCutoff ||
     selectedCourseDetails?.cutoffText ||
     selectedCourseForCollege?.cutoffText ||
     selectedCourseDetails?.cutoff ||
     selectedCourseForCollege?.cutoff ||
+    selectedCollegeMatchCard?.cutoffLabel ||
     "";
   const parsedSelectedCollegeCutoff = parseCutoffValue(String(rawSelectedCollegeCutoff || ""));
   const selectedCollegeCutoffScore =
-    selectedCollegeMatchCard?.targetScore ??
-    (parsedSelectedCollegeCutoff
+    parsedSelectedCollegeCutoff
       ? Math.max(parsedSelectedCollegeCutoff.start, parsedSelectedCollegeCutoff.end)
-      : null);
+      : selectedCollegeMatchCard?.targetScore ?? null;
+  const selectedCollegeCutoffMin =
+    parsedSelectedCollegeCutoff
+      ? Math.min(parsedSelectedCollegeCutoff.start, parsedSelectedCollegeCutoff.end)
+      : selectedCollegeCutoffScore;
+  const selectedCollegeCutoffMax =
+    parsedSelectedCollegeCutoff
+      ? Math.max(parsedSelectedCollegeCutoff.start, parsedSelectedCollegeCutoff.end)
+      : selectedCollegeCutoffScore;
   const selectedCollegeCutoffLabel =
-    selectedCollegeCutoffScore !== null
-      ? formatResultValue(String(selectedCollegeCutoffScore))
+    parsedSelectedCollegeCutoff
+      ? formatCutoffLabel(rawSelectedCollegeCutoff)
       : selectedCollegeMatchCard?.cutoffLabel || "Unavailable";
-  const hasCollegeCutoff = selectedCutoffScore !== null && selectedCollegeCutoffScore !== null;
-  const hasHighMatch = hasCollegeCutoff ? selectedCutoffScore >= selectedCollegeCutoffScore : false;
+  const selectedCollegeComparison = compareScoreToCutoff(
+    rawSelectedCollegeCutoff || selectedCollegeMatchCard?.cutoffLabel || "",
+    selectedCutoffScore,
+  );
+  const hasCollegeCutoff = selectedCollegeComparison.status !== "unavailable";
+  const hasHighMatch = selectedCollegeComparison.status === "match";
+  const isAboveCollegeCutoff = selectedCollegeComparison.status === "above";
+  const hasPositiveCollegeMatch = hasHighMatch || isAboveCollegeCutoff;
   const scoreGaugePercent =
     selectedCutoffScore !== null ? Math.max(0, Math.min(100, (selectedCutoffScore / resultMaximumCutoff) * 100)) : 0;
-  const collegeGaugePercent =
-    selectedCollegeCutoffScore !== null
-      ? Math.max(0, Math.min(100, (selectedCollegeCutoffScore / resultMaximumCutoff) * 100))
-      : 0;
-  const scoreArc = 126 * (scoreGaugePercent / 100);
-  const collegeArc = 126 * (collegeGaugePercent / 100);
   const selectedScoreDifference =
-    hasCollegeCutoff && selectedCutoffScore !== null && selectedCollegeCutoffScore !== null
-      ? selectedCutoffScore - selectedCollegeCutoffScore
+    hasCollegeCutoff && selectedCollegeComparison.distance !== null
+      ? selectedCollegeComparison.distance
       : null;
   const selectedScoreDifferenceLabel =
-    selectedScoreDifference !== null ? formatResultValue(String(Math.abs(selectedScoreDifference))) : "-";
-  const selectedMatchEmoji = hasHighMatch ? "😊" : "😟";
-  const selectedMatchBadgeEmoji = hasHighMatch ? "🙂" : "☹️";
+    selectedScoreDifference !== null
+      ? selectedScoreDifference === 0
+        ? "Within range"
+        : formatResultValue(String(Math.abs(selectedScoreDifference)))
+      : "-";
+  const selectedMatchEmoji = hasHighMatch ? "😊" : isAboveCollegeCutoff ? "😎" : "😟";
+  const selectedMatchBadgeEmoji = hasHighMatch ? "🙂" : isAboveCollegeCutoff ? "🟢" : "☹️";
   const selectedMatchLabel = hasHighMatch ? "High Match" : "Not Matched";
   const selectedMatchMessage = hasHighMatch
-    ? "Great! Your cutoff is higher than the college cutoff. You have a good chance of getting admission."
-    : "Your cutoff does not match this selected college cutoff.";
+    ? "Great! Your cutoff matches the college cutoff range. You have a good chance of getting admission."
+    : isAboveCollegeCutoff
+      ? "Your cutoff is above the college cutoff range. This is a positive sign for admission chances."
+      : "Your cutoff is below this selected college cutoff range.";
   const selectedMatchHelpText = hasHighMatch
     ? "Keep this college in your main shortlist and continue comparing similar options."
-    : "Don’t worry! Click “Suggest Colleges for Me” to explore better options that match your score.";
-  const suggestedCollegeRows = matchingColleges.slice(0, 5);
+    : isAboveCollegeCutoff
+      ? "You are above the required cutoff mark. Keep this college in your shortlist and review course demand before applying."
+      : "Don’t worry! Click “Suggest Colleges for Me” to explore better options that match your score.";
+  const compactGaugeScoreClass =
+    enteredScoreLabel.length >= 5 ? "text-[2.35rem]" : enteredScoreLabel.length === 4 ? "text-[2.7rem]" : "text-[3.1rem]";
+  const collegeGaugeRangeStartPercent =
+    selectedCollegeCutoffMin !== null
+      ? Math.max(0, Math.min(100, (selectedCollegeCutoffMin / resultMaximumCutoff) * 100))
+      : 0;
+  const collegeGaugeRangeEndPercent =
+    selectedCollegeCutoffMax !== null
+      ? Math.max(0, Math.min(100, (selectedCollegeCutoffMax / resultMaximumCutoff) * 100))
+      : 0;
+  const collegeGaugeRangeLength = hasCollegeCutoff
+    ? Math.max(
+        selectedCollegeCutoffMin === selectedCollegeCutoffMax ? 4 : 6,
+        collegeGaugeRangeEndPercent - collegeGaugeRangeStartPercent,
+      )
+    : 0;
+  const rangeBarMarkerPercent = Math.max(0, Math.min(100, scoreGaugePercent));
+  const gaugeRadius = 76;
+  const gaugeSize = 236;
+  const gaugeCenter = gaugeSize / 2;
+  const gaugeVisibleAngle = 270;
+  const gaugeStartAngle = 135;
+  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+  const gaugeVisibleLength = gaugeCircumference * (gaugeVisibleAngle / 360);
+  const gaugeHiddenLength = gaugeCircumference - gaugeVisibleLength;
+  const scoreGaugeStrokeLength = gaugeVisibleLength * (scoreGaugePercent / 100);
+  const scoreMarkerAngleInRadians = ((gaugeStartAngle + (gaugeVisibleAngle * scoreGaugePercent) / 100) * Math.PI) / 180;
+  const scoreMarkerX = gaugeCenter + gaugeRadius * Math.cos(scoreMarkerAngleInRadians);
+  const scoreMarkerY = gaugeCenter + gaugeRadius * Math.sin(scoreMarkerAngleInRadians);
+  const suggestedCollegeRows = matchingColleges
+    .filter((college) => !matchesSelectedCollegeKey(college.id) && !matchesSelectedCollegeKey(college.name))
+    .slice(0, 5);
   if (!isJuniorLevel) {
     return (
       <>
@@ -1576,32 +1656,30 @@ export function CutoffClient({
                 <table className="w-full min-w-[1280px] border-collapse text-center">
                   <thead>
                     <tr className="border-b border-slate-200 bg-white">
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">S.NO</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">State</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Maximum Cutoff</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Cutoff</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Admission Type</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Degree</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Category</th>
                       <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Name</th>
                       <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Phone</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Category</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Degree</th>
                       <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Dream College</th>
                       <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Course</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Admission Type</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Cutoff</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Maximum Cutoff</th>
+                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">State</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-slate-100">
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">1</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedState || "Tamil Nadu"}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{resultMaximumCutoff}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{enteredScoreLabel}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedAdmissionType || "-"}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedDegree || "-"}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{categoryDisplayLabel(selectedCategory)}</td>
                       <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{safeStudentName}</td>
                       <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{submittedDetails.phone || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{categoryDisplayLabel(selectedCategory)}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedDegree || "-"}</td>
                       <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{dreamCollegeName}</td>
                       <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedCourse || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedAdmissionType || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{enteredScoreLabel}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{resultMaximumCutoff}</td>
+                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedState || "Tamil Nadu"}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1609,25 +1687,25 @@ export function CutoffClient({
             </section>
 
             <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <article className="rounded-[12px] border border-[#e1e9f8] bg-white p-5 shadow-[0_18px_48px_rgba(20,42,99,0.09)]">
+              <article className="rounded-[12px] border border-[#e1e9f8] bg-white p-4 shadow-[0_18px_48px_rgba(20,42,99,0.09)] sm:p-5">
                 <div className="flex items-start gap-4">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#1766f2] text-white shadow-[0_12px_22px_rgba(23,102,242,0.25)] ring-4 ring-[#e7efff]">
                     <CheckCircle2 className="size-7" strokeWidth={2.7} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-[1.7rem] font-black leading-tight tracking-[-0.04em] text-[#09246b]">
-                      Your Selected College &amp; Course Match {selectedMatchEmoji}
+                    <h2 className="text-[1.28rem] font-black leading-tight tracking-[-0.03em] text-[#09246b] sm:text-[1.7rem]">
+                      Your Selected College &amp; Course Match 
                     </h2>
-                    <p className="mt-3 text-[0.98rem] font-medium leading-6 text-[#26376b]">
+                    <p className="mt-3 text-[0.94rem] font-medium leading-6 text-[#26376b] sm:text-[0.98rem]">
                       Here’s how your score compares with the cutoff for your selected college and course.
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-7 rounded-[12px] border border-[#abc7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.75)]">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_0.7fr_0.7fr_0.85fr] lg:items-center">
-                    <div className="flex min-w-0 items-center gap-4">
-                      <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#abc7ff] bg-white shadow-[0_10px_22px_rgba(20,42,99,0.08)]">
+                <div className="mt-6 overflow-hidden rounded-[12px] border border-[#abc7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.75)] sm:mt-7">
+                  <div className="grid grid-cols-3 gap-0 lg:grid-cols-[minmax(0,1.5fr)_0.7fr_0.7fr_0.85fr] lg:items-center">
+                    <div className="col-span-3 flex min-w-0 items-center gap-4 p-4 lg:col-span-1">
+                      <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#abc7ff] bg-white shadow-[0_10px_22px_rgba(20,42,99,0.08)] sm:size-20">
                         {selectedCollegeLogo ? (
                           <Image
                             src={selectedCollegeLogo}
@@ -1656,25 +1734,25 @@ export function CutoffClient({
                       </div>
                     </div>
 
-                    <div className="border-[#dbe5f7] lg:border-l lg:pl-5">
-                      <p className="text-center text-[0.84rem] font-semibold leading-5 text-[#07133b]">Your Cutoff<br />(Score)</p>
-                      <p className="mt-3 text-center text-[1.7rem] font-black text-[#1766f2]">
-                        {enteredScoreLabel} <span className="text-[1.35rem]">{hasHighMatch ? "🙂" : "😟"}</span>
+                    <div className="border-t border-[#dbe5f7] px-2 py-4 lg:border-l lg:border-t-0 lg:pl-5">
+                      <p className="text-center text-[0.74rem] font-semibold leading-5 text-[#07133b] sm:text-[0.84rem]">Your Cutoff<br />(Score)</p>
+                      <p className="mt-3 text-center text-[1.55rem] font-black text-[#1766f2] sm:text-[1.7rem]">
+                        {enteredScoreLabel} <span className="text-[1.35rem]"></span>
                       </p>
                     </div>
 
-                    <div className="border-[#dbe5f7] lg:border-l lg:pl-5">
-                      <p className="text-center text-[0.84rem] font-semibold leading-5 text-[#07133b]">Target College Cutoff<br />(Score)</p>
-                      <p className="mt-3 text-center text-[1.7rem] font-black text-[#1766f2]">
-                        {selectedCollegeCutoffLabel} <span className="text-[1.35rem]">{hasHighMatch ? "🙂" : "😐"}</span>
+                    <div className="border-l border-t border-[#dbe5f7] px-2 py-4 lg:pl-5">
+                      <p className="text-center text-[0.74rem] font-semibold leading-5 text-[#07133b] sm:text-[0.84rem]">Target College<br />Cutoff (Score)</p>
+                      <p className="mt-3 whitespace-nowrap text-center text-[1.15rem] font-black text-[#1766f2] sm:text-[1.25rem]">
+                        {selectedCollegeCutoffLabel} <span className="text-[1.35rem]"></span>
                       </p>
                     </div>
 
-                    <div className="border-[#dbe5f7] lg:border-l lg:pl-5">
-                      <p className="text-center text-[0.84rem] font-semibold text-[#07133b]">Match Status</p>
+                    <div className="border-l border-t border-[#dbe5f7] px-2 py-4 lg:pl-5">
+                      <p className="text-center text-[0.74rem] font-semibold text-[#07133b] sm:text-[0.84rem]">Match Status</p>
                       <span
-                        className={`mx-auto mt-4 inline-flex items-center gap-2 rounded-[18px] px-4 py-2 text-[0.82rem] font-black ${
-                          hasHighMatch
+                        className={`mx-auto mt-4 inline-flex items-center gap-1.5 rounded-[18px] px-3 py-2 text-[0.74rem] font-black sm:gap-2 sm:px-4 sm:text-[0.82rem] ${
+                          hasPositiveCollegeMatch
                             ? "bg-[#e9fff1] text-[#058b3d]"
                             : "bg-[#fff0f0] text-[#d40000]"
                         }`}
@@ -1687,24 +1765,25 @@ export function CutoffClient({
                 </div>
 
                 <div
-                  className={`mt-5 flex items-center justify-between gap-4 rounded-[12px] border px-5 py-4 ${
-                    hasHighMatch
+                  className={`mt-5 flex items-center justify-between gap-3 rounded-[12px] border px-4 py-4 sm:gap-4 sm:px-5 ${
+                    hasPositiveCollegeMatch
                       ? "border-[#bde8c9] bg-[linear-gradient(90deg,#f0fff6_0%,#ffffff_100%)]"
                       : "border-[#ffd1d1] bg-[linear-gradient(90deg,#fff5f5_0%,#ffffff_100%)]"
                   }`}
                 >
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div className="text-[3rem] leading-none">{hasHighMatch ? "😍" : "😟"}</div>
-                    <div className="min-w-0">
-                      <h3 className={`text-[1.1rem] font-black ${hasHighMatch ? "text-[#058b3d]" : "text-[#d40000]"}`}>
+                  <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <div className="min-w-0 text-center sm:text-left">
+                      <h3 className={`text-[1rem] font-black leading-6 sm:text-[1.1rem] ${hasPositiveCollegeMatch ? "text-[#058b3d]" : "text-[#d40000]"}`}>
                         {selectedMatchMessage}
                       </h3>
-                      <p className="mt-2 text-[0.96rem] font-medium leading-6 text-[#07133b]">
+                      <p className="mt-2 text-[0.9rem] font-medium leading-6 text-[#07133b] sm:text-[0.96rem]">
                         {selectedMatchHelpText}
                       </p>
                     </div>
                   </div>
-                  <div className="hidden text-[3rem] sm:block">{hasHighMatch ? "✅" : "❌"}</div>
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/70 text-[1.4rem] leading-none shadow-[0_8px_18px_rgba(15,23,42,0.06)] sm:size-14 sm:text-[1.65rem]">
+                    {selectedMatchEmoji}
+                  </div>
                 </div>
 
                 <div className="mt-5 rounded-[12px] border border-[#e5edf9] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5">
@@ -1713,38 +1792,42 @@ export function CutoffClient({
                     <h3 className="text-[1.05rem] font-black text-[#09246b]">What does this mean?</h3>
                   </div>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-3">
-                    <div className="flex items-center gap-4 md:border-r md:border-[#dbe5f7]">
-                      <div className={`flex size-14 shrink-0 items-center justify-center rounded-full text-[1.8rem] ${hasHighMatch ? "bg-[#e9fff1]" : "bg-[#fff0f0]"}`}>
-                        {hasHighMatch ? "📈" : "📉"}
+                  <div className="mt-5 grid divide-y divide-[#dbe5f7] md:grid-cols-3 md:divide-x md:divide-y-0">
+                    <div className="flex items-center gap-4 py-4 first:pt-0 md:border-r md:border-[#dbe5f7] md:py-0 md:pr-4">
+                      <div className={`flex size-14 shrink-0 items-center justify-center rounded-full text-[1.8rem] ${hasPositiveCollegeMatch ? "bg-[#e9fff1]" : "bg-[#fff0f0]"}`}>
+                        {hasPositiveCollegeMatch ? "📈" : "📉"}
                       </div>
                       <div>
                         <p className="text-[0.82rem] font-black text-[#09246b]">Score Difference</p>
-                        <p className={`mt-1 text-[1.25rem] font-black ${hasHighMatch ? "text-[#058b3d]" : "text-[#d40000]"}`}>
-                          {selectedScoreDifferenceLabel} {hasHighMatch ? "🙂" : "😟"}
+                        <p className={`mt-1 text-[1.25rem] font-black ${hasPositiveCollegeMatch ? "text-[#058b3d]" : "text-[#d40000]"}`}>
+                          {selectedScoreDifferenceLabel} 
                         </p>
                         <p className="mt-1 text-[0.82rem] font-medium text-[#07133b]">
-                          {hasHighMatch ? "Above college cutoff" : "Below college cutoff"}
+                          {hasHighMatch
+                            ? "Inside college cutoff range"
+                            : selectedCollegeComparison.status === "above"
+                              ? "Above college cutoff range"
+                              : "Below college cutoff"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 md:border-r md:border-[#dbe5f7]">
-                      <div className={`flex size-14 shrink-0 items-center justify-center rounded-full text-[1.8rem] ${hasHighMatch ? "bg-[#e9fff1]" : "bg-[#fff7df]"}`}>
-                        {hasHighMatch ? "🎯" : "🧭"}
+                    <div className="flex items-center gap-4 py-4 md:border-r md:border-[#dbe5f7] md:px-4 md:py-0">
+                      <div className={`flex size-14 shrink-0 items-center justify-center rounded-full text-[1.8rem] ${hasPositiveCollegeMatch ? "bg-[#e9fff1]" : "bg-[#fff7df]"}`}>
+                        {hasPositiveCollegeMatch ? "🎯" : "🧭"}
                       </div>
                       <div>
                         <p className="text-[0.82rem] font-black text-[#09246b]">Improve Chances</p>
-                        <p className={`mt-1 text-[1.25rem] font-black ${hasHighMatch ? "text-[#058b3d]" : "text-[#e08700]"}`}>
-                          {hasHighMatch ? "Strong" : "Low"} {hasHighMatch ? "🙂" : "😐"}
+                        <p className={`mt-1 text-[1.25rem] font-black ${hasPositiveCollegeMatch ? "text-[#058b3d]" : "text-[#e08700]"}`}>
+                          {hasPositiveCollegeMatch ? "Strong" : "Low"} 
                         </p>
                         <p className="mt-1 text-[0.82rem] font-medium text-[#07133b]">
-                          {hasHighMatch ? "Good admission chance" : "Consider other options"}
+                          {hasPositiveCollegeMatch ? "Good admission chance" : "Consider other options"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 py-4 last:pb-0 md:py-0 md:pl-4">
                       <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#e8fff2] text-[1.8rem]">
                         📖
                       </div>
@@ -1784,109 +1867,221 @@ export function CutoffClient({
                 </div>
               </article>
 
-              <aside className="space-y-5">
-                <article className="rounded-[12px] border border-[#e1e9f8] bg-white p-5 shadow-[0_18px_48px_rgba(20,42,99,0.09)]">
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-12 items-center justify-center rounded-[10px] bg-[#eef5ff] text-[#1766f2]">
-                      <BarChart3 className="size-7" />
-                    </div>
-                    <h2 className="text-[1.35rem] font-black tracking-[-0.03em] text-[#09246b]">Cutoff Comparison</h2>
-                  </div>
-
-                  <div className="mt-8 flex justify-center">
-                    <div className="relative h-[170px] w-[230px]">
-                      <svg viewBox="0 0 230 145" className="h-full w-full">
-                        <path
-                          d="M35 120 A80 80 0 0 1 195 120"
-                          fill="none"
-                          stroke="#e4ebf7"
-                          strokeWidth="18"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M35 120 A80 80 0 0 1 195 120"
-                          fill="none"
-                          stroke="#1766f2"
-                          strokeWidth="18"
-                          strokeLinecap="round"
-                          strokeDasharray={`${scoreArc * 1.26} 159`}
-                        />
-                        <path
-                          d="M35 120 A80 80 0 0 1 195 120"
-                          fill="none"
-                          stroke="#09246b"
-                          strokeWidth="10"
-                          strokeLinecap="round"
-                          strokeDasharray={`${collegeArc * 1.26} 159`}
-                        />
-                      </svg>
-                      <div className="absolute inset-x-0 top-[72px] text-center">
-                        <div className="text-[2.1rem] font-black leading-none text-[#1766f2]">{enteredScoreLabel}</div>
-                        <div className="mt-3 text-[0.9rem] font-black text-[#09246b]">Your Score</div>
-                      </div>
-                      <div className="absolute bottom-[18px] left-2 text-[0.82rem] font-bold text-[#1766f2]">0</div>
-                      <div className="absolute bottom-[18px] right-0 text-[0.82rem] font-bold text-[#1766f2]">
-                        {resultMaximumCutoff}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 space-y-5 border-b border-[#dbe5f7] pb-6 text-[0.98rem] font-medium text-[#09246b]">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="flex items-center gap-3">
-                        <span className="size-3 rounded-full bg-[#1766f2]" />
-                        Your Score
-                      </span>
-                      <span>{enteredScoreLabel}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="flex items-center gap-3">
-                        <span className="size-3 rounded-full bg-[#09246b]" />
-                        College Cutoff
-                      </span>
-                      <span>{selectedCollegeCutoffLabel}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-[12px] border border-[#c8dcff] bg-[#f8fbff] p-4">
-                    <h3 className="flex items-center gap-2 text-[1rem] font-black text-[#1766f2]">
-                      💡 {hasHighMatch ? "How to keep your chances strong?" : "How to improve your chances?"} 🙂
-                    </h3>
-                    <div className="mt-4 space-y-3 text-[0.9rem] font-medium text-[#09246b]">
-                      <p>🏫 Consider colleges with {hasHighMatch ? "similar or higher" : "lower"} cutoffs</p>
-                      <p>🎓 Explore other course options</p>
-                      <p>🛡️ Check for management quota seats</p>
-                      <p>🗓️ Look for upcoming colleges</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-[18px] border border-[#cfe1ff] bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_55%,#eef5ff_100%)] p-4 shadow-[0_18px_40px_rgba(23,102,217,0.10)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-[#bfd9ff] bg-white/90 px-3 py-1 text-[0.7rem] font-black uppercase tracking-[0.16em] text-[#1766f2]">
-                          <span className="relative flex size-2.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2c83f6] opacity-75" />
-                            <span className="relative inline-flex size-2.5 rounded-full bg-[#1766f2]" />
-                          </span>
-                          Recommended Next Step
-                        </span>
-                        <p className="mt-3 text-[1rem] font-black leading-snug text-[#09246b]">
-                          Your matches are ready. Tap below to reveal college suggestions.
-                        </p>
-                        <p className="mt-2 text-[0.84rem] font-medium leading-6 text-[#35507d]">
-                          This opens best-fit colleges for your score and helps you continue the decision flow without missing your next step.
-                        </p>
-                      </div>
+              <aside className="space-y-4">
+                <article className="overflow-hidden rounded-[20px] border border-[#dce6fb] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98)_0%,rgba(244,248,255,0.97)_52%,rgba(237,244,255,0.99)_100%)] p-4 shadow-[0_20px_44px_rgba(20,42,99,0.09)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="whitespace-nowrap text-[1rem] font-black tracking-[-0.04em] text-[#17337c] sm:text-[1.08rem]">
+                        Cutoff Comparison
+                      </h2>
+                      <p className="mt-0.5 text-[0.8rem] font-medium text-[#7a87b6]">
+                        Know where you stand!
+                      </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleArrowScrollToSuggestedColleges}
-                      aria-label="Show suggested colleges"
-                      className="mt-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#bfd9ff] bg-white text-[#1766f2] shadow-[0_12px_24px_rgba(23,102,242,0.12)] transition hover:-translate-y-0.5 hover:border-[#1f6fe9] hover:bg-[#f8fbff]"
+                    <div
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.72rem] font-black shadow-[0_8px_18px_rgba(16,163,127,0.10)] ${
+                        hasPositiveCollegeMatch
+                          ? "border-[#bff2df] bg-[linear-gradient(180deg,#f2fff9_0%,#ecfff6_100%)] text-[#149b74]"
+                          : "border-[#ffd7d7] bg-[linear-gradient(180deg,#fff8f8_0%,#fff1f1_100%)] text-[#d14343]"
+                      }`}
                     >
-                      <ChevronDown className="size-5" />
-                    </button>
+                      <span
+                        className={`flex size-6 items-center justify-center rounded-full ${
+                          hasPositiveCollegeMatch ? "bg-[#19c58a] text-white" : "bg-[#ef6b6b] text-white"
+                        }`}
+                      >
+                        {hasPositiveCollegeMatch ? <Star className="size-3 fill-current" /> : <CircleAlert className="size-3" />}
+                      </span>
+                      {hasPositiveCollegeMatch ? "Good Match" : "Low Match"}
+                    </div>
+                  </div>
+
+                  <div className="relative mt-5 rounded-[20px] border border-[#e4ecff] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,249,255,0.98)_100%)] px-3.5 pb-4.5 pt-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                    <div className="pointer-events-none absolute inset-x-5 top-4 h-32 rounded-full bg-[radial-gradient(circle,rgba(51,119,255,0.14)_0%,rgba(255,255,255,0)_72%)] blur-2xl" />
+                    <div className="relative mx-auto w-full max-w-[250px]">
+                      <div className="relative mx-auto h-[228px] w-[228px]">
+                        <svg viewBox={`0 0 ${gaugeSize} ${gaugeSize}`} className="h-full w-full overflow-visible">
+                          <circle
+                            cx={gaugeCenter}
+                            cy={gaugeCenter}
+                            r={gaugeRadius + 16}
+                            fill="none"
+                            stroke="#d8e5ff"
+                            strokeWidth="1.5"
+                            strokeDasharray="3 12"
+                            opacity="0.92"
+                          />
+                          <circle
+                            cx={gaugeCenter}
+                            cy={gaugeCenter}
+                            r={gaugeRadius + 3}
+                            fill="none"
+                            stroke="#dce7ff"
+                            strokeWidth="1.5"
+                            strokeDasharray={`${gaugeVisibleLength} ${gaugeHiddenLength}`}
+                            strokeLinecap="round"
+                            transform={`rotate(${gaugeStartAngle} ${gaugeCenter} ${gaugeCenter})`}
+                            opacity="0.8"
+                          />
+                          <defs>
+                            <linearGradient id="compactScoreGaugeGradient" x1="58" y1="230" x2="246" y2="70" gradientUnits="userSpaceOnUse">
+                              <stop offset="0%" stopColor="#15a5f6" />
+                              <stop offset="52%" stopColor="#1e74ff" />
+                              <stop offset="100%" stopColor="#173dff" />
+                            </linearGradient>
+                          </defs>
+                          <circle
+                            cx={gaugeCenter}
+                            cy={gaugeCenter}
+                            r={gaugeRadius}
+                            fill="none"
+                            stroke="#d9e4fb"
+                            strokeWidth="21"
+                            strokeDasharray={`${gaugeVisibleLength} ${gaugeHiddenLength}`}
+                            strokeLinecap="round"
+                            transform={`rotate(${gaugeStartAngle} ${gaugeCenter} ${gaugeCenter})`}
+                          />
+                          <circle
+                            cx={gaugeCenter}
+                            cy={gaugeCenter}
+                            r={gaugeRadius}
+                            fill="none"
+                            stroke="url(#compactScoreGaugeGradient)"
+                            strokeWidth="21"
+                            strokeDasharray={`${scoreGaugeStrokeLength} ${gaugeCircumference}`}
+                            strokeLinecap="round"
+                            transform={`rotate(${gaugeStartAngle} ${gaugeCenter} ${gaugeCenter})`}
+                            style={{ filter: "drop-shadow(0 10px 14px rgba(24,97,255,0.22))" }}
+                          />
+                          <circle
+                            cx={scoreMarkerX}
+                            cy={scoreMarkerY}
+                            r="10"
+                            fill="#ffffff"
+                            stroke="#1758f4"
+                            strokeWidth="5"
+                            style={{ filter: "drop-shadow(0 8px 14px rgba(24,97,255,0.18))" }}
+                          />
+                        </svg>
+
+                        <div className="absolute inset-x-0 top-[52px] flex justify-center">
+                          <div className="flex h-[126px] w-[126px] flex-col items-center justify-center rounded-full bg-white/95 shadow-[0_18px_38px_rgba(31,80,173,0.08)] ring-1 ring-[#edf3ff]">
+                            <div className={`${compactGaugeScoreClass} font-black leading-none tracking-[-0.08em] text-[#1758f4]`}>
+                              {enteredScoreLabel}
+                            </div>
+                            <div className="mt-1.5 text-[0.88rem] font-black text-[#17337c]">Your Score</div>
+                            <div className="mt-2.5 h-1 w-12 rounded-full bg-[linear-gradient(90deg,#1a73ff,#1848f3)]" />
+                          </div>
+                        </div>
+
+                        <div className="absolute bottom-[18px] left-0 text-center">
+                          <div className="text-[0.96rem] font-black text-[#2563eb]">0</div>
+                          <div className="mt-1 text-[0.72rem] font-medium text-[#7384b9]">Minimum</div>
+                        </div>
+                        <div className="absolute bottom-[34px] left-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
+
+                        <div className="absolute bottom-[18px] right-0 text-center">
+                          <div className="text-[0.96rem] font-black text-[#2563eb]">{resultMaximumCutoff}</div>
+                          <div className="mt-1 text-[0.72rem] font-medium text-[#7384b9]">Maximum</div>
+                        </div>
+                        <div className="absolute bottom-[34px] right-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
+                      </div>
+
+                      <div
+                        className={`-mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-[0.95rem] px-3 py-2.5 text-center text-[0.8rem] font-bold shadow-[0_14px_28px_rgba(12,31,98,0.14)] ${
+                          hasPositiveCollegeMatch
+                            ? "bg-[linear-gradient(90deg,#142f86_0%,#0b216d_100%)] text-white"
+                            : "bg-[linear-gradient(90deg,#7a1f2d_0%,#5f1022_100%)] text-white"
+                        }`}
+                      >
+                        <span>
+                          Your score is{" "}
+                          <span className={hasPositiveCollegeMatch ? "text-[#53f0a8]" : "text-[#ffd3d3]"}>
+                            {hasHighMatch ? "within" : isAboveCollegeCutoff ? "above" : "below"}
+                          </span>{" "}
+                          the cutoff range
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-[20px] border border-[#e5ecfb] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(20,42,99,0.05)]">
+                    <div className="flex items-center justify-center gap-2.5 text-center">
+                      <span className="h-px w-6 bg-[#d7e4ff]" />
+                      <span className="text-[0.72rem] font-black uppercase tracking-[0.24em] text-[#2563eb]">
+                        College Cutoff Range
+                      </span>
+                      <span className="h-px w-6 bg-[#d7e4ff]" />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-[64px_minmax(0,1fr)_64px] items-center gap-3">
+                      <div className="text-left">
+                        <div className="text-[1.16rem] font-black tracking-[-0.05em] text-[#2563eb]">
+                          {selectedCollegeCutoffMin !== null ? formatResultValue(String(selectedCollegeCutoffMin)) : "-"}
+                        </div>
+                        <div className="mt-0.5 text-[0.7rem] font-medium leading-4 text-[#7583b5]">Low Cutoff</div>
+                      </div>
+
+                      <div className="relative px-0.5 py-6">
+                        <div className="h-3.5 overflow-hidden rounded-full border border-[#dbe6fb] bg-[repeating-linear-gradient(135deg,#eef3ff_0px,#eef3ff_4px,#f9fbff_4px,#f9fbff_8px)]">
+                          {hasCollegeCutoff ? (
+                            <div
+                              className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,#2f9ef5_0%,#1757f4_100%)] shadow-[0_8px_14px_rgba(23,88,244,0.18)]"
+                              style={{
+                                left: `${collegeGaugeRangeStartPercent}%`,
+                                width: `${Math.max(collegeGaugeRangeLength, 0)}%`,
+                              }}
+                            />
+                          ) : null}
+                        </div>
+
+                        <div
+                          className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
+                          style={{ left: `${rangeBarMarkerPercent}%` }}
+                        >
+                          <div className="rounded-[0.7rem] bg-[#1f6dff] px-1.5 py-0.5 text-[0.58rem] font-black leading-none text-white shadow-[0_10px_18px_rgba(23,88,244,0.2)]">
+                            {enteredScoreLabel}
+                          </div>
+                          <div className="-mt-0.5 h-2 w-2 rotate-45 bg-[#1f6dff]" />
+                        </div>
+
+                        <div
+                          className="absolute top-1/2 flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-[#1f6dff] bg-white shadow-[0_8px_16px_rgba(23,88,244,0.14)]"
+                          style={{ left: `${rangeBarMarkerPercent}%` }}
+                        >
+                          <span className="size-1.5 rounded-full bg-[#1f6dff]" />
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-[1.16rem] font-black tracking-[-0.05em] text-[#2563eb]">
+                          {selectedCollegeCutoffMax !== null ? formatResultValue(String(selectedCollegeCutoffMax)) : "-"}
+                        </div>
+                        <div className="mt-0.5 text-[0.7rem] font-medium leading-4 text-[#7583b5]">High Cutoff</div>
+                      </div>
+                    </div>
+
+                    <p className="mt-2 text-center text-[0.78rem] font-medium text-[#6879af]">
+                      Your score position in cutoff range
+                    </p>
+                  </div>
+
+                  <div className="mt-4 rounded-[18px] border border-[#cfddfb] bg-[linear-gradient(135deg,#eef4ff_0%,#ffffff_85%)] p-3.5 shadow-[0_14px_28px_rgba(20,42,99,0.05)]">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#276dff_0%,#1551ee_100%)] text-white shadow-[0_12px_24px_rgba(37,99,235,0.2)]">
+                        <CircleAlert className="size-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-[0.98rem] font-black tracking-[-0.03em] text-[#17337c]">What does this mean?</h3>
+                        <p className="mt-1.5 text-[0.82rem] font-medium leading-5 text-[#22427f]">
+                          {selectedMatchMessage}
+                        </p>
+                        <p className="mt-1 text-[0.78rem] font-medium leading-5 text-[#5f73a8]">
+                          {selectedMatchHelpText}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </article>
               </aside>
@@ -1910,15 +2105,33 @@ export function CutoffClient({
                 ♡ Keep Exploring
               </button>
             </section> */}
-            <section className="relative mt-10 overflow-hidden rounded-[24px] border border-[#d7e7ff] bg-[linear-gradient(135deg,#ffffff_0%,#f7fbff_45%,#eef6ff_100%)] px-5 py-6 shadow-[0_18px_46px_rgba(20,42,99,0.09)] sm:px-7 lg:px-8">
+            <section
+              ref={whatsNextSectionRef}
+              className="relative mt-10 scroll-mt-6 overflow-hidden rounded-[24px] border border-[#d7e7ff] bg-[linear-gradient(135deg,#ffffff_0%,#f7fbff_45%,#eef6ff_100%)] px-5 py-6 shadow-[0_18px_46px_rgba(20,42,99,0.09)] sm:scroll-mt-8 sm:px-7 lg:px-8"
+            >
               <div className="pointer-events-none absolute -right-14 -top-16 h-[22rem] w-[22rem] rounded-full border border-[#d8e8ff] bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(219,235,255,0.7))]" />
               <div className="pointer-events-none absolute -bottom-28 left-[-8%] h-52 w-[58%] rounded-[50%] bg-[#eaf3ff]" />
               <div className="pointer-events-none absolute -bottom-24 right-[24%] h-44 w-[44%] rounded-[50%] bg-white/80" />
 
               <div className="relative z-10">
-                <h1 className="text-[1.65rem] font-black leading-tight tracking-[-0.04em] text-[#102b57] sm:text-[2.1rem] lg:text-[2.45rem]">
-                  What’s next after your <span className="text-[#2b8df5]">cutoff?</span>
-                </h1>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <h1 className="text-[1.65rem] font-black leading-tight tracking-[-0.04em] text-[#102b57] sm:text-[2.1rem] lg:text-[2.45rem]">
+                    What’s next after your <span className="text-[#2b8df5]">cutoff?</span>
+                  </h1>
+                  <button
+                    ref={suggestedCollegesButtonRef}
+                    type="button"
+                    onClick={handleSuggestCollegesAction}
+                    className="suggest-college-cta shine-button inline-flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[#1f6fe9] bg-[linear-gradient(180deg,#2c83f6_0%,#1766d9_100%)] px-7 text-[0.95rem] font-semibold text-white shadow-[0_14px_26px_rgba(23,102,217,0.25)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_32px_rgba(23,102,217,0.32)] sm:w-auto sm:min-w-[260px] lg:shrink-0"
+                  >
+                    <span className="relative flex size-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/80 opacity-90" />
+                      <span className="relative inline-flex size-2.5 rounded-full bg-white" />
+                    </span>
+                    <Building2 className="size-5.5" />
+                    Show Suggested Colleges
+                  </button>
+                </div>
                 <p className="mt-2.5 max-w-4xl text-[0.9rem] font-medium leading-6 text-[#183965] sm:text-[1rem]">
                   Based on your score, <span className="font-black">WhatsNext</span> can guide you to the best-fit colleges
                   and counseling alerts.
@@ -1967,19 +2180,6 @@ export function CutoffClient({
                   <p className="text-[0.95rem] font-medium text-[#193965] sm:text-[1.02rem]">
                     Let <span className="font-black text-[#1264d8]">WhatsNext</span> guide your journey to success.
                   </p>
-                  <button
-                    ref={suggestedCollegesButtonRef}
-                    type="button"
-                    onClick={handleSuggestCollegesAction}
-                    className="suggest-college-cta shine-button inline-flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[#1f6fe9] bg-[linear-gradient(180deg,#2c83f6_0%,#1766d9_100%)] px-7 text-[0.95rem] font-semibold text-white shadow-[0_14px_26px_rgba(23,102,217,0.25)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_32px_rgba(23,102,217,0.32)] sm:w-auto sm:min-w-[260px]"
-                  >
-                    <span className="relative flex size-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/80 opacity-90" />
-                      <span className="relative inline-flex size-2.5 rounded-full bg-white" />
-                    </span>
-                    <Building2 className="size-5.5" />
-                    Show Suggested Colleges
-                  </button>
                 </div>
               </div>
             </section>
@@ -2001,7 +2201,7 @@ export function CutoffClient({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto px-3 pb-4">
+                <div className="overflow-x-auto px-3 pb-5 [scrollbar-color:#1766f2_#e8eef8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1766f2] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e8eef8]">
                   <table className="w-full min-w-[1080px] border-collapse overflow-hidden rounded-[8px] text-left">
                     <thead>
                       <tr className="bg-[linear-gradient(90deg,#1264d8_0%,#0756cf_100%)] text-white">
@@ -2018,37 +2218,42 @@ export function CutoffClient({
                       {suggestedCollegeRows.length ? (
                         suggestedCollegeRows.map((college, index) => {
                           const collegeCutoff = college.targetScore;
-                          const score = selectedCutoffScore ?? 0;
-                          const difference =
-                            collegeCutoff !== null && Number.isFinite(collegeCutoff)
-                              ? score - collegeCutoff
-                              : null;
+                          const comparison = compareScoreToCutoff(college.cutoffLabel, selectedCutoffScore);
+                          const difference = comparison.distance;
                           const status =
-                            difference === null
+                            comparison.status === "unavailable"
                               ? "close"
-                              : difference >= 0
+                              : comparison.status === "match"
                                 ? "great"
-                                : difference >= -5
+                                : comparison.status === "above"
+                                  ? "above"
+                                : difference !== null && Math.abs(difference) <= 5
                                   ? "close"
                                   : "low";
                           const statusTheme =
                             status === "great"
                               ? "bg-[#eaf8ef] text-[#11914a]"
+                              : status === "above"
+                                ? "bg-[#eaf8ef] text-[#11914a]"
                               : status === "close"
                                 ? "bg-[#fff7e6] text-[#d88700]"
                                 : "bg-[#ffecec] text-[#e11d27]";
                           const statusTitle =
                             status === "great"
                               ? "Great Match!"
+                              : status === "above"
+                                ? "Above Cutoff"
                               : status === "close"
                                 ? "Close Match"
                                 : "Not a Match";
                           const statusText =
                             status === "great"
-                              ? "Your score is above the cutoff."
+                              ? "Your score matches the cutoff range."
+                              : status === "above"
+                                ? "Your score is above the cutoff range."
                               : status === "close"
                                 ? "Your score is close to the cutoff."
-                                : "Your score is below the cutoff.";
+                                  : "Your score is below the cutoff.";
 
                           return (
                             <tr key={`${college.id}-${index}`} className="border-b border-[#edf1f7] last:border-b-0">
@@ -2081,8 +2286,8 @@ export function CutoffClient({
                               <td className="px-5 py-4 text-center text-[0.88rem] font-black text-[#142a63]">
                                 {selectedAdmissionType || "-"}
                               </td>
-                              <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
-                                {collegeCutoff !== null ? formatResultValue(String(collegeCutoff)) : college.cutoffLabel}
+                              <td className="whitespace-nowrap px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                                {college.cutoffLabel || (collegeCutoff !== null ? formatResultValue(String(collegeCutoff)) : "-")}
                               </td>
                               <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
                                 {enteredScoreLabel}

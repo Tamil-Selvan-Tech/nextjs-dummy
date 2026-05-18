@@ -1,38 +1,32 @@
 "use client";
-
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight,
+  Check,
   CircleAlert,
   BarChart3,
   BookOpen,
+  Building2,
   Calculator,
-  Clock3,
   FlaskConical,
-  GraduationCap,
+  MapPin,
   Phone,
+  Search,
   School,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
   User,
   Users,
+  X,
 } from "lucide-react";
-import { PageBackButton } from "@/components/global-back-button";
 import { Navbar } from "@/components/navbar";
-import { degreeOptions, engineeringCourseOptions, medicalCourseOptions } from "@/lib/site-data";
-
-const levelOptions = [
-  { value: "6", label: "6" },
-  { value: "7", label: "7" },
-  { value: "8", label: "8" },
-  { value: "9", label: "9" },
-  { value: "10", label: "10" },
-  { value: "11", label: "11" },
-  { value: "12", label: "12" },
-];
+import { fetchPublicPanelData } from "@/lib/public-data";
+import {
+  degreeOptions,
+  engineeringCourseOptions,
+  medicalCourseOptions,
+  normalizeText,
+  type College,
+  type Course,
+} from "@/lib/site-data";
 
 const categoryOptions = [
   { value: "OC", label: "OC / General" },
@@ -42,6 +36,15 @@ const categoryOptions = [
   { value: "SC", label: "SC" },
   { value: "SCA", label: "SCA" },
   { value: "ST", label: "ST" },
+];
+
+const stateOptions = [
+  "Tamil Nadu",
+  "Kerala",
+  "Karnataka",
+  "Andhra Pradesh",
+  "Telangana",
+  "Puducherry",
 ];
 
 const lawCourseOptions = ["LLB", "BA LLB", "BBA LLB", "LLM"];
@@ -93,31 +96,6 @@ const artsScienceAdmissionTypeOptions = [
   { value: "12th Marks", label: "12th Marks" },
 ];
 
-const trustItems = [
-  {
-    icon: ShieldCheck,
-    title: "100% Safe & Secure",
-    description: "Your data is protected",
-  },
-  {
-    icon: Clock3,
-    title: "Quick & Easy",
-    description: "Results in just 2 mins",
-  },
-  {
-    icon: Users,
-    title: "Trusted by Students",
-    description: "1L+ students already used",
-  },
-];
-
-type PerformanceMetric = {
-  label: string;
-  score: number;
-  expected: number;
-  max: number;
-};
-
 const VALIDATION_FIELD_ORDER = [
   "name",
   "phone",
@@ -145,15 +123,106 @@ const VALIDATION_FIELD_ORDER = [
   "agricultureChemistry",
 ] as const;
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const FIND_FORM_STORAGE_KEY = "collegeedwiser-find-form-state";
 
-const getBoundedNumberValue = (value: string, max: number) => {
-  if (value === "") return "";
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return "";
-  }
-  return String(clamp(parsed, 0, max));
+type PersistedFindFormState = {
+  selectedState: string;
+  name: string;
+  phone: string;
+  touchedFields: Record<string, boolean>;
+  selectedCategory: string;
+  selectedDreamCollege: string;
+  targetCollegeSearch: string;
+  selectedDegree: string;
+  selectedCourse: string;
+  physicsMarks: string;
+  chemistryMarks: string;
+  mathsMarks: string;
+  engineeringEntranceMarks: string;
+  neetMarks: string;
+  boardMarksTotal: string;
+  nataScore: string;
+  selectedAdmissionType: string;
+  clatMarks: string;
+  artsScienceCuetMarks: string;
+  lawBestSubjectOne: string;
+  lawBestSubjectTwo: string;
+  lawBestSubjectThree: string;
+  paramedicalBiologyMarks: string;
+  paramedicalPhysicsMarks: string;
+  paramedicalChemistryMarks: string;
+  agricultureBiologyMarks: string;
+  agriculturePhysicsMarks: string;
+  agricultureChemistryMarks: string;
+};
+
+const degreeAliases: Record<string, string[]> = {
+  Engineering: ["engineering", "be", "btech", "b.e", "b.tech", "technology"],
+  Medical: ["medical", "mbbs", "bds", "medicine", "clinical"],
+  Law: ["law", "llb", "llm", "legal"],
+  "Arts & Science": ["arts", "science", "bsc", "b.sc", "ba", "b.a", "bcom", "b.com", "bba", "bca"],
+  "B.Arch": ["barch", "b.arch", "architecture", "arch"],
+  Agriculture: ["agriculture", "agri", "farming", "crop science"],
+  Paramedical: ["paramedical", "allied health", "physiotherapy", "radiology", "nursing"],
+};
+
+const courseMatchesDegree = (course: Course, degree: string) => {
+  if (!degree) return true;
+  const haystack = [
+    course.course,
+    course.courseName,
+    course.degreeType,
+    course.courseType,
+    course.courseCategory,
+    course.stream,
+    course.specialization,
+  ]
+    .map((item) => normalizeText(String(item || "")))
+    .filter(Boolean)
+    .join(" ");
+  const aliases = degreeAliases[degree] || [degree];
+  return aliases.some((alias) => haystack.includes(normalizeText(alias)));
+};
+
+const collegeMatchesDegree = (college: College, degree: string) => {
+  if (!degree) return true;
+  const haystack = [
+    college.name,
+    college.university,
+    college.description,
+    ...(Array.isArray(college.streams) ? college.streams : []),
+    ...(Array.isArray(college.courseTags) ? college.courseTags : []),
+  ]
+    .map((item) => normalizeText(String(item || "")))
+    .filter(Boolean)
+    .join(" ");
+  const aliases = degreeAliases[degree] || [degree];
+  return aliases.some((alias) => haystack.includes(normalizeText(alias)));
+};
+
+const courseMatchesSelection = (course: Course, selectedCourse: string) => {
+  if (!selectedCourse) return true;
+  const selected = normalizeText(selectedCourse);
+  const selectedTokens = selected.split(" ").filter(Boolean);
+  const haystack = [
+    course.course,
+    course.courseName,
+    course.specialization,
+    course.stream,
+    course.courseCategory,
+  ]
+    .map((item) => normalizeText(String(item || "")))
+    .filter(Boolean)
+    .join(" ");
+  const specialization = normalizeText(course.specialization || "");
+  const baseCourse = normalizeText(course.course || course.courseName || "");
+
+  return (
+    haystack.includes(selected) ||
+    selected.includes(specialization) ||
+    selected.includes(baseCourse) ||
+    selectedTokens.every((token) => haystack.includes(token))
+  );
 };
 
 const getNonNegativeNumberValue = (value: string) => {
@@ -170,21 +239,33 @@ const validateNumericRange = (
   value: string,
   errorKey: string,
   max: number,
+  min = 0,
+  message?: string,
 ) => {
   if (value.trim().length === 0) return;
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0 || parsed > max) {
-    errors[errorKey] = `Enter a value between 0 and ${max}`;
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    errors[errorKey] = message || `Please enter a valid number between ${min} and ${max}.`;
   }
 };
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const hasHydratedPersistedForm = useRef(false);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedState, setSelectedState] = useState("Tamil Nadu");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState("11");
+  const [hasCalculatedPreview, setHasCalculatedPreview] = useState(false);
+  const [showValidationPopup, setShowValidationPopup] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [selectedLevel] = useState("12");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedDreamCollege, setSelectedDreamCollege] = useState("");
+  const [targetCollegeSearch, setTargetCollegeSearch] = useState("");
   const [selectedDegree, setSelectedDegree] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [physicsMarks, setPhysicsMarks] = useState("");
@@ -206,6 +287,207 @@ export default function FindPage() {
   const [agricultureBiologyMarks, setAgricultureBiologyMarks] = useState("");
   const [agriculturePhysicsMarks, setAgriculturePhysicsMarks] = useState("");
   const [agricultureChemistryMarks, setAgricultureChemistryMarks] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchPublicPanelData().then((panelData) => {
+      if (!isMounted) return;
+      setColleges(panelData.colleges);
+      setCourses(panelData.courses);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const rawValue = window.sessionStorage.getItem(FIND_FORM_STORAGE_KEY);
+      if (!rawValue) {
+        hasHydratedPersistedForm.current = true;
+        return;
+      }
+
+      const savedState = JSON.parse(rawValue) as Partial<PersistedFindFormState>;
+      setSelectedState(String(savedState.selectedState || "Tamil Nadu"));
+      setName(String(savedState.name || ""));
+      setPhone(String(savedState.phone || ""));
+      setTouchedFields(
+        savedState.touchedFields && typeof savedState.touchedFields === "object"
+          ? savedState.touchedFields
+          : {},
+      );
+      setSelectedCategory(String(savedState.selectedCategory || ""));
+      setSelectedDreamCollege(String(savedState.selectedDreamCollege || ""));
+      setTargetCollegeSearch(String(savedState.targetCollegeSearch || ""));
+      setSelectedDegree(String(savedState.selectedDegree || ""));
+      setSelectedCourse(String(savedState.selectedCourse || ""));
+      setPhysicsMarks(String(savedState.physicsMarks || ""));
+      setChemistryMarks(String(savedState.chemistryMarks || ""));
+      setMathsMarks(String(savedState.mathsMarks || ""));
+      setEngineeringEntranceMarks(String(savedState.engineeringEntranceMarks || ""));
+      setNeetMarks(String(savedState.neetMarks || ""));
+      setBoardMarksTotal(String(savedState.boardMarksTotal || ""));
+      setNataScore(String(savedState.nataScore || ""));
+      setSelectedAdmissionType(String(savedState.selectedAdmissionType || ""));
+      setClatMarks(String(savedState.clatMarks || ""));
+      setArtsScienceCuetMarks(String(savedState.artsScienceCuetMarks || ""));
+      setLawBestSubjectOne(String(savedState.lawBestSubjectOne || ""));
+      setLawBestSubjectTwo(String(savedState.lawBestSubjectTwo || ""));
+      setLawBestSubjectThree(String(savedState.lawBestSubjectThree || ""));
+      setParamedicalBiologyMarks(String(savedState.paramedicalBiologyMarks || ""));
+      setParamedicalPhysicsMarks(String(savedState.paramedicalPhysicsMarks || ""));
+      setParamedicalChemistryMarks(String(savedState.paramedicalChemistryMarks || ""));
+      setAgricultureBiologyMarks(String(savedState.agricultureBiologyMarks || ""));
+      setAgriculturePhysicsMarks(String(savedState.agriculturePhysicsMarks || ""));
+      setAgricultureChemistryMarks(String(savedState.agricultureChemistryMarks || ""));
+    } catch {
+      window.sessionStorage.removeItem(FIND_FORM_STORAGE_KEY);
+    } finally {
+      hasHydratedPersistedForm.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    const hasQueryState = [
+      "name",
+      "phone",
+      "state",
+      "degree",
+      "category",
+      "dreamCollege",
+      "course",
+      "admissionType",
+      "physics",
+      "chemistry",
+      "maths",
+      "engineeringScore",
+      "neet",
+      "boardTotal",
+      "nata",
+      "clat",
+      "bestSubject1",
+      "bestSubject2",
+      "bestSubject3",
+      "artsScienceCuet",
+      "paramedicalBiology",
+      "paramedicalPhysics",
+      "paramedicalChemistry",
+      "agricultureBiology",
+      "agriculturePhysics",
+      "agricultureChemistry",
+    ].some((key) => {
+      const value = searchParams.get(key);
+      return Boolean(value && value.trim());
+    });
+
+    if (!hasQueryState) return;
+
+    setSelectedState(searchParams.get("state") || "Tamil Nadu");
+    setName(searchParams.get("name") || "");
+    setPhone(searchParams.get("phone") || "");
+    setHasSubmitted(false);
+    setHasCalculatedPreview(false);
+    setShowValidationPopup(false);
+    setTouchedFields({});
+    setSelectedCategory(searchParams.get("category") || "");
+    setSelectedDreamCollege(searchParams.get("dreamCollege") || "");
+    setTargetCollegeSearch("");
+    setSelectedDegree(searchParams.get("degree") || "");
+    setSelectedCourse(searchParams.get("course") || "");
+    setPhysicsMarks(searchParams.get("physics") || "");
+    setChemistryMarks(searchParams.get("chemistry") || "");
+    setMathsMarks(searchParams.get("maths") || "");
+    setEngineeringEntranceMarks(searchParams.get("engineeringScore") || "");
+    setNeetMarks(searchParams.get("neet") || "");
+    setBoardMarksTotal(searchParams.get("boardTotal") || "");
+    setNataScore(searchParams.get("nata") || "");
+    setSelectedAdmissionType(searchParams.get("admissionType") || "");
+    setClatMarks(searchParams.get("clat") || "");
+    setArtsScienceCuetMarks(searchParams.get("artsScienceCuet") || "");
+    setLawBestSubjectOne(searchParams.get("bestSubject1") || "");
+    setLawBestSubjectTwo(searchParams.get("bestSubject2") || "");
+    setLawBestSubjectThree(searchParams.get("bestSubject3") || "");
+    setParamedicalBiologyMarks(searchParams.get("paramedicalBiology") || "");
+    setParamedicalPhysicsMarks(searchParams.get("paramedicalPhysics") || "");
+    setParamedicalChemistryMarks(searchParams.get("paramedicalChemistry") || "");
+    setAgricultureBiologyMarks(searchParams.get("agricultureBiology") || "");
+    setAgriculturePhysicsMarks(searchParams.get("agriculturePhysics") || "");
+    setAgricultureChemistryMarks(searchParams.get("agricultureChemistry") || "");
+  }, [searchParams]);
+
+  const persistedFindFormState = useMemo<PersistedFindFormState>(
+    () => ({
+      selectedState,
+      name,
+      phone,
+      touchedFields,
+      selectedCategory,
+      selectedDreamCollege,
+      targetCollegeSearch,
+      selectedDegree,
+      selectedCourse,
+      physicsMarks,
+      chemistryMarks,
+      mathsMarks,
+      engineeringEntranceMarks,
+      neetMarks,
+      boardMarksTotal,
+      nataScore,
+      selectedAdmissionType,
+      clatMarks,
+      artsScienceCuetMarks,
+      lawBestSubjectOne,
+      lawBestSubjectTwo,
+      lawBestSubjectThree,
+      paramedicalBiologyMarks,
+      paramedicalPhysicsMarks,
+      paramedicalChemistryMarks,
+      agricultureBiologyMarks,
+      agriculturePhysicsMarks,
+      agricultureChemistryMarks,
+    }),
+    [
+      agricultureBiologyMarks,
+      agricultureChemistryMarks,
+      agriculturePhysicsMarks,
+      artsScienceCuetMarks,
+      boardMarksTotal,
+      chemistryMarks,
+      clatMarks,
+      engineeringEntranceMarks,
+      lawBestSubjectOne,
+      lawBestSubjectThree,
+      lawBestSubjectTwo,
+      mathsMarks,
+      name,
+      nataScore,
+      neetMarks,
+      paramedicalBiologyMarks,
+      paramedicalChemistryMarks,
+      paramedicalPhysicsMarks,
+      phone,
+      physicsMarks,
+      selectedAdmissionType,
+      selectedCategory,
+      selectedCourse,
+      selectedDegree,
+      selectedDreamCollege,
+      selectedState,
+      targetCollegeSearch,
+      touchedFields,
+    ],
+  );
+
+  useEffect(() => {
+    if (!hasHydratedPersistedForm.current || typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(FIND_FORM_STORAGE_KEY, JSON.stringify(persistedFindFormState));
+  }, [persistedFindFormState]);
 
   // Form field visibility by selected degree and level.
   const isSeniorSecondaryLevel = selectedLevel === "11" || selectedLevel === "12";
@@ -231,6 +513,7 @@ export default function FindPage() {
   const showLawClatFields = showLawFields && selectedAdmissionType === "CLAT";
   const showLawMarksFields = showLawFields && selectedAdmissionType === "11th/12th Mark";
   const showCategoryField = isSeniorSecondaryLevel;
+  const showDreamCollegeField = Boolean(selectedDegree) && isSeniorSecondaryLevel;
   const availableEngineeringAdmissionTypeOptions = isLevel11
     ? engineeringAdmissionTypeOptions.filter((option) => option.value === "PCM")
     : engineeringAdmissionTypeOptions;
@@ -240,8 +523,45 @@ export default function FindPage() {
 
   const isBlank = (value: string) => value.trim().length === 0;
 
+  const eligibleCourses = useMemo(
+    () =>
+      courses.filter(
+        (course) =>
+          courseMatchesDegree(course, selectedDegree) &&
+          courseMatchesSelection(course, selectedCourse),
+      ),
+    [courses, selectedCourse, selectedDegree],
+  );
+
+  const dreamCollegeOptions = useMemo(() => {
+    const filteredColleges = colleges
+      .filter((college) => collegeMatchesDegree(college, selectedDegree))
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    if (!selectedDreamCollege) {
+      return filteredColleges;
+    }
+
+    const selectedCollegeRecord = colleges.find(
+      (college) =>
+        normalizeText(college.id) === normalizeText(selectedDreamCollege) ||
+        normalizeText(college.name) === normalizeText(selectedDreamCollege),
+    );
+
+    if (
+      selectedCollegeRecord &&
+      !filteredColleges.some(
+        (college) => normalizeText(college.id) === normalizeText(selectedCollegeRecord.id),
+      )
+    ) {
+      return [selectedCollegeRecord, ...filteredColleges];
+    }
+    return filteredColleges;
+  }, [colleges, selectedDegree, selectedDreamCollege]);
+
   // Resets all cutoff form academic inputs when degree/level path changes.
   const resetAcademicFields = () => {
+    setTouchedFields({});
     setSelectedCourse("");
     setPhysicsMarks("");
     setChemistryMarks("");
@@ -264,9 +584,43 @@ export default function FindPage() {
     setAgricultureChemistryMarks("");
   };
 
+  const resetFormFields = () => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(FIND_FORM_STORAGE_KEY);
+    }
+    router.replace("/find");
+    setSelectedState("Tamil Nadu");
+    setName("");
+    setPhone("");
+    setHasSubmitted(false);
+    setHasCalculatedPreview(false);
+    setShowValidationPopup(false);
+    setTouchedFields({});
+    setSelectedCategory("");
+    setSelectedDreamCollege("");
+    setTargetCollegeSearch("");
+    setSelectedDegree("");
+    resetAcademicFields();
+  };
+
+  useEffect(() => {
+    if (!selectedDreamCollege || targetCollegeSearch.trim() || colleges.length === 0) return;
+
+    const selectedCollege = colleges.find(
+      (college) =>
+        normalizeText(college.id) === normalizeText(selectedDreamCollege) ||
+        normalizeText(college.name) === normalizeText(selectedDreamCollege),
+    );
+
+    if (selectedCollege) {
+      setTargetCollegeSearch(selectedCollege.name);
+    }
+  }, [colleges, selectedDreamCollege, targetCollegeSearch]);
+
   // Degree-specific cutoff calculators used by the cutoff form.
   const engineeringCutoff = useMemo(() => {
     if (!showEngineeringPcmFields) return "";
+    if (isBlank(physicsMarks) || isBlank(chemistryMarks) || isBlank(mathsMarks)) return "";
     const physics = Number(physicsMarks);
     const chemistry = Number(chemistryMarks);
     const maths = Number(mathsMarks);
@@ -278,6 +632,7 @@ export default function FindPage() {
 
   const bArchConvertedScore = useMemo(() => {
     if (!showBArchFields) return "";
+    if (isBlank(boardMarksTotal)) return "";
     const total = Number(boardMarksTotal);
     if (!Number.isFinite(total)) return "";
     if (isLevel11) return ((total / 600) * 400).toFixed(1);
@@ -286,6 +641,7 @@ export default function FindPage() {
 
   const bArchCombinedScore = useMemo(() => {
     if (!showBArchNataField) return "";
+    if (isBlank(bArchConvertedScore) || isBlank(nataScore)) return "";
     const converted = Number(bArchConvertedScore);
     const nata = Number(nataScore);
     if (!Number.isFinite(converted) || !Number.isFinite(nata)) return "";
@@ -294,6 +650,7 @@ export default function FindPage() {
 
   const lawBestThreeTotal = useMemo(() => {
     if (!showLawMarksFields) return "";
+    if (isBlank(lawBestSubjectOne) || isBlank(lawBestSubjectTwo) || isBlank(lawBestSubjectThree)) return "";
     const subjectOne = Number(lawBestSubjectOne);
     const subjectTwo = Number(lawBestSubjectTwo);
     const subjectThree = Number(lawBestSubjectThree);
@@ -305,6 +662,13 @@ export default function FindPage() {
 
   const paramedicalCutoff100 = useMemo(() => {
     if (!showParamedicalFields) return "";
+    if (
+      isBlank(paramedicalBiologyMarks) ||
+      isBlank(paramedicalPhysicsMarks) ||
+      isBlank(paramedicalChemistryMarks)
+    ) {
+      return "";
+    }
     const biology = Number(paramedicalBiologyMarks);
     const physics = Number(paramedicalPhysicsMarks);
     const chemistry = Number(paramedicalChemistryMarks);
@@ -328,6 +692,13 @@ export default function FindPage() {
 
   const agricultureCutoff100 = useMemo(() => {
     if (!showAgricultureFields) return "";
+    if (
+      isBlank(agricultureBiologyMarks) ||
+      isBlank(agriculturePhysicsMarks) ||
+      isBlank(agricultureChemistryMarks)
+    ) {
+      return "";
+    }
     const biology = Number(agricultureBiologyMarks);
     const physics = Number(agriculturePhysicsMarks);
     const chemistry = Number(agricultureChemistryMarks);
@@ -388,273 +759,44 @@ export default function FindPage() {
     showParamedicalFields,
   ]);
 
-  // Live preview panel config for the current cutoff form path.
-  const chartConfig = useMemo(() => {
-    if (showEngineeringJeeMainFields) {
-      return {
-        comparisonTitle: "JEE Main Score",
-        scaleHint: "JEE Main score is shown out of 300.",
-        expectedCutoff: 180,
-        scoreMax: 300,
-        subjectMetrics: [
-          { label: "JEE Main", score: Number(engineeringEntranceMarks) || 0, expected: 180, max: 300 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showEngineeringJeeAdvancedFields) {
-      return {
-        comparisonTitle: "JEE Advanced Score",
-        scaleHint: "JEE Advanced score is shown out of 360.",
-        expectedCutoff: 180,
-        scoreMax: 360,
-        subjectMetrics: [
-          { label: "JEE Advanced", score: Number(engineeringEntranceMarks) || 0, expected: 180, max: 360 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showEngineeringPcmFields) {
-      return {
-        comparisonTitle: "Engineering Cutoff",
-        scaleHint: "Cutoff shown out of 200. Subject bars are shown out of 100.",
-        expectedCutoff: 175,
-        scoreMax: 200,
-        subjectMetrics: [
-          { label: "Mathematics", score: Number(mathsMarks) || 0, expected: 95, max: 100 },
-          { label: "Physics", score: Number(physicsMarks) || 0, expected: 90, max: 100 },
-          { label: "Chemistry", score: Number(chemistryMarks) || 0, expected: 90, max: 100 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showParamedicalFields) {
-      return {
-        comparisonTitle: "Paramedical Cutoff",
-        scaleHint: "Cutoff shown out of 200. Biology, Physics, and Chemistry are shown out of 100.",
-        expectedCutoff: 160,
-        scoreMax: 200,
-        subjectMetrics: [
-          { label: "Biology", score: Number(paramedicalBiologyMarks) || 0, expected: 90, max: 100 },
-          { label: "Physics", score: Number(paramedicalPhysicsMarks) || 0, expected: 80, max: 100 },
-          { label: "Chemistry", score: Number(paramedicalChemistryMarks) || 0, expected: 80, max: 100 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showAgricultureFields) {
-      return {
-        comparisonTitle: "Agriculture Cutoff",
-        scaleHint: "Cutoff shown out of 200. Biology, Physics, and Chemistry are shown out of 100.",
-        expectedCutoff: 155,
-        scoreMax: 200,
-        subjectMetrics: [
-          { label: "Biology", score: Number(agricultureBiologyMarks) || 0, expected: 88, max: 100 },
-          { label: "Physics", score: Number(agriculturePhysicsMarks) || 0, expected: 78, max: 100 },
-          { label: "Chemistry", score: Number(agricultureChemistryMarks) || 0, expected: 78, max: 100 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showLawMarksFields) {
-      return {
-        comparisonTitle: "Best Three Total",
-        scaleHint: "Each best-subject mark is shown out of 100. Total cutoff is shown out of 300.",
-        expectedCutoff: 225,
-        scoreMax: 300,
-        subjectMetrics: [
-          { label: "Best 1", score: Number(lawBestSubjectOne) || 0, expected: 75, max: 100 },
-          { label: "Best 2", score: Number(lawBestSubjectTwo) || 0, expected: 75, max: 100 },
-          { label: "Best 3", score: Number(lawBestSubjectThree) || 0, expected: 75, max: 100 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showLawClatFields) {
-      return {
-        comparisonTitle: "CLAT Score",
-        scaleHint: "CLAT score is shown out of 120.",
-        expectedCutoff: 85,
-        scoreMax: 120,
-        subjectMetrics: [{ label: "CLAT", score: Number(clatMarks) || 0, expected: 85, max: 120 }] as PerformanceMetric[],
-      };
-    }
-    if (showArtsScienceCuetField) {
-      return {
-        comparisonTitle: "CUET Score",
-        scaleHint: "CUET score is shown using the marks you enter.",
-        expectedCutoff: 350,
-        scoreMax: 600,
-        subjectMetrics: [
-          { label: "CUET", score: Number(artsScienceCuetMarks) || 0, expected: 350, max: 600 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showArtsScienceBoardMarksField) {
-      return {
-        comparisonTitle: "Arts & Science Board Score",
-        scaleHint: "12th Marks are shown out of 600.",
-        expectedCutoff: 450,
-        scoreMax: 600,
-        subjectMetrics: [
-          { label: "12th Marks", score: Number(boardMarksTotal) || 0, expected: 450, max: 600 },
-        ] as PerformanceMetric[],
-      };
-    }
-    if (showMedicalFields) {
-      return {
-        comparisonTitle: "NEET Score",
-        scaleHint: "NEET score is shown out of 720.",
-        expectedCutoff: 540,
-        scoreMax: 720,
-        subjectMetrics: [{ label: "NEET", score: Number(neetMarks) || 0, expected: 540, max: 720 }] as PerformanceMetric[],
-      };
-    }
-    if (showBArchFields) {
-      if (isLevel11) {
-        return {
-          comparisonTitle: "B.Arch Board Score",
-          scaleHint: "11th total is converted from 600 to 400 scale.",
-          expectedCutoff: 280,
-          scoreMax: 400,
-          subjectMetrics: [
-            { label: "11th Conv.", score: Number(bArchConvertedScore) || 0, expected: 280, max: 400 },
-          ] as PerformanceMetric[],
-        };
-      }
-      return {
-        comparisonTitle: "B.Arch Combined Score",
-        scaleHint: "12th converted score and NATA are shown out of 200 each. Combined cutoff is shown out of 400.",
-        expectedCutoff: 255,
-        scoreMax: 400,
-        subjectMetrics: [
-          { label: "12th Conv.", score: Number(bArchConvertedScore) || 0, expected: 140, max: 200 },
-          { label: "NATA", score: Number(nataScore) || 0, expected: 115, max: 200 },
-        ] as PerformanceMetric[],
-      };
-    }
-    return {
-      comparisonTitle: "Target Score",
-      scaleHint: "Score is shown on the active cutoff scale.",
-      expectedCutoff: 120,
-      scoreMax: 200,
-      subjectMetrics: [{ label: "Target", score: 0, expected: 120, max: 200 }] as PerformanceMetric[],
-    };
-  }, [
-    agricultureBiologyMarks,
-    artsScienceCuetMarks,
-    agricultureChemistryMarks,
-    agriculturePhysicsMarks,
-    bArchConvertedScore,
-    boardMarksTotal,
-    chemistryMarks,
-    clatMarks,
-    engineeringEntranceMarks,
-    lawBestSubjectOne,
-    lawBestSubjectThree,
-    lawBestSubjectTwo,
-    mathsMarks,
-    nataScore,
-    neetMarks,
-    paramedicalBiologyMarks,
-    paramedicalChemistryMarks,
-    paramedicalPhysicsMarks,
-    physicsMarks,
-    showAgricultureFields,
-    showBArchFields,
-    isLevel11,
-    showEngineeringJeeAdvancedFields,
-    showEngineeringJeeMainFields,
-    showEngineeringPcmFields,
-    showArtsScienceBoardMarksField,
-    showArtsScienceCuetField,
-    showLawClatFields,
-    showLawMarksFields,
-    showMedicalFields,
-    showParamedicalFields,
-  ]);
+  const filteredDreamCollegeOptions = useMemo(() => {
+    const query = normalizeText(targetCollegeSearch);
+    if (!query) return dreamCollegeOptions.slice(0, 80);
 
-  const cutoffScaleMax = chartConfig.scoreMax;
-  const liveCutoffValue = useMemo(() => {
-    const parsed = Number(finalCutoffValue);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [finalCutoffValue]);
+    const queryTokens = query.split(" ").filter(Boolean);
+    return dreamCollegeOptions
+      .filter((college) => {
+        const haystack = normalizeText(
+          [
+            college.name,
+            college.city,
+            college.district,
+            college.university,
+            ...(Array.isArray(college.streams) ? college.streams : []),
+            ...(Array.isArray(college.courseTags) ? college.courseTags : []),
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+        return queryTokens.every((token) => haystack.includes(token));
+      })
+      .sort((left, right) => {
+        const leftName = normalizeText(left.name);
+        const rightName = normalizeText(right.name);
+        const leftStarts = leftName.startsWith(query) ? 0 : 1;
+        const rightStarts = rightName.startsWith(query) ? 0 : 1;
+        return leftStarts - rightStarts || left.name.localeCompare(right.name);
+      })
+      .slice(0, 80);
+  }, [dreamCollegeOptions, targetCollegeSearch]);
 
-  const scoreProgress = useMemo(() => {
-    if (!cutoffScaleMax) return 0;
-    return clamp((liveCutoffValue / cutoffScaleMax) * 100, 0, 100);
-  }, [cutoffScaleMax, liveCutoffValue]);
-
-  const normalizedMoodScore = useMemo(() => {
-    if (!cutoffScaleMax) return 0;
-    return Math.round(clamp((liveCutoffValue / cutoffScaleMax) * 200, 0, 200));
-  }, [cutoffScaleMax, liveCutoffValue]);
-
-  const moodOptions = useMemo(() => {
-    const excitedMin = Math.ceil(cutoffScaleMax * 0.95);
-    const happyMin = Math.ceil(cutoffScaleMax * 0.85);
-    const confidentMin = Math.ceil(cutoffScaleMax * 0.75);
-    const neutralMin = Math.ceil(cutoffScaleMax * 0.6);
-
-    return [
-      {
-        label: "Excited",
-        emoji: "🤩",
-        min: excitedMin,
-        max: cutoffScaleMax,
-        rangeLabel: `${excitedMin} - ${cutoffScaleMax}`,
-        summary: "Outstanding score! You are leading the pack.",
-      },
-      {
-        label: "Happy",
-        emoji: "😄",
-        min: happyMin,
-        max: excitedMin - 1,
-        rangeLabel: `${happyMin} - ${excitedMin - 1}`,
-        summary: "Great job! You're doing awesome.",
-      },
-      {
-        label: "Confident",
-        emoji: "💪",
-        min: confidentMin,
-        max: happyMin - 1,
-        rangeLabel: `${confidentMin} - ${happyMin - 1}`,
-        summary: "Good momentum. Keep pushing forward.",
-      },
-      {
-        label: "Neutral",
-        emoji: "😐",
-        min: neutralMin,
-        max: confidentMin - 1,
-        rangeLabel: `${neutralMin} - ${confidentMin - 1}`,
-        summary: "You're on track. A little more effort will help.",
-      },
-      {
-        label: "Need Help",
-        emoji: "☹️",
-        min: 0,
-        max: neutralMin - 1,
-        rangeLabel: `Below ${neutralMin}`,
-        summary: "Keep going. Steady practice will improve your score.",
-      },
-    ];
-  }, [cutoffScaleMax]);
-
-  const activeMood = useMemo(() => {
-    if (normalizedMoodScore >= 190) return moodOptions.find((item) => item.label === "Excited") ?? moodOptions[0];
-    if (normalizedMoodScore >= 170) return moodOptions.find((item) => item.label === "Happy") ?? moodOptions[1];
-    if (normalizedMoodScore >= 150) return moodOptions.find((item) => item.label === "Confident") ?? moodOptions[2];
-    if (normalizedMoodScore >= 120) return moodOptions.find((item) => item.label === "Neutral") ?? moodOptions[3];
-    return moodOptions.find((item) => item.label === "Need Help") ?? moodOptions[moodOptions.length - 1];
-  }, [moodOptions, normalizedMoodScore]);
-
-  const scoreFeedback = useMemo(() => {
-    if (scoreProgress >= 95) return "Excellent score! You're in a top range.";
-    if (scoreProgress >= 85) return "You scored well! Keep it up!";
-    if (scoreProgress >= 75) return "Nice work. You're building strong momentum.";
-    if (scoreProgress >= 60) return "You're getting closer. Keep improving steadily.";
-    return "Keep practicing. You can raise this score.";
-  }, [scoreProgress]);
-
-  const moodTip = useMemo(() => {
-    if (scoreProgress >= 85) return "Tip: Consistent effort leads to excellent results. Keep learning and stay positive!";
-    if (scoreProgress >= 60) return "Tip: You're close to the next band. Daily revision can lift your cutoff quickly.";
-    return "Tip: Focus on basics first, practice daily, and your cutoff score will improve step by step.";
-  }, [scoreProgress]);
+  const selectTargetCollegeByName = (value: string) => {
+    setTargetCollegeSearch(value);
+    const matchedCollege = dreamCollegeOptions.find(
+      (college) => normalizeText(college.name) === normalizeText(value),
+    );
+    setSelectedDreamCollege(matchedCollege?.id || "");
+  };
 
   const validationErrors = useMemo(() => {
     const errors: Record<string, string> = {};
@@ -731,9 +873,9 @@ export default function FindPage() {
       if (isBlank(agricultureChemistryMarks)) errors.agricultureChemistry = "This field is required";
     }
 
-    validateNumericRange(errors, physicsMarks, "physics", 100);
-    validateNumericRange(errors, chemistryMarks, "chemistry", 100);
-    validateNumericRange(errors, mathsMarks, "maths", 100);
+    validateNumericRange(errors, physicsMarks, "physics", 100, 35, "Please enter a valid number between 35 and 100.");
+    validateNumericRange(errors, chemistryMarks, "chemistry", 100, 35, "Please enter a valid number between 35 and 100.");
+    validateNumericRange(errors, mathsMarks, "maths", 100, 35, "Please enter a valid number between 35 and 100.");
     validateNumericRange(errors, engineeringEntranceMarks, "engineeringEntranceMarks", showEngineeringJeeAdvancedFields ? 360 : 300);
     validateNumericRange(errors, neetMarks, "neet", 720);
     validateNumericRange(errors, boardMarksTotal, "boardTotal", 600);
@@ -742,6 +884,7 @@ export default function FindPage() {
     validateNumericRange(errors, lawBestSubjectOne, "bestSubject1", 100);
     validateNumericRange(errors, lawBestSubjectTwo, "bestSubject2", 100);
     validateNumericRange(errors, lawBestSubjectThree, "bestSubject3", 100);
+    validateNumericRange(errors, artsScienceCuetMarks, "artsScienceCuet", 600);
     validateNumericRange(errors, paramedicalBiologyMarks, "paramedicalBiology", 100);
     validateNumericRange(errors, paramedicalPhysicsMarks, "paramedicalPhysics", 100);
     validateNumericRange(errors, paramedicalChemistryMarks, "paramedicalChemistry", 100);
@@ -793,7 +936,50 @@ export default function FindPage() {
     showParamedicalFields,
   ]);
 
-  const hasValidationErrors = Object.keys(validationErrors).length > 0;
+  const validationErrorCount = Object.keys(validationErrors).length;
+  const hasValidationErrors = validationErrorCount > 0;
+  const clearSubmittedValidation = () => {
+    if (hasSubmitted) setHasSubmitted(false);
+    if (hasCalculatedPreview) setHasCalculatedPreview(false);
+    if (showValidationPopup) setShowValidationPopup(false);
+  };
+  const markFieldTouched = (fieldId: string) => {
+    setTouchedFields((previous) => (previous[fieldId] ? previous : { ...previous, [fieldId]: true }));
+  };
+  const isCompletedMarkField = (fieldId: string, value: string) =>
+    Boolean(
+      value.trim() &&
+      !validationErrors[fieldId] &&
+      (touchedFields[fieldId] || hasCalculatedPreview),
+    );
+  const engineeringPcmMarksReady =
+    isCompletedMarkField("physics", physicsMarks) &&
+    isCompletedMarkField("chemistry", chemistryMarks) &&
+    isCompletedMarkField("maths", mathsMarks);
+  const engineeringEntranceMarksReady = isCompletedMarkField(
+    "engineeringEntranceMarks",
+    engineeringEntranceMarks,
+  );
+  const neetMarksReady = isCompletedMarkField("neet", neetMarks);
+  const bArchMarksReady =
+    isCompletedMarkField("boardTotal", boardMarksTotal) &&
+    (!showBArchNataField || isCompletedMarkField("nata", nataScore));
+  const clatMarksReady = isCompletedMarkField("clat", clatMarks);
+  const lawMarksReady =
+    isCompletedMarkField("bestSubject1", lawBestSubjectOne) &&
+    isCompletedMarkField("bestSubject2", lawBestSubjectTwo) &&
+    isCompletedMarkField("bestSubject3", lawBestSubjectThree);
+  const artsScienceCuetReady = isCompletedMarkField("artsScienceCuet", artsScienceCuetMarks);
+  const artsScienceBoardReady = isCompletedMarkField("boardTotal", boardMarksTotal);
+  const paramedicalMarksReady =
+    isCompletedMarkField("paramedicalBiology", paramedicalBiologyMarks) &&
+    isCompletedMarkField("paramedicalPhysics", paramedicalPhysicsMarks) &&
+    isCompletedMarkField("paramedicalChemistry", paramedicalChemistryMarks);
+  const agricultureMarksReady =
+    isCompletedMarkField("agricultureBiology", agricultureBiologyMarks) &&
+    isCompletedMarkField("agriculturePhysics", agriculturePhysicsMarks) &&
+    isCompletedMarkField("agricultureChemistry", agricultureChemistryMarks);
+  const showCalculatedScorePreview = hasCalculatedPreview && !hasValidationErrors;
   const scrollToFirstInvalidField = () => {
     const firstInvalidField = VALIDATION_FIELD_ORDER.find((field) => validationErrors[field]);
     if (!firstInvalidField) return;
@@ -811,40 +997,99 @@ export default function FindPage() {
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#dfe9ff_0%,#edf3ff_16%,#f7f9ff_100%)] text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#eef2fb_0%,#f7f9ff_52%,#fbfcff_100%)] text-slate-900">
       <Navbar />
-      <div className="px-2 pt-2 sm:px-4 sm:pt-3 md:px-5 md:pt-4 xl:px-6">
-        <div className="mx-auto w-full max-w-[1320px]">
-          <PageBackButton />
-        </div>
-      </div>
-<div className="px-2 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3 md:px-5 md:pb-5 md:pt-4 xl:px-6">
-  <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 items-start gap-3 sm:gap-4 md:gap-4 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
- <section className="min-w-0 w-full order-2 md:order-1 rounded-[24px] border-2 border-[#8db2ff] bg-white/95 xl:max-w-[760px] xl:justify-self-start
-p-3 sm:p-4 md:p-5 xl:p-5">
-            <div className="flex flex-col gap-3 sm:gap-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              {/* <div className="inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2 self-start rounded-[14px] border-2 border-[#8fd9bc] bg-[#effaf5] px-3.5 py-2 text-[0.82rem] font-semibold text-[#0f7b5c] shadow-[0_10px_24px_rgba(20,138,103,0.08)] sm:w-auto sm:justify-start">
-                <ShieldCheck className="size-4" />
-                100% Safe &amp; Secure
-              </div> */}
+      {showValidationPopup ? (
+        <div className="fixed inset-0 z-[90] flex items-start justify-center bg-[#071333]/35 px-4 pt-24 backdrop-blur-[2px] sm:pt-28">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="validation-popup-title"
+            aria-describedby="validation-popup-message"
+            className="w-full max-w-[420px] overflow-hidden rounded-[18px] border border-[#d8dff2] bg-white shadow-[0_24px_70px_rgba(7,19,51,0.28)]"
+          >
+            <div className="flex items-start gap-3 border-b border-[#eef2ff] bg-[linear-gradient(135deg,#ffffff_0%,#f7f9ff_55%,#fff4f5_100%)] px-5 py-4">
+              <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e] shadow-[0_8px_20px_rgba(255,77,94,0.16)]">
+                <CircleAlert className="size-5" strokeWidth={2.4} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="validation-popup-title" className="text-[1rem] font-bold text-[#142a63]">
+                  Complete the required details
+                </h2>
+                <p id="validation-popup-message" className="mt-1 text-[0.9rem] leading-5 text-[#4f5f89]">
+                  {validationErrorCount === 1
+                    ? "One field needs your attention before calculating."
+                    : `${validationErrorCount} fields need your attention before calculating.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowValidationPopup(false)}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#52618a] transition hover:bg-white hover:text-[#142a63]"
+                aria-label="Close validation message"
+              >
+                <X className="size-4.5" />
+              </button>
             </div>
+            <div className="px-5 py-4">
+              <p className="text-[0.92rem] leading-6 text-[#304061]">
+                Please fill all mandatory fields. The first missing field has been highlighted for you.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowValidationPopup(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#142a63] px-5 text-[0.9rem] font-semibold text-white shadow-[0_12px_22px_rgba(20,42,99,0.22)] transition hover:bg-[#0f1f4a]"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <div className="px-3 pb-6 pt-4 sm:px-5 md:px-7">
+        <div className="mx-auto w-full max-w-[1280px]">
+          <div className="rounded-[16px] bg-[#142a63] px-6 py-3 text-center shadow-[0_18px_34px_rgba(20,42,99,0.22)]">
+            <h1 className="text-[1.35rem] font-bold tracking-[-0.04em] text-white sm:text-[1.6rem]">
+              Cutoff Calculator
+            </h1>
+          </div>
 
+          <section className="mt-4 w-full rounded-[18px] border border-[#d8dff2] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(20,42,99,0.1)] sm:px-6 md:px-7 md:py-6">
+            <div className="flex flex-col gap-4">
             <form
               noValidate
+              onInputCapture={clearSubmittedValidation}
+              onChangeCapture={clearSubmittedValidation}
               onSubmit={(event) => {
                 event.preventDefault();
                 setHasSubmitted(true);
                 if (hasValidationErrors) {
+                  setHasCalculatedPreview(false);
+                  setShowValidationPopup(true);
                   scrollToFirstInvalidField();
                   return;
+                }
+                setShowValidationPopup(false);
+                if (!hasCalculatedPreview) {
+                  setHasCalculatedPreview(true);
+                  return;
+                }
+                if (typeof window !== "undefined") {
+                  window.sessionStorage.setItem(
+                    FIND_FORM_STORAGE_KEY,
+                    JSON.stringify(persistedFindFormState),
+                  );
                 }
                 const params = new URLSearchParams();
                 params.set("name", name);
                 params.set("phone", phone);
                 params.set("level", selectedLevel);
+                params.set("state", selectedState);
                 params.set("degree", selectedDegree);
                 if (selectedCategory) params.set("category", selectedCategory);
+                if (selectedDreamCollege) params.set("dreamCollege", selectedDreamCollege);
                 if (selectedCourse) params.set("course", selectedCourse);
                 if (
                   selectedAdmissionType &&
@@ -875,11 +1120,29 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                 if (showAgricultureFields && agriculturePhysicsMarks) params.set("agriculturePhysics", agriculturePhysicsMarks);
                 if (showAgricultureFields && agricultureChemistryMarks) params.set("agricultureChemistry", agricultureChemistryMarks);
                 if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
+                if (typeof window !== "undefined") {
+                  const findUrl = `/find?${params.toString()}`;
+                  window.history.replaceState(window.history.state, "", findUrl);
+                }
                 router.push(`/cutoff?${params.toString()}`);
               }}
-              className="mt-1.5 p-0"
+              className="p-0"
             >
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <FieldShell icon={MapPin} label="Select your State">
+                  <select
+                    value={selectedState}
+                    onChange={(event) => setSelectedState(event.target.value)}
+                    className={inputClassName}
+                  >
+                    {stateOptions.map((state) => (
+                      <option key={state} value={state}>
+                        {state}
+                      </option>
+                    ))}
+                  </select>
+                </FieldShell>
+
                 <FieldShell fieldId="name" icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
                   <input
                     type="text"
@@ -908,54 +1171,12 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                   />
                 </FieldShell>
 
-                <FieldShell icon={BarChart3} label="Select Level">
-                  <select
-                    value={selectedLevel}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setSelectedLevel(value);
-                      if (!["11", "12"].includes(value)) {
-                        setSelectedCategory("");
-                      }
-                      if (!["11", "12"].includes(value)) {
-                        resetAcademicFields();
-                      }
-                      if (value !== "12" && selectedDegree === "Medical") {
-                        resetAcademicFields();
-                      }
-                      if (value === "11" && selectedDegree === "Engineering" && selectedAdmissionType !== "PCM") {
-                        setSelectedAdmissionType("");
-                        setEngineeringEntranceMarks("");
-                      }
-                      if (value === "11" && selectedDegree === "Law" && selectedAdmissionType === "CLAT") {
-                        setSelectedAdmissionType("");
-                        setClatMarks("");
-                      }
-                      if (value === "11" && selectedDegree === "Arts & Science") {
-                        setSelectedAdmissionType("");
-                        setArtsScienceCuetMarks("");
-                      }
-                      if (value === "11" && selectedDegree === "B.Arch") {
-                        setNataScore("");
-                      }
-                    }}
-                    className={inputClassName}
-                    required
-                  >
-                    {levelOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </FieldShell>
-
                 {showCategoryField ? (
                   <FieldShell fieldId="category" icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
                     <select
                       value={selectedCategory}
                       onChange={(event) => setSelectedCategory(event.target.value)}
-                      className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
+                      className={getSelectClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
                       aria-invalid={Boolean(hasSubmitted && validationErrors.category)}
                       required
                     >
@@ -968,6 +1189,23 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                     </select>
                   </FieldShell>
                 ) : null}
+{/* 
+                {showDreamCollegeField ? (
+                  <FieldShell icon={Building2} label="Select Dream College">
+                    <select
+                      value={selectedDreamCollege}
+                      onChange={(event) => setSelectedDreamCollege(event.target.value)}
+                      className={inputClassName}
+                    >
+                      <option value="">Select dream college</option>
+                      {dreamCollegeOptions.map((college) => (
+                        <option key={college.id} value={college.id}>
+                          {college.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldShell>
+                ) : null} */}
 
                 <div>
                   <FieldShell fieldId="degree" icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
@@ -975,9 +1213,11 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                       value={selectedDegree}
                       onChange={(event) => {
                         setSelectedDegree(event.target.value);
+                        setSelectedDreamCollege("");
+                        setTargetCollegeSearch("");
                         resetAcademicFields();
                       }}
-                      className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.degree))}
+                      className={getSelectClassName(inputClassName, Boolean(hasSubmitted && validationErrors.degree))}
                       aria-invalid={Boolean(hasSubmitted && validationErrors.degree)}
                       required
                     >
@@ -991,12 +1231,47 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                   </FieldShell>
                 </div>
 
+ {showDreamCollegeField ? (
+                  <FieldShell icon={Building2} label="Select Your Target College">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-[#7a87ad]" />
+                      <input
+                      type="search"
+                      value={targetCollegeSearch}
+                      onChange={(event) => selectTargetCollegeByName(event.target.value)}
+                      onBlur={() => {
+                        if (!targetCollegeSearch.trim()) {
+                          setSelectedDreamCollege("");
+                          return;
+                        }
+                        const selectedCollege = dreamCollegeOptions.find((college) => college.id === selectedDreamCollege);
+                        if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
+                      }}
+                      list="target-college-options"
+                      placeholder="Search and select college"
+                      className={inputClassName}
+                      style={{ paddingLeft: "1.35rem" }}
+                      autoComplete="off"
+                    />
+                    </div>
+                    <datalist id="target-college-options">
+                      {filteredDreamCollegeOptions.map((college) => (
+                        <option key={college.id} value={college.name}>
+                          {college.city || college.district || college.state}
+                        </option>
+                      ))}
+                    </datalist>
+                  </FieldShell>
+                ) : null}
+
                 {showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields ? (
                   <AcademicShell fieldId="course" icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
                     <select
                       value={selectedCourse}
-                      onChange={(event) => setSelectedCourse(event.target.value)}
-                      className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.course))}
+                      onChange={(event) => {
+                        setSelectedCourse(event.target.value);
+                      }}
+                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.course))}
                       aria-invalid={Boolean(hasSubmitted && validationErrors.course)}
                       required={showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields}
                     >
@@ -1017,146 +1292,223 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                     </select>
                   </AcademicShell>
                 ) : null}
+
+                {showEngineeringFields ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                    <select
+                      value={selectedAdmissionType}
+                      onChange={(event) => {
+                        setSelectedAdmissionType(event.target.value);
+                        setPhysicsMarks("");
+                        setChemistryMarks("");
+                        setMathsMarks("");
+                        setEngineeringEntranceMarks("");
+                      }}
+                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
+                      required={showEngineeringFields}
+                    >
+                      <option value="">Select admission type</option>
+                      {availableEngineeringAdmissionTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </AcademicShell>
+                ) : null}
+
+                {showMedicalFields ? (
+                  <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet)} valid={Boolean(touchedFields.neet && !validationErrors.neet && neetMarks.trim())} error={hasSubmitted || touchedFields.neet ? validationErrors.neet : undefined}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="720"
+                      step="0.01"
+                      value={neetMarks}
+                      onChange={(event) => setNeetMarks(getNonNegativeNumberValue(event.target.value))}
+                      onBlur={() => markFieldTouched("neet")}
+                      placeholder="Enter your NEET mark"
+                      className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet))}
+                      aria-invalid={Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet)}
+                      required={showMedicalFields}
+                    />
+                  </AcademicShell>
+                ) : null}
+
+                {showLawFields ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                    <select
+                      value={selectedAdmissionType}
+                      onChange={(event) => {
+                        setSelectedAdmissionType(event.target.value);
+                        setClatMarks("");
+                        setLawBestSubjectOne("");
+                        setLawBestSubjectTwo("");
+                        setLawBestSubjectThree("");
+                      }}
+                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
+                      required={showLawFields}
+                    >
+                      <option value="">Select admission type</option>
+                      {availableLawAdmissionTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </AcademicShell>
+                ) : null}
+
+                {showArtsScienceAdmissionTypeField ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                    <select
+                      value={selectedAdmissionType}
+                      onChange={(event) => {
+                        setSelectedAdmissionType(event.target.value);
+                        setArtsScienceCuetMarks("");
+                        setBoardMarksTotal("");
+                      }}
+                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
+                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
+                      required={showArtsScienceAdmissionTypeField}
+                    >
+                      <option value="">Select admission type</option>
+                      {artsScienceAdmissionTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </AcademicShell>
+                ) : null}
               </div>
 
               {showEngineeringFields ? (
-                <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
-                      <select
-                        value={selectedAdmissionType}
-                        onChange={(event) => {
-                          setSelectedAdmissionType(event.target.value);
-                          setPhysicsMarks("");
-                          setChemistryMarks("");
-                          setMathsMarks("");
-                          setEngineeringEntranceMarks("");
-                        }}
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                        required={showEngineeringFields}
-                      >
-                        <option value="">Select admission type</option>
-                        {availableEngineeringAdmissionTypeOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </AcademicShell>
-                  </div>
-
+                <div className="mt-4 space-y-2.5">
                   {showEngineeringPcmFields ? (
                     <>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.physics)} error={hasSubmitted ? validationErrors.physics : undefined}>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics)} valid={Boolean(touchedFields.physics && !validationErrors.physics && physicsMarks.trim())} error={hasSubmitted || touchedFields.physics ? validationErrors.physics : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={physicsMarks}
-                            onChange={(event) => setPhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setPhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("physics")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.physics))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.physics)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="chemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.chemistry)} error={hasSubmitted ? validationErrors.chemistry : undefined}>
+                        <AcademicShell fieldId="chemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry)} valid={Boolean(touchedFields.chemistry && !validationErrors.chemistry && chemistryMarks.trim())} error={hasSubmitted || touchedFields.chemistry ? validationErrors.chemistry : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={chemistryMarks}
-                            onChange={(event) => setChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("chemistry")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.chemistry))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.chemistry)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="maths" icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.maths)} error={hasSubmitted ? validationErrors.maths : undefined}>
+                        <AcademicShell fieldId="maths" icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths)} valid={Boolean(touchedFields.maths && !validationErrors.maths && mathsMarks.trim())} error={hasSubmitted || touchedFields.maths ? validationErrors.maths : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={mathsMarks}
-                            onChange={(event) => setMathsMarks(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setMathsMarks(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("maths")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.maths))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.maths)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
                       </div>
 
-                      <ScoreHighlight
+                      {showCalculatedScorePreview && engineeringPcmMarksReady && engineeringCutoff ? (
+                        <ScoreHighlight
                         title="Engineering Cutoff"
                         formula="Cutoff = Maths + (Physics / 2) + (Chemistry / 2)"
                         primaryLabel="Calculated Cutoff"
-                        primaryValue={engineeringCutoff || "0.0"}
-                      />
+                        primaryValue={`${engineeringCutoff} / 200`}
+                        />
+                      ) : null}
                     </>
                   ) : null}
 
                   {showEngineeringJeeMainFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-2">
-                        <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={hasSubmitted || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="300"
                             step="0.01"
                             value={engineeringEntranceMarks}
-                            onChange={(event) => setEngineeringEntranceMarks(getBoundedNumberValue(event.target.value, 300))}
+                            onChange={(event) => setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("engineeringEntranceMarks")}
                             placeholder="Enter your JEE Main mark"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
                             required={showEngineeringJeeMainFields}
                           />
                         </AcademicShell>
                       </div>
 
-                      <ScoreHighlight
+                      {showCalculatedScorePreview && engineeringEntranceMarksReady ? (
+                        <ScoreHighlight
                         title="JEE Main Score"
                         formula="Engineering prediction uses your JEE Main mark directly"
                         primaryLabel="JEE Main Mark"
-                        primaryValue={`${engineeringEntranceMarks || "0"} / 300`}
-                      />
+                        primaryValue={`${engineeringEntranceMarks} / 300`}
+                        />
+                      ) : null}
                     </>
                   ) : null}
 
                   {showEngineeringJeeAdvancedFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-2">
-                        <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)} error={hasSubmitted ? validationErrors.engineeringEntranceMarks : undefined}>
+                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={hasSubmitted || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="360"
                             step="0.01"
                             value={engineeringEntranceMarks}
-                            onChange={(event) => setEngineeringEntranceMarks(getBoundedNumberValue(event.target.value, 360))}
+                            onChange={(event) => setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("engineeringEntranceMarks")}
                             placeholder="Enter your JEE Advanced mark"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.engineeringEntranceMarks)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
                             required={showEngineeringJeeAdvancedFields}
                           />
                         </AcademicShell>
                       </div>
 
-                      <ScoreHighlight
+                      {showCalculatedScorePreview && engineeringEntranceMarksReady ? (
+                        <ScoreHighlight
                         title="JEE Advanced Score"
                         formula="Engineering prediction uses your JEE Advanced mark directly"
                         primaryLabel="JEE Advanced Mark"
-                        primaryValue={`${engineeringEntranceMarks || "0"} / 360`}
-                      />
+                        primaryValue={`${engineeringEntranceMarks} / 360`}
+                        />
+                      ) : null}
                     </>
                   ) : null}
                 </div>
@@ -1164,69 +1516,57 @@ p-3 sm:p-4 md:p-5 xl:p-5">
 
               {showMedicalFields ? (
                 <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean(hasSubmitted && validationErrors.neet)} error={hasSubmitted ? validationErrors.neet : undefined}>
-                      <input
-                        type="number"
-                        min="0"
-                        max="720"
-                        step="0.01"
-                        value={neetMarks}
-                        onChange={(event) => setNeetMarks(getBoundedNumberValue(event.target.value, 720))}
-                        placeholder="Enter your NEET mark"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.neet))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.neet)}
-                        required={showMedicalFields}
-                      />
-                    </AcademicShell>
-                  </div>
-
-                  <ScoreHighlight
+                  {showCalculatedScorePreview && neetMarksReady ? (
+                    <ScoreHighlight
                     title="Medical Cutoff"
                     formula="Medical prediction uses your NEET mark directly"
                     primaryLabel="NEET Mark"
-                    primaryValue={`${neetMarks || "0"} / 720`}
-                  />
+                    primaryValue={`${neetMarks} / 720`}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
               {showBArchFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
-                    <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
+                    <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={hasSubmitted || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="600"
                         step="0.01"
                         value={boardMarksTotal}
-                        onChange={(event) => setBoardMarksTotal(getBoundedNumberValue(event.target.value, 600))}
+                        onChange={(event) => setBoardMarksTotal(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("boardTotal")}
                         placeholder="Enter your 11th/12th total"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.boardTotal))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.boardTotal)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)}
                         required={showBArchFields}
                       />
                     </AcademicShell>
 
                     {showBArchNataField ? (
-                      <AcademicShell fieldId="nata" icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean(hasSubmitted && validationErrors.nata)} error={hasSubmitted ? validationErrors.nata : undefined}>
+                      <AcademicShell fieldId="nata" icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata)} valid={Boolean(touchedFields.nata && !validationErrors.nata && nataScore.trim())} error={hasSubmitted || touchedFields.nata ? validationErrors.nata : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="200"
                           step="0.01"
                           value={nataScore}
-                          onChange={(event) => setNataScore(getBoundedNumberValue(event.target.value, 200))}
+                          onChange={(event) => setNataScore(getNonNegativeNumberValue(event.target.value))}
+                          onBlur={() => markFieldTouched("nata")}
                           placeholder="Enter your NATA score"
-                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.nata))}
-                          aria-invalid={Boolean(hasSubmitted && validationErrors.nata)}
+                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata))}
+                          aria-invalid={Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata)}
                           required={showBArchNataField}
                         />
                       </AcademicShell>
                     ) : null}
                   </div>
 
-                  <ScoreHighlight
+                  {showCalculatedScorePreview && bArchMarksReady && (showBArchNataField ? bArchCombinedScore : bArchConvertedScore) ? (
+                    <ScoreHighlight
                     title={showBArchNataField ? "B.Arch Combined Score" : "B.Arch Board Score"}
                     formula={
                       showBArchNataField
@@ -1236,53 +1576,32 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                     primaryLabel="Calculated Cutoff"
                     primaryValue={
                       showBArchNataField
-                        ? `${bArchCombinedScore || "0.0"} / 400`
-                        : `${bArchConvertedScore || "0.0"} / 400`
+                        ? `${bArchCombinedScore} / 400`
+                        : `${bArchConvertedScore} / 400`
                     }
                     secondaryLabel={showBArchNataField ? "12th Converted" : undefined}
-                    secondaryValue={showBArchNataField ? `${bArchConvertedScore || "0.0"} / 200` : undefined}
-                  />
+                    secondaryValue={showBArchNataField ? `${bArchConvertedScore} / 200` : undefined}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
               {showLawFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
-                    <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
-                      <select
-                        value={selectedAdmissionType}
-                        onChange={(event) => {
-                          setSelectedAdmissionType(event.target.value);
-                          setClatMarks("");
-                          setLawBestSubjectOne("");
-                          setLawBestSubjectTwo("");
-                          setLawBestSubjectThree("");
-                        }}
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                        required={showLawFields}
-                      >
-                        <option value="">Select admission type</option>
-                        {availableLawAdmissionTypeOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </AcademicShell>
-
                     {showLawClatFields ? (
-                      <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean(hasSubmitted && validationErrors.clat)} error={hasSubmitted ? validationErrors.clat : undefined}>
+                      <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat)} valid={Boolean(touchedFields.clat && !validationErrors.clat && clatMarks.trim())} error={hasSubmitted || touchedFields.clat ? validationErrors.clat : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="120"
                           step="0.01"
                           value={clatMarks}
-                          onChange={(event) => setClatMarks(getBoundedNumberValue(event.target.value, 120))}
+                          onChange={(event) => setClatMarks(getNonNegativeNumberValue(event.target.value))}
+                          onBlur={() => markFieldTouched("clat")}
                           placeholder="Enter your CLAT mark"
-                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.clat))}
-                          aria-invalid={Boolean(hasSubmitted && validationErrors.clat)}
+                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat))}
+                          aria-invalid={Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat)}
                           required={showLawClatFields}
                         />
                       </AcademicShell>
@@ -1292,67 +1611,72 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                   {showLawMarksFields ? (
                     <div className="space-y-3">
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)} error={hasSubmitted ? validationErrors.bestSubject1 : undefined}>
+                        <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1)} valid={Boolean(touchedFields.bestSubject1 && !validationErrors.bestSubject1 && lawBestSubjectOne.trim())} error={hasSubmitted || touchedFields.bestSubject1 ? validationErrors.bestSubject1 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectOne}
-                            onChange={(event) => setLawBestSubjectOne(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setLawBestSubjectOne(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("bestSubject1")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject1))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject1)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="bestSubject2" icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)} error={hasSubmitted ? validationErrors.bestSubject2 : undefined}>
+                        <AcademicShell fieldId="bestSubject2" icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2)} valid={Boolean(touchedFields.bestSubject2 && !validationErrors.bestSubject2 && lawBestSubjectTwo.trim())} error={hasSubmitted || touchedFields.bestSubject2 ? validationErrors.bestSubject2 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectTwo}
-                            onChange={(event) => setLawBestSubjectTwo(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setLawBestSubjectTwo(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("bestSubject2")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject2))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject2)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="bestSubject3" icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)} error={hasSubmitted ? validationErrors.bestSubject3 : undefined}>
+                        <AcademicShell fieldId="bestSubject3" icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3)} valid={Boolean(touchedFields.bestSubject3 && !validationErrors.bestSubject3 && lawBestSubjectThree.trim())} error={hasSubmitted || touchedFields.bestSubject3 ? validationErrors.bestSubject3 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectThree}
-                            onChange={(event) => setLawBestSubjectThree(getBoundedNumberValue(event.target.value, 100))}
+                            onChange={(event) => setLawBestSubjectThree(getNonNegativeNumberValue(event.target.value))}
+                            onBlur={() => markFieldTouched("bestSubject3")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.bestSubject3))}
-                            aria-invalid={Boolean(hasSubmitted && validationErrors.bestSubject3)}
+                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3))}
+                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
                       </div>
 
-                      <ScoreHighlight
+                      {showCalculatedScorePreview && lawMarksReady && lawBestThreeTotal ? (
+                        <ScoreHighlight
                         title="Law Cutoff (Best 3 Subjects)"
                         formula="Total = Best 3 subjects mark sum (out of 300)"
                         primaryLabel="Calculated Total"
-                        primaryValue={`${lawBestThreeTotal || "0.0"} / 300`}
-                      />
+                        primaryValue={`${lawBestThreeTotal} / 300`}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
 
-                  {showLawClatFields ? (
+                  {showCalculatedScorePreview && showLawClatFields && clatMarksReady ? (
                     <ScoreHighlight
                       title="Law Cutoff (CLAT)"
                       formula="Law prediction uses your CLAT mark directly"
                       primaryLabel="CLAT Mark"
-                      primaryValue={`${clatMarks || "0"} / 120`}
+                      primaryValue={`${clatMarks} / 120`}
                     />
                   ) : null}
                 </div>
@@ -1360,67 +1684,46 @@ p-3 sm:p-4 md:p-5 xl:p-5">
 
               {showArtsScienceFields ? (
                 <div className="mt-4 space-y-3">
-                  {showArtsScienceAdmissionTypeField ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
-                        <select
-                          value={selectedAdmissionType}
-                          onChange={(event) => {
-                            setSelectedAdmissionType(event.target.value);
-                            setArtsScienceCuetMarks("");
-                            setBoardMarksTotal("");
-                          }}
-                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                          aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                          required={showArtsScienceAdmissionTypeField}
-                        >
-                          <option value="">Select admission type</option>
-                          {artsScienceAdmissionTypeOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </AcademicShell>
-                    </div>
-                  ) : null}
-
                   <div className="grid gap-3 md:grid-cols-2">
                     {showArtsScienceCuetField ? (
-                      <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)} error={hasSubmitted ? validationErrors.artsScienceCuet : undefined}>
+                      <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)} valid={Boolean(touchedFields.artsScienceCuet && !validationErrors.artsScienceCuet && artsScienceCuetMarks.trim())} error={hasSubmitted || touchedFields.artsScienceCuet ? validationErrors.artsScienceCuet : undefined}>
                         <input
                           type="number"
                           min="0"
+                          max="600"
                           step="0.01"
                           value={artsScienceCuetMarks}
                           onChange={(event) => setArtsScienceCuetMarks(getNonNegativeNumberValue(event.target.value))}
+                          onBlur={() => markFieldTouched("artsScienceCuet")}
                           placeholder="Enter your CUET mark"
-                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.artsScienceCuet))}
-                          aria-invalid={Boolean(hasSubmitted && validationErrors.artsScienceCuet)}
+                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet))}
+                          aria-invalid={Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)}
                           required={showArtsScienceCuetField}
                         />
                       </AcademicShell>
                     ) : null}
 
                     {showArtsScienceBoardMarksField ? (
-                      <AcademicShell fieldId="boardTotal" icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean(hasSubmitted && validationErrors.boardTotal)} error={hasSubmitted ? validationErrors.boardTotal : undefined}>
+                      <AcademicShell fieldId="boardTotal" icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={hasSubmitted || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="600"
                           step="0.01"
                           value={boardMarksTotal}
-                          onChange={(event) => setBoardMarksTotal(getBoundedNumberValue(event.target.value, 600))}
+                          onChange={(event) => setBoardMarksTotal(getNonNegativeNumberValue(event.target.value))}
+                          onBlur={() => markFieldTouched("boardTotal")}
                           placeholder="Enter your 12th total"
-                          className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.boardTotal))}
-                          aria-invalid={Boolean(hasSubmitted && validationErrors.boardTotal)}
+                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal))}
+                          aria-invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)}
                           required={showArtsScienceBoardMarksField}
                         />
                       </AcademicShell>
                     ) : null}
                   </div>
 
-                  <ScoreHighlight
+                  {showCalculatedScorePreview && (showArtsScienceCuetField ? artsScienceCuetReady : artsScienceBoardReady) ? (
+                    <ScoreHighlight
                     title={showArtsScienceCuetField ? "Arts & Science CUET Score" : "Arts & Science Board Score"}
                     formula={
                       showArtsScienceCuetField
@@ -1430,270 +1733,162 @@ p-3 sm:p-4 md:p-5 xl:p-5">
                     primaryLabel={showArtsScienceCuetField ? "CUET Mark" : "12th Marks"}
                     primaryValue={
                       showArtsScienceCuetField
-                        ? `${artsScienceCuetMarks || "0"}`
-                        : `${boardMarksTotal || "0"} / 600`
+                        ? `${artsScienceCuetMarks} / 600`
+                        : `${boardMarksTotal} / 600`
                     }
-                  />
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
               {showParamedicalFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)} error={hasSubmitted ? validationErrors.paramedicalBiology : undefined}>
+                    <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)} valid={Boolean(touchedFields.paramedicalBiology && !validationErrors.paramedicalBiology && paramedicalBiologyMarks.trim())} error={hasSubmitted || touchedFields.paramedicalBiology ? validationErrors.paramedicalBiology : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalBiologyMarks}
-                        onChange={(event) => setParamedicalBiologyMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setParamedicalBiologyMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("paramedicalBiology")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalBiology))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalBiology)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="paramedicalPhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)} error={hasSubmitted ? validationErrors.paramedicalPhysics : undefined}>
+                    <AcademicShell fieldId="paramedicalPhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)} valid={Boolean(touchedFields.paramedicalPhysics && !validationErrors.paramedicalPhysics && paramedicalPhysicsMarks.trim())} error={hasSubmitted || touchedFields.paramedicalPhysics ? validationErrors.paramedicalPhysics : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalPhysicsMarks}
-                        onChange={(event) => setParamedicalPhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setParamedicalPhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("paramedicalPhysics")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalPhysics))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalPhysics)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="paramedicalChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)} error={hasSubmitted ? validationErrors.paramedicalChemistry : undefined}>
+                    <AcademicShell fieldId="paramedicalChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)} valid={Boolean(touchedFields.paramedicalChemistry && !validationErrors.paramedicalChemistry && paramedicalChemistryMarks.trim())} error={hasSubmitted || touchedFields.paramedicalChemistry ? validationErrors.paramedicalChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalChemistryMarks}
-                        onChange={(event) => setParamedicalChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setParamedicalChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("paramedicalChemistry")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.paramedicalChemistry))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.paramedicalChemistry)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
                   </div>
 
-                  <ScoreHighlight
+                  {showCalculatedScorePreview && paramedicalMarksReady && paramedicalCutoff100 && paramedicalCutoff200 ? (
+                    <ScoreHighlight
                     title="Paramedical Cutoff"
-                    formula={`Calculation: Biology / 2 + Physics / 4 + Chemistry / 4 = ${paramedicalCutoff100 || "0.00"} / 100`}
+                    formula={`Calculation: Biology / 2 + Physics / 4 + Chemistry / 4 = ${paramedicalCutoff100} / 100`}
                     primaryLabel="Converted Cutoff"
-                    primaryValue={`${paramedicalCutoff200 || "0.00"} / 200`}
+                    primaryValue={`${paramedicalCutoff200} / 200`}
                     secondaryLabel="Cutoff"
-                    secondaryValue={`${paramedicalCutoff100 || "0.00"} / 100`}
-                  />
+                    secondaryValue={`${paramedicalCutoff100} / 100`}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
               {showAgricultureFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)} error={hasSubmitted ? validationErrors.agricultureBiology : undefined}>
+                    <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)} valid={Boolean(touchedFields.agricultureBiology && !validationErrors.agricultureBiology && agricultureBiologyMarks.trim())} error={hasSubmitted || touchedFields.agricultureBiology ? validationErrors.agricultureBiology : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agricultureBiologyMarks}
-                        onChange={(event) => setAgricultureBiologyMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setAgricultureBiologyMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("agricultureBiology")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureBiology))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureBiology)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="agriculturePhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)} error={hasSubmitted ? validationErrors.agriculturePhysics : undefined}>
+                    <AcademicShell fieldId="agriculturePhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)} valid={Boolean(touchedFields.agriculturePhysics && !validationErrors.agriculturePhysics && agriculturePhysicsMarks.trim())} error={hasSubmitted || touchedFields.agriculturePhysics ? validationErrors.agriculturePhysics : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agriculturePhysicsMarks}
-                        onChange={(event) => setAgriculturePhysicsMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setAgriculturePhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("agriculturePhysics")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agriculturePhysics))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.agriculturePhysics)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="agricultureChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)} error={hasSubmitted ? validationErrors.agricultureChemistry : undefined}>
+                    <AcademicShell fieldId="agricultureChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)} valid={Boolean(touchedFields.agricultureChemistry && !validationErrors.agricultureChemistry && agricultureChemistryMarks.trim())} error={hasSubmitted || touchedFields.agricultureChemistry ? validationErrors.agricultureChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agricultureChemistryMarks}
-                        onChange={(event) => setAgricultureChemistryMarks(getBoundedNumberValue(event.target.value, 100))}
+                        onChange={(event) => setAgricultureChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                        onBlur={() => markFieldTouched("agricultureChemistry")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.agricultureChemistry))}
-                        aria-invalid={Boolean(hasSubmitted && validationErrors.agricultureChemistry)}
+                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry))}
+                        aria-invalid={Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
                   </div>
 
-                  <ScoreHighlight
+                  {showCalculatedScorePreview && agricultureMarksReady && agricultureCutoff100 && agricultureCutoff200 ? (
+                    <ScoreHighlight
                     title="Agriculture Cutoff"
-                    formula={`Calculation: Biology / 2 + Physics / 4 + Chemistry / 4 = ${agricultureCutoff100 || "0.00"} / 100`}
+                    formula={`Calculation: Biology / 2 + Physics / 4 + Chemistry / 4 = ${agricultureCutoff100} / 100`}
                     primaryLabel="Converted Cutoff"
-                    primaryValue={`${agricultureCutoff200 || "0.00"} / 200`}
+                    primaryValue={`${agricultureCutoff200} / 200`}
                     secondaryLabel="Total Cutoff"
-                    secondaryValue={`${agricultureCutoff100 || "0.00"} / 100`}
-                  />
+                    secondaryValue={`${agricultureCutoff100} / 100`}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
-              <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="inline-flex w-full items-center gap-2.5 rounded-[16px] bg-[#f2f1ff] px-3.5 py-2.5 text-left shadow-[inset_0_0_0_1px_rgba(152,146,255,0.08)] sm:w-fit">
-                  <Sparkles className="size-4.5 text-[#ffb21f]" />
-                  <div>
-                    <div className="text-[0.88rem] font-semibold text-[#254bbd]">Takes less than 2 minutes</div>
-                    <div className="text-[0.76rem] text-[#4f689b]">Get your results instantly</div>
-                  </div>
-                </div>
-
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <button
+                  type="button"
+                  onClick={resetFormFields}
+                  className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#142a63] bg-white px-6 text-[0.95rem] font-semibold text-[#142a63] shadow-[0_10px_18px_rgba(20,42,99,0.08)] transition hover:bg-[#f4f7ff] sm:min-w-[140px]"
+                >
+                  Reset
+                </button>
                 <button
                   type="submit"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-[18px] border-2 border-[#2f63ff] bg-[linear-gradient(90deg,#2d5bff_0%,#9d55f7_100%)] px-6 text-[0.94rem] font-semibold text-white shadow-[0_18px_30px_rgba(92,93,255,0.24)] transition hover:-translate-y-0.5 sm:w-auto"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[#142a63] px-6 text-[0.95rem] font-semibold text-white shadow-[0_12px_22px_rgba(20,42,99,0.2)] transition hover:bg-[#0f1f4a] sm:min-w-[140px]"
                 >
-                  <Sparkles className="size-4.5" />
-                  Get My Compatible Colleges
-                  <ArrowRight className="size-4.5" />
+                  {showCalculatedScorePreview ? "View Our Match" : "Calculate"}
                 </button>
               </div>
             </form>
-
-            <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
-              {trustItems.map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-[18px] border-2 border-[#9ebcff] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9ff_100%)] px-3 py-2 shadow-[0_10px_20px_rgba(76,104,205,0.1)]"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex size-9 items-center justify-center rounded-full border border-[#c8d8ff] bg-[linear-gradient(180deg,#eef3ff_0%,#e5ecff_100%)] text-[#355cff] shadow-[0_8px_16px_rgba(76,104,205,0.12)]">
-                      <item.icon className="size-4.5 stroke-[2.2]" />
-                    </div>
-                    <div>
-                      <div className="text-[0.84rem] font-semibold tracking-[-0.03em] text-[#172b60]">{item.title}</div>
-                      <div className="mt-0.5 text-[0.74rem] leading-snug text-[#4f689b]">{item.description}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
-<aside className="min-w-0 w-full order-1 mt-4 md:order-2 md:mt-0 md:sticky md:top-4">
-          <div className="mt-2 grid gap-3 xl:grid-cols-2 xl:items-stretch">
-  <div className="min-w-0 rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-3 shadow-[0_12px_30px_rgba(88,113,196,0.08)] xl:min-h-[500px]">
-    
-    <div className="flex items-center gap-2 text-[#17306f]">
-      <TrendingUp className="size-4 text-[#2f63ff]" />
-      <h3 className="text-[1rem] font-semibold">
-        Score vs Expected Cutoff
-      </h3>
-    </div>
-
-    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.74rem] text-[#5f79b1]">
-      <span className="inline-flex items-center gap-2">
-        <span className="h-2 w-3 rounded-full bg-[#2f63ff]" />
-        Your Score
-      </span>
-
-      <span className="inline-flex items-center gap-2">
-        <span className="h-2 w-3 rounded-full bg-[#9b75ff]" />
-        Expected Cutoff
-      </span>
-    </div>
-
-    <div className="mt-1 text-[0.72rem] text-[#5f79b1]">
-      {chartConfig.comparisonTitle} scale: 0 to {cutoffScaleMax}
-    </div>
-
-    <div className="mt-0.5 text-[0.7rem] text-[#6b7fb0]">
-      {chartConfig.scaleHint}
-    </div>
-
-    <div className="-mt-4 xl:min-h-[310px]">
-      <BarChart metrics={chartConfig.subjectMetrics} />
-    </div>
-
-  </div>
-            <div className="min-w-0 rounded-[22px] border-2 border-[#b6ccff] bg-white/95 p-2.5 shadow-[0_12px_30px_rgba(88,113,196,0.08)] xl:min-h-[500px]">
-              <h3 className="text-[1rem] font-semibold text-[#17306f]">Your Cutoff Score</h3>
-              <p className="mt-0.5 text-[0.76rem] text-[#5f79b1]">
-                Check your eligibility and college chances based on your score
-              </p>
-              <div className="mt-2 rounded-[20px] border border-[#d9e4ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-2 shadow-[inset_0_0_0_1px_rgba(232,239,255,0.7)]">
-                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.92fr)] md:items-center">
-                  <div className="px-1 text-center">
-                    <div className="text-[0.8rem] font-semibold text-[#506aa3]">Your Cutoff Score</div>
-                    <div className="mt-1.5 flex items-end justify-center gap-1.5 text-[#17306f]">
-                      <span className="text-[2.35rem] font-bold leading-none tracking-[-0.06em] text-[#2f63ff]">
-                        {Math.round(liveCutoffValue)}
-                      </span>
-                      <span className="pb-0.5 text-[0.92rem] font-semibold text-[#6f86b7]">/ {cutoffScaleMax}</span>
-                    </div>
-                    <div className="mx-auto mt-2 h-2 w-full max-w-[190px] overflow-hidden rounded-full bg-[#e5ecfa]">
-                      <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#2f63ff_0%,#3e79ff_100%)]"
-                        style={{ width: `${scoreProgress}%` }}
-                      />
-                    </div>
-                    <div className="mt-1.5 text-[0.72rem] font-medium leading-snug text-[#4f689b]">{scoreFeedback}</div>
-                  </div>
-                  <div className="h-px w-full bg-[#dfe7ff] md:hidden" />
-                  <div className="hidden h-full w-px bg-[#dfe7ff] md:block" />
-                  <div className="px-1 text-center">
-                    <div className="text-[0.8rem] font-semibold text-[#506aa3]">Your Mood</div>
-                    <div className="mt-1.5 text-[2.55rem] leading-none">{activeMood.emoji}</div>
-                    <div className="mt-1 text-[1.15rem] font-bold tracking-[-0.04em] text-[#2f63ff]">{activeMood.label}</div>
-                    <div className="mt-0.5 text-[0.72rem] font-medium leading-snug text-[#5f79b1]">{activeMood.summary}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-3">
-                {moodOptions.map((item) => {
-                  const isActive = item.label === activeMood.label;
-
-                  return (
-                    <div
-                      key={item.label}
-                      className={`relative flex min-h-[92px] flex-col items-center justify-center rounded-[16px] border bg-white px-1.5 py-2 text-center shadow-[0_8px_18px_rgba(88,113,196,0.06)] sm:px-2 xl:min-h-[102px] ${
-                        isActive ? "border-[#7aa3ff] shadow-[0_10px_24px_rgba(47,99,255,0.12)]" : "border-[#d9e4ff]"
-                      }`}
-                    >
-                      {isActive ? (
-                        <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#2f63ff] text-[0.72rem] font-bold text-white">
-                          {"\u2713"}
-                        </div>
-                      ) : null}
-                      <div className="text-[1.9rem] leading-none">{item.emoji}</div>
-                      <div className="mt-1 text-[0.72rem] font-semibold text-[#17306f] sm:text-[0.76rem]">{item.label}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex items-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#f2f6ff_0%,#ebf1ff_100%)] px-2.5 py-1.5 text-[#17306f]">
-                
-              </div>
-            </div>
-          </div>
-        </aside>
         </div>
       </div>
     </main>
@@ -1706,6 +1901,7 @@ function FieldShell({
   label,
   fieldId,
   invalid = false,
+  valid = false,
   error,
 }: {
   children: ReactNode;
@@ -1713,15 +1909,16 @@ function FieldShell({
   label: string;
   fieldId?: string;
   invalid?: boolean;
+  valid?: boolean;
   error?: string;
 }) {
   return (
     <label
       data-field-id={fieldId}
-      className={`block rounded-[14px] border-2 px-2.5 py-1 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+      className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
-          : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
+          : "border-[#d8dff2] bg-white hover:border-[#142a63] hover:shadow-[0_12px_22px_rgba(20,42,99,0.1)]"
       }`}
     >
       <div
@@ -1730,19 +1927,23 @@ function FieldShell({
         }`}
       >
         <div
-          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
-            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
+          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(20,42,99,0.08)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#d7dff5] bg-[#f3f6ff] text-[#142a63]"
           }`}
         >
           <Icon className="size-4 stroke-[2.4]" />
         </div>
         <div className="min-w-0">
-          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
+          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#142a63]"}`}>{label}</div>
           {children}
         </div>
         {invalid ? (
           <div className="flex items-center justify-center">
             <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} />
+          </div>
+        ) : valid ? (
+          <div className="flex items-center justify-center">
+            <Check className="size-5 text-[#0b7a25]" strokeWidth={3} />
           </div>
         ) : null}
       </div>
@@ -1763,6 +1964,7 @@ function AcademicShell({
   hint,
   fieldId,
   invalid = false,
+  valid = false,
   error,
 }: {
   children: ReactNode;
@@ -1771,40 +1973,43 @@ function AcademicShell({
   hint?: string;
   fieldId?: string;
   invalid?: boolean;
+  valid?: boolean;
   error?: string;
 }) {
   return (
     <label
       data-field-id={fieldId}
-      className={`block rounded-[14px] border-2 px-2.5 py-1 shadow-[0_8px_20px_rgba(76,104,205,0.08)] transition ${
+      className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
         invalid
           ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
-          : "border-[#9ebcff] bg-white hover:border-[#5b8eff] hover:shadow-[0_12px_24px_rgba(76,104,205,0.14)]"
+          : "border-[#d8dff2] bg-white hover:border-[#142a63] hover:shadow-[0_12px_22px_rgba(20,42,99,0.1)]"
       }`}
     >
-      <div className="grid min-h-[32px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5">
+      <div className="grid min-h-[36px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <div
-          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(75,116,255,0.14)] ${
-            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#bdd1ff] bg-[#eef4ff] text-[#2f63ff]"
+          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(20,42,99,0.08)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#d7dff5] bg-[#f3f6ff] text-[#142a63]"
           }`}
         >
           <Icon className="size-4 stroke-[2.3]" />
         </div>
         <div className="min-w-0">
-          <div className={`text-[0.8rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#17306f]"}`}>{label}</div>
-          {hint ? (
-            <div
-              className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[0.64rem] font-semibold tracking-[0.01em] ${
-                invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#2f63ff]"
-              }`}
-            >
-              {hint}
-            </div>
-          ) : null}
+          <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+            <div className={`text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#142a63]"}`}>{label}</div>
+            {hint ? (
+              <div
+                className={`inline-flex rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold tracking-[0.01em] ${
+                  invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#142a63]"
+                }`}
+              >
+                {hint}
+              </div>
+            ) : null}
+          </div>
           {children}
         </div>
         <div className="flex items-center justify-center">
-          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : null}
+          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : valid ? <Check className="size-5 text-[#0b7a25]" strokeWidth={3} /> : null}
         </div>
       </div>
       {error ? (
@@ -1833,23 +2038,23 @@ function ScoreHighlight({
   secondaryValue?: string;
 }) {
   return (
-    <div className="rounded-[18px] border-2 border-[#8fb3ff] bg-[linear-gradient(135deg,#edf4ff_0%,#f7fbff_55%,#eef3ff_100%)] px-4 py-2.5 shadow-[0_12px_28px_rgba(76,104,205,0.12)]">
-      <div className="flex items-center gap-2 text-[#17306f]">
-        <div className="flex size-8 items-center justify-center rounded-full border border-[#bdd1ff] bg-white text-[#2f63ff] shadow-[0_6px_16px_rgba(76,104,205,0.12)]">
+    <div className="rounded-[18px] border border-[#d8dff2] bg-[linear-gradient(135deg,#f8faff_0%,#f3f6ff_55%,#eef2ff_100%)] px-4 py-2.5 shadow-[0_12px_22px_rgba(20,42,99,0.08)]">
+      <div className="flex items-center gap-2 text-[#142a63]">
+        <div className="flex size-8 items-center justify-center rounded-full border border-[#d7dff5] bg-white text-[#142a63] shadow-[0_6px_16px_rgba(20,42,99,0.08)]">
           <Calculator className="size-4" />
         </div>
         <span className="text-[0.84rem] font-semibold uppercase tracking-[0.18em]">{title}</span>
       </div>
-      <p className="mt-1.5 text-[0.84rem] text-[#4f689b]">{formula}</p>
-      <div className="mt-2 grid gap-2 rounded-[14px] border border-[#bcd0ff] bg-white/90 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(191,212,255,0.7)] md:grid-cols-2">
+      <p className="mt-1.5 text-[0.84rem] text-[#4f5f89]">{formula}</p>
+      <div className="mt-2 grid gap-2 rounded-[14px] border border-[#d8dff2] bg-white/90 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(216,223,242,0.7)] md:grid-cols-2">
         <div className="min-w-0">
-          <div className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#2f63ff]">{primaryLabel}</div>
-          <div className="mt-1 text-[1.28rem] font-bold tracking-[-0.04em] text-[#17306f]">{primaryValue}</div>
+          <div className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#142a63]">{primaryLabel}</div>
+          <div className="mt-1 text-[1.28rem] font-bold tracking-[-0.04em] text-[#142a63]">{primaryValue}</div>
         </div>
         {secondaryLabel && secondaryValue ? (
-          <div className="min-w-0 border-t border-[#cfe0ff] pt-2 md:border-l md:border-t-0 md:pl-3 md:pt-0">
-            <div className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#2f63ff]">{secondaryLabel}</div>
-            <div className="mt-1 text-[1rem] font-semibold text-[#17306f]">{secondaryValue}</div>
+          <div className="min-w-0 border-t border-[#d8dff2] pt-2 md:border-l md:border-t-0 md:pl-3 md:pt-0">
+            <div className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#142a63]">{secondaryLabel}</div>
+            <div className="mt-1 text-[1rem] font-semibold text-[#142a63]">{secondaryValue}</div>
           </div>
         ) : null}
       </div>
@@ -1857,87 +2062,13 @@ function ScoreHighlight({
   );
 }
 
-function BarChart({
-  metrics,
-}: {
-  metrics: PerformanceMetric[];
-}) {
-  const chartHeight = 160;
-  const barAreaHeight = 190;
-  const normalizedMax = Math.max(1, ...metrics.map((metric) => metric.max));
-  const visualMax = normalizedMax * 1.12;
-  const ticks = Array.from({ length: 5 }, (_, index) => Math.round((normalizedMax / 4) * (4 - index)));
-
-  return (
-    <div className="mt-4 rounded-[20px] border border-[#d9e4ff] bg-[linear-gradient(180deg,#fbfcff_0%,#f4f7ff_100%)] p-3 shadow-[0_8px_18px_rgba(88,113,196,0.06)]">
-      <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-3">
-        <div className="relative h-[220px]">
-          {ticks.map((tick, index) => (
-            <div
-              key={tick}
-              className="absolute left-0 flex w-full -translate-y-1/2 items-center justify-end pr-1 text-[0.68rem] font-medium text-[#6f86b7]"
-              style={{ top: `${(index / (ticks.length - 1)) * 100}%` }}
-            >
-              {tick}
-            </div>
-          ))}
-        </div>
-
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-0">
-            {ticks.map((tick, index) => (
-              <div
-                key={tick}
-                className="absolute left-0 right-0 border-t border-[#dfe7ff]"
-                style={{ top: `${(index / (ticks.length - 1)) * 100}%` }}
-              />
-            ))}
-          </div>
-
-          <div className="relative flex h-[220px] items-end justify-around gap-3 rounded-[16px] px-2 pb-8 pt-6">
-            {metrics.map((metric) => {
-              const scoreHeight = clamp((metric.score / Math.max(1, visualMax)) * chartHeight, 0, chartHeight);
-              const expectedHeight = clamp((metric.expected / Math.max(1, visualMax)) * chartHeight, 0, chartHeight);
-
-              return (
-                <div key={metric.label} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                  <div className="flex items-end justify-center gap-2" style={{ height: `${barAreaHeight}px` }}>
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="text-[0.68rem] font-semibold text-[#17306f]">{Math.round(metric.score)}</div>
-                      <div
-                        className="w-5 rounded-t-[8px] bg-[linear-gradient(180deg,#2f63ff_0%,#1f4fe0_100%)] shadow-[0_8px_16px_rgba(47,99,255,0.22)] sm:w-7"
-                        style={{ height: `${scoreHeight}px` }}
-                      />
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="text-[0.68rem] font-semibold text-[#6f52df]">{Math.round(metric.expected)}</div>
-                      <div
-                        className="w-5 rounded-t-[8px] bg-[linear-gradient(180deg,#9b75ff_0%,#6f52df_100%)] shadow-[0_8px_16px_rgba(111,82,223,0.22)] sm:w-7"
-                        style={{ height: `${expectedHeight}px` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-[0.78rem] font-semibold text-[#17306f]">{metric.label}</div>
-                    <div className="mt-0.5 text-[0.68rem] font-medium text-[#6b7fb0]">Out of {metric.max}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const inputClassName =
-  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#27477c] outline-none placeholder:text-[#7e97c8]";
+  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#142a63] outline-none placeholder:text-[#7a87ad]";
 const academicInputClassName =
-  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#27477c] outline-none transition placeholder:text-[0.74rem] placeholder:text-[#7e97c8] sm:placeholder:text-[0.84rem]";
+  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#142a63] outline-none transition placeholder:text-[#7a87ad]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
+const getSelectClassName = (baseClassName: string, invalid: boolean) =>
+  `${baseClassName}${invalid ? " text-[#142a63]" : ""}`;
 
 

@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   Building2,
   BookOpen,
+  Calculator,
   ChevronLeft,
   ChevronRight,
   Cpu,
@@ -65,6 +66,11 @@ const SEARCH_FLOW_ITEMS = [
   "Search for college",
   "Search for location",
 ];
+const MOBILE_HERO_SEARCH_PROMPTS = {
+  college: "Search for College",
+  course: "Search for Course",
+  location: "Search for Location",
+} as const;
 const TOP_EXAM_CARDS = [
   {
     id: "jee-main",
@@ -111,6 +117,26 @@ const TOP_EXAM_CARDS = [
     examLevel: "National",
   },
 ];
+const EXAM_SUBTITLE_MAP: Record<string, string> = {
+  "JEE Main": "Joint Entrance Exam",
+  "JEE Advanced": "IIT Admissions",
+  CUET: "Central Universities",
+  NEET: "Medical Entrance",
+};
+const EXAM_SHORT_LABEL_MAP: Record<string, string> = {
+  "JEE Main": "JEE",
+  "JEE Advanced": "ADV",
+  CUET: "CUET",
+  NEET: "NEET",
+};
+const formatExamDateLabel = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  const day = `${parsed.getDate()}`.padStart(2, "0");
+  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
+  const year = parsed.getFullYear();
+  return `${day}-${month}-${year}`;
+};
 
 type HomePageProps = {
   collegesData?: College[];
@@ -132,68 +158,6 @@ type HomePageProps = {
 };
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
-type FeatureCardItem = {
-  title: string;
-  description: string;
-  icon: typeof Search;
-  imageSrc: string;
-};
-const FEATURE_CARDS: FeatureCardItem[] = [
-  {
-    title: "Smart Search",
-    description: "Search colleges, courses, exams, and cities from one flow.",
-    icon: Search,
-    imageSrc: "/features/features-img-6.png",
-  },
-  {
-    title: "College Compare",
-    description: "Compare top colleges side by side before you shortlist.",
-    icon: Building2,
-    imageSrc: "/features/features-img-1.png",
-  },
-  {
-    title: "Course Explorer",
-    description: "Browse course fees, duration, and cutoff faster.",
-    icon: BookOpen,
-    imageSrc: "/features/features-img-2.png",
-  },
-  // {
-  //   title: "Cutoff Calculation",
-  //   description: "Cutoff calculation insights to shortlist colleges faster.",
-  //   icon: Medal,
-  //   imageSrc: "/features/features-img-3.png",
-  // },
-  {
-    title: "Verified Profiles",
-    description: "See approved college details, fees, facilities, and rankings in one place.",
-    icon: CourseIcon,
-    imageSrc: "/features/features-img-5.png",
-  },
-  {
-    title: "Ranking View",
-    description: "See college rankings in a clean range format directly on detail pages.",
-    icon: Globe2,
-    imageSrc: "/features/features-img-4.png",
-  },
-  {
-    title: "Fund & Training",
-    description: "Access scholarships and training programs for your education.",
-    icon: BriefcaseBusiness,
-    imageSrc: "/features/features-img-7.png",
-  },
-  {
-    title: "Internship & Jobs",
-    description: "Explore internship opportunities and job placements from partner companies.",
-    icon: Rocket,
-    imageSrc: "/features/features-img-8.png",
-  },
-  {
-    title: "Project Guidance & Funding",
-    description: "Get expert guidance on projects and access funding opportunities.",
-    icon: Sparkles,
-    imageSrc: "/features/features-img-9.png",
-  },
-];
 
 export function HomePage({
   collegesData = fallbackColleges,
@@ -202,14 +166,14 @@ export function HomePage({
   examSchedules = [],
 }: HomePageProps) {
   const router = useRouter();
-  const featureCards = FEATURE_CARDS;
 
   // Home page search and interaction state
   const [collegeSearchInput, setCollegeSearchInput] = useState("");
   const [locationSearchInput, setLocationSearchInput] = useState("");
   const [courseSearchInput, setCourseSearchInput] = useState("");
+  const [mobileHeroSearchTab, setMobileHeroSearchTab] = useState<"college" | "course" | "location">("college");
+  const [mobileTypedSearchText, setMobileTypedSearchText] = useState("");
   const [activeAction, setActiveAction] = useState(0);
-  const [activeFeatureCard, setActiveFeatureCard] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
   const [typedSearchText, setTypedSearchText] = useState("");
   const [activeSearchField, setActiveSearchField] = useState<"college" | "location" | "course" | null>(null);
@@ -220,6 +184,7 @@ export function HomePage({
   const topExamsScrollRef = useRef<HTMLDivElement | null>(null);
   const collegesScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const searchFieldBlurTimeoutRef = useRef<number | null>(null);
+  const isMountedRef = useRef(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [showLeftArrowTrendingCourses, setShowLeftArrowTrendingCourses] = useState(false);
@@ -233,6 +198,50 @@ export function HomePage({
   const openAllCoursesPage = useCallback(() => {
     router.push("/explore?view=courses#all-courses");
   }, [router]);
+
+  const activeMobileHeroSearchValue =
+    mobileHeroSearchTab === "college"
+      ? collegeSearchInput
+      : mobileHeroSearchTab === "course"
+        ? courseSearchInput
+        : locationSearchInput;
+
+  useEffect(() => {
+    let charIndex = 0;
+    let isDeleting = false;
+    const currentText = MOBILE_HERO_SEARCH_PROMPTS[mobileHeroSearchTab];
+    let timeoutId = 0;
+
+    const tick = () => {
+      if (isDeleting) {
+        charIndex = Math.max(0, charIndex - 1);
+      } else {
+        charIndex = Math.min(currentText.length, charIndex + 1);
+      }
+
+      setMobileTypedSearchText(currentText.slice(0, charIndex));
+
+      if (!isDeleting && charIndex === currentText.length) {
+        isDeleting = true;
+        timeoutId = window.setTimeout(tick, 1100);
+        return;
+      }
+
+      if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        timeoutId = window.setTimeout(tick, 260);
+        return;
+      }
+
+      timeoutId = window.setTimeout(tick, isDeleting ? 45 : 85);
+    };
+
+    timeoutId = window.setTimeout(tick, 80);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [mobileHeroSearchTab]);
 
   const heroLocationOptions = useMemo<SearchCity[]>(() => {
     const unique = new Map<string, SearchCity>();
@@ -421,6 +430,7 @@ export function HomePage({
       window.clearTimeout(searchFieldBlurTimeoutRef.current);
       searchFieldBlurTimeoutRef.current = null;
     }
+    if (!isMountedRef.current) return;
     setActiveSearchField(field);
   }, []);
   const scheduleSearchFieldClose = useCallback(() => {
@@ -428,10 +438,15 @@ export function HomePage({
       window.clearTimeout(searchFieldBlurTimeoutRef.current);
     }
     searchFieldBlurTimeoutRef.current = window.setTimeout(() => {
+      if (!isMountedRef.current) return;
       setActiveSearchField(null);
       searchFieldBlurTimeoutRef.current = null;
     }, 120);
   }, []);
+
+  const handleCompactMobileHeroSearch = useCallback(() => {
+    handleHeroSearch();
+  }, [handleHeroSearch]);
 
   const exploreCourseCards = useMemo(() => {
     const iconMap = {
@@ -786,7 +801,7 @@ export function HomePage({
       }));
     }
     return [];
-  }, [activateSearchField, activeSearchField, collegeSuggestions, courseSuggestions, locationSuggestions]);
+  }, [activeSearchField, collegeSuggestions, courseSuggestions, locationSuggestions]);
   const shouldShowHeroSearchPanel = useMemo(
     () => activeSearchField !== null,
     [
@@ -811,6 +826,17 @@ export function HomePage({
       description: "Type a city or district and matching locations will show here.",
     };
   }, [activeSearchField]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (searchFieldBlurTimeoutRef.current !== null) {
+        window.clearTimeout(searchFieldBlurTimeoutRef.current);
+        searchFieldBlurTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!shouldShowHeroSearchPanel) return;
@@ -853,25 +879,25 @@ export function HomePage({
         value: `${collegesData.length}+`,
         label: "Colleges Listed",
         icon: Building2,
-        iconClassName: "bg-[rgba(255,138,61,0.12)] text-[#ff8a3d]",
+        iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
       {
         value: `${exploreCourseCards.length}+`,
         label: "Course Paths",
         icon: BookOpen,
-        iconClassName: "bg-[rgba(249,115,22,0.12)] text-[#f97316]",
+        iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
       {
         value: `${topExamCards.length}+`,
         label: "Exam Tracks",
         icon: Medal,
-        iconClassName: "bg-[rgba(251,146,60,0.14)] text-[#fb923c]",
+        iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
       {
         value: `${new Set(collegesData.map((college) => college.state).filter(Boolean)).size}+`,
         label: "States Covered",
         icon: Globe2,
-        iconClassName: "bg-[rgba(236,72,153,0.12)] text-[#ec4899]",
+        iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
     ],
     [collegesData, exploreCourseCards, topExamCards],
@@ -985,15 +1011,6 @@ export function HomePage({
   }, [isSpotlightPaused, spotlightColleges.length]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveFeatureCard((current) => (current + 1) % featureCards.length);
-    }, 3300);
-
-    return () => window.clearInterval(timer);
-  }, [featureCards.length]);
-
-
-  useEffect(() => {
     let itemIndex = 0;
     let charIndex = 0;
     let isDeleting = false;
@@ -1007,7 +1024,9 @@ export function HomePage({
         charIndex = Math.min(currentText.length, charIndex + 1);
       }
 
-      setTypedSearchText(currentText.slice(0, charIndex));
+      if (isMountedRef.current) {
+        setTypedSearchText(currentText.slice(0, charIndex));
+      }
 
       if (!isDeleting && charIndex === currentText.length) {
         isDeleting = true;
@@ -1039,204 +1058,154 @@ export function HomePage({
 
   // Home page theme variables and section render helpers
   const homeThemeStyles: ThemeStyleVars = {
-    "--brand-primary": "#1e4e79",
-    "--brand-primary-soft": "#2f6aa3",
-    "--brand-accent": "#ef4444",
-    "--brand-accent-deep": "#dc2626",
+    "--brand-primary": "#142a63",
+    "--brand-primary-soft": "#3d5aa9",
+    "--brand-accent": "#2563eb",
+    "--brand-accent-deep": "#0f1f52",
     "--brand-support": "#2563eb",
     "--surface-base": "#ffffff",
-    "--surface-muted": "#ffffff",
-    "--surface-soft": "#ffffff",
-    "--page-bg": "#ffffff",
-    "--text-dark": "#0f172a",
-    "--text-muted": "#475569",
+    "--surface-muted": "#f4f6fb",
+    "--surface-soft": "#eef2fb",
+    "--page-bg": "#f7f8fc",
+    "--text-dark": "#101a37",
+    "--text-muted": "#5e6785",
   };
   // Hero layout helpers
   const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
-  const activeFeature = featureCards[activeFeatureCard] ?? featureCards[0];
-
-  // Feature cards
-  const renderFeatureCard = (feature: FeatureCardItem, variant: "hero" | "grid" = "grid") => {
-    const isHeroCard = variant === "hero";
-    const isCompactFeature = !isHeroCard && feature.title === "Course Explorer";
-    const isShortFeature = !isHeroCard && feature.title === "Ranking View";
-    const isLongFeature =
-      !isHeroCard &&
-      (feature.title === "Project Guidance and Funding" || feature.title === "Internships and Jobs");
-    const Icon = feature.icon;
-
-    return (
-      <div
-        className={`overflow-hidden rounded-[1.6rem] border border-[rgba(248,113,113,0.2)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(254,242,242,0.96))] shadow-[0_14px_28px_rgba(127,29,29,0.08)] ${isHeroCard ? "flex h-full min-h-[9.75rem] p-3 sm:min-h-[10.4rem] sm:p-3.5" : isCompactFeature ? "p-2.5 sm:p-3" : isShortFeature ? "p-2.5 sm:p-3" : isLongFeature ? "p-2.5 sm:p-3" : "p-3 sm:p-3.5"
-          }`}
-      >
-        {isHeroCard ? (
-          <>
-            <div className="flex w-full flex-1 items-center gap-2 sm:gap-3">
-              <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
-                <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(135deg,rgba(219,234,254,0.98),rgba(255,255,255,0.96))] text-[#2563eb] sm:h-[2.125rem] sm:w-[2.125rem]">
-                  <Icon className="size-4" />
-                </div>
-                <h3 className="text-[0.9rem] font-bold leading-tight tracking-[-0.03em] text-[#2563eb] sm:text-[1rem]">
-                  {feature.title}
-                </h3>
-                <p className="mt-1 max-w-[9rem] text-[9px] leading-[0.95rem] text-[color:var(--text-muted)] sm:max-w-[9.75rem] sm:text-[10px] sm:leading-[1rem]">
-                  {feature.description}
-                </p>
-              </div>
-              <div className="relative w-[46%] shrink-0 overflow-hidden rounded-[1.15rem] border border-[rgba(248,113,113,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(254,242,242,0.92))] p-2 sm:w-[44%]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={feature.imageSrc}
-                  alt={feature.title}
-                  className="mx-auto h-[5.8rem] w-full max-w-[9.25rem] object-contain sm:h-[6.3rem] sm:max-w-[9.8rem]"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex flex-col items-center gap-2 text-center sm:gap-3 sm:items-start sm:text-left">
-              <div className={`mt-0.5 flex shrink-0 items-center justify-center rounded-[0.85rem] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(135deg,rgba(219,234,254,0.98),rgba(255,255,255,0.96))] text-[#2563eb] ${isCompactFeature || isShortFeature ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8 sm:h-9 sm:w-9 sm:rounded-[0.7rem]"}`}>
-                <Icon className="size-3.5 sm:size-4.5" />
-              </div>
-              <div className="flex flex-1 flex-col justify-start items-center text-center sm:items-start sm:text-left">
-                <h3 className={`line-clamp-2 font-bold tracking-[-0.03em] text-[#2563eb] ${isCompactFeature ? "text-[0.7rem] leading-[0.95rem] sm:text-[0.82rem] sm:leading-[1.05rem]" : isShortFeature ? "text-[0.69rem] leading-[0.95rem] sm:text-[0.8rem] sm:leading-[1rem]" : isLongFeature ? "text-[0.67rem] leading-[0.92rem] sm:text-[0.79rem] sm:leading-[1rem]" : "text-[0.72rem] leading-[1rem] sm:text-[0.88rem] sm:leading-[1.1rem]"}`}>
-                  {feature.title}
-                </h3>
-                <p className={`mt-1 hidden text-[color:var(--text-muted)] sm:block ${isCompactFeature ? "text-[10px] leading-[0.95rem]" : isShortFeature ? "text-[10px] leading-[0.92rem]" : isLongFeature ? "text-[9px] leading-[0.88rem]" : "text-[10px] leading-[0.98rem]"}`}>
-                  {feature.description}
-                </p>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  };
   // Hero cutoff banner
   const renderHeroCutoffBanner = () => (
-    <article
-      className="
-        relative overflow-hidden
-        h-full
-        rounded-[1.4rem] sm:rounded-[1.8rem]
-        border border-[rgba(99,102,241,0.14)]
-        bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.98)_48%,rgba(224,231,255,0.96))]
-        p-4
-        text-[color:var(--text-dark)]
-        shadow-[0_18px_40px_rgba(59,130,246,0.11)]
-      "
-    >
-      <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[rgba(96,165,250,0.18)] blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 right-8 h-52 w-52 rounded-full bg-[rgba(59,130,246,0.14)] blur-3xl" />
-
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3">
+      <article
+        className="
+          relative overflow-hidden
+          min-h-[21rem] sm:min-h-[19rem] md:min-h-[18rem] lg:min-h-[20.25rem]
+          rounded-[1.45rem] sm:rounded-[1.8rem]
+          border border-[rgba(10,20,56,0.08)]
+          bg-[linear-gradient(160deg,#15285f_0%,#11214f_52%,#0f1a42_100%)]
+          p-4 sm:p-[1.15rem] lg:p-[1.35rem]
+          text-white
+          shadow-[0_26px_52px_rgba(9,18,47,0.26)]
+        "
+      >
+        <div className="relative flex h-full flex-col md:grid md:min-h-[15.5rem] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:gap-x-0.5 lg:flex lg:min-h-0">
           <button
             type="button"
             onClick={() => router.push("/find")}
             className="
-              inline-flex items-center justify-center gap-2
+              inline-flex w-fit items-center justify-center gap-2
               rounded-full
-              bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_55%,#60a5fa_100%)]
+              border border-[#7db4ff]/55
+              bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(96,165,250,0.16))]
               px-3.5 py-1.5
               text-[9px] font-semibold uppercase tracking-[0.14em]
               text-white
-              shadow-[0_16px_28px_rgba(37,99,235,0.24)]
+              shadow-[0_0_0_1px_rgba(125,180,255,0.16),0_12px_28px_rgba(37,99,235,0.24)]
               transition
-              hover:-translate-y-0.5
+              md:col-span-2
             "
           >
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/22 shadow-[0_0_16px_rgba(125,180,255,0.32)]">
               <Rocket className="size-3" />
             </span>
             Check My Cutoff
             <ArrowRight className="size-3" />
           </button>
-          <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] shadow-sm">
-            Fast Match
-          </span>
-        </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_16.5rem] md:items-center lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="min-w-0 self-center">
-            <h3 className="max-w-[18rem] text-[1.08rem] font-black leading-[1.12] tracking-[-0.035em] text-[#14213d] sm:max-w-[20rem] sm:text-[1.18rem] lg:max-w-[22rem] lg:text-[1.34rem]">
-              <span className="block">
-                Unlock Your Future College.
-              </span>
-              <span className="mt-1 block text-[#3b82f6]">
-                Discover Your Best Fit.
-              </span>
-            </h3>
+          <div className="mt-5 w-full max-w-none md:mt-3 md:flex md:h-full md:flex-col md:pr-0 lg:mt-5 lg:h-auto">
+            <div className="w-full max-w-none md:max-w-[17rem] lg:max-w-[17.5rem]">
+              <h3 className="text-[1.32rem] font-black leading-[1.08] tracking-[-0.04em] text-white sm:text-[1.45rem] md:text-[1.52rem] lg:text-[1.72rem]">
+                <span className="block">Unlock Your Future College.</span>
+                <span className="mt-1 block text-[#dbe7ff]">Discover Your Best Fit.</span>
+              </h3>
 
-            <p className="mt-2.5 max-w-[20rem] text-[10px] leading-[1.05rem] text-[color:var(--text-muted)] sm:max-w-[22rem] sm:text-[11px] sm:leading-[1.2rem] lg:max-w-[24rem] lg:text-[12px] lg:leading-5">
-              Enter your marks and preferences to find better college matches.
-              Get clearer cutoff guidance in one simple flow.
-            </p>
+              <p className="mt-3 w-full max-w-none pr-1 text-[10px] leading-[1.2rem] text-white/72 sm:text-[11px] md:max-w-[15.5rem] md:pr-0 lg:max-w-[15.25rem]">
+                Enter your marks and preferences to find better college matches.
+                Get clearer cutoff guidance in one simple flow.
+              </p>
+            </div>
 
-            <div className="mt-3 grid max-w-[20rem] grid-cols-3 items-stretch gap-0 rounded-[1rem] border border-[rgba(29,78,216,0.12)] bg-white/88 text-[8.5px] font-semibold text-[color:var(--brand-primary)] shadow-sm sm:max-w-[20.5rem] sm:text-[9px]">
-              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 px-2 py-2 text-center">
-                <Sparkles className="size-3.5 shrink-0 text-[#f59e0b]" />
+            <div className="mt-5 grid w-full max-w-none grid-cols-3 gap-1.5 pt-5 text-[8px] font-semibold text-white sm:max-w-[12rem] sm:text-[8.5px] md:mt-auto md:max-w-[16.5rem] md:pt-3 lg:hidden">
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
+                <Sparkles className="size-3.5 shrink-0 text-[#ffcf69]" />
                 <span>Instant results</span>
               </span>
-              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 border-x border-[rgba(29,78,216,0.12)] px-1 py-2 text-center">
-                <ArrowRight className="size-3.5 shrink-0 text-[#2563eb]" />
-                <span>Extra match picks</span>
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1 py-2 text-center">
+                <ArrowRight className="size-3.5 shrink-0 text-[#8cc3ff]" />
+                <span>Extra picks</span>
               </span>
-              <span className="inline-flex min-h-[3rem] flex-col items-center justify-center gap-1 px-2 py-2 text-center">
-                <Medal className="size-3.5 shrink-0 text-[#ef4444]" />
-                <span>Category accurate</span>
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
+                <Medal className="size-3.5 shrink-0 text-[#ff8f86]" />
+                <span>Accurate</span>
               </span>
             </div>
           </div>
 
-          <div className="mx-auto flex w-full max-w-[15.75rem] items-center justify-center md:mx-0 md:max-w-[17rem] md:justify-end lg:max-w-[20rem]">
+          <div className="pointer-events-none relative left-1/2 flex w-[calc(100%+2rem)] max-w-none -translate-x-1/2 shrink-0 items-end justify-center self-center sm:left-auto sm:w-full sm:max-w-[10.25rem] sm:translate-x-0 sm:self-auto sm:justify-end md:left-auto md:mt-3 md:flex md:h-full md:w-full md:max-w-none md:translate-x-0 md:items-end md:justify-end lg:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/cutoff-banner-image.png"
               alt="Cutoff banner illustration"
-              className="h-auto w-full object-contain"
+              className="h-auto w-full scale-[1.08] object-contain sm:scale-100 md:h-full md:max-h-[15rem] md:w-full md:object-bottom"
             />
           </div>
-        </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(59,130,246,0.18)] bg-[rgba(59,130,246,0.08)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2563eb] sm:w-auto sm:justify-start">
-            <CourseIcon className="size-4" />
-            Cutoff Zone
-          </span>
-
-          <div className="flex items-center justify-center gap-3 text-sm text-[color:var(--text-muted)] sm:justify-end">
-            <div className="flex -space-x-2">
-              {["A", "S", "M"].map((letter, index) => (
-                <span
-                  key={letter}
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-sm ${index === 0
-                    ? "bg-[#1d4ed8]"
-                    : index === 1
-                      ? "bg-[#f97316]"
-                      : "bg-[#0f766e]"
-                    }`}
-                >
-                  {letter}
-                </span>
-              ))}
+          <div className="mt-auto hidden items-end justify-between gap-3 pt-6 lg:flex">
+            <div className="grid max-w-[11rem] grid-cols-3 gap-1.5 text-[8px] font-semibold text-white sm:max-w-[12rem] sm:text-[8.5px]">
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
+                <Sparkles className="size-3.5 shrink-0 text-[#ffcf69]" />
+                <span>Instant results</span>
+              </span>
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1 py-2 text-center">
+                <ArrowRight className="size-3.5 shrink-0 text-[#8cc3ff]" />
+                <span>Extra picks</span>
+              </span>
+              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
+                <Medal className="size-3.5 shrink-0 text-[#ff8f86]" />
+                <span>Accurate</span>
+              </span>
             </div>
-            <span className="text-[12px] font-medium">Trusted by 1L+ students</span>
+
+            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[10.75rem]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/cutoff-banner-image.png"
+                alt="Cutoff banner illustration"
+                className="h-auto w-full object-contain"
+              />
+            </div>
           </div>
         </div>
+      </article>
+
+      <div className="flex items-center justify-center gap-3 px-2 text-sm text-[color:var(--text-muted)]">
+        <div className="flex -space-x-2">
+          {["A", "S", "M"].map((letter, index) => (
+            <span
+              key={letter}
+              className={`inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-sm ${index === 0
+                ? "bg-[#3b82f6]"
+                : index === 1
+                  ? "bg-[#ef4444]"
+                  : "bg-[#0f766e]"
+                }`}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+        <span className="text-[11px] font-medium sm:text-[12px]">Trusted by 1L+ students</span>
       </div>
-    </article>
+    </div>
   );
   // Top college flow
   const renderTopCollegeFlow = () => (
-    <div className="flex h-full min-h-[19.5rem] w-full flex-col rounded-[1.4rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] p-3.5 shadow-[0_18px_40px_rgba(15,76,129,0.11)] scroll-fade-in scroll-delay-3 sm:min-h-[20.5rem] sm:rounded-[1.8rem] sm:p-4" data-scroll-animate>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary-soft)]">
-          Top College Flow
-        </p>
+    <div className="flex h-full min-h-[22rem] w-full flex-col rounded-[1.65rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff_0%,#f8faff_100%)] p-3.5 shadow-[0_22px_50px_rgba(20,42,99,0.1)] scroll-fade-in scroll-delay-3 sm:min-h-[22.5rem] sm:rounded-[1.9rem] sm:p-5" data-scroll-animate>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="font-[family:var(--font-poppins)] text-[1.45rem] font-bold tracking-[-0.04em] text-[color:var(--text-dark)]">
+            Explore Top Rated College
+          </p>
+        </div>
         <div className="flex gap-1.5">
           {spotlightColleges.map((college, index) => (
             <button
@@ -1254,7 +1223,7 @@ export function HomePage({
       <button
         type="button"
         onClick={() => openCollegeProfile(activeCollege?.id)}
-        className="relative mt-3 h-32 overflow-hidden rounded-[1.3rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] text-left transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,76,129,0.14)] sm:h-36 md:h-40"
+        className="relative mt-4 h-36 overflow-hidden rounded-[1.45rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(241,248,255,0.95))] text-left transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(20,42,99,0.14)] sm:h-40 md:h-[13rem]"
         onMouseEnter={() => setIsSpotlightPaused(true)}
         onMouseLeave={() => setIsSpotlightPaused(false)}
         aria-label={activeCollege ? `Open ${activeCollege.name}` : "Open college profile"}
@@ -1266,10 +1235,12 @@ export function HomePage({
           {spotlightColleges.map((college) => (
             <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
               {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
-                <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-4">
+                <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-3 sm:p-4">
                   <div>
-                    <p className="text-[15px] font-semibold text-white">{college.name}</p>
-                    <p className="mt-1 text-[11px] text-white/80">
+                    <p className="line-clamp-2 text-[0.95rem] font-semibold leading-tight text-white sm:text-[15px]">
+                      {college.name}
+                    </p>
+                    <p className="mt-1 text-[10px] text-white/80 sm:text-[11px]">
                       {college.district}, {college.state}
                     </p>
                   </div>
@@ -1288,9 +1259,15 @@ export function HomePage({
                   }
                 />
               )}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.08),rgba(9,23,40,0.72))]" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <p className="text-[15px] font-semibold text-white">{college.name}</p>
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.02),rgba(9,23,40,0.76))]" />
+              <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
+                <p className="line-clamp-2 text-[1rem] font-semibold leading-[1.08] text-white sm:text-[1.35rem] sm:leading-tight">
+                  {college.name}
+                </p>
+                <p className="mt-1 flex items-center gap-1 text-[10px] text-white/75 sm:text-[11px]">
+                  <MapPin className="size-3" />
+                  {college.district}, {college.state}
+                </p>
               </div>
             </div>
           ))}
@@ -1325,24 +1302,24 @@ export function HomePage({
               Recent placement performance
             </p>
           </div>
-          <div className="rounded-[0.95rem] border border-[rgba(29,78,216,0.18)] bg-[rgba(29,78,216,0.06)] p-2.5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-accent-deep)]">
-              Accreditation
+          <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[#fbfbfe] p-2.5 sm:p-3">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)] sm:text-[9px] sm:tracking-[0.16em]">
+              Student Reviews
             </p>
-            <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
-              {activeCollege?.accreditation || "-"}
+            <p className="mt-1.5 text-[1.2rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.55rem]">
+              {activeCollege?.isBestCollege || activeCollege?.isTopCollege ? "1.2k+" : "860+"}
             </p>
-            <p className="mt-0.5 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
-              Latest approved accreditation status
+            <p className="mt-1 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
+              Verified campus feedback
             </p>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => openCollegeProfile(activeCollege?.id)}
             disabled={!activeCollege?.id}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_55%,#38bdf8_100%)] px-3 py-2.5 text-center text-[13px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(37,99,235,0.26)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4 sm:text-sm"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-accent-deep)] px-4 py-3 text-center text-[13px] font-semibold text-white shadow-[0_12px_26px_rgba(15,31,82,0.24)] transition hover:-translate-y-0.5 hover:bg-[color:var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Browse College
             <ArrowRight className="size-4" />
@@ -1350,7 +1327,7 @@ export function HomePage({
           <button
             type="button"
             onClick={() => router.push("/explore?view=colleges")}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.16)] bg-white px-3 py-2.5 text-center text-[13px] font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] sm:w-auto sm:px-4 sm:text-sm"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(20,42,99,0.12)] bg-white px-4 py-3 text-center text-[13px] font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(20,42,99,0.04)]"
           >
             View All Colleges
           </button>
@@ -1364,53 +1341,52 @@ export function HomePage({
     <button
       type="button"
       onClick={() => router.push(exam.href)}
-      className="group flex min-h-[18.75rem] w-[15rem] shrink-0 flex-col rounded-[1.5rem] border border-[rgba(220,230,248,0.95)] bg-white p-4 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.35rem] lg:min-h-[19rem] lg:w-full"
+      className="group flex h-full min-h-[15.25rem] w-[min(15rem,calc(100vw-2.75rem))] shrink-0 flex-col rounded-[1.4rem] border border-[rgba(20,42,99,0.08)] bg-white px-4 py-3.5 text-left shadow-[0_8px_20px_rgba(20,42,99,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(20,42,99,0.09)] sm:w-[15.35rem] lg:min-h-[15.25rem] lg:w-full"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-3 mt-1.5">
-          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[rgba(15,76,129,0.12)] bg-white shadow-[0_6px_16px_rgba(15,76,129,0.08)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={exam.logo}
-              alt={exam.name}
-              className="h-full w-full object-contain p-0.5"
-            />
-          </span>
-          <div className="min-w-0">
-            <h3 className="whitespace-nowrap font-[family:var(--font-display)] text-[0.96rem] leading-tight text-[#0f1738] sm:text-[1.02rem]">
-              {exam.name}
-            </h3>
-          </div>
-        </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 mb-1.5 text-[10px] font-semibold ${exam.mode.toLowerCase().includes("online")
-          ? "bg-[rgba(34,197,94,0.14)] text-[#15803d]"
-          : "bg-[rgba(249,115,22,0.14)] text-[#c2410c]"
+      <div className="flex justify-end">
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${exam.mode.toLowerCase().includes("online")
+          ? "bg-[rgba(34,197,94,0.12)] text-[#15803d]"
+          : "bg-[rgba(15,23,42,0.08)] text-[#1e3a8a]"
           }`}>
           {exam.mode}
         </span>
       </div>
 
-      <div className="mt-5 space-y-3 text-[12px] text-[color:var(--text-muted)]">
+      <div className="mt-3 flex min-w-0 items-start gap-3">
+        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border border-[rgba(37,99,235,0.16)] bg-[linear-gradient(180deg,#f3f6ff,#eef2ff)] text-[0.82rem] font-bold tracking-[0.04em] text-[#1f2f5d]">
+          {EXAM_SHORT_LABEL_MAP[exam.name] || exam.name.slice(0, 4).toUpperCase()}
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <h3 className="font-[family:var(--font-display)] text-[1rem] leading-tight text-[#0f1738] sm:text-[1.02rem]">
+            {exam.name}
+          </h3>
+          <p className="mt-1 text-[0.44rem] font-semibold uppercase tracking-[0.16em] text-[#7a86a8] sm:text-[0.5rem]">
+            {EXAM_SUBTITLE_MAP[exam.name] || exam.examLevel}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-2.5 text-[10px] text-[color:var(--text-muted)]">
         <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
           <span>Colleges</span>
           <span className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</span>
         </div>
         <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
           <span>Exam Date</span>
-          <span className="font-semibold text-[color:var(--text-dark)]">{exam.examDate}</span>
+          <span className="font-semibold text-[color:var(--text-dark)]">{formatExamDateLabel(exam.examDate)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 pb-1">
+        <div className="flex items-center justify-between gap-3">
           <span>Level</span>
           <span className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</span>
         </div>
       </div>
 
-      <div className="mt-auto space-y-2 pt-5">
-        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.95rem] font-medium text-[#0f1738]">
+      <div className="mt-auto space-y-0.5 pt-5">
+        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.78rem] font-medium text-[#0f1738]">
           <span>Application Process</span>
           <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
         </div>
-        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.95rem] font-medium text-[#0f1738]">
+        <div className="flex items-center justify-between pt-2 text-[0.78rem] font-medium text-[#0f1738]">
           <span>Exam Info</span>
           <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
         </div>
@@ -1418,16 +1394,16 @@ export function HomePage({
     </button>
   );
   return (
-    <div className="home-theme bg-white" style={homeThemeStyles}>
+    <div className="home-theme bg-[color:var(--page-bg)]" style={homeThemeStyles}>
       {/* Hero section */}
-      <section className="relative overflow-hidden bg-white text-[color:var(--text-dark)]">
+      <section className="relative overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--text-dark)]">
         {/* Hero background artwork */}
         <div className="absolute inset-0">
           <div
-            className="hero-bg absolute inset-0 bg-cover bg-center opacity-[0.26]"
+            className="hero-bg absolute inset-0 bg-cover bg-center opacity-[0.1]"
             style={{ backgroundImage: `url('${resolvedHeroImageUrl}')` }}
           />
-          <div className="absolute inset-0 bg-white/55" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(247,248,252,0.92),rgba(247,248,252,0.98))]" />
         </div>
 
         <div className="relative z-10">
@@ -1436,116 +1412,257 @@ export function HomePage({
 
           {/* Hero content section */}
 
-          <div className="page-container-full px-0 sm:px-1 lg:px-2 pb-[4rem] pt-0 md:pb-[5.5rem] md:pt-1">
-            <div className="space-y-1 py-1.5">
+          <div className="page-container-full max-w-[86rem] px-0 sm:px-1 lg:px-2 pb-[2.25rem] pt-0 md:pb-[2.75rem] md:pt-1 2xl:max-w-[96rem] 2xl:px-6">
+            <div className="space-y-1 py-0.5 sm:space-y-2 sm:py-1.5">
               {/* Hero headline and spotlight content */}
-              <div className="reveal-up mx-auto mb-0.5 w-full px-0">
+              <div className="reveal-up mx-auto mb-0.5 mt-2 w-full px-0 sm:mt-3">
                 <div className="relative py-0 sm:py-0.5">
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
-                  <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.12)] blur-3xl" />
-                  <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.14)] blur-3xl" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.92),transparent_62%)]" />
+                  <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.09)] blur-3xl" />
+                  <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.1)] blur-3xl" />
 
-                  <div className="relative space-y-0.5">
-                    {/* Hero search module */}
-                    <div className="hero-search-shell group relative z-[70] mx-auto mt-3 w-full max-w-none px-0 py-2 sm:mt-4 sm:py-2.5">
-                    <div
-                      className="
+                  <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.22fr)_minmax(20.75rem,0.68fr)] lg:items-start lg:gap-x-5 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.26fr)_minmax(22rem,0.7fr)] xl:gap-x-6 2xl:grid-cols-[minmax(0,1.34fr)_minmax(26rem,0.78fr)] 2xl:gap-x-8 2xl:gap-y-6">
+                    <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
+                      <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                          Discover Smarter
+                        </p>
+                        <h1 className="home-hero-title mt-2 text-[2rem] leading-[0.94] tracking-[-0.055em] text-[color:var(--text-dark)] sm:text-[2.55rem] lg:max-w-[33rem] lg:text-[3.65rem] xl:max-w-[35rem] xl:text-[3.9rem] 2xl:max-w-[40rem] 2xl:text-[4.35rem]">
+                          <span className="block">
+                            Find Your <span className="text-[#2563eb]">Future</span>
+                          </span>
+                          <span className="block">
+                            <span className="text-[#2563eb]">College</span> Smartly.
+                          </span>
+                        </h1>
+
+                        <p className="mx-auto mt-3.5 max-w-[31rem] px-2 font-[family:var(--font-inter)] text-[11px] font-normal leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[14px] lg:leading-6">
+                          Discover colleges, courses, exams, and cities from one premium
+                          search flow built to help you shortlist faster and decide with
+                          more confidence.
+                        </p>
+
+                        <div className="mt-6 md:hidden">
+                          <div className="rounded-[1.15rem] border border-[rgba(20,42,99,0.08)] bg-white/95 p-2 shadow-[0_14px_34px_rgba(20,42,99,0.08)]">
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {[
+                                { id: "college", label: "Colleges" },
+                                { id: "course", label: "Courses" },
+                                { id: "location", label: "Location" },
+                              ].map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => setMobileHeroSearchTab(item.id as "college" | "course" | "location")}
+                                  className={`inline-flex items-center justify-center rounded-[0.7rem] px-2 py-2 text-[10px] font-semibold transition ${mobileHeroSearchTab === item.id
+                                    ? "bg-[color:var(--brand-accent-deep)] text-white shadow-[0_8px_18px_rgba(20,42,99,0.18)]"
+                                    : "border border-[rgba(20,42,99,0.08)] bg-[rgba(246,248,252,0.9)] text-[color:var(--text-muted)]"
+                                    }`}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="relative mt-2.5 flex items-center gap-2 rounded-[0.85rem] border border-[rgba(20,42,99,0.1)] bg-white px-3 py-3 shadow-[0_10px_24px_rgba(7,15,40,0.08)]">
+                              <Search className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                              <div className="min-w-0 flex-1">
+                                {!activeMobileHeroSearchValue ? (
+                                  <div className="pointer-events-none absolute left-9 right-12 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[11px]">
+                                    <span className="truncate text-[color:var(--brand-primary-soft)]">{mobileTypedSearchText}</span>
+                                    <span className="ml-0.5 inline-block text-[color:var(--brand-primary-soft)]">|</span>
+                                  </div>
+                                ) : null}
+                                <input
+                                  type="text"
+                                  value={activeMobileHeroSearchValue}
+                                  onChange={(event) => {
+                                    const value = event.target.value.replace(/[^A-Za-z\s]/g, "");
+                                    if (mobileHeroSearchTab === "college") {
+                                      setCollegeSearchInput(value);
+                                    } else if (mobileHeroSearchTab === "course") {
+                                      setCourseSearchInput(value);
+                                    } else {
+                                      setLocationSearchInput(value);
+                                    }
+                                    activateSearchField(mobileHeroSearchTab);
+                                  }}
+                                  onFocus={() => activateSearchField(mobileHeroSearchTab)}
+                                  onBlur={scheduleSearchFieldClose}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      event.preventDefault();
+                                      handleCompactMobileHeroSearch();
+                                    }
+                                  }}
+                                  placeholder=""
+                                  className={`min-w-0 w-full border-0 bg-transparent text-[11px] outline-none ${activeMobileHeroSearchValue ? "text-[color:var(--text-dark)]" : "text-transparent caret-[color:var(--brand-primary-soft)]"}`}
+                                  aria-label="Mobile homepage search"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleCompactMobileHeroSearch}
+                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(20,42,99,0.1)] text-[color:var(--brand-primary)]"
+                                aria-label="Submit mobile search"
+                              >
+                                <ArrowRight className="size-4" />
+                              </button>
+                            </div>
+
+                            {activeSearchField === mobileHeroSearchTab ? (
+                              <div className="mt-2 overflow-hidden rounded-[0.95rem] border border-[rgba(20,42,99,0.08)] bg-white shadow-[0_12px_30px_rgba(20,42,99,0.08)]">
+                                {activeSearchSuggestions.length > 0 ? (
+                                  <div className="max-h-[16rem] overflow-y-auto px-2 py-2">
+                                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
+                                      Related {mobileHeroSearchTab}
+                                    </p>
+                                    {activeSearchSuggestions.map((item) => (
+                                      <button
+                                        key={item.id}
+                                        type="button"
+                                        onMouseDown={(event) => {
+                                          event.preventDefault();
+                                          item.onSelect();
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-[0.8rem] px-3 py-2 text-left text-[12px] text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
+                                      >
+                                        {item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
+                                          <span className="inline-flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_4px_12px_rgba(29,78,216,0.08)]">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                              src={item.imageSrc}
+                                              alt={item.label}
+                                              className="h-full w-full object-cover"
+                                              onError={() =>
+                                                setBrokenHeroSuggestionImages((current) => ({
+                                                  ...current,
+                                                  [item.id]: true,
+                                                }))
+                                              }
+                                            />
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
+                                            {mobileHeroSearchTab === "location" ? (
+                                              <MapPin className="size-3.5" />
+                                            ) : mobileHeroSearchTab === "course" ? (
+                                              <CourseIcon className="size-3.5" />
+                                            ) : (
+                                              <Search className="size-3.5" />
+                                            )}
+                                          </span>
+                                        )}
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block truncate font-medium">{item.label}</span>
+                                          <span className="mt-0.5 block text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+                                            {item.meta}
+                                          </span>
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="px-4 py-4 text-left">
+                                    <p className="text-[12px] font-semibold text-[color:var(--text-dark)]">
+                                      {activeSearchEmptyState.title}
+                                    </p>
+                                    <p className="mt-1 text-[11px] leading-5 text-[color:var(--text-muted)]">
+                                      {activeSearchEmptyState.description}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mx-auto hidden w-full max-w-[45rem] md:block lg:mx-0 xl:max-w-[49rem] 2xl:max-w-[54rem]">
+                        <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
+                          <div
+                            className="
       hero-search-input
       relative z-[2] overflow-hidden
       rounded-[1.2rem] sm:rounded-[1.65rem]
-      border
-      bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,242,232,0.96))]
-      p-1.5 sm:p-1
-      shadow-[0_18px_36px_rgba(8,17,31,0.12)]
+      border-2
+      bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(248,250,255,0.98))]
+      p-1.5 sm:p-1.5
+      shadow-[0_20px_42px_rgba(20,42,99,0.12)]
       ring-1
     "
-                      style={{
-                        borderColor: activeSearchField ? "rgba(239,68,68,0.78)" : "rgba(239,68,68,0.36)",
-                        boxShadow: activeSearchField
-                          ? "0 24px 48px rgba(8,17,31,0.16), 0 0 0 4px rgba(248,113,113,0.2), 0 0 22px rgba(239,68,68,0.12)"
-                          : "0 22px 44px rgba(8,17,31,0.13), 0 0 0 2px rgba(248,113,113,0.14), 0 0 18px rgba(239,68,68,0.08)",
-                      }}
-                      >
-                        {/* SAME DESIGN FOR MOBILE + DESKTOP */}
-                        <div
-                          className="
-        grid
-        grid-cols-1
-        md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]
-        items-stretch
-        gap-2
-        md:gap-0
-      " >
-                          {/* Course Search */}
-                          <div
-                            className={`
-                            
+                          style={{
+                            borderColor: activeSearchField ? "rgba(37,99,235,0.82)" : "rgba(37,99,235,0.42)",
+                            boxShadow: activeSearchField
+                              ? "0 24px 48px rgba(20,42,99,0.16), 0 0 0 5px rgba(37,99,235,0.16)"
+                              : "0 22px 44px rgba(20,42,99,0.12), 0 0 0 2px rgba(37,99,235,0.14)",
+                          }}
+                          >
+                            <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-[minmax(0,1.32fr)_minmax(0,1.02fr)_minmax(0,1.02fr)_8rem] md:items-center md:gap-0 md:pr-1">
+                            <div
+                              className={`
           relative min-w-0
-          px-4 py-2.5 md:px-5
+          px-4 py-3 md:px-5
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
           border
           md:border-0
-          md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "course" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
+          md:border-r md:border-[rgba(37,99,235,0.18)]
+          ${activeSearchField === "course" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
         `}
-                          >
-                            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
-                              <Search className="size-4" />
-                              Search Courses
+                            >
+                              <div className="mb-2 flex items-center gap-2 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                                <Search className="size-4" />
+                                Search Courses
+                              </div>
+
+                              {!courseSearchInput ? (
+                                <div className="pointer-events-none absolute inset-x-4 bottom-2.5 z-0 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px]">
+                                  <span className="truncate text-[color:var(--brand-primary-soft)]">{typedSearchText}</span>
+                                  <span className="ml-1 inline-block text-[color:var(--brand-primary-soft)]">|</span>
+                                </div>
+                              ) : null}
+
+                              <input
+                                type="text"
+                                value={courseSearchInput}
+                                onChange={(event) => {
+                                  setCourseSearchInput(event.target.value);
+                                  activateSearchField("course");
+                                }}
+                                onFocus={() => activateSearchField("course")}
+                                onBlur={scheduleSearchFieldClose}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    handleHeroSearch();
+                                  }
+                                }}
+                                placeholder=""
+                                className={`relative z-[1] min-h-[1.8rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[15px] outline-none placeholder:text-[color:var(--text-muted)] md:text-[16px] ${courseSearchInput ? "text-[color:var(--text-dark)]" : "text-transparent caret-[color:var(--brand-primary-soft)]"}`}
+                              />
                             </div>
 
-                            {!courseSearchInput ? (
-                              <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px]">
-                                <span className="truncate text-[color:var(--brand-primary-soft)]">{typedSearchText}</span>
-                                <span className="ml-1 inline-block text-[color:var(--brand-primary-soft)]">
-                                  |
-                                </span>
-                              </div>
-                            ) : null}
-
-                            <input
-                              type="text"
-                              value={courseSearchInput}
-                              onChange={(event) => {
-                                setCourseSearchInput(event.target.value);
-                                activateSearchField("course");
-                              }}
-                              onFocus={() => activateSearchField("course")}
-                              onBlur={scheduleSearchFieldClose}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  handleHeroSearch();
-                                }
-                              }}
-                              placeholder=""
-                              className="min-h-[1.8rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[15px] md:text-[16px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--text-muted)]"
-                            />
-                          </div>
-
-                          {/* College Search */}
-                          <div
-                            className={`
-                            
-          flex min-h-[2.95rem] items-center gap-3
+                            <div
+                              className={`
+          flex min-h-[3.15rem] flex-col items-start justify-center gap-2
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-2.5 md:py-1.5
+          px-4 py-3 md:py-2.5
           border
           md:border-0
-          md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "college" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
+          md:border-r md:border-[rgba(37,99,235,0.18)]
+          ${activeSearchField === "college" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
         `}
-                          >
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
-                              <Building2 className="size-[1.1rem]" />
-                            </span>
-
-                            <div className="min-w-0 flex-1">
-                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
-                                College
-                              </label>
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
+                                  <Building2 className="size-[1rem]" />
+                                </span>
+                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                                  College
+                                </label>
+                              </div>
 
                               <input
                                 type="text"
@@ -1557,34 +1674,31 @@ export function HomePage({
                                 onFocus={() => activateSearchField("college")}
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="College"
-                                placeholder="Type college"
+                                placeholder=""
                                 className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
-                          </div>
 
-                          {/* Location Search */}
-                          <div
-                            className={`
-                            
-          flex min-h-[2.95rem] items-center gap-3
+                            <div
+                              className={`
+          flex min-h-[3.15rem] flex-col items-start justify-center gap-2
           rounded-[1rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-2.5 md:py-1.5
+          px-4 py-3 md:py-2.5
           border
           md:border-0
-          md:border-r md:border-[rgba(15,76,129,0.1)]
-        ${activeSearchField === "location" ? "border-[rgba(239,68,68,0.55)] bg-[linear-gradient(180deg,rgba(255,250,250,0.98),rgba(255,244,244,0.95))] shadow-[0_10px_20px_rgba(220,38,38,0.1)]" : "border-[rgba(239,68,68,0.12)]"}
+          md:border-r md:border-[rgba(37,99,235,0.18)]
+          ${activeSearchField === "location" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
         `}
-                          >
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
-                              <MapPin className="size-[1.1rem]" />
-                            </span>
-
-                            <div className="min-w-0 flex-1">
-                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ef4444]">
-                                Location
-                              </label>
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
+                                  <MapPin className="size-[1rem]" />
+                                </span>
+                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                                  Location
+                                </label>
+                              </div>
 
                               <input
                                 type="text"
@@ -1596,184 +1710,154 @@ export function HomePage({
                                 onFocus={() => activateSearchField("location")}
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="Location"
-                                placeholder="Type location"
+                                placeholder=""
                                 className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
-                          </div>
 
-                          {/* Search Button */}
-                          <button
-                            type="button"
-                            onClick={handleHeroSearch}
-                            className="
+                              <button
+                                type="button"
+                                onClick={handleHeroSearch}
+                                className="
           inline-flex
-          h-11 min-h-[3rem]
+          h-14 min-h-[3.5rem]
           w-full
           items-center justify-center
           gap-2
           rounded-[1.05rem]
-          bg-[linear-gradient(135deg,#dc2626_0%,#ef4444_55%,#f87171_100%)]
-          px-5
+          bg-[color:var(--brand-accent-deep)]
+          px-6
           text-[14px]
           font-semibold
           text-white
-          shadow-[0_12px_24px_rgba(220,38,38,0.22)]
+          shadow-[0_14px_26px_rgba(15,31,82,0.24)]
           transition
           hover:translate-y-[-1px]
-          hover:bg-[linear-gradient(135deg,#b91c1c_0%,#dc2626_55%,#ef4444_100%)]
-          hover:shadow-[0_16px_28px_rgba(220,38,38,0.28)]
+          hover:bg-[color:var(--brand-primary)]
+          hover:shadow-[0_16px_30px_rgba(15,31,82,0.28)]
+          md:mx-auto
+          md:min-w-0
           md:self-center
-          md:mx-2
-          md:min-w-[7rem]
-          md:w-auto
+          md:w-[6.95rem]
         "
-                          >
-                            Find
-                            <Search className="size-[1.1rem]" />
-                          </button>
-                        </div>
-                      </div>
+                              >
+                                Find
+                                <Search className="size-[1.1rem]" />
+                              </button>
+                            </div>
+                          </div>
 
-                      {/* Suggestion Panel */}
-                      {shouldShowHeroSearchPanel ? (
-                        <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(239,68,68,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,247,247,0.97))] p-1.5 shadow-[0_24px_48px_rgba(220,38,38,0.12)] backdrop-blur-sm">
-                          {activeSearchField && activeSearchSuggestions.length > 0 ? (
-                            <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
-                              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
-                                Related {activeSearchField}
-                              </p>
+                          {shouldShowHeroSearchPanel ? (
+                            <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(20,42,99,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,248,253,0.98))] p-1.5 shadow-[0_24px_48px_rgba(20,42,99,0.12)] backdrop-blur-sm">
+                              {activeSearchField && activeSearchSuggestions.length > 0 ? (
+                                <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
+                                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
+                                    Related {activeSearchField}
+                                  </p>
 
-                              {activeSearchSuggestions.map((item) => (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onMouseDown={(event) => {
-                                    event.preventDefault();
-                                    item.onSelect();
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-[0.9rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
-                                >
-                                  {item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
-                                    <span className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={item.imageSrc}
-                                        alt={item.label}
-                                        className="h-full w-full object-cover"
-                                        onError={() =>
-                                          setBrokenHeroSuggestionImages((current) => ({
-                                            ...current,
-                                            [item.id]: true,
-                                          }))
-                                        }
-                                      />
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
-                                      {activeSearchField === "location" ? (
-                                        <MapPin className="size-4" />
-                                      ) : activeSearchField === "course" ? (
-                                        <CourseIcon className="size-4" />
+                                  {activeSearchSuggestions.map((item) => (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        item.onSelect();
+                                      }}
+                                      className="flex w-full items-center gap-2 rounded-[0.9rem] px-3 py-2.5 text-left text-sm text-[color:var(--text-dark)] transition hover:bg-[rgba(29,78,216,0.07)]"
+                                    >
+                                      {item.imageSrc && !brokenHeroSuggestionImages[item.id] ? (
+                                        <span className="inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(29,78,216,0.12)] bg-white shadow-[0_6px_16px_rgba(29,78,216,0.1)]">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img
+                                            src={item.imageSrc}
+                                            alt={item.label}
+                                            className="h-full w-full object-cover"
+                                            onError={() =>
+                                              setBrokenHeroSuggestionImages((current) => ({
+                                                ...current,
+                                                [item.id]: true,
+                                              }))
+                                            }
+                                          />
+                                        </span>
                                       ) : (
-                                        <Search className="size-4" />
+                                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(29,78,216,0.12)] text-[color:var(--brand-primary)]">
+                                          {activeSearchField === "location" ? (
+                                            <MapPin className="size-4" />
+                                          ) : activeSearchField === "course" ? (
+                                            <CourseIcon className="size-4" />
+                                          ) : (
+                                            <Search className="size-4" />
+                                          )}
+                                        </span>
                                       )}
-                                    </span>
-                                  )}
 
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-medium">
-                                      {item.label}
-                                    </span>
-                                    <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
-                                      {item.meta}
-                                    </span>
-                                  </span>
-                                </button>
-                              ))}
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-medium">
+                                          {item.label}
+                                        </span>
+                                        <span className="mt-0.5 block text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+                                          {item.meta}
+                                        </span>
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="max-h-[22.75rem] overflow-y-auto px-4 py-4 text-left">
+                                  <p className="text-sm font-semibold text-[color:var(--text-dark)]">
+                                    {activeSearchEmptyState.title}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
+                                    {activeSearchEmptyState.description}
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <div className="max-h-[22.75rem] overflow-y-auto px-4 py-4 text-left">
-                              <p className="text-sm font-semibold text-[color:var(--text-dark)]">
-                                {activeSearchEmptyState.title}
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
-                                {activeSearchEmptyState.description}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Hero quick stats */}
-                    <div className="mx-auto grid w-full max-w-[72rem] grid-cols-4 gap-1 sm:w-[94%] sm:gap-2 items-center justify-center">
-                      {heroStatCards.map((item) => (
-                        <div key={item.label} className="min-w-0 rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,247,243,0.96))] px-1.5 py-2 shadow-[0_8px_16px_rgba(15,76,129,0.06)] sm:rounded-[1rem] sm:px-3 sm:py-3">
-                          <div className="flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2.5 sm:text-left">
-                            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
-                              <item.icon className="size-3 sm:size-4" />
-                            </span>
-                            <div className="min-w-0 text-center sm:text-left">
-                              <p className="text-[0.9rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.35rem]">{item.value}</p>
-                              <p className="mt-1 text-[8.5px] font-medium leading-[0.8rem] text-[color:var(--text-muted)] sm:text-[11px] sm:leading-4">{item.label}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-1.5 pt-3 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch lg:gap-2">
-                      {/* Hero introduction */}
-                      <div className="flex h-full flex-col justify-center space-y-2.5 lg:space-y-2 lg:pr-1">
-                        <div className="max-w-full py-1 px-0 text-center lg:px-0 lg:text-left">
-                          <h1 className="text-[1.55rem] font-black leading-tight tracking-[-0.04em] text-[#163761] sm:text-[1.95rem] lg:text-[2.55rem]">
-                            Find Your{" "}
-                            <span className="text-[#2563eb]">
-                              Future College
-                            </span>{" "}
-                            Smartly.
-                          </h1>
-
-                          <p className="mx-auto mt-2.5 max-w-[34rem] px-2 text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[13px] lg:leading-6">
-                            Discover colleges, courses, exams, and cities from one premium
-                            search flow built to help you shortlist faster and decide with
-                            more confidence.
-                          </p>
+                          ) : null}
                         </div>
 
-                        {/* Hero feature spotlight */}
-                        <div className="relative mx-auto w-full max-w-full px-0.5 lg:mx-0 lg:max-w-[28.5rem] lg:px-0">
-                          <div
-                            key={`${activeFeature.title}-${activeFeatureCard}`}
-                            className="feature-pop-card absolute inset-0"
-                          >
-                            {renderFeatureCard(activeFeature, "hero")}
-                          </div>
-
-                          <div className="min-h-[10.9rem] sm:min-h-[8.15rem]" />
+                        <div className="relative z-[1] mx-auto mt-3 grid w-full max-w-[41rem] grid-cols-4 gap-1.5 sm:mt-2 sm:gap-2.5 lg:mx-0 xl:max-w-[44rem] 2xl:max-w-[48rem]">
+                          {heroStatCards.map((item) => (
+                            <div key={item.label} className="min-w-0 rounded-[0.85rem] border border-[rgba(20,42,99,0.08)] bg-white px-1 py-1.5 shadow-[0_10px_20px_rgba(20,42,99,0.05)] sm:rounded-[1rem] sm:px-2.5 sm:py-2.5">
+                              <div className="flex flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
+                                <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
+                                  <item.icon className="size-[0.78rem] sm:size-[0.95rem]" />
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-center text-[0.68rem] font-bold leading-none text-[#2563eb] sm:text-[1rem]">{item.value}</p>
+                                  <p className="mt-0.5 text-center text-[6px] font-medium uppercase tracking-[0.03em] leading-[0.62rem] text-[#2563eb] sm:mt-1 sm:text-[8.5px] sm:tracking-[0.08em] sm:leading-[0.9rem]">{item.label}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Hero cutoff banner */}
-                      <div className="w-full lg:max-w-[42rem] lg:justify-self-end">
-                        {renderHeroCutoffBanner()}
-                      </div>
+                    <div className="w-full self-start lg:max-w-[24.5rem] lg:justify-self-end lg:pt-5 xl:max-w-[26rem] 2xl:max-w-[28rem]">
+                      {renderHeroCutoffBanner()}
                     </div>
 
                     {/* Top exams overview */}
-                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1" data-scroll-animate>
+                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1 lg:col-span-2 2xl:max-w-[84rem]" data-scroll-animate>
                       <div className="relative w-full">
                         <div className="mb-4 flex items-center justify-between gap-3">
-                          <p className="text-[1rem] font-semibold uppercase tracking-[0.22em] text-[#132a6b]">
-                            Top Exams
-                          </p>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+                              Top Exams
+                            </p>
+                            <p className="home-section-title mt-2 text-[1.95rem] tracking-[-0.045em] text-[color:var(--text-dark)]">
+                              Master Your Entry Strategy
+                            </p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => router.push("/exams")}
                             className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
                           >
-                            
+                            View all exams
+                            <ArrowRight className="size-4" />
                           </button>
                         </div>
 
@@ -1802,7 +1886,7 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTopExamsByCard("left")}
-                              className="absolute -left-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              className="absolute -left-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
                               aria-label="Scroll top exams left"
                             >
                               <ChevronLeft className="size-5" />
@@ -1813,7 +1897,7 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTopExamsByCard("right")}
-                              className="absolute -right-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              className="absolute -right-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
                               aria-label="Scroll top exams right"
                             >
                               <ChevronRight className="size-5" />
@@ -1824,26 +1908,41 @@ export function HomePage({
                     </div>
 
                   </div>
-                  {/* Trending courses and top college flow */}
-                  <div className="reveal-up delay-3 mt-8 pt-3">
-                    <div className="mx-auto grid w-full max-w-[72rem] gap-6 px-1 sm:px-2  md:px-0 lg:grid-cols-2 lg:items-stretch">
-                      {/* Trending courses section */}
-                      <div className="relative flex h-full flex-col rounded-[1.4rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,255,0.98))] px-4 py-4 shadow-[0_18px_40px_rgba(15,76,129,0.11)] scroll-fade-in scroll-delay-2" data-scroll-animate>
+                  {/* Featured institutions section */}
+                  <div className="reveal-up delay-3 mt-6 rounded-[2rem] bg-[color:var(--surface-muted)] px-1 py-7 sm:px-4 lg:px-6 2xl:px-8">
+                    <div className="mx-auto mb-6 flex w-full max-w-[72rem] flex-col gap-4 px-0 sm:px-2 md:px-0 md:flex-row md:items-end md:justify-end 2xl:max-w-[84rem]">
+                      <button
+                        type="button"
+                        onClick={() => router.push("/explore?view=colleges")}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
+                      >
+                        View all colleges
+                        <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                    <div className="mx-auto grid w-full max-w-[72rem] gap-4 px-0 sm:px-2 md:px-0 lg:grid-cols-2 lg:items-stretch 2xl:max-w-[84rem] 2xl:gap-8">
+                      {/* Top courses section */}
+                      <div className="relative flex h-full flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-white px-3 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] scroll-fade-in scroll-delay-2 sm:px-4" data-scroll-animate>
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-[1.05rem] font-semibold uppercase tracking-[0.24em] text-[#132a6b]">
-                            Trending Courses
-                          </p>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-primary-soft)]">
+                              Top Courses
+                            </p>
+                            <p className="home-section-title mt-2 text-[1.55rem] tracking-[-0.04em] text-[color:var(--text-dark)]">
+                              Explore Pathways
+                            </p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => router.push("/explore")}
-                            className="inline-flex items-center gap-2 text-lg font-medium text-[#1d4ed8]"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
                           >
                             View all
-                            <ArrowRight className="size-5" />
+                            <ArrowRight className="size-4" />
                           </button>
                         </div>
 
-                        <div className="mt-6 hidden gap-2.5 lg:grid lg:grid-cols-3 ">
+                        <div className="mt-6 hidden gap-3 lg:grid lg:grid-cols-3">
                           {trendingCourseCards.slice(0, 6).map((course) => {
                             const Icon = course.icon;
                             return (
@@ -1851,29 +1950,29 @@ export function HomePage({
                                 key={course.id}
                                 type="button"
                                 onClick={() => router.push(course.href)}
-                                className="group flex min-h-[10.5rem] flex-col rounded-[1.15rem] border border-[rgba(220,230,248,0.95)] bg-white px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(30,64,175,0.12)]"
+                                className="home-course-card group flex min-h-[9.25rem] flex-col rounded-[1.2rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff,#f9fbff)] px-3.5 py-3.5 text-left shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_28px_rgba(20,42,99,0.1)]"
                               >
-                                <div className="flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
+                                <div className="flex h-[3rem] w-[3rem] items-center justify-center rounded-full border border-[rgba(37,99,235,0.14)] bg-[linear-gradient(180deg,rgba(232,240,255,0.98),rgba(255,255,255,0.98))] text-[color:var(--brand-primary)] transition group-hover:scale-[1.03]">
                                   <Icon className="size-5 stroke-[1.8] " />
                                 </div>
                                 <div className="mt-3">
-                                  <p className="font-[family:var(--font-display)] text-[0.96rem] leading-[1.15] text-[#0f1738]">
+                                  <p className="home-course-card-title text-[0.98rem] leading-[1.2] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-1.5 text-[0.52rem] font-semibold uppercase tracking-[0.14em] text-[#5d6f99]">
+                                  <p className="mt-1.5 text-[0.54rem] font-semibold uppercase tracking-[0.16em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[0.74rem] font-medium text-[#1d4ed8]">
+                                <div className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[0.74rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                   Explore Course
-                                  <ArrowRight className="size-3.5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
+                                  <ArrowRight className="size-3.5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                 </div>
                               </button>
                             );
                           })}
                         </div>
 
-                        <div className="mt-5 grid grid-cols-3 gap-1.5 md:hidden">
+                        <div className="mt-5 grid grid-cols-2 gap-2 min-[480px]:grid-cols-3 md:hidden">
                           {trendingCourseCards.slice(0, 6).map((course) => {
                             const Icon = course.icon;
                             return (
@@ -1881,22 +1980,22 @@ export function HomePage({
                                 key={`${course.id}-mobile-grid`}
                                 type="button"
                                 onClick={() => router.push(course.href)}
-                                className="group flex min-h-[7.15rem] flex-col rounded-[0.9rem] border border-[rgba(220,230,248,0.95)] bg-white px-1.5 py-1.5 text-left shadow-[0_6px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,64,175,0.1)]"
+                                  className="home-course-card group flex min-h-[7.15rem] flex-col rounded-[0.9rem] border border-[rgba(220,230,248,0.95)] bg-white px-2 py-2 text-left shadow-[0_6px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,64,175,0.1)] min-[480px]:px-1.5 min-[480px]:py-1.5"
                               >
-                                <div className="flex h-[2.15rem] w-[2.15rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f]">
+                                <div className="flex h-[2.15rem] w-[2.15rem] items-center justify-center rounded-full border border-[rgba(37,99,235,0.14)] bg-[linear-gradient(180deg,rgba(232,240,255,0.98),rgba(255,255,255,0.98))] text-[color:var(--brand-primary)] transition group-hover:scale-[1.03]">
                                   <Icon className="size-3.5 stroke-[1.8]" />
                                 </div>
                                 <div className="mt-1.5">
-                                  <p className="font-[family:var(--font-display)] text-[0.66rem] leading-[1] text-[#0f1738]">
+                                  <p className="home-course-card-title text-[0.66rem] leading-[1] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-0.5 text-[0.4rem] font-semibold uppercase tracking-[0.06em] text-[#5d6f99]">
+                                  <p className="mt-0.5 text-[0.4rem] font-semibold uppercase tracking-[0.06em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-1 pt-1.5 text-[0.5rem] font-medium text-[#1d4ed8]">
+                                <div className="mt-auto inline-flex items-center gap-1 pt-1.5 text-[0.5rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                   Explore
-                                  <ArrowRight className="size-2.5 text-[#ff3b30]" />
+                                  <ArrowRight className="size-2.5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                 </div>
                               </button>
                             );
@@ -1916,24 +2015,24 @@ export function HomePage({
                                   key={course.id}
                                   type="button"
                                   onClick={() => router.push(course.href)}
-                                  className="group flex min-h-[20rem] w-[14.75rem] shrink-0 snap-start flex-col rounded-[1.7rem] border border-[rgba(220,230,248,0.95)] bg-white px-6 py-7 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.5rem]"
+                                  className="home-course-card group flex min-h-[20rem] w-[min(14.75rem,calc(100vw-5rem))] shrink-0 snap-start flex-col rounded-[1.7rem] border border-[rgba(220,230,248,0.95)] bg-white px-6 py-7 text-left shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(30,64,175,0.12)] sm:w-[15.5rem]"
                                 >
                                   <div className="flex items-center justify-between gap-3">
-                                    <div className="flex h-[5.3rem] w-[5.3rem] items-center justify-center rounded-full border border-[rgba(248,113,113,0.16)] bg-[linear-gradient(180deg,rgba(254,242,242,1),rgba(254,226,226,0.82))] text-[#ff2f2f] transition group-hover:scale-[1.03]">
+                                    <div className="flex h-[5.3rem] w-[5.3rem] items-center justify-center rounded-full border border-[rgba(37,99,235,0.14)] bg-[linear-gradient(180deg,rgba(232,240,255,0.98),rgba(255,255,255,0.98))] text-[color:var(--brand-primary)] transition group-hover:scale-[1.03]">
                                       <Icon className="size-8 stroke-[1.8]" />
                                     </div>
                                   </div>
                                   <div className="mt-8">
-                                    <p className="font-[family:var(--font-display)] text-[1.2rem] leading-[1.22] text-[#0f1738]">
+                                    <p className="home-course-card-title text-[1.2rem] leading-[1.22] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                       {course.course}
                                     </p>
-                                    <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99]">
+                                    <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                       {course.subtitle}
                                     </p>
                                   </div>
-                                  <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8]">
+                                  <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                     Explore Course
-                                    <ArrowRight className="size-5 text-[#ff3b30] transition group-hover:translate-x-0.5" />
+                                    <ArrowRight className="size-5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                   </div>
                                 </button>
                               );
@@ -1944,7 +2043,7 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTrendingCoursesByCard("left")}
-                              className="absolute left-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              className="absolute left-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
                               aria-label="Scroll trending courses left"
                             >
                               <ChevronLeft className="size-7" />
@@ -1955,7 +2054,7 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTrendingCoursesByCard("right")}
-                              className="absolute right-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 lg:inline-flex"
+                              className="absolute right-[-1.55rem] top-1/2 z-10 hidden h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
                               aria-label="Scroll trending courses right"
                             >
                               <ChevronRight className="size-7" />
@@ -1995,14 +2094,14 @@ export function HomePage({
       </section>
 
       {/* Explore courses and feature highlights section */}
-      <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
-        <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="section-shell page-section !pt-8 bg-white text-slate-800 md:!pt-10">
+        <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6 xl:max-w-[1280px] 2xl:max-w-[1400px] 2xl:px-8">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="scroll-fade-in" data-scroll-animate>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+              <p className="font-[family:var(--font-poppins)] text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Discover Pathways
               </p>
-              <h2 className="section-title mt-3 text-balance">
+              <h2 className="mt-2 max-w-[42rem] text-balance font-[family:var(--font-poppins)] text-[2rem] font-bold leading-tight tracking-[-0.045em] text-[color:var(--text-dark)] md:text-[2.35rem]">
                 Explore courses with clearer decisions and stronger presentation.
               </h2>
             </div>
@@ -2024,20 +2123,20 @@ export function HomePage({
               onScroll={() =>
                 syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
               }
-              className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide"
+              className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide 2xl:gap-5"
             >
               {exploreCourseCards.slice(0, 10).map((course) => {
                 return (
                   <article
                     key={course.id}
-                    className="luxe-card flex h-[19rem] w-[14rem] shrink-0 flex-col p-4 sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem]"
+                    className="home-course-card flex h-[19rem] w-[min(14rem,calc(100vw-2.5rem))] shrink-0 flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff,#f9fbff)] p-4 shadow-[0_14px_30px_rgba(20,42,99,0.07)] sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] 2xl:w-[21rem]"
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                         {course.isTopCourse ? "Top Course" : "Course"}
                       </span>
                     </div>
-                    <h3 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
+                    <h3 className="home-course-card-title mt-4 line-clamp-2 text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
                       {course.course}
                     </h3>
                     <dl className="mt-4 space-y-2 text-sm">
@@ -2057,7 +2156,7 @@ export function HomePage({
                     <button
                       type="button"
                       onClick={() => router.push(course.href)}
-                      className="mt-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-1.5 text-[0.78rem] font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-[#2563eb] hover:shadow-[0_12px_28px_rgba(37,99,235,0.28)] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                      className="mt-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(15,31,82,0.18)] bg-[color:var(--brand-accent-deep)] px-3 py-1.5 text-[0.78rem] font-semibold text-white shadow-[0_10px_24px_rgba(15,31,82,0.18)] transition hover:bg-[color:var(--brand-primary)] hover:shadow-[0_12px_28px_rgba(15,31,82,0.22)] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                     >
                       Course Overview
                       <ArrowRight className="size-3.5 sm:size-4" />
@@ -2148,7 +2247,7 @@ export function HomePage({
                       <article
                         key={college.id}
                         onClick={() => router.push(`/college/${college.id}`)}
-                        className="luxe-card group min-w-[17rem] cursor-pointer overflow-hidden sm:min-w-[20rem]"
+                        className="luxe-card group w-[min(18rem,calc(100vw-2rem))] shrink-0 cursor-pointer overflow-hidden sm:w-[20rem]"
                       >
                         <div className="relative h-44 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2172,7 +2271,7 @@ export function HomePage({
                             </div>
                             <div className="rounded-2xl bg-[rgba(16,37,78,0.08)] px-3 py-2 text-right">
                               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Placement</p>
-                              <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate}%</p>
+                              <p className="text-base font-bold text-[color:var(--brand-primary)]">{college.placementRate > 0 ? `${college.placementRate}%` : "N/A"}</p>
                             </div>
                           </div>
 
@@ -2223,9 +2322,9 @@ export function HomePage({
       }
 
       {/* Newsletter section */}
-      <section className="section-shell page-section bg-[color:var(--surface-base)] text-slate-800">
-        <div className="page-container-full relative z-10 max-w-[1300px]">
-          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 scroll-scale-in" data-scroll-animate>
+      <section className="section-shell bg-[color:var(--surface-base)] pt-4 pb-12 text-slate-800 md:pt-5 md:pb-14">
+        <div className="page-container-full relative z-10 max-w-[1300px] 2xl:max-w-[1480px] 2xl:px-8">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 xl:max-w-5xl 2xl:max-w-6xl 2xl:p-10 scroll-scale-in" data-scroll-animate>
             <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.28)] blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />
             <div className="relative z-10 mx-auto max-w-2xl text-center">
@@ -2240,7 +2339,7 @@ export function HomePage({
               </p>
             </div>
 
-            <form className="relative z-10 mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <form className="relative z-10 mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 2xl:max-w-6xl">
               <div className="rounded-[1.4rem] border border-[rgba(15,76,129,0.2)] bg-[linear-gradient(180deg,#ffffff,#f7f9ff)] px-4 py-2 shadow-[0_12px_26px_rgba(16,37,78,0.12)] transition focus-within:border-[rgba(15,76,129,0.4)] focus-within:ring-4 focus-within:ring-[rgba(14,116,144,0.16)]">
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Email</label>
                 <div className="flex items-center gap-2">
@@ -2285,6 +2384,34 @@ export function HomePage({
           </div>
         </div>
       </section>
+
+      <button
+        type="button"
+        onClick={() => router.push("/find")}
+        aria-label="Open cutoff calculator"
+        className="
+          cutoff-calculator-float
+          fixed bottom-4 right-4 z-50
+          flex h-15 w-15 items-center justify-center
+          rounded-full
+          border border-[rgba(255,255,255,0.36)]
+          bg-[linear-gradient(135deg,#2563eb_0%,#142a63_100%)]
+          p-0
+          text-xs font-extrabold tracking-[0.04em] text-white
+          shadow-[0_18px_34px_rgba(20,42,99,0.34)]
+          ring-4 ring-[rgba(37,99,235,0.16)]
+          backdrop-blur-sm
+          sm:bottom-auto sm:right-0 sm:top-1/2 sm:-translate-y-1/2
+          sm:h-auto sm:w-auto
+          sm:ring-0
+          sm:rounded-l-[1rem] sm:rounded-r-none
+          sm:px-3 sm:py-3.5 sm:text-sm
+          [writing-mode:horizontal-tb] sm:[writing-mode:vertical-rl]
+        "
+      >
+        <Calculator className="size-6 drop-shadow-[0_4px_10px_rgba(255,255,255,0.22)] sm:hidden" />
+        <span className="hidden sm:inline">Cutoff Calculator</span>
+      </button>
     </div>
   );
 }

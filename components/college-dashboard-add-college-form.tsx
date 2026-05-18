@@ -264,6 +264,7 @@ const mapExistingCourseToDraft = (course: Record<string, unknown>): CourseDraft 
   const collegeDetails = Array.isArray(course.collegeDetails) ? course.collegeDetails[0] as Record<string, unknown> : null;
   const normalizedCutoffs = normalizeCategoryCutoffsWithFallback(
     Array.isArray(collegeDetails?.cutoffByCategory) && collegeDetails.cutoffByCategory.length > 0
+      
       ? collegeDetails.cutoffByCategory
       : course.cutoffByCategory,
     String(collegeDetails?.cutoff ?? course.cutoff ?? ""),
@@ -412,7 +413,7 @@ const buildForm = (college: Record<string, unknown> | null, user: SafeAuthUser |
     logo: text(college, "logo"), coverImage: text(college, "image"), images: toList(college?.images), brochurePdfUrl: text(college, "brochurePdfUrl") || text(college, "brochureUrl"), campusVideoUrl: text(college, "campusVideoUrl"),
     ranking: formatRankingRangeForSave(college?.ranking as string | number | undefined), accreditation: text(college, "accreditation"), awardsRecognitions: text(college, "awardsRecognitions"), reviews: text(college, "reviews"), courseTags: toList(college?.courseTags).join(", "),
     isTopCollege: Boolean(college?.isTopCollege), isBestCollege: Boolean(college?.isBestCollege), facilities: toList(college?.facilities).join(", "), quotas: toList(college?.quotas).join(", "), feeMin: String(fees.min || ""), feeMax: String(fees.max || ""), admissionProcess: text(college, "admissionProcess"), applicationMode: text(college, "applicationMode"), scholarships: text(college, "scholarships"),
-    averagePackage: String(placements.averagePackage || ""), highestPackage: String(placements.highestPackage || ""), placementRate: String(placements.placementRate || college?.placementRate || ""), companyCount: String(placements.companiesVisited || college?.companiesVisited || ""),
+    averagePackage: String(placements.averagePackage || ""), highestPackage: String(placements.highestPackage || ""), placementRate: String(placements.placementRate ?? college?.placementRate ?? ""), companyCount: String(placements.companiesVisited || college?.companiesVisited || ""),
     hostelAvailability, hostelType: String(hostel.hostelType || ""), hostelFeeMin: String(hostelFees.min || hostelFees.minAmount || ""), hostelFeeMax: String(hostelFees.max || hostelFees.maxAmount || ""), cctvAvailable: String(hostel.cctvAvailable || ""), hostelFacilityOptions: toList(hostelFacilities).join(", "), waterAvailability: String(hostel.waterAvailability || ""), powerBackup: String(hostel.powerBackup || ""), wifiAvailable: String(wifi.available || ""), wifiSpeed: String(wifi.speed || ""), wifiPricing: String(wifi.pricing || ""), foodAvailability: String(hostel.foodAvailability || ""), foodTimings: String(hostel.foodTimings || ""), laundryService: String(hostel.laundryService || ""), roomCleaningFrequency: String(hostel.roomCleaningFrequency || ""), hostelRules: String(hostel.rules || ""),
   };
 };

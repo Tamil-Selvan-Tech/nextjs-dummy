@@ -23,7 +23,7 @@ export function BrandLogo({
     <div
       role="img"
       aria-label={alt}
-      className={`inline-flex items-center gap-2 font-extrabold leading-none tracking-normal ${sizeClass} ${className}`}
+      className={`inline-flex items-center gap-2 font-[family:var(--font-poppins)] font-extrabold leading-none tracking-normal ${sizeClass} ${className}`}
     >
       <GraduationCap className={`${iconClass} text-[#f4ae35] ${iconClassName}`} strokeWidth={2.2} />
       <span className="inline-flex items-baseline gap-2 whitespace-nowrap">

@@ -49,6 +49,44 @@ const toList = (value: unknown) => {
     .filter(Boolean);
 };
 
+const splitMultilineValues = (value: unknown) =>
+  String(value || "")
+    .split(/\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const parseStructuredPlacements = (value: unknown) => {
+  const base = {
+    highestPackage: "",
+    placementRate: "",
+    averagePackage: "",
+    companiesVisited: "",
+  };
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    return {
+      highestPackage: String(record.highestPackage ?? "").trim(),
+      placementRate: String(record.placementRate ?? "").trim(),
+      averagePackage: String(record.averagePackage ?? "").trim(),
+      companiesVisited: String(record.companiesVisited ?? record.companyCount ?? "").trim(),
+    };
+  }
+
+  const lines = splitMultilineValues(value);
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    const valueText = line.split(/[:-]/).slice(1).join("-").trim();
+    if (!valueText) continue;
+    if (lower.includes("highest")) base.highestPackage = valueText;
+    if (lower.includes("placement")) base.placementRate = valueText;
+    if (lower.includes("average")) base.averagePackage = valueText;
+    if (lower.includes("companies")) base.companiesVisited = valueText;
+  }
+
+  return base;
+};
+
 const normalizeCutoffCategory = (value: unknown) => {
   const normalized = normalizeText(String(value || "")).replace(/[^a-z0-9]/g, "");
   if (!normalized) return "";
@@ -388,16 +426,15 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
 
     const resolvedImage = String(item.image || "").trim();
 
-    const rawPlacements =
-      item.placements && typeof item.placements === "object" ? item.placements : {};
-    const highestPackage =
-      (rawPlacements as Record<string, unknown>).highestPackage ?? item.highestPackage ?? "";
-    const averagePackage =
-      (rawPlacements as Record<string, unknown>).averagePackage ?? item.averagePackage ?? "";
+    const hasPlacementsSource = item.placements !== undefined && item.placements !== null;
+    const parsedPlacements = parseStructuredPlacements(item.placements);
+    const highestPackage = parsedPlacements.highestPackage || String(item.highestPackage ?? "").trim();
+    const averagePackage = parsedPlacements.averagePackage || String(item.averagePackage ?? "").trim();
     const companiesVisited =
-      (rawPlacements as Record<string, unknown>).companiesVisited ?? item.companiesVisited ?? "";
-    const placementRate =
-      (rawPlacements as Record<string, unknown>).placementRate ?? item.placementRate ?? "";
+      parsedPlacements.companiesVisited || String(item.companiesVisited ?? "").trim();
+    const placementRate = hasPlacementsSource
+      ? parsedPlacements.placementRate
+      : String(item.placementRate ?? "").trim();
     const rawHostelDetails =
       item.hostelDetails && typeof item.hostelDetails === "object" ? item.hostelDetails : {};
     const hasHostel =
@@ -459,8 +496,11 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       feesStructure:
         item.feesStructure && typeof item.feesStructure === "object" ? item.feesStructure : {},
       placements: {
-        ...(rawPlacements as Record<string, unknown>),
+        ...(item.placements && typeof item.placements === "object" && !Array.isArray(item.placements)
+          ? (item.placements as Record<string, unknown>)
+          : {}),
         highestPackage,
+        placementRate,
         averagePackage,
         companiesVisited,
       },

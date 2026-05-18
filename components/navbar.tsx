@@ -7,7 +7,6 @@ import {
   Compass,
   Globe2,
   ChevronDown,
-  CircleHelp,
   LayoutDashboard,
   LogIn,
   Menu,
@@ -61,17 +60,19 @@ const getMountSnapshot = () => true;
 const getMountServerSnapshot = () => false;
 
 const navbarThemeStyles = {
-  "--brand-primary": "#1e4e79",
-  "--brand-primary-soft": "#2f6aa3",
-  "--brand-accent": "#ef4444",
-  "--brand-accent-deep": "#dc2626",
+  "--brand-primary": "#2563eb",
+  "--brand-primary-soft": "#3b82f6",
+  "--brand-accent": "#2563eb",
+  "--brand-accent-deep": "#1d4ed8",
   "--brand-support": "#2563eb",
+
   "--surface-base": "#ffffff",
-  "--surface-muted": "#ffffff",
-  "--surface-soft": "#ffffff",
-  "--page-bg": "#ffffff",
-  "--text-dark": "#0f172a",
-  "--text-muted": "#475569",
+  "--surface-muted": "#f8fbff",
+  "--surface-soft": "#eef4ff",
+  "--page-bg": "#f9fbff",
+
+  "--text-dark": "#1e293b",
+  "--text-muted": "#64748b",
 } as CSSProperties;
 
 const BACK_BUTTON_UNDER_NAV_ROUTES = new Set([
@@ -142,6 +143,7 @@ export function Navbar() {
   const [, setIsCoursesCueDimmed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isPreferenceModalOpen, setIsPreferenceModalOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [courseSearch, setCourseSearch] = useState("");
   const [studyPreference, setStudyPreference] = useState(defaultStudyPreference);
   const currentUserRaw = useSyncExternalStore(
@@ -168,6 +170,9 @@ export function Navbar() {
   const isAdminUser = currentUser?.role === "admin";
   const accountHref = isAdminUser ? "/admin" : isCollegeUser ? "/college-dashboard" : "/account";
   const accountLabel = isAdminUser ? "Admin" : "Account";
+  const logoutAvatarInitial = isAdminUser
+    ? "A"
+    : currentUser?.name?.trim().charAt(0)?.toUpperCase() || (isCollegeUser ? "C" : "S");
   const isServicesRoute = pathname?.startsWith("/services") ?? false;
   const hideBackButton =
     pathname === "/" ||
@@ -184,7 +189,6 @@ export function Navbar() {
     pathname?.startsWith("/college/") ||
     pathname?.startsWith("/exams/") ||
     pathname?.startsWith("/compare") ||
-    pathname?.startsWith("/cutoff") ||
     isServicesRoute ||
     (pathname !== "/find" && BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname));
   const visibleStudyPreference = hasMounted ? readStudyPreference() : studyPreference;
@@ -316,20 +320,6 @@ export function Navbar() {
       iconClassName: item.navIconClassName,
     })),
     {
-      label: "Careers",
-      title: "Careers",
-      href: "/careers",
-      icon: Rocket,
-      iconClassName: "text-[#8b5cf6]",
-    },
-    {
-      label: "About",
-      title: "About Us",
-      href: "/about-us",
-      icon: CircleHelp,
-      iconClassName: "text-[#ef4444]",
-    },
-    {
       label: "Explore",
       title: "Explore",
       href: "/explore",
@@ -354,12 +344,11 @@ export function Navbar() {
   ];
   return (
     <header
-      className="page-container-full relative z-30 pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
+      className="page-container-full relative z-30 max-w-[96rem] pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
       style={navbarThemeStyles}
     >
       {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
-      <div className="mr-1 rounded-[1.75rem] border border-[rgba(30,78,121,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,255,0.98))] px-2 py-3 shadow-[0_16px_40px_rgba(30,78,121,0.12)] md:px-4 lg:px-5">
-        <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
+<div className="rounded-[1.75rem] border border-[#dbeafe] bg-white px-2 py-3 shadow-[0_8px_30px_rgba(37,99,235,0.08)] md:px-4 lg:px-5">        <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
           <Link
             href="/"
             className="rounded-full px-1.5 py-1 shadow-[0_10px_24px_rgba(37,99,235,0.08),0_0_18px_rgba(255,255,255,0.75)] transition hover:opacity-80"
@@ -367,24 +356,22 @@ export function Navbar() {
             <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[17px] md:text-[18px]" iconClassName="size-5 drop-shadow-[0_4px_8px_rgba(245,158,11,0.2)] sm:size-[1.35rem] md:size-6" />
           </Link>
 
-              <button
+          <button
                 type="button"
                 onClick={openPreferenceModal}
-            className="hidden min-w-[270px] rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-6 py-2.5 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:ml-3 md:flex md:flex-col lg:ml-5"
-          >
+className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4 py-2.5 text-left transition hover:bg-[#eef4ff] md:ml-2 md:flex md:w-full md:max-w-[13.5rem] md:flex-col lg:ml-3 lg:max-w-[14.5rem] xl:max-w-[15.5rem]"          >
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
               City
             </div>
             <div className="flex items-center gap-1 text-sm font-medium text-[color:var(--text-dark)]">
-              {visibleStudyPreference.city} / {visibleStudyPreference.college}
-              <ChevronDown className="size-4" />
+              <span className="truncate">{visibleStudyPreference.city} / {visibleStudyPreference.college}</span>
+              <ChevronDown className="size-4 shrink-0" />
             </div>
           </button>
 
-          <div className="order-3 hidden min-w-0 flex-1 items-center justify-center md:order-none md:flex md:px-1 lg:px-3">
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {desktopPrimaryNavItems.map((item) => {
+          <div className="order-3 hidden min-w-0 flex-1 items-center justify-start md:order-none md:flex md:px-0 md:pl-0 lg:px-0 lg:pl-1">
+<div className="order-3 hidden min-w-0 flex-1 items-center justify-start md:order-none md:flex md:px-0 md:pl-2 lg:pl-4">              {desktopPrimaryNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isDesktopNavItemActive(item.href);
 
@@ -393,16 +380,21 @@ export function Navbar() {
                     key={item.href}
                     type="button"
                     onClick={() => goTo(item.href)}
-                    className={`group inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
-                      isActive
-                        ? "bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]"
-                        : "text-[color:var(--text-muted)] hover:bg-[rgba(15,76,129,0.05)] hover:text-[color:var(--text-dark)]"
-                    }`}
+                    className={`group relative inline-flex min-w-[4.9rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.1rem] px-2 py-2.5 text-center transition lg:min-w-[5.3rem] lg:px-2.5 xl:min-w-[5.6rem] xl:px-3 ${
+  isActive
+    ? "bg-[#f3f7ff] text-[color:var(--text-dark)] shadow-[0_6px_18px_rgba(37,99,235,0.10)]"
+    : "text-[color:var(--text-muted)] hover:bg-[#f8fbff] hover:text-[color:var(--text-dark)]"
+}`}
                     aria-label={item.title}
                     title={item.title}
                   >
-                    <Icon className={`size-4 shrink-0 ${item.iconClassName}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`size-[1.05rem] shrink-0 transition group-hover:scale-105 lg:size-[1.15rem] ${item.iconClassName}`} />
+                    <span className="text-[11px] font-medium leading-none lg:text-[12px] xl:text-[13px]">{item.title}</span>
+                    <span
+                      className={`absolute bottom-0 left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-full bg-[#2563eb] transition-all duration-200 ${
+                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    />
                   </button>
                 );
               })}
@@ -410,13 +402,6 @@ export function Navbar() {
           </div>
 
           <div className="ml-auto hidden items-center gap-3 text-sm md:flex lg:gap-4">
-            <button
-              type="button"
-              className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white p-2 hover:bg-[rgba(15,76,129,0.04)]"
-              aria-label="Notifications"
-            >
-              <Bell className="size-4" />
-            </button>
             <div ref={accountMenuRef} className="relative z-30">
               <button
                 type="button"
@@ -446,7 +431,7 @@ export function Navbar() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                       className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[color:var(--text-dark)] transition hover:bg-[rgba(255,138,61,0.08)]"
                     >
                       <LogIn className="size-4 text-[color:var(--brand-accent-deep)]" />
@@ -492,8 +477,7 @@ export function Navbar() {
         <button
           type="button"
           onClick={openPreferenceModal}
-          className="mt-3 flex w-full rounded-[1.2rem] border border-[rgba(15,76,129,0.1)] bg-white px-4 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)] md:hidden"
-        >
+className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-left transition hover:bg-[#eef4ff] md:hidden"        >
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
@@ -519,8 +503,7 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
-          className="peer w-full shrink-0 rounded-full border border-[rgba(239,68,68,0.35)] bg-white px-4 py-2 font-semibold shadow-[0_10px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(239,68,68,0.65)] hover:bg-[rgba(239,68,68,0.06)] md:w-auto md:py-1.5"
-        >
+ className="peer w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:w-auto md:min-w-[130px] md:py-2.5"     >
           All Courses
         </button>
         <div className="breaking-news-shell min-w-0 w-full flex-1">
@@ -584,8 +567,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className="rounded-full border border-[rgba(15,76,129,0.25)] p-2 text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.06)]"
-                aria-label="Close menu"
+className="rounded-full border border-[#dbeafe] bg-white p-2 transition hover:bg-[#f3f7ff]"                aria-label="Close menu"
               >
                 <X className="size-4" />
               </button>
@@ -652,7 +634,10 @@ export function Navbar() {
                   </Link>
                   <button
                     type="button"
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      setShowLogoutConfirm(true);
+                    }}
                     className="flex w-full items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
                   >
                     <LogIn className="size-4" />
@@ -681,23 +666,86 @@ export function Navbar() {
           </aside>
         </div>
       ) : null}
+{/* LOGOUT POPUP */}
 
-      {isPreferenceModalOpen ? (
-        <StudyPreferenceModal
-          key={`${visibleStudyPreference.city}-${visibleStudyPreference.college}`}
-          isOpen={isPreferenceModalOpen}
-          selectedCity={visibleStudyPreference.city}
-          selectedCollege={visibleStudyPreference.college}
-          onClose={() => setIsPreferenceModalOpen(false)}
-          onApply={handleApplyPreference}
-        />
-      ) : null}
+{showLogoutConfirm ? (
+  <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+
+    <div className="relative w-full max-w-[470px] rounded-[2rem] bg-white px-6 py-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] animate-in fade-in zoom-in-95 duration-200">
+
+      {/* CLOSE BUTTON */}
+
+      <button
+        type="button"
+        onClick={() => setShowLogoutConfirm(false)}
+        className="absolute right-5 top-5 flex size-8 items-center justify-center rounded-full transition hover:bg-slate-100"
+      >
+        <X className="size-4 text-slate-500" />
+      </button>
+
+      {/* TOP SECTION */}
+
+      <div className="flex items-center gap-4">
+
+        {/* AVATAR LETTER */}
+
+        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#60a5fa)] text-2xl font-extrabold text-white shadow-lg">
+          {logoutAvatarInitial}
+        </div>
+
+        {/* TEXT */}
+
+        <div>
+          <h2 className="text-[2rem] font-extrabold leading-none text-slate-900">
+            Logout
+          </h2>
+
+          <p className="mt-2 text-base font-medium text-slate-500">
+            {isAdminUser
+              ? "Admin"
+              : currentUser?.name || "Student"}
+          </p>
+        </div>
+      </div>
+
+      {/* DESCRIPTION */}
+
+      <p className="mt-7 text-[1rem] leading-7 text-slate-600">
+        Are you sure you want to logout from your account?
+      </p>
+
+      {/* BUTTONS */}
+
+      <div className="mt-8 flex items-center justify-end gap-3">
+
+        <button
+          type="button"
+          onClick={() => setShowLogoutConfirm(false)}
+          className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-base font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowLogoutConfirm(false);
+            handleLogout();
+          }}
+          className="rounded-2xl bg-[#ff3347] px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-[#eb2237]"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
 
       {isCoursesOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/35 backdrop-blur-[2px]">
           <div
             ref={panelRef}
-            className="fixed left-0 top-0 z-[1601] h-screen w-[84vw] max-w-[18rem] overflow-hidden border-r border-[#d9cfbf] bg-[linear-gradient(180deg,#fffdf8,#f6efe2)] text-slate-800 shadow-2xl sm:w-[19rem] sm:max-w-[19rem]"
+            className="fixed left-0 top-0 z-[1601] h-screen w-full max-w-[20rem] overflow-hidden border-r border-[#d9cfbf] bg-[linear-gradient(180deg,#fffdf8,#f6efe2)] text-slate-800 shadow-2xl sm:w-[19rem]"
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h3 className="font-[family:var(--font-display)] text-3xl font-bold text-gray-800">All Courses</h3>

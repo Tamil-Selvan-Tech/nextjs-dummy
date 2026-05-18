@@ -92,7 +92,7 @@ const comparisonPairs = [
   { label: "Location", value: (college: College) => `${college.district}, ${college.state}` },
   { label: "Established Year", value: (college: College) => college.establishedYear || "-" },
   { label: "Ownership Type", value: (college: College) => college.ownershipType || "-" },
-  { label: "Placement Rate", value: (college: College) => `${college.placementRate || 0}%` },
+  { label: "Placement Rate", value: (college: College) => (college.placementRate > 0 ? `${college.placementRate}%` : "N/A") },
   { label: "Hostel", value: (college: College) => (college.hasHostel ? "Available" : "Not Available") },
 ];
 
@@ -492,7 +492,7 @@ function ComparePageContent() {
                           Placement
                         </p>
                         <p className="mt-2 font-bold text-[color:var(--text-dark)]">
-                          {college.placementRate}%
+                          {college.placementRate > 0 ? `${college.placementRate}%` : "N/A"}
                         </p>
                       </div>
                     </div>

@@ -171,7 +171,7 @@ export function PopularComparisons({
                   key={`popular-compare-${selectedCollege.id}-${college.id}`}
                   type="button"
                   onClick={() => onSelectComparison?.(selectedCollege, college)}
-                  className="group h-full w-[calc(100vw-4rem)] max-w-[22rem] shrink-0 snap-start rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-4 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] sm:min-w-[18.5rem] sm:max-w-none sm:p-5 md:w-[19rem] md:flex-1 md:snap-none"
+                  className="group h-full w-[min(18rem,calc(100vw-2rem))] max-w-full shrink-0 snap-start rounded-[1.25rem] border border-[rgba(15,76,129,0.12)] bg-white p-4 text-left shadow-[0_12px_26px_rgba(22,50,79,0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.35)] sm:w-[18.5rem] sm:p-5 md:w-[19rem] md:flex-1 md:snap-none"
                 >
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                     <CollegeLogoBadge
@@ -212,7 +212,7 @@ export function PopularComparisons({
                       </div>
                       <div className="mt-2 space-y-1 text-[11.5px] text-slate-600">
                         <p><span className="font-semibold text-slate-700">Fees:</span> {leftInfo.fees}</p>
-                        <p><span className="font-semibold text-slate-700">Placement:</span> {selectedCollege.placementRate}%</p>
+                        <p><span className="font-semibold text-slate-700">Placement:</span> {selectedCollege.placementRate > 0 ? `${selectedCollege.placementRate}%` : "N/A"}</p>
                       </div>
                     </div>
                     <div className="flex h-full flex-col rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-3 py-3 text-[12px] text-slate-600">
@@ -226,7 +226,7 @@ export function PopularComparisons({
                       </div>
                       <div className="mt-2 space-y-1 text-[11.5px] text-slate-600">
                         <p><span className="font-semibold text-slate-700">Fees:</span> {rightInfo.fees}</p>
-                        <p><span className="font-semibold text-slate-700">Placement:</span> {college.placementRate}%</p>
+                        <p><span className="font-semibold text-slate-700">Placement:</span> {college.placementRate > 0 ? `${college.placementRate}%` : "N/A"}</p>
                       </div>
                     </div>
                   </div>
