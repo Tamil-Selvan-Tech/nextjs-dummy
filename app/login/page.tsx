@@ -13,7 +13,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import Script from "next/script";
+import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   persistAuth,
@@ -43,6 +44,46 @@ const accountModes = {
       "border-[rgba(15,124,116,0.14)] bg-[rgba(15,124,116,0.08)] text-[color:var(--brand-support)]",
   },
 } as const;
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+type GoogleButtonConfiguration = {
+  theme?: "outline" | "filled_blue" | "filled_black";
+  size?: "large" | "medium" | "small";
+  text?:
+    | "signin_with"
+    | "signup_with"
+    | "continue_with"
+    | "signin"
+    | "continue";
+  shape?: "rectangular" | "pill" | "circle" | "square";
+  width?: number;
+  logo_alignment?: "left" | "center";
+};
+
+type GoogleIdConfiguration = {
+  client_id: string;
+  callback: (response: GoogleCredentialResponse) => void;
+};
+
+type GoogleAccountsIdApi = {
+  initialize: (config: GoogleIdConfiguration) => void;
+  renderButton: (parent: HTMLElement, options: GoogleButtonConfiguration) => void;
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: GoogleAccountsIdApi;
+      };
+    };
+  }
+}
 
 function StudentIllustration() {
   return (
@@ -98,12 +139,19 @@ function LoginPageContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGoogleScriptReady, setIsGoogleScriptReady] = useState(false);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   useStatusToast(status);
 
   const mode = accountModes[accountType];
   const Illustration = accountType === "college" ? CollegeIllustration : StudentIllustration;
   const signupHref = useMemo(() => `/signup?type=${accountType}`, [accountType]);
+  const defaultRedirect = useMemo(
+    () => (accountType === "college" ? "/college-dashboard" : "/account"),
+    [accountType],
+  );
   const currentRoute = useMemo(() => {
     if (!pathname) return "/";
     const query = searchParams.toString();
@@ -123,6 +171,102 @@ function LoginPageContent() {
     }
     router.replace("/account");
   }, [router]);
+
+  const redirectToOtpStep = (otpEmail: string, role: string) => {
+    persistPendingOtpLogin({
+      email: otpEmail,
+      role,
+      accountType,
+    });
+    const params = new URLSearchParams();
+    params.set("type", accountType);
+    params.set("email", otpEmail);
+    const redirect = searchParams.get("redirect");
+    if (redirect && redirect.startsWith("/")) {
+      params.set("redirect", redirect);
+    } else {
+      params.set("redirect", defaultRedirect);
+    }
+    router.push(`/login-otp?${params.toString()}`);
+  };
+
+  const handleGoogleCredentialResponse = useEffectEvent(
+    async (googleResponse: GoogleCredentialResponse) => {
+      const credential = String(googleResponse?.credential || "").trim();
+      if (!credential) {
+        setStatus({
+          type: "error",
+          text: "Google sign-in did not return a valid credential.",
+        });
+        return;
+      }
+
+      setStatus(null);
+      setIsGoogleLoading(true);
+
+      try {
+        const data = await request<{
+          message?: string;
+          requiresOtp?: boolean;
+          email?: string;
+          role?: string;
+        }>("/api/users/login/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential, accountType }),
+        });
+
+        if (data.requiresOtp && data.email && data.role) {
+          redirectToOtpStep(data.email, data.role);
+          return;
+        }
+
+        setStatus({
+          type: "error",
+          text: data.message || "Google sign-in could not continue.",
+        });
+      } catch (error) {
+        setStatus({
+          type: "error",
+          text: error instanceof Error ? error.message : "Google sign-in failed.",
+        });
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+  );
+
+  useEffect(() => {
+    if (window.google?.accounts?.id) {
+      setIsGoogleScriptReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId || !isGoogleScriptReady || !googleButtonRef.current) {
+      return;
+    }
+
+    const googleAccountsId = window.google?.accounts?.id;
+    if (!googleAccountsId) {
+      return;
+    }
+
+    googleAccountsId.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredentialResponse,
+    });
+
+    googleButtonRef.current.innerHTML = "";
+    googleAccountsId.renderButton(googleButtonRef.current, {
+      theme: "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "pill",
+      width: Math.max(280, Math.min(360, googleButtonRef.current.offsetWidth || 360)),
+      logo_alignment: "left",
+    });
+  }, [isGoogleScriptReady]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -154,23 +298,7 @@ function LoginPageContent() {
       }
 
       if (data.requiresOtp) {
-        persistPendingOtpLogin({
-          email: data.email,
-          role: data.role,
-          accountType,
-        });
-        const params = new URLSearchParams();
-        params.set("type", accountType);
-        params.set("email", data.email);
-        const redirect = searchParams.get("redirect");
-        if (redirect && redirect.startsWith("/")) {
-          params.set("redirect", redirect);
-        } else if (accountType === "college") {
-          params.set("redirect", "/college-dashboard");
-        } else {
-          params.set("redirect", "/account");
-        }
-        router.push(`/login-otp?${params.toString()}`);
+        redirectToOtpStep(data.email, data.role);
         return;
       }
 
@@ -363,10 +491,50 @@ function LoginPageContent() {
                   Create one
                 </Link>
               </p>
+              <div className="mt-5">
+                <div className="relative mb-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-3 text-[color:var(--text-muted)]">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.1rem] border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                  {googleClientId ? (
+                    <div
+                      ref={googleButtonRef}
+                      className={`flex min-h-11 items-center justify-center ${isGoogleLoading ? "pointer-events-none opacity-70" : ""}`}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex w-full items-center justify-center rounded-[1.1rem] px-5 py-3 text-sm font-semibold text-gray-400"
+                    >
+                      Google login not configured
+                    </button>
+                  )}
+                </div>
+
+                <p className="mt-3 text-center text-xs text-[color:var(--text-muted)]">
+                  OTP will be sent to the same Google email after sign-in.
+                </p>
+              </div>
             </div>
           </main>
         </div>
       </div>
+      {googleClientId ? (
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+          onLoad={() => setIsGoogleScriptReady(true)}
+        />
+      ) : null}
     </section>
   );
 }

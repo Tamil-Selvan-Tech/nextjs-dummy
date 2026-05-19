@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -23,9 +24,10 @@
   --container-max: 1180px;
   --container-max-wide: 1320px;
   --font-body: "Poppins", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Poppins", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Montserrat", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-inter: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-manrope: "Manrope", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-montserrat: "Montserrat", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-poppins: "Poppins", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --text-h1: clamp(1.75rem, 3.4vw, 2.9rem);
   --text-h2: clamp(1.5rem, 2.5vw, 2.4rem);
@@ -82,7 +84,6 @@ body {
 }
 
 .home-theme p,
-.home-theme span,
 .home-theme a,
 .home-theme li,
 .home-theme label,
@@ -104,16 +105,117 @@ body {
 .home-theme h4,
 .home-theme h5,
 .home-theme h6 {
-  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-theme h1 span,
+.home-theme h2 span,
+.home-theme h3 span,
+.home-theme h4 span,
+.home-theme h5 span,
+.home-theme h6 span {
+  font-family: inherit;
+}
+
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).type-headline-large,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).type-headline-small,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).type-title-medium,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).section-title,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).display-title,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).home-section-title,
+.home-theme :is(p, h1, h2, h3, h4, h5, h6).home-course-card-title {
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-theme [class*="font-[family:var(--font-display)]"] {
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.home-theme [class*="font-[family:var(--font-display)]"] * {
+  font-family: inherit;
+}
+
+.type-headline-large {
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 38px;
+  letter-spacing: -0.04em;
+}
+
+.type-headline-small {
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+  letter-spacing: -0.03em;
+}
+
+.type-title-medium {
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 25px;
+}
+
+.type-body-large {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.type-body-small {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+}
+
+.type-label-bold {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.type-caption {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+}
+
+.type-caption-small {
+  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.font-montserrat-display {
+  font-family: var(--font-montserrat), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.home-theme .font-montserrat-display,
+.home-theme .font-montserrat-display *,
+.home-theme .font-montserrat-display span {
+  font-family: var(--font-montserrat), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .home-hero-title {
-  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
-  font-weight: 800;
+  font-family: var(--font-montserrat), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 700;
+}
+
+.home-theme .home-hero-title,
+.home-theme .home-hero-title *,
+.home-theme .home-hero-title span {
+  font-family: var(--font-montserrat), "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
 .home-section-title {
-  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
   font-weight: 700;
 }
 
@@ -122,8 +224,8 @@ body {
 }
 
 .home-course-card-title {
-  font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
-  font-weight: 500;
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-weight: 600;
 }
 
 .site-footer {
@@ -138,7 +240,7 @@ body {
 .site-footer h4,
 .site-footer h5,
 .site-footer h6 {
-  font-family: var(--font-poppins), "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
 .loading-core-float {
@@ -316,16 +418,17 @@ button,
 .section-title {
   color: var(--text-dark);
   font-family: var(--font-display);
-  font-size: var(--text-h2);
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.08;
+  line-height: 26px;
 }
 
 .display-title {
   font-family: var(--font-display);
-  font-size: var(--text-h1);
-  line-height: 1.06;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 38px;
   letter-spacing: -0.04em;
 }
 
@@ -1153,6 +1256,16 @@ button,
 
   .display-title {
     line-height: 1.12;
+  }
+
+  .type-headline-large {
+    font-size: 30px;
+    line-height: 36px;
+  }
+
+  .type-title-medium {
+    font-size: 17px;
+    line-height: 24px;
   }
 
   .editorial-kicker {

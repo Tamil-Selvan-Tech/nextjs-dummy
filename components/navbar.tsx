@@ -22,7 +22,6 @@ import type { CSSProperties } from "react";
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { PageBackButton } from "@/components/global-back-button";
-import { StudyPreferenceModal } from "@/components/study-preference-modal";
 import {
   clearAuth,
   CURRENT_USER_KEY,
@@ -348,18 +347,21 @@ export function Navbar() {
       style={navbarThemeStyles}
     >
       {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
-<div className="rounded-[1.75rem] border border-[#dbeafe] bg-white px-2 py-3 shadow-[0_8px_30px_rgba(37,99,235,0.08)] md:px-4 lg:px-5">        <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
+      <div className="rounded-[1.75rem] border border-[#dbeafe] bg-white px-2 py-3 shadow-[0_8px_30px_rgba(37,99,235,0.08)] md:px-4 lg:px-5">
+        <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
           <Link
             href="/"
             className="rounded-full px-1.5 py-1 shadow-[0_10px_24px_rgba(37,99,235,0.08),0_0_18px_rgba(255,255,255,0.75)] transition hover:opacity-80"
           >
-            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[16px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[17px] md:text-[18px]" iconClassName="size-5 drop-shadow-[0_4px_8px_rgba(245,158,11,0.2)] sm:size-[1.35rem] md:size-6" />
+            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[17px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[18px] md:text-[19px]" iconClassName="h-11 w-11 drop-shadow-[0_8px_18px_rgba(245,158,11,0.22)] sm:h-12 sm:w-12 md:h-[3.15rem] md:w-[3.15rem]" />
           </Link>
 
+          {/* Study preference chip hidden as requested
           <button
-                type="button"
-                onClick={openPreferenceModal}
-className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4 py-2.5 text-left transition hover:bg-[#eef4ff] md:ml-2 md:flex md:w-full md:max-w-[13.5rem] md:flex-col lg:ml-3 lg:max-w-[14.5rem] xl:max-w-[15.5rem]"          >
+            type="button"
+            onClick={openPreferenceModal}
+            className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4 py-2.5 text-left transition hover:bg-[#eef4ff] md:ml-2 md:flex md:w-full md:max-w-[13.5rem] md:flex-col lg:ml-3 lg:max-w-[14.5rem] xl:max-w-[15.5rem]"
+          >
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
               City
@@ -369,9 +371,10 @@ className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4
               <ChevronDown className="size-4 shrink-0" />
             </div>
           </button>
+          */}
 
-          <div className="order-3 hidden min-w-0 flex-1 items-center justify-start md:order-none md:flex md:px-0 md:pl-0 lg:px-0 lg:pl-1">
-<div className="order-3 hidden min-w-0 flex-1 items-center justify-start md:order-none md:flex md:px-0 md:pl-2 lg:pl-4">              {desktopPrimaryNavItems.map((item) => {
+          <div className="order-3 hidden min-w-0 flex-1 items-center justify-center md:order-none md:flex md:px-0 md:pl-2 lg:pl-4">
+            {desktopPrimaryNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isDesktopNavItemActive(item.href);
 
@@ -389,7 +392,7 @@ className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4
                     title={item.title}
                   >
                     <Icon className={`size-[1.05rem] shrink-0 transition group-hover:scale-105 lg:size-[1.15rem] ${item.iconClassName}`} />
-                    <span className="text-[11px] font-medium leading-none lg:text-[12px] xl:text-[13px]">{item.title}</span>
+                    <span className="type-label-bold text-[color:inherit]">{item.title}</span>
                     <span
                       className={`absolute bottom-0 left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-full bg-[#2563eb] transition-all duration-200 ${
                         isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -398,7 +401,6 @@ className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4
                   </button>
                 );
               })}
-            </div>
           </div>
 
           <div className="ml-auto hidden items-center gap-3 text-sm md:flex lg:gap-4">
@@ -474,10 +476,12 @@ className="hidden min-w-0 rounded-full border border-[#dbeafe] bg-[#f8fbff] px-4
           </div>
         </div>
 
+        {/* Study preference mobile chip hidden as requested
         <button
           type="button"
           onClick={openPreferenceModal}
-className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-left transition hover:bg-[#eef4ff] md:hidden"        >
+          className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-left transition hover:bg-[#eef4ff] md:hidden"
+        >
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--brand-accent-deep)]">
               <School className="size-3.5" />
@@ -489,6 +493,7 @@ className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff
             </div>
           </div>
         </button>
+        */}
       </div>
 
       <nav className="relative z-20 mt-3 flex flex-col items-stretch gap-2 overflow-visible pb-0 text-sm text-[color:var(--text-dark)] md:flex-nowrap md:flex-row md:items-center">
@@ -503,7 +508,7 @@ className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
- className="peer w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:w-auto md:min-w-[130px] md:py-2.5"     >
+ className="peer type-label-bold w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:w-auto md:min-w-[130px] md:py-2.5"     >
           All Courses
         </button>
         <div className="breaking-news-shell min-w-0 w-full flex-1">
@@ -563,7 +568,7 @@ className="mt-3 flex w-full rounded-[1.2rem] border border-[#dbeafe] bg-[#f8fbff
           />
           <aside className="absolute right-0 top-0 z-[401] h-full w-[86%] max-w-sm overflow-y-auto border-l border-[rgba(30,78,121,0.12)] bg-white p-5 text-[color:var(--text-dark)] shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
-              <BrandLogo variant="tab" textColor="dark" className="origin-left scale-105 text-[15px] sm:text-[16px]" iconClassName="size-[1.15rem] sm:size-5" />
+              <BrandLogo variant="tab" textColor="dark" className="origin-left scale-105 text-[16px] sm:text-[17px]" iconClassName="h-11 w-11 sm:h-12 sm:w-12" />
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}

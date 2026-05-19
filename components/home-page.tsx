@@ -1113,7 +1113,7 @@ export function HomePage({
 
           <div className="mt-5 w-full max-w-none md:mt-3 md:flex md:h-full md:flex-col md:pr-0 lg:mt-5 lg:h-auto">
             <div className="w-full max-w-none md:max-w-[17rem] lg:max-w-[17.5rem]">
-              <h3 className="text-[1.32rem] font-black leading-[1.08] tracking-[-0.04em] text-white sm:text-[1.45rem] md:text-[1.52rem] lg:text-[1.72rem]">
+              <h3 className="font-montserrat-display text-[1.18rem] font-bold leading-[1.12] tracking-[-0.04em] text-white sm:text-[1.3rem] md:text-[1.42rem] lg:text-[1.62rem]">
                 <span className="block">Unlock Your Future College.</span>
                 <span className="mt-1 block text-[#dbe7ff]">Discover Your Best Fit.</span>
               </h3>
@@ -1202,7 +1202,7 @@ export function HomePage({
     <div className="flex h-full min-h-[22rem] w-full flex-col rounded-[1.65rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff_0%,#f8faff_100%)] p-3.5 shadow-[0_22px_50px_rgba(20,42,99,0.1)] scroll-fade-in scroll-delay-3 sm:min-h-[22.5rem] sm:rounded-[1.9rem] sm:p-5" data-scroll-animate>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-[family:var(--font-poppins)] text-[1.45rem] font-bold tracking-[-0.04em] text-[color:var(--text-dark)]">
+          <p className="type-headline-small text-[color:var(--text-dark)]">
             Explore Top Rated College
           </p>
         </div>
@@ -1232,12 +1232,16 @@ export function HomePage({
           className="flex h-full w-full transition-transform duration-700 ease-out"
           style={{ transform: `translateX(-${activeAction * 100}%)` }}
         >
-          {spotlightColleges.map((college) => (
+          {spotlightColleges.map((college) => {
+            const spotlightImage = getSpotlightImage(college);
+            const hasSpotlightImage = Boolean(spotlightImage) && !brokenCollegeImages[college.id];
+
+            return (
             <div key={college.id} className="relative h-full w-full min-w-full shrink-0 basis-full overflow-hidden">
-              {!getSpotlightImage(college) || brokenCollegeImages[college.id] ? (
+              {!hasSpotlightImage ? (
                 <div className="flex h-full w-full items-end bg-[linear-gradient(135deg,rgba(15,76,129,0.88),rgba(255,138,61,0.68))] p-3 sm:p-4">
                   <div>
-                    <p className="line-clamp-2 text-[0.95rem] font-semibold leading-tight text-white sm:text-[15px]">
+                    <p className="line-clamp-2 type-title-medium text-white">
                       {college.name}
                     </p>
                     <p className="mt-1 text-[10px] text-white/80 sm:text-[11px]">
@@ -1248,7 +1252,7 @@ export function HomePage({
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={getSpotlightImage(college)}
+                  src={spotlightImage}
                   alt={college.name}
                   className="h-full w-full object-cover"
                   onError={() =>
@@ -1260,56 +1264,43 @@ export function HomePage({
                 />
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,23,40,0.02),rgba(9,23,40,0.76))]" />
-              <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
-                <p className="line-clamp-2 text-[1rem] font-semibold leading-[1.08] text-white sm:text-[1.35rem] sm:leading-tight">
-                  {college.name}
-                </p>
-                <p className="mt-1 flex items-center gap-1 text-[10px] text-white/75 sm:text-[11px]">
-                  <MapPin className="size-3" />
-                  {college.district}, {college.state}
-                </p>
-              </div>
+              {hasSpotlightImage ? (
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
+                  <p className="line-clamp-2 font-[family:var(--font-display)] text-[1rem] font-semibold leading-[1.3] text-white">
+                    {college.name}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-[9px] text-white/75 sm:text-[10px]">
+                    <MapPin className="size-3" />
+                    {college.district}, {college.state}
+                  </p>
+                </div>
+              ) : null}
             </div>
-          ))}
+          )})}
         </div>
       </button>
 
-      <div className="mt-3 rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-3">
-        <button
-          type="button"
-          onClick={() => openCollegeProfile(activeCollege?.id)}
-          className="text-left transition hover:text-[color:var(--brand-primary)]"
-        >
-          <p className="text-[14px] font-semibold text-[color:var(--text-dark)]">
-            {activeCollege?.name || "Top College"}
-          </p>
-        </button>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[color:var(--text-muted)]">
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="size-3" />
-            {activeCollege ? `${activeCollege.district}, ${activeCollege.state}` : "Location unavailable"}
-          </span>
-        </div>
-        <div className="mt-2.5 grid grid-cols-2 gap-2">
-          <div className="rounded-[0.95rem] border border-[rgba(15,76,129,0.1)] bg-[rgba(15,76,129,0.03)] p-2.5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[color:var(--brand-primary-soft)]">
-              Placement
+      <div className="mt-4 space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[color:var(--surface-soft)] p-2.5 sm:p-3">
+            <p className="type-caption uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
+              Success Rate
             </p>
-            <p className="mt-1.5 text-base font-bold text-[color:var(--text-dark)]">
+            <p className="type-title-medium mt-1.5 text-[color:var(--brand-support)]">
               {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
             </p>
-            <p className="mt-0.5 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
-              Recent placement performance
+            <p className="type-caption mt-1 text-[color:var(--text-muted)]">
+              Campus placement 2026
             </p>
           </div>
           <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[#fbfbfe] p-2.5 sm:p-3">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)] sm:text-[9px] sm:tracking-[0.16em]">
+            <p className="type-caption uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
               Student Reviews
             </p>
-            <p className="mt-1.5 text-[1.2rem] font-bold leading-none text-[color:var(--text-dark)] sm:text-[1.55rem]">
+            <p className="type-title-medium mt-1.5 text-[color:var(--text-dark)]">
               {activeCollege?.isBestCollege || activeCollege?.isTopCollege ? "1.2k+" : "860+"}
             </p>
-            <p className="mt-1 text-[9px] leading-4 text-[color:var(--text-muted)] sm:text-[10px]">
+            <p className="type-caption mt-1 text-[color:var(--text-muted)]">
               Verified campus feedback
             </p>
           </div>
@@ -1319,7 +1310,7 @@ export function HomePage({
             type="button"
             onClick={() => openCollegeProfile(activeCollege?.id)}
             disabled={!activeCollege?.id}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-accent-deep)] px-4 py-3 text-center text-[13px] font-semibold text-white shadow-[0_12px_26px_rgba(15,31,82,0.24)] transition hover:-translate-y-0.5 hover:bg-[color:var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="type-label-bold inline-flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--brand-accent-deep)] px-4 py-3 text-center text-white shadow-[0_12px_26px_rgba(15,31,82,0.24)] transition hover:-translate-y-0.5 hover:bg-[color:var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Browse College
             <ArrowRight className="size-4" />
@@ -1327,7 +1318,7 @@ export function HomePage({
           <button
             type="button"
             onClick={() => router.push("/explore?view=colleges")}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(20,42,99,0.12)] bg-white px-4 py-3 text-center text-[13px] font-semibold text-[color:var(--brand-primary)] transition hover:bg-[rgba(20,42,99,0.04)]"
+            className="type-label-bold inline-flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(20,42,99,0.12)] bg-white px-4 py-3 text-center text-[color:var(--brand-primary)] transition hover:bg-[rgba(20,42,99,0.04)]"
           >
             View All Colleges
           </button>
@@ -1357,36 +1348,36 @@ export function HomePage({
           {EXAM_SHORT_LABEL_MAP[exam.name] || exam.name.slice(0, 4).toUpperCase()}
         </span>
         <div className="min-w-0 pt-0.5">
-          <h3 className="font-[family:var(--font-display)] text-[1rem] leading-tight text-[#0f1738] sm:text-[1.02rem]">
+          <h3 className="type-title-medium text-[#0f1738]">
             {exam.name}
           </h3>
-          <p className="mt-1 text-[0.44rem] font-semibold uppercase tracking-[0.16em] text-[#7a86a8] sm:text-[0.5rem]">
+          <p className="type-caption-small mt-1 uppercase tracking-[0.12em] text-[#7a86a8]">
             {EXAM_SUBTITLE_MAP[exam.name] || exam.examLevel}
           </p>
         </div>
       </div>
 
-      <div className="mt-5 space-y-2.5 text-[10px] text-[color:var(--text-muted)]">
+      <div className="type-body-small mt-5 space-y-2.5 text-[color:var(--text-muted)]">
         <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
           <span>Colleges</span>
-          <span className="font-semibold text-[color:var(--text-dark)]">{exam.participatingColleges}</span>
+          <span className="type-label-bold text-[color:var(--text-dark)]">{exam.participatingColleges}</span>
         </div>
         <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
           <span>Exam Date</span>
-          <span className="font-semibold text-[color:var(--text-dark)]">{formatExamDateLabel(exam.examDate)}</span>
+          <span className="type-label-bold text-[color:var(--text-dark)]">{formatExamDateLabel(exam.examDate)}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span>Level</span>
-          <span className="font-semibold text-[color:var(--text-dark)]">{exam.examLevel}</span>
+          <span className="type-label-bold text-[color:var(--text-dark)]">{exam.examLevel}</span>
         </div>
       </div>
 
       <div className="mt-auto space-y-0.5 pt-5">
-        <div className="flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[0.78rem] font-medium text-[#0f1738]">
+        <div className="type-label-bold flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[#0f1738]">
           <span>Application Process</span>
           <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
         </div>
-        <div className="flex items-center justify-between pt-2 text-[0.78rem] font-medium text-[#0f1738]">
+        <div className="type-label-bold flex items-center justify-between pt-2 text-[#0f1738]">
           <span>Exam Info</span>
           <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
         </div>
@@ -1424,10 +1415,7 @@ export function HomePage({
                   <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.22fr)_minmax(20.75rem,0.68fr)] lg:items-start lg:gap-x-5 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.26fr)_minmax(22rem,0.7fr)] xl:gap-x-6 2xl:grid-cols-[minmax(0,1.34fr)_minmax(26rem,0.78fr)] 2xl:gap-x-8 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
-                          Discover Smarter
-                        </p>
-                        <h1 className="home-hero-title mt-2 text-[2rem] leading-[0.94] tracking-[-0.055em] text-[color:var(--text-dark)] sm:text-[2.55rem] lg:max-w-[33rem] lg:text-[3.65rem] xl:max-w-[35rem] xl:text-[3.9rem] 2xl:max-w-[40rem] 2xl:text-[4.35rem]">
+                        <h1 className="home-hero-title font-montserrat-display mt-2 text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[33rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[35rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[40rem] 2xl:text-[50px] 2xl:leading-[58px]">
                           <span className="block">
                             Find Your <span className="text-[#2563eb]">Future</span>
                           </span>
@@ -1436,14 +1424,14 @@ export function HomePage({
                           </span>
                         </h1>
 
-                        <p className="mx-auto mt-3.5 max-w-[31rem] px-2 font-[family:var(--font-inter)] text-[11px] font-normal leading-5 text-[color:var(--text-muted)] sm:text-[12px] sm:leading-[1.45rem] lg:mx-0 lg:px-0 lg:text-[14px] lg:leading-6">
+                        <p className="type-body-large mx-auto mt-3.5 max-w-[31rem] px-2 text-[color:var(--text-muted)] lg:mx-0 lg:px-0">
                           Discover colleges, courses, exams, and cities from one premium
                           search flow built to help you shortlist faster and decide with
                           more confidence.
                         </p>
 
                         <div className="mt-6 md:hidden">
-                          <div className="rounded-[1.15rem] border border-[rgba(20,42,99,0.08)] bg-white/95 p-2 shadow-[0_14px_34px_rgba(20,42,99,0.08)]">
+                          <div className="rounded-[1.15rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2 shadow-[0_14px_34px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
                             <div className="grid grid-cols-3 gap-1.5">
                               {[
                                 { id: "college", label: "Colleges" },
@@ -1464,7 +1452,7 @@ export function HomePage({
                               ))}
                             </div>
 
-                            <div className="relative mt-2.5 flex items-center gap-2 rounded-[0.85rem] border border-[rgba(20,42,99,0.1)] bg-white px-3 py-3 shadow-[0_10px_24px_rgba(7,15,40,0.08)]">
+                            <div className={`relative mt-2.5 flex items-center gap-2 rounded-[0.85rem] border bg-white px-3 py-3 shadow-[0_10px_24px_rgba(7,15,40,0.08)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.5)] ring-2 ring-[rgba(37,99,235,0.14)]" : "border-[rgba(20,42,99,0.16)] hover:border-[rgba(37,99,235,0.28)]"}`}>
                               <Search className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
                               <div className="min-w-0 flex-1">
                                 {!activeMobileHeroSearchValue ? (
@@ -1575,6 +1563,22 @@ export function HomePage({
                               </div>
                             ) : null}
                           </div>
+                        </div>
+
+                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[19rem] grid-cols-2 justify-items-center gap-1.5 md:hidden">
+                          {heroStatCards.map((item) => (
+                            <div key={`${item.label}-mobile`} className="w-full max-w-[9.1rem] min-w-0 rounded-[0.9rem] border border-[rgba(37,99,235,0.12)] bg-white px-2 py-2 shadow-[0_8px_16px_rgba(20,42,99,0.05)]">
+                              <div className="flex flex-col gap-1 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.iconClassName}`}>
+                                    <item.icon className="size-[0.85rem]" />
+                                  </span>
+                                  <p className="font-[family:var(--font-display)] text-[0.84rem] font-bold leading-none text-[#2563eb]">{item.value}</p>
+                                </div>
+                                <p className="text-[0.52rem] font-medium uppercase tracking-[0.05em] leading-[0.78rem] text-[#2563eb]">{item.label}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
@@ -1817,16 +1821,16 @@ export function HomePage({
                           ) : null}
                         </div>
 
-                        <div className="relative z-[1] mx-auto mt-3 grid w-full max-w-[41rem] grid-cols-4 gap-1.5 sm:mt-2 sm:gap-2.5 lg:mx-0 xl:max-w-[44rem] 2xl:max-w-[48rem]">
+                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[41rem] grid-cols-2 gap-2 sm:mt-2 sm:grid-cols-4 sm:gap-2.5 lg:mx-0 xl:max-w-[44rem] 2xl:max-w-[48rem]">
                           {heroStatCards.map((item) => (
-                            <div key={item.label} className="min-w-0 rounded-[0.85rem] border border-[rgba(20,42,99,0.08)] bg-white px-1 py-1.5 shadow-[0_10px_20px_rgba(20,42,99,0.05)] sm:rounded-[1rem] sm:px-2.5 sm:py-2.5">
-                              <div className="flex flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
-                                <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
-                                  <item.icon className="size-[0.78rem] sm:size-[0.95rem]" />
+                            <div key={item.label} className="min-w-0 rounded-[1rem] border border-[rgba(37,99,235,0.12)] bg-white px-2 py-2.5 shadow-[0_10px_20px_rgba(20,42,99,0.05)] sm:rounded-[1rem] sm:px-2.5 sm:py-2.5">
+                              <div className="flex flex-col items-center justify-center gap-1.5 text-center sm:flex-row sm:gap-2">
+                                <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${item.iconClassName}`}>
+                                  <item.icon className="size-[0.95rem] sm:size-[0.95rem]" />
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-center text-[0.68rem] font-bold leading-none text-[#2563eb] sm:text-[1rem]">{item.value}</p>
-                                  <p className="mt-0.5 text-center text-[6px] font-medium uppercase tracking-[0.03em] leading-[0.62rem] text-[#2563eb] sm:mt-1 sm:text-[8.5px] sm:tracking-[0.08em] sm:leading-[0.9rem]">{item.label}</p>
+                                  <p className="text-center text-[0.92rem] font-bold leading-none text-[#2563eb] sm:text-[1rem]">{item.value}</p>
+                                  <p className="mt-0.5 text-center text-[0.56rem] font-medium uppercase tracking-[0.05em] leading-[0.82rem] text-[#2563eb] sm:mt-1 sm:text-[8.5px] sm:tracking-[0.08em] sm:leading-[0.9rem]">{item.label}</p>
                                 </div>
                               </div>
                             </div>
@@ -1847,7 +1851,7 @@ export function HomePage({
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
                             </p>
-                            <p className="home-section-title mt-2 text-[1.95rem] tracking-[-0.045em] text-[color:var(--text-dark)]">
+                            <p className="home-section-title type-headline-small mt-2 text-[color:var(--text-dark)]">
                               Master Your Entry Strategy
                             </p>
                           </div>
@@ -1910,16 +1914,6 @@ export function HomePage({
                   </div>
                   {/* Featured institutions section */}
                   <div className="reveal-up delay-3 mt-6 rounded-[2rem] bg-[color:var(--surface-muted)] px-1 py-7 sm:px-4 lg:px-6 2xl:px-8">
-                    <div className="mx-auto mb-6 flex w-full max-w-[72rem] flex-col gap-4 px-0 sm:px-2 md:px-0 md:flex-row md:items-end md:justify-end 2xl:max-w-[84rem]">
-                      <button
-                        type="button"
-                        onClick={() => router.push("/explore?view=colleges")}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
-                      >
-                        View all colleges
-                        <ArrowRight className="size-4" />
-                      </button>
-                    </div>
                     <div className="mx-auto grid w-full max-w-[72rem] gap-4 px-0 sm:px-2 md:px-0 lg:grid-cols-2 lg:items-stretch 2xl:max-w-[84rem] 2xl:gap-8">
                       {/* Top courses section */}
                       <div className="relative flex h-full flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-white px-3 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] scroll-fade-in scroll-delay-2 sm:px-4" data-scroll-animate>
@@ -1928,7 +1922,7 @@ export function HomePage({
                             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-primary-soft)]">
                               Top Courses
                             </p>
-                            <p className="home-section-title mt-2 text-[1.55rem] tracking-[-0.04em] text-[color:var(--text-dark)]">
+                            <p className="home-section-title type-headline-small mt-2 text-[color:var(--text-dark)]">
                               Explore Pathways
                             </p>
                           </div>
@@ -1956,14 +1950,14 @@ export function HomePage({
                                   <Icon className="size-5 stroke-[1.8] " />
                                 </div>
                                 <div className="mt-3">
-                                  <p className="home-course-card-title text-[0.98rem] leading-[1.2] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
+                                  <p className="home-course-card-title type-title-medium text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-1.5 text-[0.54rem] font-semibold uppercase tracking-[0.16em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
+                                  <p className="type-caption-small mt-1.5 uppercase tracking-[0.12em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[0.74rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
+                                <div className="type-label-bold mt-auto inline-flex items-center gap-1.5 pt-3 text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                   Explore Course
                                   <ArrowRight className="size-3.5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                 </div>
@@ -1986,14 +1980,14 @@ export function HomePage({
                                   <Icon className="size-3.5 stroke-[1.8]" />
                                 </div>
                                 <div className="mt-1.5">
-                                  <p className="home-course-card-title text-[0.66rem] leading-[1] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
+                                  <p className="home-course-card-title text-[15px] font-semibold leading-[20px] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                     {course.course}
                                   </p>
-                                  <p className="mt-0.5 text-[0.4rem] font-semibold uppercase tracking-[0.06em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
+                                  <p className="mt-0.5 text-[10px] font-normal uppercase tracking-[0.08em] leading-[14px] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                     {course.subtitle}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-1 pt-1.5 text-[0.5rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
+                                <div className="mt-auto inline-flex items-center gap-1 pt-1.5 text-[12px] font-semibold leading-[12px] text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                   Explore
                                   <ArrowRight className="size-2.5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                 </div>
@@ -2023,14 +2017,14 @@ export function HomePage({
                                     </div>
                                   </div>
                                   <div className="mt-8">
-                                    <p className="home-course-card-title text-[1.2rem] leading-[1.22] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
+                                    <p className="home-course-card-title type-title-medium text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                       {course.course}
                                     </p>
-                                    <p className="mt-4 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
+                                    <p className="type-caption-small mt-4 uppercase tracking-[0.16em] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                       {course.subtitle}
                                     </p>
                                   </div>
-                                  <div className="mt-auto inline-flex items-center gap-2 text-[1rem] font-medium text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
+                                  <div className="type-label-bold mt-auto inline-flex items-center gap-2 text-[#1d4ed8] transition-colors group-hover:text-[color:var(--brand-accent-deep)]">
                                     Explore Course
                                     <ArrowRight className="size-5 text-[#1d4ed8] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brand-accent-deep)]" />
                                   </div>
@@ -2098,10 +2092,10 @@ export function HomePage({
         <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6 xl:max-w-[1280px] 2xl:max-w-[1400px] 2xl:px-8">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="scroll-fade-in" data-scroll-animate>
-              <p className="font-[family:var(--font-poppins)] text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+              <p className="font-[family:var(--font-display)] text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Discover Pathways
               </p>
-              <h2 className="mt-2 max-w-[42rem] text-balance font-[family:var(--font-poppins)] text-[2rem] font-bold leading-tight tracking-[-0.045em] text-[color:var(--text-dark)] md:text-[2.35rem]">
+              <h2 className="home-hero-title type-headline-small mt-2 max-w-[42rem] text-balance text-[color:var(--text-dark)]">
                 Explore courses with clearer decisions and stronger presentation.
               </h2>
             </div>
@@ -2136,27 +2130,27 @@ export function HomePage({
                         {course.isTopCourse ? "Top Course" : "Course"}
                       </span>
                     </div>
-                    <h3 className="home-course-card-title mt-4 line-clamp-2 text-[1.28rem] leading-tight text-[color:var(--text-dark)] sm:text-[1.42rem]">
+                    <h3 className="home-course-card-title type-title-medium mt-4 line-clamp-2 text-[color:var(--text-dark)]">
                       {course.course}
                     </h3>
-                    <dl className="mt-4 space-y-2 text-sm">
+                    <dl className="type-body-small mt-4 space-y-2 text-[color:var(--text-muted)]">
                       <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
                         <dt className="text-slate-500">Duration</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.duration}</dd>
+                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.duration}</dd>
                       </div>
                       <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
                         <dt className="text-slate-500">Total Fees</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.feesRange}</dd>
+                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.feesRange}</dd>
                       </div>
                       <div className="flex items-center justify-between gap-4">
                         <dt className="text-slate-500">Cutoff</dt>
-                        <dd className="font-semibold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
+                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
                       </div>
                     </dl>
                     <button
                       type="button"
                       onClick={() => router.push(course.href)}
-                      className="mt-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(15,31,82,0.18)] bg-[color:var(--brand-accent-deep)] px-3 py-1.5 text-[0.78rem] font-semibold text-white shadow-[0_10px_24px_rgba(15,31,82,0.18)] transition hover:bg-[color:var(--brand-primary)] hover:shadow-[0_12px_28px_rgba(15,31,82,0.22)] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                      className="type-label-bold mt-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(15,31,82,0.18)] bg-[color:var(--brand-accent-deep)] px-3 py-1.5 text-white shadow-[0_10px_24px_rgba(15,31,82,0.18)] transition hover:bg-[color:var(--brand-primary)] hover:shadow-[0_12px_28px_rgba(15,31,82,0.22)] sm:gap-2 sm:px-4 sm:py-2"
                     >
                       Course Overview
                       <ArrowRight className="size-3.5 sm:size-4" />
@@ -2334,7 +2328,7 @@ export function HomePage({
               <h2 className="section-title mt-3 text-balance scroll-fade-in scroll-delay-1" data-scroll-animate>
                 Get sharper updates on colleges, exams, and opportunities.
               </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base scroll-fade-in scroll-delay-2" data-scroll-animate>
+              <p className="type-body-large mt-4 text-slate-600 scroll-fade-in scroll-delay-2" data-scroll-animate>
                 A cleaner form, stronger contrast, and a more premium finish so the last section feels as polished as the hero.
               </p>
             </div>

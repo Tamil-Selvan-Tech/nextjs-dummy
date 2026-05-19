@@ -13,44 +13,64 @@ export function Loading({
 }: LoadingProps) {
   return (
     <section
-      className={`fixed inset-0 z-[100] overflow-hidden bg-[linear-gradient(180deg,#eef4fb_0%,#e7eef8_100%)] text-[color:var(--text-dark)] ${
+      className={`fixed inset-0 z-[100] overflow-hidden bg-[#FCFCFA] ${
         fullScreen ? "min-h-screen" : "min-h-[24rem]"
       }`}
     >
-      <div className="absolute inset-0">
-        <div className="absolute left-[-4rem] top-12 h-52 w-52 rounded-full bg-[rgba(60,126,182,0.1)] blur-3xl" />
-        <div className="absolute right-[-3rem] top-20 h-44 w-44 rounded-full bg-[rgba(255,138,61,0.12)] blur-3xl" />
+      {/* soft background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(253,224,71,0.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(253,224,71,0.10),transparent_28%)]" />
+
+      {/* top right pattern */}
+      <div className="absolute right-8 top-8 grid grid-cols-5 gap-2 opacity-30">
+        {Array.from({ length: 25 }).map((_, i) => (
+          <span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-slate-300"
+          />
+        ))}
       </div>
 
+      {/* center content */}
       <div
-        className={`relative z-10 flex items-center justify-center px-4 py-10 ${
+        className={`relative z-10 flex items-center justify-center ${
           fullScreen ? "min-h-screen" : "min-h-[24rem]"
         }`}
       >
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto flex flex-col items-center">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute h-28 w-28 rounded-full border border-[rgba(15,76,129,0.14)] animate-ping" />
-              <div className="absolute h-36 w-36 rounded-full border-2 border-dashed border-[rgba(47,106,163,0.25)] animate-spin" />
-              <div className="absolute h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0))] blur-2xl" />
-              <div className="relative rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-white/94 px-6 py-5 shadow-[0_24px_56px_rgba(22,50,79,0.12)] backdrop-blur-sm">
-                <BrandLogo textColor="dark" className="h-10" />
-              </div>
+        <div className="flex flex-col items-center">
+          
+          {/* animated loader */}
+          <div className="relative flex items-center gap-4">
+            <span className="h-3.5 w-3.5 animate-bounce rounded-full bg-[#1E3A8A]" />
+
+            <span
+              className="h-5 w-5 animate-bounce rounded-full bg-[#2563EB]"
+              style={{ animationDelay: "0.15s" }}
+            />
+
+            <span
+              className="h-7 w-7 animate-bounce rounded-full bg-[#0F172A]"
+              style={{ animationDelay: "0.3s" }}
+            />
+          </div>
+
+          {/* loading text */}
+          <p className="mt-6 text-[13px] font-semibold tracking-[0.45em] text-slate-500 uppercase">
+            {label}
+          </p>
+
+          {/* logo */}
+          <div className="mt-10 flex flex-col items-center">
+            
+            {/* logo container */}
+            <div>
+              <BrandLogo
+                textColor="dark"
+                className="h-10 opacity-95"
+              />
             </div>
 
-            <div className="mt-7 flex items-center gap-3">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-primary)]" />
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-primary-soft)] [animation-delay:180ms]" />
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--brand-accent)] [animation-delay:360ms]" />
-            </div>
-
-            <p className="mt-5 bg-[linear-gradient(90deg,var(--brand-primary),var(--brand-primary-soft),var(--brand-accent-deep))] bg-clip-text text-sm font-bold tracking-[0.18em] text-transparent uppercase">
-              {label}
-            </p>
-
-            <div className="mt-4 h-1.5 w-36 overflow-hidden rounded-full bg-white/70 shadow-[inset_0_1px_2px_rgba(15,76,129,0.08)]">
-              <div className="h-full w-1/2 rounded-full bg-[linear-gradient(90deg,var(--brand-primary),var(--brand-accent))] animate-pulse" />
-            </div>
+            {/* soft shadow */}
+            <div className="mt-2 h-3 w-28 rounded-full bg-slate-200/40 blur-xl" />
           </div>
         </div>
       </div>

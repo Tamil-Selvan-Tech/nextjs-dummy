@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Bell,
@@ -952,6 +953,7 @@ export function CutoffClient({
   colleges,
   courses,
 }: CutoffClientProps) {
+  const router = useRouter();
   // Core cutoff page state and active level selection.
   const resolvedLevel = normalizeSelectedLevel(selectedLevel);
   const isJuniorLevel = ["6", "7", "8", "9", "10"].includes(resolvedLevel);
@@ -1472,6 +1474,7 @@ export function CutoffClient({
       normalizeText(college.id) === normalizeText(selectedDreamCollege) ||
       normalizeText(college.name) === normalizeText(selectedDreamCollege),
   );
+  
   const dreamCollegeName = selectedCollegeRecord?.name || selectedDreamCollege || "-";
   const selectedCollegeLookupKeys = [
     selectedDreamCollege,
@@ -1704,35 +1707,49 @@ export function CutoffClient({
 
                 <div className="mt-6 overflow-hidden rounded-[12px] border border-[#abc7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.75)] sm:mt-7">
                   <div className="grid grid-cols-3 gap-0 lg:grid-cols-[minmax(0,1.5fr)_0.7fr_0.7fr_0.85fr] lg:items-center">
-                    <div className="col-span-3 flex min-w-0 items-center gap-4 p-4 lg:col-span-1">
-                      <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#abc7ff] bg-white shadow-[0_10px_22px_rgba(20,42,99,0.08)] sm:size-20">
-                        {selectedCollegeLogo ? (
-                          <Image
-                            src={selectedCollegeLogo}
-                            alt={`${dreamCollegeName} logo`}
-                            fill
-                            sizes="80px"
-                            className="object-contain p-2.5"
-                          />
-                        ) : (
-                          <Building2 className="size-9 text-[#09246b]" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="line-clamp-2 text-[1.08rem] font-black leading-6 text-[#09246b]">
-                          {dreamCollegeName}
-                        </h3>
-                        <p className="mt-2 flex items-center gap-2 text-[0.86rem] font-semibold text-[#1766f2]">
-                          <MapPin className="size-4 shrink-0" />
-                          <span className="truncate">
-                            {selectedCollegeRecord?.city || selectedCollegeRecord?.district || selectedState || "Tamil Nadu"}
-                          </span>
-                        </p>
-                        <p className="mt-3 text-[0.94rem] font-black text-[#1766f2]">
-                          {selectedCourse || "-"}
-                        </p>
-                      </div>
-                    </div>
+                   <div className="col-span-3 flex min-w-0 items-center gap-4 p-4 lg:col-span-1">
+  <Link
+  href={
+    selectedCollegeRecord?.id
+      ? `/college/${selectedCollegeRecord.id}`
+      : "#"
+  }
+>
+  <div className="relative flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#abc7ff] bg-white shadow-[0_10px_22px_rgba(20,42,99,0.08)] transition hover:scale-105 sm:size-20">
+    {selectedCollegeLogo ? (
+      <Image
+        src={selectedCollegeLogo}
+        alt={`${dreamCollegeName} logo`}
+        fill
+        sizes="80px"
+        className="object-contain p-2.5"
+      />
+    ) : (
+      <Building2 className="size-9 text-[#09246b]" />
+    )}
+  </div>
+</Link>
+
+  <div className="min-w-0">
+    <h3 className="line-clamp-2 text-[1.08rem] font-black leading-6 text-[#09246b]">
+      {dreamCollegeName}
+    </h3>
+
+    <p className="mt-2 flex items-center gap-2 text-[0.86rem] font-semibold text-[#1766f2]">
+      <MapPin className="size-4 shrink-0" />
+      <span className="truncate">
+        {selectedCollegeRecord?.city ||
+          selectedCollegeRecord?.district ||
+          selectedState ||
+          "Tamil Nadu"}
+      </span>
+    </p>
+
+    <p className="mt-3 text-[0.94rem] font-black text-[#1766f2]">
+      {selectedCourse || "-"}
+    </p>
+  </div>
+</div>
 
                     <div className="border-t border-[#dbe5f7] px-2 py-4 lg:border-l lg:border-t-0 lg:pl-5">
                       <p className="text-center text-[0.74rem] font-semibold leading-5 text-[#07133b] sm:text-[0.84rem]">Your Cutoff<br />(Score)</p>
@@ -2185,137 +2202,214 @@ export function CutoffClient({
             </section>
 
             {showSuggestedColleges ? (
-              <section
-                ref={suggestedCollegesSectionRef}
-                className="mt-5 overflow-hidden rounded-[12px] bg-white shadow-[0_16px_36px_rgba(20,42,99,0.10)]"
+  <section
+    ref={suggestedCollegesSectionRef}
+    className="mt-5 overflow-hidden rounded-[12px] bg-white shadow-[0_16px_36px_rgba(20,42,99,0.10)]"
+  >
+    <div className="flex items-start gap-3 px-5 py-4">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] text-[#1264d8]">
+        <Building2 className="size-8" />
+      </div>
+
+      <div>
+        <h2 className="text-[1.12rem] font-black text-[#1264d8]">
+          Suggested Colleges for You
+        </h2>
+
+        <p className="mt-1 text-[0.82rem] font-medium text-[#53617f]">
+          Colleges suggested based on your score and preferences.
+        </p>
+      </div>
+    </div>
+
+    <div className="overflow-x-auto px-3 pb-5 [scrollbar-color:#1766f2_#e8eef8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1766f2] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e8eef8]">
+      <table className="w-full min-w-[1080px] border-collapse overflow-hidden rounded-[8px] text-left">
+        <thead>
+          <tr className="bg-[linear-gradient(90deg,#1264d8_0%,#0756cf_100%)] text-white">
+            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+              S.NO
+            </th>
+
+            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+              College
+            </th>
+
+            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+              Course
+            </th>
+
+            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+              Admission Type
+            </th>
+
+            <th className="whitespace-nowrap px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+              Cut Off
+            </th>
+
+            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+              Your Score
+            </th>
+
+            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+              Match Status
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {suggestedCollegeRows.length ? (
+            suggestedCollegeRows.map((college, index) => {
+              const collegeCutoff = college.targetScore;
+
+              const comparison = compareScoreToCutoff(
+                college.cutoffLabel,
+                selectedCutoffScore
+              );
+
+              const difference = comparison.distance;
+
+              const status =
+                comparison.status === "unavailable"
+                  ? "close"
+                  : comparison.status === "match"
+                  ? "great"
+                  : comparison.status === "above"
+                  ? "above"
+                  : difference !== null &&
+                    Math.abs(difference) <= 5
+                  ? "close"
+                  : "low";
+
+              const statusTheme =
+                status === "great"
+                  ? "bg-[#eaf8ef] text-[#11914a]"
+                  : status === "above"
+                  ? "bg-[#eaf8ef] text-[#11914a]"
+                  : status === "close"
+                  ? "bg-[#fff7e6] text-[#d88700]"
+                  : "bg-[#ffecec] text-[#e11d27]";
+
+              const statusTitle =
+                status === "great"
+                  ? "Great Match!"
+                  : status === "above"
+                  ? "Above Cutoff"
+                  : status === "close"
+                  ? "Close Match"
+                  : "Not a Match";
+
+              const statusText =
+                status === "great"
+                  ? "Your score matches the cutoff range."
+                  : status === "above"
+                  ? "Your score is above the cutoff range."
+                  : status === "close"
+                  ? "Your score is close to the cutoff."
+                  : "Your score is below the cutoff.";
+
+              return (
+                <tr
+                  key={`${college.id}-${index}`}
+                  className="border-b border-[#edf1f7] last:border-b-0"
+                >
+                  <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                    {index + 1}
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <div
+                      onClick={() =>
+                        router.push(`/college/${college.id}`)
+                      }
+                      className="flex cursor-pointer items-center gap-4 rounded-[10px] p-2 transition hover:bg-[#f5f8ff]"
+                    >
+                      <div className="relative h-[58px] w-[92px] shrink-0 overflow-hidden rounded-[8px] border border-[#e5edf8] bg-[#f3f6fb]">
+                        <Image
+                          src={
+                            college.image ||
+                            "/cutoff-page-topImage.png"
+                          }
+                          alt={college.name}
+                          fill
+                          sizes="92px"
+                          className="object-cover transition duration-300 hover:scale-105"
+                        />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="max-w-[230px] text-[0.9rem] font-black leading-5 text-[#142a63] hover:text-[#1264d8]">
+                          {college.name}
+                        </p>
+
+                        <p className="mt-1 flex items-center gap-1 text-[0.78rem] font-medium text-[#53617f]">
+                          <MapPin className="size-3.5 shrink-0" />
+
+                          <span className="truncate">
+                            {college.location ||
+                              selectedState ||
+                              "Tamil Nadu"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-5 py-4 text-[0.88rem] font-semibold leading-6 text-[#142a63]">
+                    {selectedCourse || "-"}
+                  </td>
+
+                  <td className="px-5 py-4 text-center text-[0.88rem] font-black text-[#142a63]">
+                    {selectedAdmissionType || "-"}
+                  </td>
+
+                  <td className="whitespace-nowrap px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                    {college.cutoffLabel ||
+                      (collegeCutoff !== null
+                        ? formatResultValue(
+                            String(collegeCutoff)
+                          )
+                        : "-")}
+                  </td>
+
+                  <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                    {enteredScoreLabel}
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <div
+                      className={`inline-flex min-w-[190px] items-center gap-3 rounded-[8px] px-4 py-3 ${statusTheme}`}
+                    >
+                      <CheckCircle2 className="size-6 shrink-0" />
+
+                      <div>
+                        <p className="text-[0.86rem] font-black">
+                          {statusTitle}
+                        </p>
+
+                        <p className="mt-0.5 text-[0.74rem] font-semibold text-[#142a63]">
+                          {statusText}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td
+                colSpan={7}
+                className="px-5 py-8 text-center text-sm font-semibold text-[#53617f]"
               >
-                <div className="flex items-start gap-3 px-5 py-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] text-[#1264d8]">
-                    <Building2 className="size-8" />
-                  </div>
-                  <div>
-                    <h2 className="text-[1.12rem] font-black text-[#1264d8]">Suggested Colleges for You</h2>
-                    <p className="mt-1 text-[0.82rem] font-medium text-[#53617f]">
-                      Colleges suggested based on your score and preferences.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto px-3 pb-5 [scrollbar-color:#1766f2_#e8eef8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1766f2] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e8eef8]">
-                  <table className="w-full min-w-[1080px] border-collapse overflow-hidden rounded-[8px] text-left">
-                    <thead>
-                      <tr className="bg-[linear-gradient(90deg,#1264d8_0%,#0756cf_100%)] text-white">
-                        <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">S.NO</th>
-                        <th className="px-5 py-3 text-[0.78rem] font-black uppercase">College</th>
-                        <th className="px-5 py-3 text-[0.78rem] font-black uppercase">Course</th>
-                        <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">Admission Type</th>
-                        <th className="whitespace-nowrap px-5 py-3 text-center text-[0.78rem] font-black uppercase">Cut Off</th>
-                        <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">Your Score</th>
-                        <th className="px-5 py-3 text-[0.78rem] font-black uppercase">Match Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {suggestedCollegeRows.length ? (
-                        suggestedCollegeRows.map((college, index) => {
-                          const collegeCutoff = college.targetScore;
-                          const comparison = compareScoreToCutoff(college.cutoffLabel, selectedCutoffScore);
-                          const difference = comparison.distance;
-                          const status =
-                            comparison.status === "unavailable"
-                              ? "close"
-                              : comparison.status === "match"
-                                ? "great"
-                                : comparison.status === "above"
-                                  ? "above"
-                                : difference !== null && Math.abs(difference) <= 5
-                                  ? "close"
-                                  : "low";
-                          const statusTheme =
-                            status === "great"
-                              ? "bg-[#eaf8ef] text-[#11914a]"
-                              : status === "above"
-                                ? "bg-[#eaf8ef] text-[#11914a]"
-                              : status === "close"
-                                ? "bg-[#fff7e6] text-[#d88700]"
-                                : "bg-[#ffecec] text-[#e11d27]";
-                          const statusTitle =
-                            status === "great"
-                              ? "Great Match!"
-                              : status === "above"
-                                ? "Above Cutoff"
-                              : status === "close"
-                                ? "Close Match"
-                                : "Not a Match";
-                          const statusText =
-                            status === "great"
-                              ? "Your score matches the cutoff range."
-                              : status === "above"
-                                ? "Your score is above the cutoff range."
-                              : status === "close"
-                                ? "Your score is close to the cutoff."
-                                  : "Your score is below the cutoff.";
-
-                          return (
-                            <tr key={`${college.id}-${index}`} className="border-b border-[#edf1f7] last:border-b-0">
-                              <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">{index + 1}</td>
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-4">
-                                  <div className="relative h-[58px] w-[92px] shrink-0 overflow-hidden rounded-[8px] border border-[#e5edf8] bg-[#f3f6fb]">
-                                    <Image
-                                      src={college.image || "/cutoff-page-topImage.png"}
-                                      alt={college.name}
-                                      fill
-                                      sizes="92px"
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="max-w-[230px] text-[0.9rem] font-black leading-5 text-[#142a63]">
-                                      {college.name}
-                                    </p>
-                                    <p className="mt-1 flex items-center gap-1 text-[0.78rem] font-medium text-[#53617f]">
-                                      <MapPin className="size-3.5 shrink-0" />
-                                      <span className="truncate">{college.location || selectedState || "Tamil Nadu"}</span>
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-5 py-4 text-[0.88rem] font-semibold leading-6 text-[#142a63]">
-                                {selectedCourse || "-"}
-                              </td>
-                              <td className="px-5 py-4 text-center text-[0.88rem] font-black text-[#142a63]">
-                                {selectedAdmissionType || "-"}
-                              </td>
-                              <td className="whitespace-nowrap px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
-                                {college.cutoffLabel || (collegeCutoff !== null ? formatResultValue(String(collegeCutoff)) : "-")}
-                              </td>
-                              <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
-                                {enteredScoreLabel}
-                              </td>
-                              <td className="px-5 py-4">
-                                <div className={`inline-flex min-w-[190px] items-center gap-3 rounded-[8px] px-4 py-3 ${statusTheme}`}>
-                                  <CheckCircle2 className="size-6 shrink-0" />
-                                  <div>
-                                    <p className="text-[0.86rem] font-black">{statusTitle}</p>
-                                    <p className="mt-0.5 text-[0.74rem] font-semibold text-[#142a63]">{statusText}</p>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="px-5 py-8 text-center text-sm font-semibold text-[#53617f]">
-                            Suggested colleges are not available for this selection yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
+                Suggested colleges are not available for this selection yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </section>
+) : null}
           </div>
         </main>
       </>

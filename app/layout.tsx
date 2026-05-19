@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: "College EdwiseR",
   description: "College EdwiseR Next.js frontend",
   icons: {
-    icon: "/college.png",
-    shortcut: "/college.png",
-    apple: "/college.png",
+    icon: "/Professional-collegeedwiser-logo.png",
+    shortcut: "/Professional-collegeedwiser-logo.png",
+    apple: "/Professional-collegeedwiser-logo.png",
   },
 };
 

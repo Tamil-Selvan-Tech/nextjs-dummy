@@ -70,10 +70,10 @@ const hiddenFooterRoutes = [
 ];
 
 const sectionHeadingClass =
-  "text-[12px] font-bold uppercase tracking-[0.12em] text-white/[0.9]";
+  "type-label-bold uppercase tracking-[0.12em] text-white/[0.9]";
 
 const linkClass =
-  "text-[13px] leading-8 text-white/[0.72] transition hover:text-white";
+  "type-body-small text-white/[0.72] transition hover:text-white";
 
 export function Footer() {
   const pathname = usePathname();
@@ -94,7 +94,7 @@ export function Footer() {
           <div className="grid grid-cols-1 gap-x-6 gap-y-8 border-b border-white/10 px-5 py-8 sm:grid-cols-2 sm:px-7 md:px-8 lg:grid-cols-[minmax(17rem,1.22fr)_repeat(4,minmax(0,0.88fr))] lg:items-start xl:gap-x-10 xl:px-10 2xl:grid-cols-[minmax(21rem,1.38fr)_repeat(4,minmax(0,1fr))] 2xl:gap-x-12 2xl:px-12">
             <div className="max-w-[17rem] sm:max-w-[19rem] 2xl:max-w-[22rem]">
               <BrandLogo variant="tab" textColor="light" className="h-9" />
-              <p className="mt-5 max-w-sm text-[13px] leading-8 text-white/[0.72]">
+              <p className="type-body-small mt-5 max-w-sm text-white/[0.72]">
                 Your gateway to educational excellence and career opportunities.
               </p>
 
@@ -163,9 +163,9 @@ export function Footer() {
 
           <div className="grid gap-8 border-b border-white/10 px-5 py-7 sm:px-7 md:px-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(14rem,0.92fr)] lg:items-start xl:px-10 2xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)] 2xl:px-12">
             <div className="min-w-0">
-              <h4 className="text-sm font-semibold text-white">Get in Touch</h4>
+              <h4 className="type-label-bold text-white">Get in Touch</h4>
               <div className="mt-4 space-y-3">
-                <div className="flex items-start gap-3 text-[13px] leading-6 text-white/[0.68]">
+                <div className="type-body-small flex items-start gap-3 text-white/[0.68]">
                   <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-[#9cc3ff]">
                     <MapPin className="size-4" />
                   </span>
@@ -179,7 +179,7 @@ export function Footer() {
                   </a>
                 </div>
 
-                <div className="flex items-center gap-3 text-[13px] leading-6 text-white/[0.68]">
+                <div className="type-body-small flex items-center gap-3 text-white/[0.68]">
                   <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-[#9cc3ff]">
                     <Mail className="size-4" />
                   </span>
@@ -188,7 +188,7 @@ export function Footer() {
                   </a>
                 </div>
 
-                <div className="flex items-center gap-3 text-[13px] leading-6 text-white/[0.68]">
+                <div className="type-body-small flex items-center gap-3 text-white/[0.68]">
                   <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-[#9cc3ff]">
                     <Phone className="size-4" />
                   </span>
@@ -200,7 +200,7 @@ export function Footer() {
             </div>
 
             <div className="min-w-0 lg:justify-self-start">
-              <h4 className="text-sm font-semibold text-white">Follow Us</h4>
+              <h4 className="type-label-bold text-white">Follow Us</h4>
               <div className="mt-4 flex flex-wrap gap-3">
                 {socialLinks.map((item) => {
                   const Icon = item.icon;
@@ -223,11 +223,11 @@ export function Footer() {
           </div>
 
           <div className="flex flex-col gap-4 px-5 py-5 text-center sm:px-7 md:px-8 lg:flex-row lg:items-center lg:justify-between lg:text-left xl:px-10 2xl:px-12">
-            <p className="text-[12px] text-white/[0.58]">
+            <p className="type-caption text-white/[0.58]">
               &copy; {currentYear} College EdwiseR. All Rights Reserved.
             </p>
 
-            <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[12px] text-white/[0.64] lg:justify-end">
+            <div className="type-caption flex flex-wrap justify-center gap-x-5 gap-y-2 text-white/[0.64] lg:justify-end">
               {legalLinks.map((item) => (
                 <Link key={item.label} href={item.href} className="transition hover:text-white">
                   {item.label}
