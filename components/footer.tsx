@@ -91,8 +91,8 @@ export function Footer() {
     <footer className="site-footer overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_26%),radial-gradient(circle_at_top_right,rgba(244,174,53,0.12),transparent_22%),linear-gradient(180deg,#132a60_0%,#102554_100%)] text-white">
       <div className="page-container-full py-8 sm:py-9 lg:py-10 xl:py-12">
         <div className="mx-auto max-w-[96rem] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.035))] shadow-[0_30px_80px_rgba(4,15,39,0.34)] backdrop-blur-sm 2xl:max-w-[110rem]">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-8 border-b border-white/10 px-5 py-8 sm:grid-cols-2 sm:px-7 md:px-8 lg:grid-cols-[minmax(17rem,1.22fr)_repeat(4,minmax(0,0.88fr))] lg:items-start xl:gap-x-10 xl:px-10 2xl:grid-cols-[minmax(21rem,1.38fr)_repeat(4,minmax(0,1fr))] 2xl:gap-x-12 2xl:px-12">
-            <div className="max-w-[17rem] sm:max-w-[19rem] 2xl:max-w-[22rem]">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 border-b border-white/10 px-5 py-8 sm:grid-cols-2 sm:px-7 md:px-8 lg:grid-cols-[minmax(17rem,1.22fr)_repeat(4,minmax(0,0.88fr))] lg:items-start xl:gap-x-10 xl:px-10 2xl:grid-cols-[minmax(21rem,1.38fr)_repeat(4,minmax(0,1fr))] 2xl:gap-x-12 2xl:px-12">
+            <div className="col-span-2 max-w-[17rem] sm:max-w-[19rem] lg:col-span-1 2xl:max-w-[22rem]">
               <BrandLogo variant="tab" textColor="light" className="h-9" />
               <p className="type-body-small mt-5 max-w-sm text-white/[0.72]">
                 Your gateway to educational excellence and career opportunities.
@@ -108,7 +108,7 @@ export function Footer() {
               </div>
             </div>
 
-            <div className="min-w-0 sm:justify-self-end lg:justify-self-auto">
+            <div className="min-w-0">
               <h4 className={sectionHeadingClass}>Top Courses</h4>
               <ul className="mt-4 space-y-0.5">
                 {topCollegeCourseLinks.map((item) => (
@@ -134,7 +134,7 @@ export function Footer() {
               </ul>
             </div>
 
-            <div className="min-w-0 sm:justify-self-end lg:justify-self-auto">
+            <div className="min-w-0">
               <h4 className={sectionHeadingClass}>Tools</h4>
               <ul className="mt-4 space-y-0.5">
                 {toolsLinks.map((item) => (

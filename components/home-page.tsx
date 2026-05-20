@@ -1244,7 +1244,7 @@ export function HomePage({
     <button
       type="button"
       onClick={() => router.push(exam.href)}
-      className="group flex h-full min-h-[15.25rem] w-[min(15rem,calc(100vw-2.75rem))] shrink-0 flex-col rounded-[1.4rem] border border-[rgba(20,42,99,0.08)] bg-white px-4 py-3.5 text-left shadow-[0_8px_20px_rgba(20,42,99,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(20,42,99,0.09)] sm:w-[15.35rem] lg:min-h-[15.25rem] lg:w-full"
+      className="group flex h-full min-h-[16.5rem] w-[min(17.5rem,calc(100vw-2.25rem))] shrink-0 flex-col rounded-[1.4rem] border border-[rgba(20,42,99,0.08)] bg-white px-4 py-4 text-left shadow-[0_8px_20px_rgba(20,42,99,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(20,42,99,0.09)] sm:w-[15.35rem] lg:min-h-[15.25rem] lg:w-full"
     >
       <div className="flex justify-end">
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${exam.mode.toLowerCase().includes("online")
@@ -1342,8 +1342,8 @@ export function HomePage({
                           more confidence.
                         </p>
 
-                        <div className="mx-auto mt-5 w-full max-w-[22.5rem] px-2 md:hidden">
-                          <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
+                        <div className="mx-auto mt-5 w-full max-w-none px-0 sm:px-1 md:hidden">
+                          <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2.5 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
                             <div className="grid grid-cols-3 gap-2">
                               {[
                                 { id: "college", label: "Colleges" },
@@ -1878,15 +1878,17 @@ export function HomePage({
                                 key={`${course.id}-mobile-grid`}
                                 type="button"
                                 onClick={() => router.push(course.href)}
-                                  className="home-course-card group flex min-h-[7.15rem] flex-col rounded-[0.9rem] border border-[rgba(220,230,248,0.95)] bg-white px-2 py-2 text-left shadow-[0_6px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,64,175,0.1)] min-[480px]:px-1.5 min-[480px]:py-1.5"
+                                  className="home-course-card group flex min-h-[7.35rem] flex-col rounded-[0.9rem] border border-[rgba(220,230,248,0.95)] bg-white px-2.5 py-2.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.07)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(30,64,175,0.12)] min-[480px]:px-2 min-[480px]:py-2"
                               >
-                                <div className="flex h-[2.15rem] w-[2.15rem] items-center justify-center rounded-full border border-[rgba(37,99,235,0.14)] bg-[linear-gradient(180deg,rgba(232,240,255,0.98),rgba(255,255,255,0.98))] text-[color:var(--brand-primary)] transition group-hover:scale-[1.03]">
-                                  <Icon className="size-3.5 stroke-[1.8]" />
-                                </div>
-                                <div className="mt-1.5">
-                                  <p className="home-course-card-title text-[15px] font-semibold leading-[20px] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-[2.15rem] w-[2.15rem] shrink-0 items-center justify-center rounded-full border border-[rgba(37,99,235,0.14)] bg-[linear-gradient(180deg,rgba(232,240,255,0.98),rgba(255,255,255,0.98))] text-[color:var(--brand-primary)] transition group-hover:scale-[1.03]">
+                                    <Icon className="size-3.5 stroke-[1.8]" />
+                                  </div>
+                                  <p className="home-course-card-title line-clamp-1 text-[15px] font-semibold leading-[20px] text-[#0f1738] transition-colors group-hover:text-[color:var(--brand-primary)]">
                                     {course.course}
                                   </p>
+                                </div>
+                                <div className="mt-1.5">
                                   <p className="mt-0.5 text-[10px] font-normal uppercase tracking-[0.08em] leading-[14px] text-[#5d6f99] transition-colors group-hover:text-[color:var(--brand-primary-soft)]">
                                     {course.subtitle}
                                   </p>
@@ -2027,7 +2029,7 @@ export function HomePage({
                 return (
                   <article
                     key={course.id}
-                    className="home-course-card flex h-[19rem] w-[min(14rem,calc(100vw-2.5rem))] shrink-0 flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff,#f9fbff)] p-4 shadow-[0_14px_30px_rgba(20,42,99,0.07)] sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] 2xl:w-[21rem]"
+                    className="home-course-card flex h-[20.5rem] w-[min(16.25rem,calc(100vw-2rem))] shrink-0 flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,#ffffff,#f9fbff)] p-[1.125rem] shadow-[0_14px_30px_rgba(20,42,99,0.07)] sm:h-[20rem] sm:w-[17.25rem] lg:h-[21rem] lg:w-[19rem] 2xl:w-[21rem]"
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">

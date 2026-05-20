@@ -178,7 +178,8 @@ export function PopularComparisons({
                       src={selectedCollege.logo || selectedCollege.image}
                       alt={selectedCollege.name}
                       mode={selectedCollege.logo ? "logo" : "cover"}
-                      className="h-14 w-14 justify-self-start rounded-[1rem]"
+                      className="h-14 w-14 justify-self-start rounded-full"
+                      imageClassName={selectedCollege.logo ? "rounded-full p-2" : "rounded-full"}
                     />
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
                       VS
@@ -187,7 +188,8 @@ export function PopularComparisons({
                       src={college.logo || college.image}
                       alt={college.name}
                       mode={college.logo ? "logo" : "cover"}
-                      className="h-14 w-14 justify-self-end rounded-[1rem]"
+                      className="h-14 w-14 justify-self-end rounded-full"
+                      imageClassName={college.logo ? "rounded-full p-2" : "rounded-full"}
                     />
                   </div>
 

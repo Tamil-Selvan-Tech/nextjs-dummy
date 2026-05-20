@@ -242,6 +242,32 @@ export function Navbar() {
   }, [isCoursesOpen]);
 
   useEffect(() => {
+    if (!isDrawerOpen) return;
+
+    const scrollY = window.scrollY;
+    const previousOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isDrawerOpen]);
+
+  useEffect(() => {
     if (!isAccountMenuOpen) return;
 
     const onMouseDown = (event: MouseEvent) => {
@@ -334,12 +360,7 @@ export function Navbar() {
   };
 
   const mobileLinks = [
-    { label: "Services", href: "/services" },
-    { label: "About Us", href: "/about-us" },
     { label: "Explore", href: "/explore" },
-    { label: "Contact", href: "/contact" },
-    { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Terms & Conditions", href: "/terms" },
   ];
   return (
     <header
@@ -508,7 +529,7 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
- className="peer type-label-bold w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:w-auto md:min-w-[130px] md:py-2.5"     >
+ className="peer hidden w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:inline-flex md:w-auto md:min-w-[130px] md:items-center md:justify-center md:py-2.5"     >
           All Courses
         </button>
         <div className="breaking-news-shell min-w-0 w-full flex-1">

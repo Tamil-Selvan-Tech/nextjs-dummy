@@ -10,10 +10,10 @@ export default function ContactPage() {
   return (
     <>
       <section className="relative overflow-hidden font-[family:var(--font-body)] text-slate-800">
-        
+
         {/* BACKGROUND */}
 
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(59,130,246,0.08)_0%,rgba(59,130,246,0.12)_100%)]" />
 
         <div className="mesh-bg" />
 
@@ -30,20 +30,20 @@ export default function ContactPage() {
 
                 {/* TOP LABEL */}
 
-                <div className="editorial-kicker text-[10px] font-semibold tracking-[0.16em]">
+                <div className="editorial-kicker text-[10px] font-semibold tracking-[0.16em] text-[#2563eb]">
                   <Sparkles className="size-3" />
                   Contact Us
                 </div>
 
                 {/* TITLE */}
 
-                <h1 className="mt-4 max-w-xl font-[family:var(--font-display)] text-[1.55rem] font-semibold leading-[1.2] text-[color:var(--text-dark)] sm:text-[1.8rem] md:text-[2.2rem]">
+                <h1 className="mt-4 max-w-xl font-[family:var(--font-display)] text-[1.55rem] font-semibold leading-[1.2] text-slate-900 sm:text-[1.8rem] md:text-[2.2rem]">
                   We&apos;d love to hear from you.
                 </h1>
 
                 {/* DESCRIPTION */}
 
-                <p className="mt-3 max-w-lg text-[13px] leading-6 text-[color:var(--text-muted)] md:text-[14px]">
+                <p className="mt-3 max-w-lg text-[13px] leading-6 text-slate-600 md:text-[14px]">
                   Reach out for admissions support, partnerships,
                   or platform guidance.
                 </p>
@@ -76,12 +76,12 @@ export default function ContactPage() {
                     return (
                       <div
                         key={item.title}
-                        className="flex items-start gap-3 rounded-[1rem] border border-blue-100 bg-white p-3 shadow-[0_8px_18px_rgba(15,76,129,0.04)] sm:rounded-[1.1rem] sm:p-4"
+                        className="flex items-start gap-3 rounded-[1rem] border border-[rgba(59,130,246,0.18)] bg-white p-3 shadow-[0_8px_18px_rgba(59,130,246,0.10)] sm:rounded-[1.1rem] sm:p-4"
                       >
 
                         {/* ICON */}
 
-                        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(59,130,246,0.12)] text-[#2563eb]">
                           <Icon className="size-5" />
                         </div>
 
@@ -105,15 +105,15 @@ export default function ContactPage() {
 
               {/* FORM CARD */}
 
-              <div className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white/95 p-4 shadow-[0_10px_22px_rgba(22,50,79,0.05)] sm:p-5 md:rounded-[1.3rem]">
+              <div className="rounded-[1.2rem] border border-[rgba(59,130,246,0.18)] bg-white/95 p-4 shadow-[0_10px_22px_rgba(59,130,246,0.10)] sm:p-5 md:rounded-[1.3rem]">
 
                 {/* FORM TOP */}
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-500">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
                   Send Message
                 </p>
 
-                <h2 className="mt-2 font-[family:var(--font-display)] text-[1.35rem] font-semibold leading-[1.3] text-[color:var(--text-dark)] sm:text-[1.5rem] md:text-[1.8rem]">
+                <h2 className="mt-2 font-[family:var(--font-display)] text-[1.35rem] font-semibold leading-[1.3] text-slate-900 sm:text-[1.5rem] md:text-[1.8rem]">
                   Start a conversation
                 </h2>
 
@@ -130,9 +130,9 @@ export default function ContactPage() {
 
                   {/* NAME */}
 
-                  <div className="rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3">
+                  <div className="rounded-[0.9rem] border border-[rgba(59,130,246,0.18)] bg-white px-4 py-3">
 
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-muted)]">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
                       Full Name
                     </label>
 
@@ -141,15 +141,15 @@ export default function ContactPage() {
                       name="name"
                       placeholder="Enter your full name"
                       required
-                      className="w-full bg-transparent text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-slate-400 md:text-[14px]"
+                      className="w-full bg-transparent text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 md:text-[14px]"
                     />
                   </div>
 
                   {/* EMAIL */}
 
-                  <div className="rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3">
+                  <div className="rounded-[0.9rem] border border-[rgba(59,130,246,0.18)] bg-white px-4 py-3">
 
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-muted)]">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
                       Email
                     </label>
 
@@ -158,15 +158,15 @@ export default function ContactPage() {
                       name="email"
                       placeholder="Enter your email"
                       required
-                      className="w-full bg-transparent text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-slate-400 md:text-[14px]"
+                      className="w-full bg-transparent text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 md:text-[14px]"
                     />
                   </div>
 
                   {/* MESSAGE */}
 
-                  <div className="rounded-[0.9rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3">
+                  <div className="rounded-[0.9rem] border border-[rgba(59,130,246,0.18)] bg-white px-4 py-3">
 
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-muted)]">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
                       Message
                     </label>
 
@@ -175,7 +175,7 @@ export default function ContactPage() {
                       rows={4}
                       placeholder="Type your message..."
                       required
-                      className="w-full resize-none bg-transparent text-[13px] font-medium leading-6 text-[color:var(--text-dark)] outline-none placeholder:text-slate-400 md:text-[14px]"
+                      className="w-full resize-none bg-transparent text-[13px] font-medium leading-6 text-slate-900 outline-none placeholder:text-slate-400 md:text-[14px]"
                     />
                   </div>
 
@@ -183,7 +183,7 @@ export default function ContactPage() {
 
                   <button
                     type="submit"
-                    className="w-full rounded-[0.9rem] bg-red-500 py-3 text-[13px] font-semibold text-white transition duration-200 hover:bg-red-600 md:text-[14px]"
+                    className="w-full rounded-[0.9rem] bg-[#2563eb] py-3 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(59,130,246,0.25)] transition duration-200 hover:bg-[#1d4ed8] md:text-[14px]"
                   >
                     Send Message
                   </button>

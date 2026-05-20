@@ -668,7 +668,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,20,38,0.04),rgba(7,20,38,0.46))]" />
                   </button>
 
-                  <div className={`mt-3 grid gap-3 ${collageImages.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+                  <div className={`mt-3 grid gap-3 ${collageImages.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                     {collageImages.length ? collageImages.map((image, index) => {
                       const imageIndex = index + 1;
                       const isLastVisibleCard = imageIndex === 2;
@@ -684,7 +684,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                             : "border-white/65 hover:border-[rgba(15,76,129,0.22)]"
                         }`}
                       >
-                        <div className={`overflow-hidden ${collageImages.length === 1 ? "h-40" : "h-36"}`}>
+                        <div className={`overflow-hidden ${collageImages.length === 1 ? "h-40" : "h-28 sm:h-36"}`}>
                           <img
                             src={image}
                             alt={`${college.name} collage view ${imageIndex + 1}`}
@@ -804,17 +804,18 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   </div>
 
                   <div className="mt-auto pt-4">
-                  <div className="grid grid-cols-[0.95fr_0.75fr_1.3fr] gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[7.75rem] md:flex-none md:px-3.5">
+                  <div className="grid grid-cols-[1fr_0.85fr_1.15fr] gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
+                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[7.75rem] md:flex-none md:px-3.5">
                       <Globe className="size-3.5 sm:size-4" />
                       Website
                     </a>
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[6.75rem] md:flex-none md:px-3.5">
+                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[6.75rem] md:flex-none md:px-3.5">
                       <MapPin className="size-3.5 sm:size-4" />
                       Map
                     </a>
-                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2.5 py-2.5 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:gap-2 sm:px-5 sm:py-3 sm:text-sm md:flex-1">
-                      Compare College
+                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm md:flex-1">
+                      <span className="sm:hidden">Compare</span>
+                      <span className="hidden sm:inline">Compare College</span>
                       <ArrowRight className="size-3.5 sm:size-4" />
                     </button>
                   </div>
@@ -1071,8 +1072,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   <div className="overflow-hidden rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_16px_34px_rgba(22,50,79,0.06)]">
                     <div className="border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden ">
                       Scroll horizontally to compare course details.
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[rgba(15,76,129,0.1)]">
+                        <div className="h-full w-2/5 rounded-full bg-[color:var(--brand-primary)]" />
+                      </div>
                     </div>
-                    <div className="responsive-data-table ">
+                    <div className="responsive-data-table pb-2 [scrollbar-color:var(--brand-primary)_rgba(15,76,129,0.1)] [scrollbar-width:thin] [&::-webkit-scrollbar]:block [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[color:var(--brand-primary)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(15,76,129,0.1)]">
                     <div className="grid grid-cols-[minmax(260px,2fr)_minmax(150px,0.85fr)_minmax(140px,0.6fr)] gap-0 border-b border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                       <div>Course</div>
                       <div className="w-full justify-self-center text-center">Total Fees</div>
@@ -1309,8 +1313,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               <div className="rounded-[1.1rem] border border-[rgba(15,76,129,0.16)] bg-[rgba(15,76,129,0.02)]">
                 <div className="border-b border-[rgba(15,76,129,0.16)] px-3 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden">
                   Scroll horizontally to view all course columns.
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[rgba(15,76,129,0.1)]">
+                    <div className="h-full w-2/5 rounded-full bg-[color:var(--brand-primary)]" />
+                  </div>
                 </div>
-                <div className="responsive-data-table">
+                <div className="responsive-data-table pb-2 [scrollbar-color:var(--brand-primary)_rgba(15,76,129,0.1)] [scrollbar-width:thin] [&::-webkit-scrollbar]:block [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[color:var(--brand-primary)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(15,76,129,0.1)]">
                   <table className="w-full min-w-[72rem] border-collapse text-left text-sm text-[color:var(--text-dark)] lg:min-w-[84rem]">
                     <thead>
                       <tr className="bg-[rgba(15,76,129,0.08)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
