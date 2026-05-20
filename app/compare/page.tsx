@@ -326,8 +326,8 @@ function ComparePageContent() {
             src={college.logo || college.image}
             alt={college.name}
             mode={college.logo ? "logo" : "cover"}
-            className="h-12 w-24 rounded-[0.9rem]"
-            imageClassName={college.logo ? "p-1" : ""}
+            className={college.logo ? "h-14 w-14 rounded-full" : "h-12 w-24 rounded-[0.9rem]"}
+            imageClassName={college.logo ? "rounded-full p-2" : ""}
           />
           <h3 className="line-clamp-3 text-sm font-semibold leading-5 text-[color:var(--brand-primary)]">
             {college.name}
@@ -465,7 +465,8 @@ function ComparePageContent() {
                         src={college.logo || college.image}
                         alt={college.name}
                         mode={college.logo ? "logo" : "cover"}
-                        className="h-16 w-16 rounded-[1.2rem]"
+                        className={college.logo ? "h-16 w-16 rounded-full" : "h-16 w-16 rounded-[1.2rem]"}
+                        imageClassName={college.logo ? "rounded-full p-2" : ""}
                       />
                       <div className="min-w-0">
                         <h2 className="text-lg font-bold text-[color:var(--text-dark)]">
@@ -787,8 +788,8 @@ function ComparePageContent() {
                         src={college.logo || college.image}
                         alt={college.name}
                         mode={college.logo ? "logo" : "cover"}
-                        className="h-12 w-12 shrink-0 rounded-[0.95rem]"
-                        imageClassName={college.logo ? "p-1" : ""}
+                        className={college.logo ? "h-12 w-12 shrink-0 rounded-full" : "h-12 w-12 shrink-0 rounded-[0.95rem]"}
+                        imageClassName={college.logo ? "rounded-full p-2" : ""}
                       />
                       <div className="min-w-0">
                       <p className="font-semibold text-[color:var(--text-dark)]">{college.name}</p>

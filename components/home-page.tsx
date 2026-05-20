@@ -1,5 +1,4 @@
 "use client";
-
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -61,11 +60,6 @@ function useScrollAnimation() {
   }, []);
 }
 
-const SEARCH_FLOW_ITEMS = [
-  "Search for course",
-  "Search for college",
-  "Search for location",
-];
 const MOBILE_HERO_SEARCH_PROMPTS = {
   college: "Search for College",
   course: "Search for Course",
@@ -172,10 +166,8 @@ export function HomePage({
   const [locationSearchInput, setLocationSearchInput] = useState("");
   const [courseSearchInput, setCourseSearchInput] = useState("");
   const [mobileHeroSearchTab, setMobileHeroSearchTab] = useState<"college" | "course" | "location">("college");
-  const [mobileTypedSearchText, setMobileTypedSearchText] = useState("");
   const [activeAction, setActiveAction] = useState(0);
   const [isSpotlightPaused, setIsSpotlightPaused] = useState(false);
-  const [typedSearchText, setTypedSearchText] = useState("");
   const [activeSearchField, setActiveSearchField] = useState<"college" | "location" | "course" | null>(null);
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const [brokenHeroSuggestionImages, setBrokenHeroSuggestionImages] = useState<Record<string, boolean>>({});
@@ -205,43 +197,6 @@ export function HomePage({
       : mobileHeroSearchTab === "course"
         ? courseSearchInput
         : locationSearchInput;
-
-  useEffect(() => {
-    let charIndex = 0;
-    let isDeleting = false;
-    const currentText = MOBILE_HERO_SEARCH_PROMPTS[mobileHeroSearchTab];
-    let timeoutId = 0;
-
-    const tick = () => {
-      if (isDeleting) {
-        charIndex = Math.max(0, charIndex - 1);
-      } else {
-        charIndex = Math.min(currentText.length, charIndex + 1);
-      }
-
-      setMobileTypedSearchText(currentText.slice(0, charIndex));
-
-      if (!isDeleting && charIndex === currentText.length) {
-        isDeleting = true;
-        timeoutId = window.setTimeout(tick, 1100);
-        return;
-      }
-
-      if (isDeleting && charIndex === 0) {
-        isDeleting = false;
-        timeoutId = window.setTimeout(tick, 260);
-        return;
-      }
-
-      timeoutId = window.setTimeout(tick, isDeleting ? 45 : 85);
-    };
-
-    timeoutId = window.setTimeout(tick, 80);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [mobileHeroSearchTab]);
 
   const heroLocationOptions = useMemo<SearchCity[]>(() => {
     const unique = new Map<string, SearchCity>();
@@ -1010,49 +965,6 @@ export function HomePage({
     return () => window.clearInterval(timer);
   }, [isSpotlightPaused, spotlightColleges.length]);
 
-  useEffect(() => {
-    let itemIndex = 0;
-    let charIndex = 0;
-    let isDeleting = false;
-
-    const tick = () => {
-      const currentText = SEARCH_FLOW_ITEMS[itemIndex];
-
-      if (isDeleting) {
-        charIndex = Math.max(0, charIndex - 1);
-      } else {
-        charIndex = Math.min(currentText.length, charIndex + 1);
-      }
-
-      if (isMountedRef.current) {
-        setTypedSearchText(currentText.slice(0, charIndex));
-      }
-
-      if (!isDeleting && charIndex === currentText.length) {
-        isDeleting = true;
-        return 1200;
-      }
-
-      if (isDeleting && charIndex === 0) {
-        isDeleting = false;
-        itemIndex = (itemIndex + 1) % SEARCH_FLOW_ITEMS.length;
-        return 260;
-      }
-
-      return isDeleting ? 45 : 85;
-    };
-
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const loop = () => {
-      const delay = tick();
-      timeoutId = setTimeout(loop, delay);
-    };
-
-    loop();
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
   // Initialize scroll animations
   useScrollAnimation();
 
@@ -1430,9 +1342,9 @@ export function HomePage({
                           more confidence.
                         </p>
 
-                        <div className="mt-6 md:hidden">
-                          <div className="rounded-[1.15rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2 shadow-[0_14px_34px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
-                            <div className="grid grid-cols-3 gap-1.5">
+                        <div className="mx-auto mt-5 w-full max-w-[22.5rem] px-2 md:hidden">
+                          <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
+                            <div className="grid grid-cols-3 gap-2">
                               {[
                                 { id: "college", label: "Colleges" },
                                 { id: "course", label: "Courses" },
@@ -1442,7 +1354,7 @@ export function HomePage({
                                   key={item.id}
                                   type="button"
                                   onClick={() => setMobileHeroSearchTab(item.id as "college" | "course" | "location")}
-                                  className={`inline-flex items-center justify-center rounded-[0.7rem] px-2 py-2 text-[10px] font-semibold transition ${mobileHeroSearchTab === item.id
+                                  className={`inline-flex items-center justify-center rounded-[0.65rem] px-2 py-2 text-[11px] font-semibold transition ${mobileHeroSearchTab === item.id
                                     ? "bg-[color:var(--brand-accent-deep)] text-white shadow-[0_8px_18px_rgba(20,42,99,0.18)]"
                                     : "border border-[rgba(20,42,99,0.08)] bg-[rgba(246,248,252,0.9)] text-[color:var(--text-muted)]"
                                     }`}
@@ -1452,13 +1364,12 @@ export function HomePage({
                               ))}
                             </div>
 
-                            <div className={`relative mt-2.5 flex items-center gap-2 rounded-[0.85rem] border bg-white px-3 py-3 shadow-[0_10px_24px_rgba(7,15,40,0.08)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.5)] ring-2 ring-[rgba(37,99,235,0.14)]" : "border-[rgba(20,42,99,0.16)] hover:border-[rgba(37,99,235,0.28)]"}`}>
+                            <div className={`relative mt-2 flex items-center gap-2 rounded-[0.8rem] border bg-white px-3.5 py-3 shadow-[0_8px_20px_rgba(7,15,40,0.08)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.5)] ring-2 ring-[rgba(37,99,235,0.14)]" : "border-[rgba(20,42,99,0.16)] hover:border-[rgba(37,99,235,0.28)]"}`}>
                               <Search className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
                               <div className="min-w-0 flex-1">
                                 {!activeMobileHeroSearchValue ? (
-                                  <div className="pointer-events-none absolute left-9 right-12 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[11px]">
-                                    <span className="truncate text-[color:var(--brand-primary-soft)]">{mobileTypedSearchText}</span>
-                                    <span className="ml-0.5 inline-block text-[color:var(--brand-primary-soft)]">|</span>
+                                  <div className="pointer-events-none absolute left-10 right-12 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[12px]">
+                                    <span className="truncate text-[color:var(--brand-primary-soft)]">{MOBILE_HERO_SEARCH_PROMPTS[mobileHeroSearchTab]}</span>
                                   </div>
                                 ) : null}
                                 <input
@@ -1484,14 +1395,14 @@ export function HomePage({
                                     }
                                   }}
                                   placeholder=""
-                                  className={`min-w-0 w-full border-0 bg-transparent text-[11px] outline-none ${activeMobileHeroSearchValue ? "text-[color:var(--text-dark)]" : "text-transparent caret-[color:var(--brand-primary-soft)]"}`}
+                                  className={`min-w-0 w-full border-0 bg-transparent text-[12px] outline-none ${activeMobileHeroSearchValue ? "text-[color:var(--text-dark)]" : "text-transparent caret-[color:var(--brand-primary-soft)]"}`}
                                   aria-label="Mobile homepage search"
                                 />
                               </div>
                               <button
                                 type="button"
                                 onClick={handleCompactMobileHeroSearch}
-                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(20,42,99,0.1)] text-[color:var(--brand-primary)]"
+                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(20,42,99,0.1)] text-[color:var(--brand-primary)]"
                                 aria-label="Submit mobile search"
                               >
                                 <ArrowRight className="size-4" />
@@ -1565,9 +1476,9 @@ export function HomePage({
                           </div>
                         </div>
 
-                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[19rem] grid-cols-2 justify-items-center gap-1.5 md:hidden">
+                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[22.5rem] grid-cols-2 justify-items-center gap-2 px-2 md:hidden">
                           {heroStatCards.map((item) => (
-                            <div key={`${item.label}-mobile`} className="w-full max-w-[9.1rem] min-w-0 rounded-[0.9rem] border border-[rgba(37,99,235,0.12)] bg-white px-2 py-2 shadow-[0_8px_16px_rgba(20,42,99,0.05)]">
+                            <div key={`${item.label}-mobile`} className="w-full min-w-0 rounded-[0.9rem] border border-[rgba(37,99,235,0.12)] bg-white px-3 py-2.5 shadow-[0_8px_16px_rgba(20,42,99,0.05)]">
                               <div className="flex flex-col gap-1 text-center">
                                 <div className="flex items-center justify-center gap-1.5">
                                   <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.iconClassName}`}>
@@ -1582,32 +1493,32 @@ export function HomePage({
                         </div>
                       </div>
 
-                      <div className="mx-auto hidden w-full max-w-[45rem] md:block lg:mx-0 xl:max-w-[49rem] 2xl:max-w-[54rem]">
+                      <div className="mx-auto hidden w-full max-w-[40rem] md:block lg:mx-0 xl:max-w-[43rem] 2xl:max-w-[47rem]">
                         <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
                           <div
                             className="
       hero-search-input
       relative z-[2] overflow-hidden
-      rounded-[1.2rem] sm:rounded-[1.65rem]
+      rounded-[1.05rem] sm:rounded-[1.35rem]
       border-2
       bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(248,250,255,0.98))]
-      p-1.5 sm:p-1.5
-      shadow-[0_20px_42px_rgba(20,42,99,0.12)]
+      p-1 sm:p-1
+      shadow-[0_16px_34px_rgba(20,42,99,0.1)]
       ring-1
     "
                           style={{
                             borderColor: activeSearchField ? "rgba(37,99,235,0.82)" : "rgba(37,99,235,0.42)",
                             boxShadow: activeSearchField
                               ? "0 24px 48px rgba(20,42,99,0.16), 0 0 0 5px rgba(37,99,235,0.16)"
-                              : "0 22px 44px rgba(20,42,99,0.12), 0 0 0 2px rgba(37,99,235,0.14)",
+                              : "0 18px 36px rgba(20,42,99,0.1), 0 0 0 2px rgba(37,99,235,0.12)",
                           }}
                           >
-                            <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-[minmax(0,1.32fr)_minmax(0,1.02fr)_minmax(0,1.02fr)_8rem] md:items-center md:gap-0 md:pr-1">
+                            <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-[minmax(0,1.14fr)_minmax(0,0.92fr)_minmax(0,0.92fr)_6.8rem] md:items-center md:gap-0 md:pr-1">
                             <div
                               className={`
           relative min-w-0
-          px-4 py-3 md:px-5
-          rounded-[1rem] md:rounded-none
+          px-3 py-2.5 md:px-4
+          rounded-[0.9rem] md:rounded-none
           bg-white md:bg-transparent
           border
           md:border-0
@@ -1615,17 +1526,10 @@ export function HomePage({
           ${activeSearchField === "course" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
         `}
                             >
-                              <div className="mb-2 flex items-center gap-2 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
-                                <Search className="size-4" />
+                              <div className="mb-1.5 flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
+                                <Search className="size-3.5" />
                                 Search Courses
                               </div>
-
-                              {!courseSearchInput ? (
-                                <div className="pointer-events-none absolute inset-x-4 bottom-2.5 z-0 flex items-center overflow-hidden text-[15px] md:inset-x-5 md:text-[16px]">
-                                  <span className="truncate text-[color:var(--brand-primary-soft)]">{typedSearchText}</span>
-                                  <span className="ml-1 inline-block text-[color:var(--brand-primary-soft)]">|</span>
-                                </div>
-                              ) : null}
 
                               <input
                                 type="text"
@@ -1642,17 +1546,17 @@ export function HomePage({
                                     handleHeroSearch();
                                   }
                                 }}
-                                placeholder=""
-                                className={`relative z-[1] min-h-[1.8rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[15px] outline-none placeholder:text-[color:var(--text-muted)] md:text-[16px] ${courseSearchInput ? "text-[color:var(--text-dark)]" : "text-transparent caret-[color:var(--brand-primary-soft)]"}`}
+                                placeholder="Search for Course"
+                                className="relative z-[1] min-h-[1.55rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[14px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
 
                             <div
                               className={`
-          flex min-h-[3.15rem] flex-col items-start justify-center gap-2
-          rounded-[1rem] md:rounded-none
+          flex min-h-[2.85rem] flex-col items-start justify-center gap-1.5
+          rounded-[0.9rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-3 md:py-2.5
+          px-3 py-2.5 md:px-4 md:py-2
           border
           md:border-0
           md:border-r md:border-[rgba(37,99,235,0.18)]
@@ -1660,10 +1564,10 @@ export function HomePage({
         `}
                             >
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
-                                  <Building2 className="size-[1rem]" />
+                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
+                                  <Building2 className="size-[0.9rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
                                   College
                                 </label>
                               </div>
@@ -1678,17 +1582,17 @@ export function HomePage({
                                 onFocus={() => activateSearchField("college")}
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="College"
-                                placeholder=""
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
+                                placeholder="Search for College"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
 
                             <div
                               className={`
-          flex min-h-[3.15rem] flex-col items-start justify-center gap-2
-          rounded-[1rem] md:rounded-none
+          flex min-h-[2.85rem] flex-col items-start justify-center gap-1.5
+          rounded-[0.9rem] md:rounded-none
           bg-white md:bg-transparent
-          px-4 py-3 md:py-2.5
+          px-3 py-2.5 md:px-4 md:py-2
           border
           md:border-0
           md:border-r md:border-[rgba(37,99,235,0.18)]
@@ -1696,10 +1600,10 @@ export function HomePage({
         `}
                             >
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
-                                  <MapPin className="size-[1rem]" />
+                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
+                                  <MapPin className="size-[0.9rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)] sm:text-[11px]">
+                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
                                   Location
                                 </label>
                               </div>
@@ -1714,8 +1618,8 @@ export function HomePage({
                                 onFocus={() => activateSearchField("location")}
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="Location"
-                                placeholder=""
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
+                                placeholder="Search for Location"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
                               />
                             </div>
 
@@ -1724,14 +1628,14 @@ export function HomePage({
                                 onClick={handleHeroSearch}
                                 className="
           inline-flex
-          h-14 min-h-[3.5rem]
+          h-12 min-h-[3rem]
           w-full
           items-center justify-center
           gap-2
-          rounded-[1.05rem]
+          rounded-[0.95rem]
           bg-[color:var(--brand-accent-deep)]
-          px-6
-          text-[14px]
+          px-4
+          text-[13px]
           font-semibold
           text-white
           shadow-[0_14px_26px_rgba(15,31,82,0.24)]
@@ -1742,7 +1646,7 @@ export function HomePage({
           md:mx-auto
           md:min-w-0
           md:self-center
-          md:w-[6.95rem]
+          md:w-[5.9rem]
         "
                               >
                                 Find

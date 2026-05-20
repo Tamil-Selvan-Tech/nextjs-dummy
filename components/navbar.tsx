@@ -351,9 +351,9 @@ export function Navbar() {
         <div className="flex flex-wrap items-center gap-4 md:flex-nowrap md:gap-5 lg:gap-6">
           <Link
             href="/"
-            className="rounded-full px-1.5 py-1 shadow-[0_10px_24px_rgba(37,99,235,0.08),0_0_18px_rgba(255,255,255,0.75)] transition hover:opacity-80"
+            className="inline-flex rounded-full bg-white px-3 py-2 shadow-[0_10px_24px_rgba(37,99,235,0.08),0_0_18px_rgba(255,255,255,0.75)] transition hover:opacity-80"
           >
-            <BrandLogo variant="tab" textColor="dark" className="origin-left scale-110 text-[17px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[18px] md:text-[19px]" iconClassName="h-11 w-11 drop-shadow-[0_8px_18px_rgba(245,158,11,0.22)] sm:h-12 sm:w-12 md:h-[3.15rem] md:w-[3.15rem]" />
+            <BrandLogo variant="tab" textColor="dark" className="text-[16px] drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)] sm:text-[17px] md:text-[18px]" iconClassName="h-11 w-11 drop-shadow-[0_8px_18px_rgba(245,158,11,0.22)] sm:h-12 sm:w-12 md:h-[3rem] md:w-[3rem]" />
           </Link>
 
           {/* Study preference chip hidden as requested

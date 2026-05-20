@@ -735,12 +735,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     {college.logo ? (
                       <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.98),rgba(231,240,250,0.96))] shadow-[0_16px_28px_rgba(22,50,79,0.15)] ring-1 ring-[rgba(255,255,255,0.88)] sm:h-24 sm:w-24">
                         <div className="absolute inset-[-0.4rem] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.18),rgba(255,255,255,0))] blur-md" />
-                        <div className="absolute inset-[0.3rem] rounded-full border border-[rgba(37,99,235,0.16)] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" />
-                        <img
-                          src={college.logo}
-                          alt={`${college.name} logo`}
-                          className="relative z-10 h-[72%] w-[72%] object-contain sm:h-[74%] sm:w-[74%]"
-                        />
+                        <div className="relative z-10 flex h-[82%] w-[82%] items-center justify-center overflow-hidden rounded-full border border-[rgba(37,99,235,0.16)] bg-white p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                          <img
+                            src={college.logo}
+                            alt={`${college.name} logo`}
+                            className="h-full w-full rounded-full object-contain"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--brand-primary),var(--brand-primary-soft))] text-xl font-bold uppercase text-white shadow-[0_16px_26px_rgba(22,50,79,0.18)] sm:h-24 sm:w-24">

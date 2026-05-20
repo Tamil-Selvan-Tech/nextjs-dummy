@@ -13,8 +13,10 @@ import {
   MailOpen,
   PencilLine,
   Plus,
+  TriangleAlert,
   Trash2,
   UserRound,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -75,6 +77,14 @@ type CollegeValidation = { valid: boolean; step: number; field: string; message:
 type CourseCatalogItem = { stream: string; courseType: string; specialization: string; degreeType: string };
 type CourseOption = { value: string; label: string };
 type CutoffRangeConfig = { max: number; scaleLabel: string; contextLabel: string };
+type DeleteCollegeDialogState = {
+  id: string;
+  name: string;
+  top: number;
+  left: number;
+  width: number;
+  placement: "top" | "bottom";
+} | null;
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, isBestCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
@@ -921,6 +931,9 @@ function AdminPageContent() {
   const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
   const [homeHeroImageFile, setHomeHeroImageFile] = useState<File | null>(null);
   const [isUploadingHomeHeroImage, setIsUploadingHomeHeroImage] = useState(false);
+  const [deleteCollegeDialog, setDeleteCollegeDialog] = useState<DeleteCollegeDialogState>(null);
+  const [deleteCollegeConfirmationName, setDeleteCollegeConfirmationName] = useState("");
+  const [isDeletingCollege, setIsDeletingCollege] = useState(false);
   useEffect(() => {
     if (!statusText || statusText === lastToastMessageRef.current) return;
     showToast(statusText, "info");
@@ -1978,6 +1991,76 @@ function AdminPageContent() {
       setStatusText(message);
     } finally {
       void key;
+    }
+  };
+
+  const openDeleteCollegeDialog = (college: AdminCollege, anchorElement: HTMLElement) => {
+    const preferredWidth = 340;
+    const viewportPadding = 12;
+    const preferredHeight = 220;
+    const rect = anchorElement.getBoundingClientRect();
+    const availableWidth = Math.max(window.innerWidth - viewportPadding * 2, 280);
+    const width = Math.min(preferredWidth, availableWidth);
+    const left = Math.min(
+      window.innerWidth - width - viewportPadding,
+      Math.max(viewportPadding, rect.right - width),
+    );
+    const topPlacement = rect.top - preferredHeight - 10;
+    const hasTopSpace = topPlacement >= viewportPadding;
+    const placement = hasTopSpace ? "top" : "bottom";
+    const top = hasTopSpace
+      ? topPlacement
+      : Math.min(window.innerHeight - preferredHeight - viewportPadding, rect.bottom + 10);
+
+    setDeleteCollegeDialog({
+      id: String(college._id || "").trim(),
+      name: String(college.name || "").trim() || "Selected College",
+      top,
+      left,
+      width,
+      placement,
+    });
+    setDeleteCollegeConfirmationName("");
+  };
+
+  const closeDeleteCollegeDialog = () => {
+    if (isDeletingCollege) {
+      return;
+    }
+    setDeleteCollegeDialog(null);
+    setDeleteCollegeConfirmationName("");
+  };
+
+  const isDeleteCollegeNameMatched =
+    deleteCollegeDialog !== null &&
+    deleteCollegeConfirmationName.trim().localeCompare(deleteCollegeDialog.name, undefined, {
+      sensitivity: "accent",
+    }) === 0;
+
+  const confirmDeleteCollege = async () => {
+    if (!token || !deleteCollegeDialog || !isDeleteCollegeNameMatched || isDeletingCollege) {
+      return;
+    }
+
+    setIsDeletingCollege(true);
+    try {
+      const data = await request(
+        `/api/admin/colleges/${deleteCollegeDialog.id}`,
+        withAuth(token, {
+          method: "DELETE",
+          body: JSON.stringify({
+            confirmCollegeName: deleteCollegeConfirmationName.trim(),
+          }),
+        }),
+      );
+      setStatusText(data?.message || "College deleted");
+      setDeleteCollegeDialog(null);
+      setDeleteCollegeConfirmationName("");
+      await loadAdminData(token, currentUser);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to delete college");
+    } finally {
+      setIsDeletingCollege(false);
     }
   };
 
@@ -4991,13 +5074,9 @@ function AdminPageContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          void runAction(`college-${college._id}`, async () => {
-                            const data = await request(`/api/admin/colleges/${college._id}`, withAuth(token, { method: "DELETE" }));
-                            setStatusText(data?.message || "College deleted");
-                            await loadAdminData(token, currentUser);
-                          })
-                        }
+                        onClick={(event) => {
+                          openDeleteCollegeDialog(college, event.currentTarget);
+                        }}
                         className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
                       >
                         <Trash2 className="size-4" />
@@ -6445,6 +6524,106 @@ function AdminPageContent() {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {deleteCollegeDialog ? (
+        <div
+          className="fixed inset-0 z-[2100] bg-transparent"
+          onClick={closeDeleteCollegeDialog}
+        >
+          <div
+            className="fixed overflow-hidden rounded-[1.5rem] border border-rose-100 bg-[linear-gradient(180deg,#ffffff_0%,#fff8f8_100%)] shadow-[0_26px_60px_rgba(15,23,42,0.22)]"
+            style={{
+              top: deleteCollegeDialog.top,
+              left: deleteCollegeDialog.left,
+              width: deleteCollegeDialog.width,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              className={`absolute right-8 size-4 rotate-45 bg-white ${
+                deleteCollegeDialog.placement === "top"
+                  ? "-bottom-1 border-b border-r border-rose-100"
+                  : "-top-1 border-l border-t border-rose-100"
+              }`}
+            />
+            <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#ef4444_0%,#fb7185_55%,#f59e0b_100%)]" />
+            <button
+              type="button"
+              onClick={closeDeleteCollegeDialog}
+              disabled={isDeletingCollege}
+              className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-white/80 text-slate-400 transition hover:bg-white hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <X className="size-3.5" />
+            </button>
+
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#fee2e2_0%,#fecaca_100%)] text-rose-600 shadow-[0_12px_24px_rgba(239,68,68,0.16)]">
+                  <TriangleAlert className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-500">
+                    Delete
+                  </p>
+                  <h3 className="mt-1 pr-7 text-base font-bold leading-5 text-slate-950">
+                    Delete {deleteCollegeDialog.name}?
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                    Type the college name to continue.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(135deg,#fffdf5_0%,#fff7ed_100%)] p-3">
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-800">
+                    Confirm name
+                  </span>
+                  <input
+                    type="text"
+                    value={deleteCollegeConfirmationName}
+                    onChange={(event) => setDeleteCollegeConfirmationName(event.target.value)}
+                    placeholder={deleteCollegeDialog.name}
+                    autoFocus
+                    className="mt-2.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                  />
+                </label>
+                <div className="mt-3 flex items-center gap-2 text-xs font-medium">
+                  <span
+                    className={`inline-flex size-2 rounded-full ${
+                      isDeleteCollegeNameMatched ? "bg-emerald-500" : "bg-slate-300"
+                    }`}
+                  />
+                  <span className={isDeleteCollegeNameMatched ? "text-emerald-700" : "text-slate-500"}>
+                    {isDeleteCollegeNameMatched
+                      ? "Ready to delete"
+                      : deleteCollegeDialog.name}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteCollegeDialog}
+                  disabled={isDeletingCollege}
+                  className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmDeleteCollege()}
+                  disabled={!isDeleteCollegeNameMatched || isDeletingCollege}
+                  className="inline-flex items-center justify-center rounded-xl bg-[linear-gradient(135deg,#ef4444_0%,#dc2626_100%)] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_28px_rgba(239,68,68,0.2)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeletingCollege ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
