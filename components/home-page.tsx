@@ -1193,17 +1193,17 @@ export function HomePage({
       </button>
 
       <div className="mt-4 space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[color:var(--surface-soft)] p-2.5 sm:p-3">
-            <p className="type-caption uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
-              Success Rate
-            </p>
-            <p className="type-title-medium mt-1.5 text-[color:var(--brand-support)]">
-              {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
-            </p>
-            <p className="type-caption mt-1 text-[color:var(--text-muted)]">
-              Campus placement 2026
-            </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[color:var(--surface-soft)] p-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
+            Success Rate
+          </p>
+          <p className="mt-1.5 text-[1.55rem] font-bold text-[color:var(--brand-support)]">
+            {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
+          </p>
+          <p className="mt-1 text-[10px] leading-4 text-[color:var(--text-muted)]">
+            Campus placement 2026
+          </p>
           </div>
           <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[#fbfbfe] p-2.5 sm:p-3">
             <p className="type-caption uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">

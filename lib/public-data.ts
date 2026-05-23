@@ -199,6 +199,7 @@ type BackendCollege = {
   averagePackage?: string | number;
   companiesVisited?: string | number;
   hostelDetails?: Record<string, unknown>;
+  customFields?: Record<string, unknown>;
 };
 
 type BackendCourse = {
@@ -437,6 +438,15 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       : String(item.placementRate ?? "").trim();
     const rawHostelDetails =
       item.hostelDetails && typeof item.hostelDetails === "object" ? item.hostelDetails : {};
+    const campusHighlights =
+      item.customFields && typeof item.customFields === "object" && !Array.isArray(item.customFields)
+        ? Object.entries(item.customFields)
+            .map(([label, value]) => ({
+              label: String(label || "").trim(),
+              value: String(value ?? "").trim(),
+            }))
+            .filter((entry) => entry.label && entry.value)
+        : [];
     const hasHostel =
       Boolean(item.hasHostel) ||
       String((rawHostelDetails as Record<string, unknown>).availability || "")
@@ -505,6 +515,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
         companiesVisited,
       },
       hostelDetails: rawHostelDetails,
+      campusHighlights,
     };
   });
 

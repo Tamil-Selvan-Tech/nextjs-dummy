@@ -219,6 +219,67 @@ body {
   font-weight: 700;
 }
 
+.admin-typography,
+.admin-typography * {
+  font-family: var(--font-montserrat), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+.admin-typography {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+}
+
+.admin-typography h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 38px;
+}
+
+.admin-typography h2 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.admin-typography h3,
+.admin-typography h4,
+.admin-typography h5,
+.admin-typography h6 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 25px;
+}
+
+.admin-typography p,
+.admin-typography li,
+.admin-typography td,
+.admin-typography th,
+.admin-typography input,
+.admin-typography select,
+.admin-typography textarea {
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.admin-typography button,
+.admin-typography a,
+.admin-typography label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.admin-typography small,
+.admin-typography figcaption,
+.admin-typography .type-caption,
+.admin-typography .type-caption-small {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+}
+
 .home-course-card {
   font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
 }

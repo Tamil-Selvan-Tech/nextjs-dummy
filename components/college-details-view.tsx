@@ -39,6 +39,7 @@ const tabs = [
   { key: "courses", label: "Courses Offered" },
   { key: "fees", label: "Fees Structure" },
   { key: "admission", label: "Admission Process" },
+  { key: "campusHighlights", label: "Campus Highlights" },
   { key: "career", label: "Career & Campus" },
   { key: "scholarships", label: "Scholarships" },
   { key: "hostel", label: "Hostel Details" },
@@ -177,6 +178,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
         .map((item) => item.trim().replace(/^[^\w(]+/, ""))
         .filter(Boolean)
     : [];
+  const campusHighlights = Array.isArray(college.campusHighlights)
+    ? college.campusHighlights.filter((item) => item?.label?.trim() && item?.value?.trim())
+    : [];
 
   const groupedCourses = useMemo(() => {
     const groups = new Map<string, Course[]>();
@@ -268,7 +272,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     : [];
   const reviewItems = college.reviews?.trim()
     ? college.reviews
-        .split(/[.\n]+/)
+        .split(/\n+|(?<!\d)\.(?!\d)|\.(?=\s+[A-Z])/)
         .map((item) => item.trim().replace(/^[â€¢•\-\u2022]+\s*/, ""))
         .filter(Boolean)
     : [];
@@ -643,7 +647,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
-                        {college.isBestCollege ? "Best College" : "Featured College"}
+                        {college.isBestCollege || college.isTopCollege ? "Best College" : "Featured College"}
                       </span>
                       <span className="rounded-full bg-[rgba(15,76,129,0.08)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                         {courseCount} course options
@@ -1189,6 +1193,43 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       </article>
                     ))}
                   </div>
+                </div>
+              ) : null}
+
+              {activeTab === "campusHighlights" ? (
+                <div className="mt-6 space-y-4">
+                  <article className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-6 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">College Snapshot</p>
+                        <h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Campus Highlights</h3>
+                      </div>
+                      <span className="rounded-full bg-[rgba(15,76,129,0.08)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                        {campusHighlights.length ? `${campusHighlights.length} highlights` : "Not available"}
+                      </span>
+                    </div>
+                    {campusHighlights.length ? (
+                      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {campusHighlights.map((item) => (
+                          <article key={`${item.label}-${item.value}`} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(22,50,79,0.04)]">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="size-4 text-[color:var(--brand-primary)]" />
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                                {item.label}
+                              </p>
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-[color:var(--text-dark)]">
+                              {item.value}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-5 text-sm text-[color:var(--text-muted)]">
+                        Campus highlights are not available for this college.
+                      </p>
+                    )}
+                  </article>
                 </div>
               ) : null}
 

@@ -1,18 +1,22 @@
 ﻿"use client";
 
+import { strFromU8, strToU8, unzipSync, zipSync } from "@/lib/vendor/fflate-browser";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeCheck,
   Bell,
   Building2,
+  Download,
   ExternalLink,
   FileClock,
+  Filter,
   ImageUp,
   KeyRound,
   LayoutDashboard,
   MailOpen,
   PencilLine,
   Plus,
+  Search,
   TriangleAlert,
   Trash2,
   UserRound,
@@ -55,7 +59,7 @@ import {
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
-type AdminCollege = { _id: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
+type AdminCollege = { _id: string; collegeCode?: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; cutoffByCategory?: CategoryCutoff[]; cutoffCategory?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
 type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
@@ -407,7 +411,7 @@ const normalizeIndianPhoneInput = (value: string) => {
   if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
   return digits.slice(0, 10);
 };
-const isValidIndianPhone = (value: string) => /^[6-9]\d{9}$/.test(value);
+const isValidIndianPhone = (value: string) => /^\d{10}$/.test(value);
 const adminModules = ["colleges", "college-requests", "users", "enquiries", "exams"];
 const adminModuleLabels: Record<string, string> = {
   colleges: "Colleges",
@@ -885,6 +889,2448 @@ const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", 
 const quotaQuickOptions = ["Management Quota", "Government Quota", "Reservation Quota", "Sports Quota", "Minority Quota", "NRI Quota"];
 const scholarshipQuickOptions = ["Merit Scholarship", "Government Scholarship", "Minority Scholarship", "Sports Scholarship", "Need Based Scholarship", "First Graduate Scholarship"];
 
+type BulkSheetKey = "colleges" | "courses" | "entranceexams" | "collegeimages";
+type BulkRowStatus = "Valid" | "Invalid" | "Review";
+type BulkFieldIssueLevel = "missing" | "invalid" | "review" | "duplicate" | "exists";
+type BulkFieldIssue = {
+  level: BulkFieldIssueLevel;
+  messages: string[];
+};
+type BulkPreviewRow = {
+  id: number;
+  sheet: BulkSheetKey;
+  rowNumber: number;
+  data: Record<string, string>;
+  status: BulkRowStatus;
+  errors: string[];
+  fieldIssues: Record<string, BulkFieldIssue>;
+};
+type ZipAssetRecord = {
+  normalizedPath: string;
+  normalizedName: string;
+  matchTokens: Set<string>;
+};
+type ZipAssetIndex = {
+  byPath: Map<string, ZipAssetRecord>;
+  byName: Map<string, ZipAssetRecord[]>;
+};
+
+const bulkSheetLabels: Record<BulkSheetKey, string> = {
+  colleges: "Colleges",
+  courses: "Courses",
+  entranceexams: "EntranceExams",
+  collegeimages: "CollegeImages",
+};
+const bulkCutoffCategories = ["OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"] as const;
+const bulkCutoffCategoryKeyMap = Object.fromEntries(
+  bulkCutoffCategories.map((category) => [category, category.toLowerCase()]),
+) as Record<(typeof bulkCutoffCategories)[number], string>;
+const bulkSingleCutoffColumns = bulkCutoffCategories.map((category) => {
+  const key = bulkCutoffCategoryKeyMap[category];
+  return `cutoff_${key}`;
+});
+const bulkRangeCutoffColumns = bulkCutoffCategories.flatMap((category) => {
+  const key = bulkCutoffCategoryKeyMap[category];
+  return [`cutoff_${key}_min`, `cutoff_${key}_max`];
+});
+const bulkCutoffColumns = [...bulkSingleCutoffColumns, ...bulkRangeCutoffColumns];
+
+const bulkSheetColumns: Record<BulkSheetKey, string[]> = {
+  colleges: [
+    "collegeCode", "collegeName", "description", "establishedYear", "ownershipType", "university", "country", "state", "city", "district", "address", "pincode", "googleMapUrl", "officialEmail", "phoneNumber", "alternatePhone", "websiteUrl", "logoImage", "coverImage", "brochurePdf", "campusVideo", "ranking", "accreditation", "awards", "reviews", "facilities", "quotas", "minFee", "maxFee", "admissionProcess", "applicationMode", "scholarships", "placementPercentage", "averagePackage", "highestPackage", "hostelGeneralInfo", "hostelType", "hostelMinFee", "hostelMaxFee", "cctvAvailability", "hostelFacilities", "isBestCollege",
+  ],
+  courses: [
+    "collegeCode", "degreeType", "stream", "specialization", "courseName", "duration", "mode", "lateralEntry", "bestCourse", "minimumQualification", "university", "allottedSeats", "applicationFee", "courseDescription", "semesterFees", "totalFees", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max",
+  ],
+  entranceexams: [
+    "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max", "specifiedSubjects", "preparationNotes",
+  ],
+  collegeimages: ["collegeCode", "imageType", "imageName"],
+};
+
+const normalizedBulkColumnLookup = Object.fromEntries(
+  Object.values(bulkSheetColumns).flat().map((column) => [column.toLowerCase(), column]),
+) as Record<string, string>;
+const bulkPreviewColumnLabels: Record<string, string> = {
+  rankingMin: "ranking_min",
+  rankingMax: "ranking_max",
+};
+
+const bulkColumnAliases: Record<string, string> = {
+  scholarship: "scholarships",
+  hostelgen: "hostelgeneralinfo",
+  allotedseats: "allottedseats",
+  specifiedpaperorsyllabus: "specifiedsubjects",
+  rankingmin: "rankingmin",
+  rankingmax: "rankingmax",
+};
+
+function BulkUploadDashboard({
+  onImportComplete,
+  existingColleges = [],
+}: {
+  onImportComplete?: () => Promise<void> | void;
+  existingColleges?: AdminCollege[];
+}) {
+  const previewDetailsRef = useRef<HTMLElement | null>(null);
+  const [selectedUploadFiles, setSelectedUploadFiles] = useState<Record<string, File | null>>({});
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  const [activeUploadStep, setActiveUploadStep] = useState<"1" | "2">("1");
+  const [showZipUploadStep, setShowZipUploadStep] = useState(false);
+  const [validationSummary, setValidationSummary] = useState({
+    totalRecords: 0,
+    validRecords: 0,
+    failedRecords: 0,
+    invalidRecords: 0,
+    duplicates: 0,
+    pendingReview: 0,
+  });
+  
+  const [validationStatusText, setValidationStatusText] = useState("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
+  const [showFullDetails, setShowFullDetails] = useState(false);
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [activeDetailSheet, setActiveDetailSheet] = useState<BulkSheetKey>("colleges");
+  const [detailSearchText, setDetailSearchText] = useState("");
+  const [detailStatusFilter, setDetailStatusFilter] = useState<"all" | BulkRowStatus>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [openFieldPanel, setOpenFieldPanel] = useState<"all" | "single" | null>(null);
+  const [customSheetColumns, setCustomSheetColumns] = useState<Record<BulkSheetKey, string[]>>({
+    colleges: [],
+    courses: [],
+    entranceexams: [],
+    collegeimages: [],
+  });
+  const [customFieldForm, setCustomFieldForm] = useState({
+    fieldName: "Placement rate",
+    fieldType: "Number",
+    defaultValue: "90",
+    selectedCollegeRowId: "",
+  });
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+  const [editingFocusField, setEditingFocusField] = useState("");
+  const [editingRowBackup, setEditingRowBackup] = useState<BulkPreviewRow | null>(null);
+  const [fieldErrorText, setFieldErrorText] = useState("");
+  const [previewRows, setPreviewRows] = useState<BulkPreviewRow[]>([]);
+  const [validatedZipAssetIndex, setValidatedZipAssetIndex] = useState<ZipAssetIndex | null>(null);
+  const [mediaPreviewUrls, setMediaPreviewUrls] = useState<Record<string, string>>({});
+  const [isImporting, setIsImporting] = useState(false);
+  const [currentDetailPage, setCurrentDetailPage] = useState(1);
+  const editingFieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const itemsPerPage = 5;
+  const existingCollegeCodeSet = useMemo(
+    () =>
+      new Set(
+        existingColleges
+          .map((college) => String(college.collegeCode || "").trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    [existingColleges],
+  );
+  const existingCollegeNameSet = useMemo(
+    () =>
+      new Set(
+        existingColleges
+          .map((college) => String(college.name || "").trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    [existingColleges],
+  );
+  const uploadCards = [
+    {
+      step: "1",
+      title: "Add Bulk College Data",
+      subtitle: "Upload Excel file to add multiple colleges at once",
+      icon: ImageUp,
+      dropText: "Drag & drop your Excel file here",
+      action: "Choose Excel File",
+      note: "Supports: .xlsx, .csv",
+      accept: ".xlsx,.csv",
+      allowedExtensions: [".xlsx", ".csv"],
+    },
+    {
+      step: "2",
+      title: "Add Single College Data",
+      subtitle: "Upload one college record as Excel or CSV",
+      icon: ImageUp,
+      dropText: "Drag & drop your single college Excel here",
+      action: "Choose Excel File",
+      note: "Supports: .xlsx, .csv",
+      accept: ".xlsx,.csv",
+      allowedExtensions: [".xlsx", ".csv"],
+    },
+    {
+      step: "3",
+      title: "Add College Images ZIP",
+      subtitle: "Upload logo, cover, brochure, and gallery files for each college",
+      icon: FileClock,
+      dropText: "Drag & drop combined image ZIP here",
+      action: "Choose ZIP File",
+      note: "Excel image columns must contain ZIP file names only. Max size: 50MB",
+      accept: ".zip",
+      allowedExtensions: [".zip"],
+      maxSize: 50 * 1024 * 1024,
+    },
+  ];
+
+  const formatFileSize = (size: number) => {
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const getFileExtension = (fileName: string) => {
+    const dotIndex = fileName.lastIndexOf(".");
+    return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
+  };
+
+  const decodeXml = (value: string) =>
+    value
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+
+  const normalizeUploadKey = (value: string) =>
+    String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const displayColumnName = (value: string) =>
+    bulkPreviewColumnLabels[value] || normalizedBulkColumnLookup[value.toLowerCase()] || value;
+
+  const normalizeZipName = (value: string) =>
+    String(value || "").replace(/\\/g, "/").split("/").pop()?.trim().toLowerCase() || "";
+
+  const normalizeZipPath = (value: string) =>
+    String(value || "").replace(/\\/g, "/").replace(/^\.?\//, "").trim().toLowerCase();
+
+  const getZipMatchTokens = (value: string) => {
+    const normalizedPath = normalizeZipPath(value);
+    const tokens = new Set<string>();
+
+    normalizedPath
+      .split("/")
+      .map((segment) => segment.replace(/\.[^.]+$/, ""))
+      .forEach((segment) => {
+        const compactToken = normalizeUploadKey(segment);
+        if (compactToken) tokens.add(compactToken);
+
+        segment
+          .split(/[^a-z0-9]+/i)
+          .map((part) => normalizeUploadKey(part))
+          .filter(Boolean)
+          .forEach((partToken) => tokens.add(partToken));
+
+        const alphaNumericGroups = segment.match(/[a-z]+|\d+/gi) || [];
+        alphaNumericGroups
+          .map((part) => normalizeUploadKey(part))
+          .filter(Boolean)
+          .forEach((partToken) => tokens.add(partToken));
+      });
+
+    const fullPathToken = normalizeUploadKey(normalizedPath.replace(/\.[^.]+$/, ""));
+    if (fullPathToken) tokens.add(fullPathToken);
+
+    return tokens;
+  };
+
+  const buildZipAssetIndex = (fileNames: Iterable<string>): ZipAssetIndex => {
+    const byPath = new Map<string, ZipAssetRecord>();
+    const byName = new Map<string, ZipAssetRecord[]>();
+
+    for (const fileName of fileNames) {
+      const normalizedPath = normalizeZipPath(fileName);
+      const normalizedName = normalizeZipName(fileName);
+      if (!normalizedPath || !normalizedName) continue;
+
+      const descriptor: ZipAssetRecord = {
+        normalizedPath,
+        normalizedName,
+        matchTokens: getZipMatchTokens(fileName),
+      };
+
+      byPath.set(normalizedPath, descriptor);
+      if (!byName.has(normalizedName)) byName.set(normalizedName, []);
+      byName.get(normalizedName)?.push(descriptor);
+    }
+
+    return { byPath, byName };
+  };
+
+  const resolveZipAssetRecord = (
+    zipAssetIndex: ZipAssetIndex | null,
+    fileName: string,
+    collegeCode = "",
+  ): ZipAssetRecord | null => {
+    const raw = String(fileName || "").trim();
+    if (!raw || !zipAssetIndex) return null;
+
+    const normalizedPath = normalizeZipPath(raw);
+    if (normalizedPath && zipAssetIndex.byPath.has(normalizedPath)) {
+      return zipAssetIndex.byPath.get(normalizedPath) || null;
+    }
+
+    const normalizedName = normalizeZipName(raw);
+    if (!normalizedName) return null;
+
+    const candidates = zipAssetIndex.byName.get(normalizedName) || [];
+    if (candidates.length <= 1) return candidates[0] || null;
+
+    const collegeToken = normalizeUploadKey(collegeCode);
+    if (collegeToken) {
+      const tokenMatches = candidates.filter((candidate) => candidate.matchTokens.has(collegeToken));
+      if (tokenMatches.length > 0) return tokenMatches[0];
+    }
+
+    return candidates[0] || null;
+  };
+
+  const zipImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+  const supportedGalleryImageTypes = ["campus", "hostel", "classroom", "laboratory", "library", "sports", "placement", "hospital"] as const;
+
+  const inferGalleryImageType = (fileName: string) => {
+    const normalizedBaseName = normalizeUploadKey(normalizeZipName(fileName).replace(/\.[^.]+$/, ""));
+    return supportedGalleryImageTypes.find((type) => normalizedBaseName.includes(type)) || "campus";
+  };
+
+  const inferZipMediaForCollege = (
+    zipAssetIndex: ZipAssetIndex | null,
+    collegeCode: string,
+    allowLooseMatch = false,
+  ) => {
+    if (!zipAssetIndex) {
+      return {
+        logoImage: "",
+        coverImage: "",
+        brochurePdf: "",
+        galleryImages: [] as Array<{ imageName: string; imageType: string }>,
+      };
+    }
+
+    const collegeToken = normalizeUploadKey(collegeCode);
+    let records = [...zipAssetIndex.byPath.values()].filter((record) => record.matchTokens.has(collegeToken));
+    if (records.length === 0 && allowLooseMatch) {
+      records = [...zipAssetIndex.byPath.values()];
+    }
+
+    records.sort((left, right) => left.normalizedPath.localeCompare(right.normalizedPath));
+
+    let logoImage = "";
+    let coverImage = "";
+    let brochurePdf = "";
+    const galleryImages: Array<{ imageName: string; imageType: string }> = [];
+
+    for (const record of records) {
+      const extension = getFileExtension(record.normalizedName);
+      const normalizedBaseName = normalizeUploadKey(record.normalizedName.replace(/\.[^.]+$/, ""));
+
+      if (!brochurePdf && (extension === ".pdf" || normalizedBaseName.includes("brochure"))) {
+        brochurePdf = record.normalizedPath;
+        continue;
+      }
+
+      if (!zipImageExtensions.has(extension)) continue;
+
+      if (!logoImage && normalizedBaseName.includes("logo")) {
+        logoImage = record.normalizedPath;
+        continue;
+      }
+
+      if (!coverImage && (normalizedBaseName.includes("cover") || normalizedBaseName.includes("banner"))) {
+        coverImage = record.normalizedPath;
+        continue;
+      }
+
+      galleryImages.push({
+        imageName: record.normalizedPath,
+        imageType: inferGalleryImageType(record.normalizedName),
+      });
+    }
+
+    return {
+      logoImage,
+      coverImage,
+      brochurePdf,
+      galleryImages,
+    };
+  };
+
+  const enrichSheetsWithZipAssets = (
+    sheets: Map<string, Record<string, string>[]>,
+    zipAssetIndex: ZipAssetIndex | null,
+  ) => {
+    if (!zipAssetIndex) return sheets;
+
+    const nextSheets = new Map<string, Record<string, string>[]>(
+      [...sheets.entries()].map(([sheet, rows]) => [sheet, rows.map((row) => ({ ...row }))]),
+    );
+
+    const collegeCodeKey = normalizeUploadKey("collegeCode");
+    const logoImageKey = normalizeUploadKey("logoImage");
+    const coverImageKey = normalizeUploadKey("coverImage");
+    const brochurePdfKey = normalizeUploadKey("brochurePdf");
+    const imageTypeKey = normalizeUploadKey("imageType");
+    const imageNameKey = normalizeUploadKey("imageName");
+
+    const colleges = nextSheets.get("colleges") || [];
+    const collegeImages = [...(nextSheets.get("collegeimages") || [])];
+    const hasSingleCollege = colleges.length === 1;
+    const existingImageKeys = new Set(
+      collegeImages.map((row) => {
+        const code = String(row[collegeCodeKey] || "").trim().toLowerCase();
+        const imageName = normalizeZipPath(String(row[imageNameKey] || ""));
+        return `${code}|${imageName}`;
+      }),
+    );
+
+    for (const collegeRow of colleges) {
+      const collegeCode = String(collegeRow[collegeCodeKey] || "").trim();
+      if (!collegeCode) continue;
+
+      const inferredMedia = inferZipMediaForCollege(zipAssetIndex, collegeCode, hasSingleCollege);
+
+      if (!String(collegeRow[logoImageKey] || "").trim() && inferredMedia.logoImage) {
+        collegeRow[logoImageKey] = inferredMedia.logoImage;
+      }
+      if (!String(collegeRow[coverImageKey] || "").trim() && inferredMedia.coverImage) {
+        collegeRow[coverImageKey] = inferredMedia.coverImage;
+      }
+      if (!String(collegeRow[brochurePdfKey] || "").trim() && inferredMedia.brochurePdf) {
+        collegeRow[brochurePdfKey] = inferredMedia.brochurePdf;
+      }
+
+      for (const galleryImage of inferredMedia.galleryImages) {
+        const galleryKey = `${collegeCode.toLowerCase()}|${normalizeZipPath(galleryImage.imageName)}`;
+        if (existingImageKeys.has(galleryKey)) continue;
+
+        collegeImages.push({
+          [collegeCodeKey]: collegeCode,
+          [imageTypeKey]: galleryImage.imageType,
+          [imageNameKey]: galleryImage.imageName,
+        });
+        existingImageKeys.add(galleryKey);
+      }
+    }
+
+    nextSheets.set("colleges", colleges);
+    if (collegeImages.length > 0) {
+      nextSheets.set("collegeimages", collegeImages);
+    }
+
+    return nextSheets;
+  };
+
+  const parseCsvRows = (text: string) => {
+    const rows: string[][] = [];
+    let cell = "";
+    let row: string[] = [];
+    let inQuotes = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index];
+      const next = text[index + 1];
+      if (char === '"' && inQuotes && next === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        row.push(cell.trim());
+        cell = "";
+      } else if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && next === "\n") index += 1;
+        row.push(cell.trim());
+        if (row.some(Boolean)) rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+
+    row.push(cell.trim());
+    if (row.some(Boolean)) rows.push(row);
+    return rows;
+  };
+
+  const rowsToObjects = (rows: string[][]) => {
+    const [headerRow = [], ...dataRows] = rows;
+    const headers = headerRow.map((item) => {
+      const normalized = normalizeUploadKey(item);
+      return bulkColumnAliases[normalized] || normalized;
+    });
+    return dataRows
+      .map((row) =>
+        headers.reduce<Record<string, string>>((record, header, index) => {
+          if (header) record[header] = String(row[index] || "").trim();
+          return record;
+        }, {}),
+      )
+      .filter((row) => Object.values(row).some(Boolean));
+  };
+
+  const readZipEntries = async (file: File) => {
+    try {
+      const buffer = new Uint8Array(await file.arrayBuffer());
+      const entries = unzipSync(buffer);
+      return new Map<string, Uint8Array>(
+        Object.entries(entries).map(([fileName, content]) => [fileName.replace(/\\/g, "/"), content]),
+      );
+    } catch {
+      throw new Error("Unable to extract ZIP file. Please upload a valid .zip archive.");
+    }
+  };
+
+  const parseAttributes = (value: string) => {
+    const attrs: Record<string, string> = {};
+    value.replace(/([\w:]+)="([^"]*)"/g, (_match, key: string, attrValue: string) => {
+      attrs[key] = decodeXml(attrValue);
+      return "";
+    });
+    return attrs;
+  };
+
+  const columnIndexFromCellRef = (ref: string) => {
+    const letters = (ref.match(/[A-Z]+/i)?.[0] || "").toUpperCase();
+    return letters.split("").reduce((total, char) => total * 26 + char.charCodeAt(0) - 64, 0) - 1;
+  };
+
+  const parseXlsxFile = async (file: File) => {
+    const entries = await readZipEntries(file);
+    const getXml = (path: string) => {
+      const entry = entries.get(path) || entries.get(path.replace(/^\//, ""));
+      return entry ? strFromU8(entry) : "";
+    };
+
+    const sharedXml = getXml("xl/sharedStrings.xml");
+    const sharedStrings = [...sharedXml.matchAll(/<si[^>]*>([\s\S]*?)<\/si>/g)].map((match) =>
+      decodeXml([...match[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((item) => item[1]).join("")),
+    );
+    const workbookXml = getXml("xl/workbook.xml");
+    const relsXml = getXml("xl/_rels/workbook.xml.rels");
+    const rels = new Map<string, string>();
+    relsXml.replace(/<Relationship\b([^>]*)\/>/g, (_match, attrsText: string) => {
+      const attrs = parseAttributes(attrsText);
+      if (attrs.Id && attrs.Target) rels.set(attrs.Id, attrs.Target);
+      return "";
+    });
+
+    const sheets = new Map<string, Record<string, string>[]>();
+    workbookXml.replace(/<sheet\b([^>]*)\/>/g, (_match, attrsText: string) => {
+      const attrs = parseAttributes(attrsText);
+      const relId = attrs["r:id"];
+      const target = relId ? rels.get(relId) : "";
+      if (!attrs.name || !target) return "";
+      const sheetPath = target.startsWith("/") ? target.slice(1) : `xl/${target.replace(/^\.\.\//, "")}`;
+      const sheetXml = getXml(sheetPath);
+      const tableRows: string[][] = [];
+
+      sheetXml.replace(/<row\b[^>]*>([\s\S]*?)<\/row>/g, (_rowMatch, rowXml: string) => {
+        const rowValues: string[] = [];
+        rowXml.replace(/<c\b([^>]*)>([\s\S]*?)<\/c>/g, (_cellMatch, cellAttrs: string, cellXml: string) => {
+          const attrsForCell = parseAttributes(cellAttrs);
+          const index = columnIndexFromCellRef(attrsForCell.r || "");
+          const rawValue = cellXml.match(/<v[^>]*>([\s\S]*?)<\/v>/)?.[1] || "";
+          const inlineValue = cellXml.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1] || "";
+          rowValues[index >= 0 ? index : rowValues.length] =
+            attrsForCell.t === "s" ? sharedStrings[Number(rawValue)] || "" : decodeXml(inlineValue || rawValue);
+          return "";
+        });
+        if (rowValues.some(Boolean)) tableRows.push(rowValues);
+        return "";
+      });
+
+      sheets.set(normalizeUploadKey(attrs.name), rowsToObjects(tableRows));
+      return "";
+    });
+
+    return sheets;
+  };
+
+  const readWorkbookSheets = async (file: File) => {
+    const extension = getFileExtension(file.name);
+    if (extension === ".csv") {
+      return new Map([["colleges", rowsToObjects(parseCsvRows(await file.text()))]]);
+    }
+    if (extension === ".xlsx") return parseXlsxFile(file);
+    throw new Error("Please upload .xlsx or .csv files for bulk validation.");
+  };
+
+  const readZipAssetIndex = async (file: File) => {
+    const entries = await readZipEntries(file);
+    return buildZipAssetIndex(entries.keys());
+  };
+
+  const getImageMimeType = (fileName: string) => {
+    const extension = getFileExtension(fileName);
+    if (extension === ".png") return "image/png";
+    if (extension === ".webp") return "image/webp";
+    if (extension === ".gif") return "image/gif";
+    if (extension === ".svg") return "image/svg+xml";
+    return "image/jpeg";
+  };
+
+  const readZipImagePreviewUrls = async (file: File) => {
+    const entries = await readZipEntries(file);
+    const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+    return Object.fromEntries(
+      [...entries.entries()]
+        .filter(([name]) => imageExtensions.has(getFileExtension(name)))
+        .map(([name, bytes]) => {
+          const normalizedName = normalizeZipPath(name);
+          const blobPart = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+          return [normalizedName, URL.createObjectURL(new Blob([blobPart], { type: getImageMimeType(name) }))];
+        }),
+    );
+  };
+
+  const getSheetRows = (sheets: Map<string, Record<string, string>[]>, sheet: BulkSheetKey) => sheets.get(sheet) || [];
+
+  const cellValue = (row: Record<string, string>, column: string) => String(row[normalizeUploadKey(column)] || "").trim();
+
+  const isRemoteAssetReference = (value: string) => /^https?:\/\//i.test(String(value || "").trim());
+  const getZipOnlyAssetError = (column: string) => `${displayColumnName(column)} must be a ZIP file name, not a URL`;
+  const parseLooseNumber = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return undefined;
+    const cleaned = raw.replace(/,/g, "");
+    const directParsed = Number(cleaned);
+    if (Number.isFinite(directParsed)) return directParsed;
+    const match = cleaned.match(/-?\d+(\.\d+)?/);
+    if (!match) return undefined;
+    const parsed = Number(match[0]);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+  const isFlexibleBooleanValue = (value: string) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    return !normalized || ["true", "false", "yes", "no", "1", "0", "available", "not_available", "not available"].includes(normalized);
+  };
+  const isValidEmailValue = (value: string) => {
+    const raw = String(value || "").trim();
+    return !raw || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+  };
+  const isValidPhoneValue = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return true;
+    const digits = raw.replace(/\D/g, "");
+    const normalized = digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
+    return /^\d{10}$/.test(normalized);
+  };
+  const isValidPincodeValue = (value: string) => {
+    const raw = String(value || "").trim();
+    return !raw || /^\d{6}$/.test(raw.replace(/\s/g, ""));
+  };
+  const isValidUrlValue = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw || isRemoteAssetReference(raw)) return true;
+    try {
+      const parsed = new URL(raw);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+  const isValidYearValue = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return true;
+    const year = parseLooseNumber(raw);
+    return year !== undefined && year >= 1800 && year <= new Date().getFullYear() + 1;
+  };
+  const isNumberWithinRange = (value: string, minimum: number, maximum: number) => {
+    const parsed = parseLooseNumber(value);
+    return parsed === undefined || (parsed >= minimum && parsed <= maximum);
+  };
+  const isCheckedPreviewBoolean = (value: string) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    return ["true", "yes", "1", "available"].includes(normalized);
+  };
+  const hasAnyBulkCutoffValue = (rowData: Record<string, string>, columns = bulkCutoffColumns) =>
+    columns.some((column) => String(rowData[column] || "").trim());
+  const getBulkPreviewColumns = (sheet: BulkSheetKey) =>
+    sheet === "colleges"
+      ? bulkSheetColumns.colleges.flatMap((column) => (column === "ranking" ? ["rankingMin", "rankingMax"] : [column]))
+      : bulkSheetColumns[sheet];
+  const getPreviewRankingRangeValues = (rankingValue: string) => {
+    const normalized = normalizeRankingRangeInput(rankingValue);
+    const [rankingMin = "", rankingMax = ""] = normalized.split("-");
+    return { rankingMin, rankingMax };
+  };
+  const createFieldIssue = (level: BulkFieldIssueLevel, message: string): BulkFieldIssue => ({
+    level,
+    messages: [message],
+  });
+  const addFieldIssue = (
+    issues: Record<string, BulkFieldIssue>,
+    column: string,
+    level: BulkFieldIssueLevel,
+    message: string,
+  ) => {
+    const current = issues[column];
+    if (!current) {
+      issues[column] = createFieldIssue(level, message);
+      return;
+    }
+    const levelPriority: Record<BulkFieldIssueLevel, number> = {
+      missing: 5,
+      invalid: 4,
+      duplicate: 3,
+      exists: 2,
+      review: 1,
+    };
+    issues[column] = {
+      level: levelPriority[level] > levelPriority[current.level] ? level : current.level,
+      messages: current.messages.includes(message) ? current.messages : [...current.messages, message],
+    };
+  };
+  const collectFieldIssues = (issues: Record<string, BulkFieldIssue>) =>
+    Object.values(issues).flatMap((issue) => issue.messages);
+  const validateBulkCutoffRanges = (
+    rowData: Record<string, string>,
+    { allowSingle = true }: { allowSingle?: boolean } = {},
+  ) =>
+    bulkCutoffCategories.flatMap((category) => {
+      const key = bulkCutoffCategoryKeyMap[category];
+      const singleColumn = `cutoff_${key}`;
+      const minColumn = `cutoff_${key}_min`;
+      const maxColumn = `cutoff_${key}_max`;
+      const single = String(rowData[singleColumn] || "").trim();
+      const min = String(rowData[minColumn] || "").trim();
+      const max = String(rowData[maxColumn] || "").trim();
+      const errors: string[] = [];
+
+      if ((min && !max) || (!min && max)) {
+        errors.push(`Both ${displayColumnName(minColumn)} and ${displayColumnName(maxColumn)} are required when using a range for ${category}`);
+        return errors;
+      }
+
+      if (allowSingle && single && (min || max)) {
+        errors.push(`Use either ${displayColumnName(singleColumn)} or ${displayColumnName(minColumn)} / ${displayColumnName(maxColumn)} for ${category}`);
+      }
+
+      const minValue = parseLooseNumber(min);
+      const maxValue = parseLooseNumber(max);
+      if (minValue !== undefined && maxValue !== undefined && minValue > maxValue) {
+        errors.push(`${displayColumnName(minColumn)} must be less than or equal to ${displayColumnName(maxColumn)}`);
+      }
+
+      return errors;
+    });
+
+  const buildBulkValidationSummary = (rows: BulkPreviewRow[]) => ({
+    totalRecords: rows.length,
+    validRecords: rows.filter((row) => row.status === "Valid").length,
+    failedRecords: 0,
+    invalidRecords: rows.filter((row) => row.status === "Invalid").length,
+    duplicates: rows.filter((row) => row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"))).length,
+    pendingReview: rows.filter((row) => row.status === "Review").length,
+  });
+
+  const validateBulkPreviewRows = (
+    rows: Array<Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data">>,
+    zipAssetIndex: ZipAssetIndex | null,
+    hasImageZip: boolean,
+  ): BulkPreviewRow[] => {
+    const colleges = rows.filter((row) => row.sheet === "colleges");
+    const courses = rows.filter((row) => row.sheet === "courses");
+    const collegeImages = rows.filter((row) => row.sheet === "collegeimages");
+    const collegeCodeCounts = colleges.reduce<Record<string, number>>((counts, row) => {
+      const code = String(row.data.collegeCode || "").trim().toLowerCase();
+      if (code) counts[code] = (counts[code] || 0) + 1;
+      return counts;
+    }, {});
+    const collegeCodes = new Set(Object.keys(collegeCodeCounts));
+    const courseNames = new Set(courses.map((row) => String(row.data.courseName || "").trim().toLowerCase()).filter(Boolean));
+    const imageCountByCollege = collegeImages.reduce<Record<string, number>>((counts, row) => {
+      const code = String(row.data.collegeCode || "").trim().toLowerCase();
+      if (code) counts[code] = (counts[code] || 0) + 1;
+      return counts;
+    }, {});
+    const supportedImageTypes = new Set(["campus", "hostel", "classroom", "laboratory", "library", "sports", "placement", "hospital"]);
+
+    return rows.map((row) => {
+      const rowData = row.data || {};
+      const cell = (column: string) => String(rowData[column] || "").trim();
+      const isFilledCell = (column: string) => Boolean(cell(column));
+      const isNumericPreviewCell = (column: string) => {
+        const value = cell(column);
+        return !value || parseLooseNumber(value) !== undefined;
+      };
+      const isTrueFalsePreviewCell = (column: string) => {
+        return isFlexibleBooleanValue(cell(column));
+      };
+
+      let errors: string[] = [];
+      let reviewErrors: string[] = [];
+      const fieldIssues: Record<string, BulkFieldIssue> = {};
+
+      if (row.sheet === "colleges") {
+        const required = ["collegeCode", "collegeName", "university", "state", "city", "officialEmail", "phoneNumber"];
+        const numeric = ["establishedYear", "minFee", "maxFee", "placementPercentage", "averagePackage", "highestPackage", "hostelMinFee", "hostelMaxFee"];
+        const imageMediaNames = ["logoImage", "coverImage"].map((column) => cell(column)).filter(Boolean);
+        const localImageMediaNames = imageMediaNames.filter((name) => !isRemoteAssetReference(name));
+        const localImageMediaColumns = ["logoImage", "coverImage"].filter((column) => {
+          const columnValue = cell(column);
+          return columnValue && !isRemoteAssetReference(columnValue);
+        });
+        const brochureValue = cell("brochurePdf");
+
+        required.forEach((column) => {
+          if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
+        });
+        numeric.forEach((column) => {
+          if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
+        });
+        if (!isValidYearValue(cell("establishedYear"))) addFieldIssue(fieldIssues, "establishedYear", "invalid", "establishedYear must be a valid year");
+        if (!isValidEmailValue(cell("officialEmail"))) addFieldIssue(fieldIssues, "officialEmail", "invalid", "officialEmail must be a valid email address");
+        if (!isValidPhoneValue(cell("phoneNumber"))) addFieldIssue(fieldIssues, "phoneNumber", "invalid", "phoneNumber must be a valid 10 digit phone number");
+        if (!isValidPhoneValue(cell("alternatePhone"))) addFieldIssue(fieldIssues, "alternatePhone", "invalid", "alternatePhone must be a valid 10 digit phone number");
+        if (!isValidPincodeValue(cell("pincode"))) addFieldIssue(fieldIssues, "pincode", "invalid", "pincode must be a valid 6 digit code");
+        if (!isValidUrlValue(cell("websiteUrl"))) addFieldIssue(fieldIssues, "websiteUrl", "invalid", "websiteUrl must be a valid URL");
+        if (!isValidUrlValue(cell("googleMapUrl"))) addFieldIssue(fieldIssues, "googleMapUrl", "invalid", "googleMapUrl must be a valid URL");
+        if (!isValidUrlValue(cell("campusVideo"))) addFieldIssue(fieldIssues, "campusVideo", "invalid", "campusVideo must be a valid URL");
+        if (!isNumberWithinRange(cell("placementPercentage"), 0, 100)) addFieldIssue(fieldIssues, "placementPercentage", "invalid", "placementPercentage must be between 0 and 100");
+        if (parseLooseNumber(cell("minFee")) !== undefined && parseLooseNumber(cell("maxFee")) !== undefined && (parseLooseNumber(cell("minFee")) || 0) > (parseLooseNumber(cell("maxFee")) || 0)) {
+          addFieldIssue(fieldIssues, "minFee", "invalid", "minFee must be less than or equal to maxFee");
+          addFieldIssue(fieldIssues, "maxFee", "invalid", "minFee must be less than or equal to maxFee");
+        }
+        if (parseLooseNumber(cell("hostelMinFee")) !== undefined && parseLooseNumber(cell("hostelMaxFee")) !== undefined && (parseLooseNumber(cell("hostelMinFee")) || 0) > (parseLooseNumber(cell("hostelMaxFee")) || 0)) {
+          addFieldIssue(fieldIssues, "hostelMinFee", "invalid", "hostelMinFee must be less than or equal to hostelMaxFee");
+          addFieldIssue(fieldIssues, "hostelMaxFee", "invalid", "hostelMinFee must be less than or equal to hostelMaxFee");
+        }
+        if (parseLooseNumber(cell("averagePackage")) !== undefined && parseLooseNumber(cell("highestPackage")) !== undefined && (parseLooseNumber(cell("averagePackage")) || 0) > (parseLooseNumber(cell("highestPackage")) || 0)) {
+          addFieldIssue(fieldIssues, "averagePackage", "invalid", "averagePackage must be less than or equal to highestPackage");
+          addFieldIssue(fieldIssues, "highestPackage", "invalid", "averagePackage must be less than or equal to highestPackage");
+        }
+        if (!isTrueFalsePreviewCell("cctvAvailability")) addFieldIssue(fieldIssues, "cctvAvailability", "invalid", "cctvAvailability must be TRUE or FALSE");
+        if (!isTrueFalsePreviewCell("isBestCollege")) addFieldIssue(fieldIssues, "isBestCollege", "invalid", "isBestCollege must be TRUE or FALSE");
+        if (collegeCodeCounts[cell("collegeCode").toLowerCase()] > 1) addFieldIssue(fieldIssues, "collegeCode", "duplicate", "Duplicate collegeCode");
+        if (cell("collegeCode") && existingCollegeCodeSet.has(cell("collegeCode").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeCode", "exists", "collegeCode already exists in the system");
+        }
+        if (cell("collegeName") && existingCollegeNameSet.has(cell("collegeName").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeName", "exists", "collegeName already exists in the system");
+        }
+        ["logoImage", "coverImage"]
+          .filter((column) => isRemoteAssetReference(cell(column)))
+          .forEach((column) => addFieldIssue(fieldIssues, column, "invalid", getZipOnlyAssetError(column)));
+        if (hasImageZip) {
+          localImageMediaNames.forEach((name, index) => {
+            if (!resolveZipAssetRecord(zipAssetIndex, name, cell("collegeCode"))) {
+              const column = localImageMediaColumns[index] || "logoImage";
+              addFieldIssue(fieldIssues, column, "invalid", `${name} not found in ZIP`);
+            }
+          });
+          if (brochureValue && !isRemoteAssetReference(brochureValue) && !resolveZipAssetRecord(zipAssetIndex, brochureValue, cell("collegeCode"))) {
+            addFieldIssue(fieldIssues, "brochurePdf", "invalid", `${brochureValue} not found in ZIP`);
+          }
+        } else if (localImageMediaNames.length || (brochureValue && !isRemoteAssetReference(brochureValue))) {
+          if (localImageMediaNames.length) {
+            addFieldIssue(fieldIssues, "logoImage", "review", "Upload combined media ZIP to validate logo and cover files");
+            addFieldIssue(fieldIssues, "coverImage", "review", "Upload combined media ZIP to validate logo and cover files");
+          }
+          if (brochureValue && !isRemoteAssetReference(brochureValue)) {
+            addFieldIssue(fieldIssues, "brochurePdf", "review", "Upload combined media ZIP to validate brochure files");
+          }
+        }
+      }
+
+      if (row.sheet === "courses") {
+        const numeric = ["allottedSeats", "applicationFee", "semesterFees", "totalFees", ...bulkCutoffColumns];
+        ["collegeCode", "courseName", "degreeType", "stream", "duration", "mode"].forEach((column) => {
+          if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
+        });
+        if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
+        }
+        numeric.forEach((column) => {
+          if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
+        });
+        validateBulkCutoffRanges(rowData).forEach((message) => {
+          const matchedColumns = bulkCutoffColumns.filter((column) => message.includes(displayColumnName(column)) || message.includes(column));
+          if (matchedColumns.length) {
+            matchedColumns.forEach((column) => addFieldIssue(fieldIssues, column, "invalid", message));
+          } else {
+            addFieldIssue(fieldIssues, "cutoff_oc", "invalid", message);
+          }
+        });
+        if (!hasAnyBulkCutoffValue(rowData)) addFieldIssue(fieldIssues, "cutoff_oc", "missing", "At least one cutoff value is required");
+        if (!isTrueFalsePreviewCell("lateralEntry")) addFieldIssue(fieldIssues, "lateralEntry", "invalid", "lateralEntry must be TRUE or FALSE");
+        if (!isTrueFalsePreviewCell("bestCourse")) addFieldIssue(fieldIssues, "bestCourse", "invalid", "bestCourse must be TRUE or FALSE");
+        if (parseLooseNumber(cell("semesterFees")) !== undefined && parseLooseNumber(cell("totalFees")) !== undefined && (parseLooseNumber(cell("semesterFees")) || 0) > (parseLooseNumber(cell("totalFees")) || 0)) {
+          addFieldIssue(fieldIssues, "semesterFees", "invalid", "semesterFees must be less than or equal to totalFees");
+          addFieldIssue(fieldIssues, "totalFees", "invalid", "semesterFees must be less than or equal to totalFees");
+        }
+      }
+
+      if (row.sheet === "entranceexams") {
+        const numeric = ["examWeightage", ...bulkRangeCutoffColumns];
+        ["courseName", "examName"].forEach((column) => {
+          if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
+        });
+        if (isFilledCell("courseName") && !courseNames.has(cell("courseName").toLowerCase())) {
+          addFieldIssue(fieldIssues, "courseName", "invalid", "courseName does not exist in Courses sheet");
+        }
+        numeric.forEach((column) => {
+          if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
+        });
+        validateBulkCutoffRanges(rowData, { allowSingle: false }).forEach((message) => {
+          const matchedColumns = bulkRangeCutoffColumns.filter((column) => message.includes(displayColumnName(column)) || message.includes(column));
+          if (matchedColumns.length) {
+            matchedColumns.forEach((column) => addFieldIssue(fieldIssues, column, "invalid", message));
+          } else {
+            addFieldIssue(fieldIssues, "cutoff_oc_min", "invalid", message);
+          }
+        });
+        if (!hasAnyBulkCutoffValue(rowData, bulkRangeCutoffColumns)) addFieldIssue(fieldIssues, "cutoff_oc_min", "missing", "At least one cutoff range is required");
+        if (!isNumberWithinRange(cell("examWeightage"), 0, 100)) addFieldIssue(fieldIssues, "examWeightage", "invalid", "examWeightage must be between 0 and 100");
+      }
+
+      if (row.sheet === "collegeimages") {
+        const imageName = cell("imageName");
+        const imageType = cell("imageType").toLowerCase();
+        const needsZipValidation = imageName && !isRemoteAssetReference(imageName);
+        ["collegeCode", "imageType", "imageName"].forEach((column) => {
+          if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
+        });
+        if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
+        }
+        if (imageType && !supportedImageTypes.has(imageType)) addFieldIssue(fieldIssues, "imageType", "invalid", "imageType is not supported");
+        if (imageCountByCollege[cell("collegeCode").toLowerCase()] > 7) addFieldIssue(fieldIssues, "imageName", "invalid", "Maximum 7 college images allowed");
+        if (isRemoteAssetReference(imageName)) addFieldIssue(fieldIssues, "imageName", "invalid", getZipOnlyAssetError("imageName"));
+        if (hasImageZip && needsZipValidation && !resolveZipAssetRecord(zipAssetIndex, imageName, cell("collegeCode"))) {
+          addFieldIssue(fieldIssues, "imageName", "invalid", `${imageName} not found in ZIP`);
+        }
+        if (!hasImageZip && needsZipValidation) addFieldIssue(fieldIssues, "imageName", "review", "Upload combined media ZIP to validate this image");
+      }
+
+      errors = collectFieldIssues(fieldIssues);
+      reviewErrors = Object.values(fieldIssues)
+        .filter((issue) => issue.level === "review")
+        .flatMap((issue) => issue.messages);
+
+      return {
+        ...row,
+        status: errors.some((message) => !reviewErrors.includes(message)) ? "Invalid" : reviewErrors.length ? "Review" : "Valid",
+        errors,
+        fieldIssues,
+      };
+    });
+  };
+
+  const createBulkPreviewRows = (
+    sheets: Map<string, Record<string, string>[]>,
+    zipAssetIndex: ZipAssetIndex | null,
+    hasImageZip: boolean,
+    isSingleCollegeUpload: boolean,
+  ) => {
+    const colleges = isSingleCollegeUpload ? getSheetRows(sheets, "colleges").slice(0, 1) : getSheetRows(sheets, "colleges");
+    const courses = isSingleCollegeUpload ? getSheetRows(sheets, "courses").filter((row) => !colleges[0] || cellValue(row, "collegeCode") === cellValue(colleges[0], "collegeCode")) : getSheetRows(sheets, "courses");
+    const entranceExams = getSheetRows(sheets, "entranceexams");
+    const collegeImages = getSheetRows(sheets, "collegeimages");
+    let nextId = 1;
+    const makeRow = (sheet: BulkSheetKey, row: Record<string, string>, index: number): Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data"> => {
+      const data = Object.fromEntries(bulkSheetColumns[sheet].map((column) => [column, cellValue(row, column)]));
+      if (sheet === "colleges") {
+        data.ranking =
+          cellValue(row, "ranking") ||
+          [cellValue(row, "rankingMin"), cellValue(row, "rankingMax")].filter(Boolean).join(" - ");
+      }
+
+      return {
+        id: nextId++,
+        sheet,
+        rowNumber: index + 2,
+        data,
+      };
+    };
+
+    return validateBulkPreviewRows(
+      [
+        ...colleges.map((row, index) => makeRow("colleges", row, index)),
+        ...courses.map((row, index) => makeRow("courses", row, index)),
+        ...entranceExams.map((row, index) => makeRow("entranceexams", row, index)),
+        ...collegeImages.map((row, index) => makeRow("collegeimages", row, index)),
+      ],
+      zipAssetIndex,
+      hasImageZip,
+    );
+  };
+
+  const summaryRows = [
+    { label: "Total Records", value: `${validationSummary.totalRecords}`, color: "text-[#143071]", dot: "bg-[#16a34a]", icon: BadgeCheck },
+    { label: "Valid Records", value: `${validationSummary.validRecords}`, color: "text-[#16a34a]", dot: "bg-[#16a34a]", icon: BadgeCheck },
+    { label: "Failed Records", value: `${validationSummary.failedRecords}`, color: "text-[#ef233c]", dot: "bg-[#ef233c]", icon: X },
+    { label: "Invalid Records", value: `${validationSummary.invalidRecords}`, color: "text-[#ef233c]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
+    { label: "Duplicates", value: `${validationSummary.duplicates}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
+    { label: "Pending Review", value: `${validationSummary.pendingReview}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
+  ];
+
+  const getUploadFileError = (file: File, item: (typeof uploadCards)[number]) => {
+    const extension = getFileExtension(file.name);
+    if (!item.allowedExtensions.includes(extension)) {
+      return item.accept === ".zip" ? "Only .zip image archive files are allowed." : "Only .xlsx or .csv files are allowed.";
+    }
+    if (item.maxSize && file.size > item.maxSize) {
+      return "ZIP file size must be 50MB or less.";
+    }
+    return "";
+  };
+
+  const resetUploadSelection = useCallback((step: "1" | "2" | "3") => {
+    setSelectedUploadFiles((previous) => {
+      if (step === "3") {
+        return { ...previous, "3": null };
+      }
+
+      const otherExcelStep = step === "1" ? "2" : "1";
+      return { ...previous, [step]: null, [otherExcelStep]: null, "3": null };
+    });
+
+    setUploadErrors((previous) => {
+      if (step === "3") {
+        return { ...previous, "3": "" };
+      }
+
+      const otherExcelStep = step === "1" ? "2" : "1";
+      return { ...previous, [step]: "", [otherExcelStep]: "", "3": "" };
+    });
+
+    if (step !== "3") {
+      setActiveUploadStep(step);
+      setShowZipUploadStep(false);
+    }
+  }, []);
+
+  const selectUploadFile = (item: (typeof uploadCards)[number], file: File | null) => {
+    if (!file) {
+      resetUploadSelection(item.step as "1" | "2" | "3");
+      return;
+    }
+
+    const error = getUploadFileError(file, item);
+    if (error) {
+      if (item.step === "3") {
+        setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
+        setUploadErrors((previous) => ({ ...previous, "3": error }));
+        return;
+      }
+
+      const otherExcelStep = item.step === "1" ? "2" : "1";
+      setActiveUploadStep(item.step as "1" | "2");
+      setShowZipUploadStep(false);
+      setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: null, [otherExcelStep]: null, "3": null }));
+      setUploadErrors((previous) => ({ ...previous, [item.step]: error, [otherExcelStep]: "", "3": "" }));
+      return;
+    }
+
+    if (item.step === "3") {
+      setSelectedUploadFiles((previous) => ({ ...previous, "3": file }));
+      setUploadErrors((previous) => ({ ...previous, "3": "" }));
+      return;
+    }
+
+    const otherExcelStep = item.step === "1" ? "2" : "1";
+    setActiveUploadStep(item.step as "1" | "2");
+    setShowZipUploadStep(false);
+    setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
+    setUploadErrors((previous) => ({ ...previous, [item.step]: "", [otherExcelStep]: "", "3": "" }));
+  };
+
+  const activeExcelUploadCard = uploadCards.find((item) => item.step === activeUploadStep) || uploadCards[0];
+  const activeExcelFile = selectedUploadFiles[activeUploadStep];
+  const selectedZipFile = selectedUploadFiles["3"];
+
+  const downloadSampleTemplates = () => {
+    const escapeXml = (value: string) =>
+      String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    const getExcelColumnName = (index: number) => {
+      let value = index + 1;
+      let result = "";
+      while (value > 0) {
+        const remainder = (value - 1) % 26;
+        result = String.fromCharCode(65 + remainder) + result;
+        value = Math.floor((value - 1) / 26);
+      }
+      return result;
+    };
+    const createInlineStringCell = (cellRef: string, value: string) =>
+      `<c r="${cellRef}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
+    const createWorksheetXml = (headers: string[], row: Record<string, string | undefined>) => {
+      const headerCells = headers
+        .map((header, index) => createInlineStringCell(`${getExcelColumnName(index)}1`, header))
+        .join("");
+      const valueCells = headers
+        .map((header, index) => createInlineStringCell(`${getExcelColumnName(index)}2`, String(row[header] || "")))
+        .join("");
+
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">${headerCells}</row>
+    <row r="2">${valueCells}</row>
+  </sheetData>
+</worksheet>`;
+    };
+
+    const workbookSheets = [
+      {
+        name: "College",
+        headers: [
+          "collegeCode", "collegeName", "description", "establishedYear", "ownershipType", "university", "country", "state", "city", "district", "address", "pincode", "googleMapUrl", "officialEmail", "phoneNumber", "alternatePhone", "websiteUrl", "brochurePdf", "campusVideo", "ranking_min", "ranking_max", "accreditation", "awards", "reviews", "facilities", "quotas", "minFee", "maxFee", "admissionProcess", "applicationMode", "scholarship", "placementPercentage", "averagePackage", "highestPackage", "hostelGeneralInfo", "hostelType", "hostelMinFee", "hostelMaxFee", "cctvAvailability", "hostelFacilities", "isBestCollege",
+        ],
+        row: {
+          collegeCode: "CLG001",
+          collegeName: "ABC College",
+          description: "Sample college description",
+          establishedYear: "2001",
+          ownershipType: "Private",
+          university: "Sample University",
+          country: "India",
+          state: "Tamil Nadu",
+          city: "Chennai",
+          district: "Chennai",
+          address: "Sample Address",
+          pincode: "600001",
+          googleMapUrl: "https://maps.google.com",
+          officialEmail: "info@abccollege.edu",
+          phoneNumber: "9876543210",
+          alternatePhone: "9444455555",
+          websiteUrl: "https://abccollege.edu",
+          brochurePdf: "clg001-brochure.pdf",
+          campusVideo: "https://youtube.com/watch?v=sample",
+          ranking_min: "10",
+          ranking_max: "25",
+          accreditation: "NAAC A+",
+          awards: "Sample Award",
+          reviews: "Good campus environment",
+          facilities: "Sports,WiFi,Labs",
+          quotas: "Management Quota,Government Quota,Reservation Quota",
+          minFee: "50000",
+          maxFee: "85000",
+          admissionProcess: "Online Application",
+          applicationMode: "Online",
+          scholarship: "Merit Scholarship",
+          placementPercentage: "92",
+          averagePackage: "450000",
+          highestPackage: "1800000",
+          hostelGeneralInfo: "Separate hostel blocks",
+          hostelType: "Boys & Girls",
+          hostelMinFee: "60000",
+          hostelMaxFee: "120000",
+          cctvAvailability: "TRUE",
+          hostelFacilities: "WiFi,Gym,CCTV",
+          isBestCollege: "TRUE",
+        },
+      },
+      {
+        name: "Course",
+        headers: [
+          "collegeCode", "degreeType", "stream", "specialization", "courseName", "duration", "mode", "lateralEntry", "bestCourse", "minimumQualification", "university", "semesterFees", "totalFees", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_st_min", "cutoff_st_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sca_min", "cutoff_sca_max", "allottedSeats", "applicationFee", "courseDescription",
+        ],
+        row: {
+          collegeCode: "CLG001",
+          degreeType: "UG",
+          stream: "Engineering",
+          specialization: "Computer Science",
+          courseName: "B.E CSE",
+          duration: "4 Years",
+          mode: "Full Time",
+          lateralEntry: "TRUE",
+          bestCourse: "TRUE",
+          minimumQualification: "12th Pass",
+          university: "Sample University",
+          semesterFees: "50000",
+          totalFees: "400000",
+          cutoff_oc_min: "180",
+          cutoff_oc_max: "190",
+          cutoff_bc_min: "175",
+          cutoff_bc_max: "185",
+          cutoff_bcm_min: "172",
+          cutoff_bcm_max: "182",
+          cutoff_sc_min: "160",
+          cutoff_sc_max: "170",
+          cutoff_st_min: "150",
+          cutoff_st_max: "160",
+          cutoff_mbc_min: "170",
+          cutoff_mbc_max: "180",
+          cutoff_sca_min: "155",
+          cutoff_sca_max: "165",
+          allottedSeats: "120",
+          applicationFee: "500",
+          courseDescription: "Sample course description",
+        },
+      },
+      {
+        name: "Enterence exam",
+        headers: [
+          "collegeCode", "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_st_min", "cutoff_st_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sca_min", "cutoff_sca_max", "specifiedPaperOrSyllabus", "preparationNotes",
+        ],
+        row: {
+          collegeCode: "CLG001",
+          courseName: "B.E CSE",
+          examName: "TNEA",
+          examWeightage: "80",
+          cutoff_oc_min: "180",
+          cutoff_oc_max: "190",
+          cutoff_bc_min: "175",
+          cutoff_bc_max: "185",
+          cutoff_bcm_min: "172",
+          cutoff_bcm_max: "182",
+          cutoff_sc_min: "160",
+          cutoff_sc_max: "170",
+          cutoff_st_min: "150",
+          cutoff_st_max: "160",
+          cutoff_mbc_min: "170",
+          cutoff_mbc_max: "180",
+          cutoff_sca_min: "155",
+          cutoff_sca_max: "165",
+          specifiedPaperOrSyllabus: "PCM Subjects",
+          preparationNotes: "Practice previous year questions",
+        },
+      },
+      {
+        name: "CollegeImages",
+        headers: ["collegeCode", "imageType", "imageName"],
+        row: {
+          collegeCode: "CLG001",
+          imageType: "campus",
+          imageName: "clg001-campus-1.jpg",
+        },
+      },
+    ];
+
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    ${workbookSheets.map((sheet, index) => `<sheet name="${escapeXml(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`).join("")}
+  </sheets>
+</workbook>`;
+    const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${workbookSheets.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`).join("")}
+  <Relationship Id="rId${workbookSheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+    const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+    const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${workbookSheets.map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+</Types>`;
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellStyleXfs count="1"><xf/></cellStyleXfs>
+  <cellXfs count="1"><xf xfId="0"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+    const zipEntries = {
+      "[Content_Types].xml": strToU8(contentTypesXml),
+      "_rels/.rels": strToU8(rootRelsXml),
+      "xl/workbook.xml": strToU8(workbookXml),
+      "xl/_rels/workbook.xml.rels": strToU8(workbookRelsXml),
+      "xl/styles.xml": strToU8(stylesXml),
+      ...Object.fromEntries(
+        workbookSheets.map((sheet, index) => [
+          `xl/worksheets/sheet${index + 1}.xml`,
+          strToU8(createWorksheetXml(sheet.headers, sheet.row)),
+        ]),
+      ),
+    };
+
+    const workbookBlob = new Blob([zipSync(zipEntries)], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(workbookBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sample-bulk-upload.xlsx";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const validateBulkUpload = async () => {
+      const bulkExcelFile = selectedUploadFiles["1"];
+      const singleExcelFile = selectedUploadFiles["2"];
+      const imageZipFile = selectedUploadFiles["3"];
+      const excelFile = bulkExcelFile || singleExcelFile;
+
+      if (!excelFile) {
+        setPreviewRows([]);
+        setValidatedZipAssetIndex(null);
+        setMediaPreviewUrls((previousUrls) => {
+          Object.values(previousUrls).forEach((url) => URL.revokeObjectURL(url));
+          return {};
+        });
+        setValidationSummary(buildBulkValidationSummary([]));
+        setValidationStatusText("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
+        return;
+      }
+
+      setValidationStatusText("Validating uploaded college data...");
+
+      try {
+        const sheets = await readWorkbookSheets(excelFile);
+        if (!sheets.has("colleges") && sheets.has("college")) sheets.set("colleges", sheets.get("college") || []);
+        if (!sheets.has("courses") && sheets.has("course")) sheets.set("courses", sheets.get("course") || []);
+        if (!sheets.has("entranceexams") && sheets.has("entranceexam")) sheets.set("entranceexams", sheets.get("entranceexam") || []);
+        if (!sheets.has("entranceexams") && sheets.has("enteranceexam")) sheets.set("entranceexams", sheets.get("enteranceexam") || []);
+        if (!sheets.has("entranceexams") && sheets.has("enteranceexams")) sheets.set("entranceexams", sheets.get("enteranceexams") || []);
+        if (!sheets.has("entranceexams") && sheets.has("enterenceexam")) sheets.set("entranceexams", sheets.get("enterenceexam") || []);
+        if (!sheets.has("entranceexams") && sheets.has("enterenceexams")) sheets.set("entranceexams", sheets.get("enterenceexams") || []);
+        if (!sheets.has("collegeimages") && sheets.has("collegeimage")) sheets.set("collegeimages", sheets.get("collegeimage") || []);
+        if (!sheets.has("colleges") && sheets.size === 1) {
+          sheets.set("colleges", [...sheets.values()][0] || []);
+        }
+        const imageZipAssetIndex = imageZipFile ? await readZipAssetIndex(imageZipFile) : null;
+        const imagePreviewUrls = imageZipFile ? await readZipImagePreviewUrls(imageZipFile) : {};
+        const enrichedSheets = enrichSheetsWithZipAssets(sheets, imageZipAssetIndex);
+        const nextPreviewRows = createBulkPreviewRows(
+          enrichedSheets,
+          imageZipAssetIndex,
+          Boolean(imageZipFile),
+          Boolean(singleExcelFile && !bulkExcelFile),
+        );
+        const duplicateRows = nextPreviewRows.filter((row) => row.errors.includes("Duplicate collegeCode")).length;
+        const invalidRows = nextPreviewRows.filter((row) => row.status === "Invalid").length;
+        const rowsNeedingZipReview = nextPreviewRows.filter((row) => row.status === "Review").length;
+        const totalRecords = nextPreviewRows.length;
+        const validRecords = nextPreviewRows.filter((row) => row.status === "Valid").length;
+
+        if (isCancelled) return;
+        setValidatedZipAssetIndex(imageZipAssetIndex);
+        setMediaPreviewUrls((previousUrls) => {
+          Object.values(previousUrls).forEach((url) => URL.revokeObjectURL(url));
+          return imagePreviewUrls;
+        });
+        setPreviewRows(nextPreviewRows);
+        if (!nextPreviewRows.some((row) => row.sheet === activeDetailSheet)) {
+          setActiveDetailSheet(nextPreviewRows[0]?.sheet || "colleges");
+        }
+        setValidationSummary({
+          totalRecords,
+          validRecords,
+          failedRecords: 0,
+          invalidRecords: invalidRows,
+          duplicates: duplicateRows,
+          pendingReview: rowsNeedingZipReview,
+        });
+        setValidationStatusText(
+          imageZipFile
+            ? "Excel and combined image ZIP validation completed."
+            : "Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.",
+        );
+      } catch (error) {
+        if (isCancelled) return;
+        setPreviewRows([]);
+        setValidatedZipAssetIndex(null);
+        setMediaPreviewUrls((previousUrls) => {
+          Object.values(previousUrls).forEach((url) => URL.revokeObjectURL(url));
+          return {};
+        });
+        setValidationSummary({
+          totalRecords: 0,
+          validRecords: 0,
+          failedRecords: 1,
+          invalidRecords: 0,
+          duplicates: 0,
+          pendingReview: 0,
+        });
+        setValidationStatusText(error instanceof Error ? error.message : "Unable to validate uploaded file.");
+      }
+    };
+
+    void validateBulkUpload();
+
+    return () => {
+      isCancelled = true;
+    };
+    // The parser helpers are local pure functions; validation should rerun only when selected files change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUploadFiles]);
+
+  useEffect(() => {
+    setCurrentDetailPage(1);
+  }, [activeDetailSheet, detailSearchText, detailStatusFilter]);
+
+  useEffect(() => {
+    if (editingRowId === null || !editingFocusField) return;
+    const targetKey = `${editingRowId}-${editingFocusField}`;
+    const timer = window.setTimeout(() => {
+      const targetField = editingFieldRefs.current[targetKey];
+      targetField?.focus();
+      targetField?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [editingFocusField, editingRowId]);
+
+  const visibleDetailRows = previewRows.filter((row) => row.sheet === activeDetailSheet);
+  const normalizedDetailSearch = detailSearchText.trim().toLowerCase();
+  const detailRows = visibleDetailRows.filter((row) => {
+    const matchesStatus = detailStatusFilter === "all" || row.status === detailStatusFilter;
+    const searchableText = [bulkSheetLabels[row.sheet], row.rowNumber, row.status, ...Object.values(row.data)].join(" ").toLowerCase();
+    return matchesStatus && (!normalizedDetailSearch || searchableText.includes(normalizedDetailSearch));
+  });
+  const totalPages = Math.ceil(detailRows.length / itemsPerPage);
+  const startIndex = (currentDetailPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDetailRows = detailRows.slice(startIndex, endIndex);
+  const activeDetailColumns = [...getBulkPreviewColumns(activeDetailSheet), ...customSheetColumns[activeDetailSheet]];
+  const getIssueColumnForPreviewColumn = (column: string) =>
+    column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
+  const errorItems = useMemo(
+    () =>
+      previewRows.flatMap((row, rowIndex) =>
+        row.errors.map((message, messageIndex) => ({
+          id: `${row.id}-${rowIndex}-${messageIndex}`,
+          rowId: row.id,
+          sheet: row.sheet,
+          rowNumber: row.rowNumber,
+          summary: `${bulkSheetLabels[row.sheet]} row ${row.rowNumber}: ${message}`,
+          message,
+        })),
+      ),
+    [previewRows],
+  );
+  const activeErrors = errorItems.map((item) => item.summary);
+  const visibleErrorItems = showAllErrors ? errorItems : errorItems.slice(0, 4);
+  const editingRow = editingRowId !== null ? previewRows.find((row) => row.id === editingRowId) || null : null;
+  const editingRowIssueEntries = useMemo(() => {
+    if (!editingRow) return [];
+    const seen = new Set<string>();
+    const orderedColumns = [...getBulkPreviewColumns(editingRow.sheet), ...customSheetColumns[editingRow.sheet]];
+    return orderedColumns
+      .map((column) => {
+        const issueColumn = getIssueColumnForPreviewColumn(column);
+        if (seen.has(issueColumn)) return null;
+        seen.add(issueColumn);
+        const issue = editingRow.fieldIssues[issueColumn];
+        if (!issue) return null;
+        return {
+          column,
+          issueColumn,
+          label: displayColumnName(column),
+          level: issue.level,
+          messages: issue.messages,
+        };
+      })
+      .filter(Boolean) as Array<{
+      column: string;
+      issueColumn: string;
+      label: string;
+      level: BulkFieldIssueLevel;
+      messages: string[];
+    }>;
+  }, [customSheetColumns, editingRow]);
+
+  const refreshValidationSummary = (rows: BulkPreviewRow[]) => {
+    setValidationSummary(buildBulkValidationSummary(rows));
+  };
+  const openPreviewTable = () => {
+    setShowFullDetails(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        previewDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+
+  const updatePreviewCell = (rowId: number, column: string, value: string) => {
+    setPreviewRows((rows) =>
+      rows.map((row) => {
+        if (row.id !== rowId) return row;
+        if (column === "rankingMin" || column === "rankingMax") {
+          const currentRange = getPreviewRankingRangeValues(row.data.ranking || "");
+          const nextRange = {
+            rankingMin: column === "rankingMin" ? value : currentRange.rankingMin,
+            rankingMax: column === "rankingMax" ? value : currentRange.rankingMax,
+          };
+          const formattedRanking = formatRankingRangeForSave(
+            [nextRange.rankingMin.trim(), nextRange.rankingMax.trim()].filter(Boolean).join(" - "),
+          );
+          return { ...row, data: { ...row.data, ranking: formattedRanking } };
+        }
+        return { ...row, data: { ...row.data, [column]: value } };
+      }),
+    );
+  };
+
+  const getFirstIssueColumn = (row: BulkPreviewRow) => {
+    const orderedColumns = [...getBulkPreviewColumns(row.sheet), ...customSheetColumns[row.sheet]];
+    const firstMatchedColumn = orderedColumns.find((column) => row.fieldIssues[getIssueColumnForPreviewColumn(column)]);
+    return firstMatchedColumn || Object.keys(row.fieldIssues)[0] || "";
+  };
+
+  const startEditingRow = (row: BulkPreviewRow) => {
+    setEditingRowBackup({ ...row, data: { ...row.data }, errors: [...row.errors], fieldIssues: { ...row.fieldIssues } });
+    setEditingRowId(row.id);
+    setEditingFocusField(getFirstIssueColumn(row));
+  };
+
+  const saveEditingRow = () => {
+    const nextPreviewRows = validateBulkPreviewRows(
+      previewRows,
+      validatedZipAssetIndex,
+      Boolean(validatedZipAssetIndex?.byPath.size),
+    );
+    setPreviewRows(nextPreviewRows);
+    refreshValidationSummary(nextPreviewRows);
+    setEditingRowId(null);
+    setEditingFocusField("");
+    setEditingRowBackup(null);
+    setValidationStatusText("Preview row updated and revalidated.");
+  };
+
+  const cancelEditingRow = () => {
+    if (editingRowBackup) {
+      setPreviewRows((rows) =>
+        rows.map((row) => (row.id === editingRowBackup.id ? { ...editingRowBackup, data: { ...editingRowBackup.data }, errors: [...editingRowBackup.errors], fieldIssues: { ...editingRowBackup.fieldIssues } } : row)),
+      );
+      refreshValidationSummary(previewRows.map((row) => (row.id === editingRowBackup.id ? editingRowBackup : row)));
+    }
+    setEditingRowId(null);
+    setEditingFocusField("");
+    setEditingRowBackup(null);
+  };
+
+  const startDeleteCellDataMode = (row: BulkPreviewRow) => {
+    startEditingRow(row);
+    setValidationStatusText("Delete mode enabled. Clear only the cell values you want to remove, then save the row.");
+  };
+
+  const openAllCollegeFieldPanel = () => {
+    setActiveDetailSheet("colleges");
+    setOpenFieldPanel((panel) => (panel === "all" ? null : "all"));
+    setCustomFieldForm({
+      fieldName: "Placement rate",
+      fieldType: "Number",
+      defaultValue: "90",
+      selectedCollegeRowId: "",
+    });
+    setFieldErrorText("");
+  };
+
+  const openSingleCollegeFieldPanel = () => {
+    const firstCollege = previewRows.find((row) => row.sheet === "colleges");
+    setActiveDetailSheet("colleges");
+    setOpenFieldPanel((panel) => (panel === "single" ? null : "single"));
+    setCustomFieldForm({
+      fieldName: "Scholarship",
+      fieldType: "Text",
+      defaultValue: "50% Tuition Fee Waiver",
+      selectedCollegeRowId: firstCollege ? String(firstCollege.id) : "",
+    });
+    setFieldErrorText("");
+  };
+
+  const addCustomFieldToTable = () => {
+    const fieldName = customFieldForm.fieldName.trim();
+    if (!fieldName) {
+      setFieldErrorText("Field name is required");
+      return;
+    }
+    const targetSheet: BulkSheetKey = "colleges";
+    const existingColumns = [...bulkSheetColumns[targetSheet], ...customSheetColumns[targetSheet]];
+    if (existingColumns.some((column) => column.trim().toLowerCase() === fieldName.toLowerCase())) {
+      setFieldErrorText(`Field name '${fieldName}' already exists`);
+      return;
+    }
+    if (openFieldPanel === "single" && !customFieldForm.selectedCollegeRowId) {
+      setFieldErrorText("Select a college before adding custom field");
+      return;
+    }
+
+    setCustomSheetColumns((columns) => ({
+      ...columns,
+      [targetSheet]: [...columns[targetSheet], fieldName],
+    }));
+    setPreviewRows((rows) =>
+      rows.map((row) => {
+        if (row.sheet !== targetSheet) return row;
+        const shouldApplyValue = openFieldPanel === "all" || String(row.id) === customFieldForm.selectedCollegeRowId;
+        return {
+          ...row,
+          data: {
+            ...row.data,
+            [fieldName]: shouldApplyValue ? customFieldForm.defaultValue : "",
+          },
+        };
+      }),
+    );
+    setActiveDetailSheet(targetSheet);
+    setOpenFieldPanel(null);
+    setFieldErrorText("");
+    setValidationStatusText(`${fieldName} field added to ${openFieldPanel === "all" ? "all colleges" : "selected college"}.`);
+  };
+
+  const openErrorRow = (rowId: number, sheet: BulkSheetKey) => {
+    const targetRows = previewRows.filter((row) => row.sheet === sheet);
+    const targetIndex = targetRows.findIndex((row) => row.id === rowId);
+    const targetPage = targetIndex >= 0 ? Math.floor(targetIndex / itemsPerPage) + 1 : 1;
+    const targetRow = targetRows[targetIndex] || previewRows.find((row) => row.id === rowId) || null;
+
+    setShowFullDetails(true);
+    setShowAllErrors(true);
+    setActiveDetailSheet(sheet);
+    setDetailStatusFilter("all");
+    setDetailSearchText("");
+    setCurrentDetailPage(targetPage);
+
+    window.setTimeout(() => {
+      previewDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (targetRow) {
+        startEditingRow(targetRow);
+      }
+    }, 120);
+  };
+
+  const importValidData = async () => {
+    const authToken = readAuthToken();
+    if (!authToken) {
+      setValidationStatusText("Admin session expired. Please login again.");
+      showToast("Admin session expired. Please login again.", "error");
+      return;
+    }
+
+    if (editingRowId !== null) {
+      setValidationStatusText("Finish editing the current row before importing.");
+      return;
+    }
+
+    if (validationSummary.validRecords === 0) {
+      setValidationStatusText("No valid records are ready for import.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("previewRows", JSON.stringify(previewRows));
+    const imageZipFile = selectedUploadFiles["3"];
+    if (imageZipFile) {
+      formData.append("imageZip", imageZipFile);
+    }
+
+    setIsImporting(true);
+    setValidationStatusText("Importing validated college data to the backend...");
+
+    try {
+      const data = await request<{
+        message?: string;
+        summary?: {
+          importedColleges?: number;
+          collegesCreated?: number;
+          collegesUpdated?: number;
+          coursesCreated?: number;
+          coursesUpdated?: number;
+        };
+        issues?: Array<{
+          sheet?: string;
+          rowNumber?: number;
+          message?: string;
+        }>;
+      }>("/api/admin/bulk-import", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: formData,
+      });
+
+      const summary = data?.summary || {};
+      const issues = Array.isArray(data?.issues) ? data.issues : [];
+      const nextStatusText = [
+        data?.message || "Bulk import completed.",
+        summary.importedColleges ? `${summary.importedColleges} colleges synced` : "",
+        summary.coursesCreated || summary.coursesUpdated
+          ? `${(summary.coursesCreated || 0) + (summary.coursesUpdated || 0)} courses synced`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      setValidationStatusText(nextStatusText);
+      showToast(nextStatusText, issues.length > 0 ? "info" : "success");
+
+      if (issues.length > 0) {
+        const issuePreview = issues
+          .slice(0, 3)
+          .map((issue) => `${issue.sheet || "row"} ${issue.rowNumber || ""}: ${issue.message || "Skipped"}`.trim())
+          .join(" | ");
+        showToast(issuePreview, "info");
+      }
+
+      setShowFullDetails(false);
+      if (onImportComplete) {
+        await onImportComplete();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Bulk import failed.";
+      setValidationStatusText(message);
+      showToast(message, "error");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const renderUploadCard = (item: (typeof uploadCards)[number]) => {
+    const Icon = item.icon;
+    const selectedFile = selectedUploadFiles[item.step];
+    const uploadError = uploadErrors[item.step];
+    const isZipCard = item.step === "3";
+    const cardClasses = isZipCard
+      ? "border-[#e5d7ff]"
+      : item.step === "2"
+        ? "border-[#cdeccf]"
+        : "border-[#c9dcfb]";
+    const dropZoneClasses = isZipCard
+      ? "border-2 border-dashed border-[#d8b4ff] bg-[#faf5ff]"
+      : item.step === "2"
+        ? "border border-[#cdeccf] bg-[#f3fcf5]"
+        : "border border-[#b8d4ff] bg-[#f4f9ff]";
+    const buttonClasses = isZipCard ? "bg-[#7c3aed]" : item.step === "2" ? "bg-[#16a34a]" : "bg-[#0b5cff]";
+    const fileMetaClasses = isZipCard ? "border-[#e7d4ff] bg-[#faf5ff]" : "border-[#dbe6f8] bg-white";
+    const iconClasses = isZipCard ? "text-[#7c3aed]" : item.step === "2" ? "text-[#16a34a]" : "text-[#0b5cff]";
+
+    return (
+      <article className={`flex h-full flex-col rounded-lg border ${cardClasses} bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.06)]`}>
+        <div className="mb-3">
+          <h3 className="text-base font-extrabold leading-snug text-[#10235d]">{item.title}</h3>
+          <span className="mt-1 block text-[13px] font-semibold leading-4.5 text-[#31509c]">{item.subtitle}</span>
+        </div>
+
+        <div
+          className={`flex min-h-44 flex-col items-center justify-center rounded-md px-4 py-4 text-center ${dropZoneClasses}`}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            selectUploadFile(item, event.dataTransfer.files?.[0] || null);
+          }}
+        >
+          <Icon className={`size-10 ${iconClasses}`} />
+          <span className="mt-2.5 block max-w-xs text-[13px] font-extrabold leading-4.5 text-[#10235d]">{item.dropText}</span>
+          <span className="mt-1.5 block text-[12px] font-bold leading-4 text-[#31509c]">or</span>
+          <label className={`mt-2.5 cursor-pointer rounded-md ${buttonClasses} px-4 py-2 text-[12px] font-extrabold leading-none text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)] transition hover:opacity-90`}>
+            {item.action}
+            <input
+              type="file"
+              accept={item.accept}
+              className="hidden"
+              onChange={(event) => {
+                selectUploadFile(item, event.target.files?.[0] || null);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {!isZipCard ? (
+            <button
+              type="button"
+              onClick={() => resetUploadSelection(item.step as "1" | "2")}
+              className="mt-2.5 rounded-md border border-[#ffd2d7] px-4 py-2 text-[12px] font-extrabold leading-none text-[#ef233c] transition hover:bg-[#fff5f6]"
+            >
+              Cancel
+            </button>
+          ) : null}
+          <span className="mt-3 block max-w-sm text-[12px] font-semibold leading-4.25 text-[#31509c]">{item.note}</span>
+          {uploadError ? (
+            <span className="mt-2 block text-[12px] font-extrabold leading-4.25 text-[#ef233c]">{uploadError}</span>
+          ) : null}
+        </div>
+
+        <div className={`mt-3 grid min-h-13 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2.5 ${fileMetaClasses}`}>
+          <FileClock className={`size-5 shrink-0 ${iconClasses}`} />
+          <span className="min-w-0 overflow-hidden wrap-break-word text-[12px] font-extrabold leading-4.25 text-[#10235d] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+            {selectedFile?.name || "No file selected"}
+          </span>
+          {selectedFile ? (
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="whitespace-nowrap text-[12px] font-bold leading-4.25 text-[#31509c]">
+                {formatFileSize(selectedFile.size)}
+              </span>
+              <BadgeCheck className="size-5 shrink-0 text-[#16a34a]" />
+            </span>
+          ) : null}
+        </div>
+      </article>
+    );
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-8rem)] bg-[#f8fbff] px-0 py-0 text-[#11245a]">
+      <div className="border-b border-[#d8e4f7] pb-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold leading-tight text-[#10235d]">Bulk Upload</h1>
+            <p className="mt-1 text-sm font-semibold text-[#31509c]">
+              Upload and manage college data &bull; Validate &bull; Import &bull; Monitor
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-4">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)]">
+          <div className="space-y-4">
+            <section className="rounded-xl border border-[#dbe6f8] bg-white p-4 shadow-[0_10px_28px_rgba(25,61,137,0.08)]">
+              <div className="border-b border-[#e7eefb] pb-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-lg font-extrabold text-[#10235d]">
+                      {showZipUploadStep ? uploadCards[2].title : "College Data Upload"}
+                    </h2>
+                  </div>
+
+                  <div className="inline-flex w-full max-w-md rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveUploadStep("1");
+                        setShowZipUploadStep(false);
+                      }}
+                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                        activeUploadStep === "1"
+                          ? "bg-(--brand-primary) text-white"
+                          : "text-(--text-muted) hover:bg-white"
+                      }`}
+                    >
+                      <ImageUp className="size-4" />
+                      Bulk College Data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveUploadStep("2");
+                        setShowZipUploadStep(false);
+                      }}
+                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
+                        activeUploadStep === "2"
+                          ? "bg-(--brand-support) text-white"
+                          : "text-(--text-muted) hover:bg-white"
+                      }`}
+                    >
+                      <Building2 className="size-4" />
+                      Single College Data
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                {showZipUploadStep ? (
+                  <div className="space-y-4">
+                    {renderUploadCard(uploadCards[2])}
+                    <div className="rounded-lg border border-[#efe4ff] bg-[#faf5ff] px-4 py-3 text-sm font-semibold leading-6 text-[#6b46c1]">
+                      {selectedZipFile
+                        ? "ZIP file selected. Validation results are updated automatically."
+                        : "The Excel file is ready. Upload the combined ZIP file in this same section."}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {renderUploadCard(activeExcelUploadCard)}
+                    <div className="rounded-lg border border-[#dbe6f8] bg-[#f8fbff] px-4 py-3 text-sm font-semibold leading-6 text-[#4965aa]">
+                      {activeExcelFile
+                        ? "The Excel file is selected. Use Next to open the ZIP upload in this same area, or Cancel to clear the current selection."
+                        : "Select the Excel file for the chosen upload type. The ZIP upload will appear here after you click Next."}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#e7eefb] pt-4">
+                {showZipUploadStep ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowZipUploadStep(false)}
+                    className="rounded-md border border-[#dbe6f8] px-4 py-2 text-xs font-extrabold text-[#31509c] transition hover:bg-[#f4f9ff]"
+                  >
+                    Back
+                  </button>
+                ) : null}
+                {showZipUploadStep ? (
+                  <button
+                    type="button"
+                    onClick={() => resetUploadSelection("3")}
+                    className="rounded-md border border-[#ffd2d7] px-4 py-2 text-xs font-extrabold text-[#ef233c] transition hover:bg-[#fff5f6]"
+                  >
+                    Cancel ZIP
+                  </button>
+                ) : null}
+                {!showZipUploadStep ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowZipUploadStep(true)}
+                    disabled={!activeExcelFile}
+                    className="rounded-md bg-[#0b5cff] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#9bbcff] disabled:shadow-none"
+                  >
+                    Next
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          </div>
+
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-[#dbe6f8] bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.06)]">
+              <h2 className="mb-4 text-base font-extrabold text-[#10235d]">Validation Summary</h2>
+              <span className="mb-3 block text-[12px] font-semibold leading-4.25 text-[#4965aa]">
+                {validationStatusText}
+              </span>
+              <div className="divide-y divide-[#e7eefb]">
+                {summaryRows.map((row) => {
+                  const Icon = row.icon;
+                  return (
+                    <div key={row.label} className="flex items-center gap-3 py-2.5">
+                      <span className={`flex size-5 items-center justify-center rounded-full ${row.dot} text-white`}>
+                        <Icon className="size-3.5" />
+                      </span>
+                      <span className="flex-1 text-sm font-bold text-[#4965aa]">{row.label}</span>
+                      <span className={`text-sm font-extrabold ${row.color}`}>{row.value}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={openPreviewTable}
+                className="mt-4 w-full rounded-md bg-[#0b5cff] py-3 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)]"
+              >
+                Preview Data
+              </button>
+            </section>
+
+            <section className="rounded-lg border border-[#e6edf7] bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.08)]">
+              <div className="flex items-start gap-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#eefdf4] text-[#22c55e]">
+                  <Download className="size-6" />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-sm font-extrabold leading-5 text-[#1f2937]">Download Sample Excel</span>
+                  <span className="mt-2 block text-xs font-medium leading-5 text-[#4b5563]">
+                    Download sample Excel file with the correct format.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={downloadSampleTemplates}
+                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-sm border border-[#86efac] bg-white px-4 py-2 text-xs font-extrabold text-[#16a34a] shadow-[0_1px_2px_rgba(22,163,74,0.08)] transition hover:bg-[#f0fdf4]"
+                  >
+                    <Download className="size-4" />
+                    Download Sample
+                  </button>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      {showFullDetails ? (
+        <section ref={previewDetailsRef} className="mt-5 rounded-lg border border-[#dbe6f8] bg-white shadow-[0_12px_30px_rgba(25,61,137,0.08)]">
+          <div className="flex flex-col gap-3 border-b border-[#e7eefb] p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openAllCollegeFieldPanel}
+                className="inline-flex items-center gap-2 rounded-md bg-[#4f32f6] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(79,50,246,0.2)]"
+              >
+                <Plus className="size-4" />
+                Add New Field (All Colleges)
+              </button>
+              <button
+                type="button"
+                onClick={openSingleCollegeFieldPanel}
+                className="inline-flex items-center gap-2 rounded-md border border-[#cbc8ff] bg-white px-4 py-2 text-xs font-extrabold text-[#4f32f6]"
+              >
+                <Plus className="size-4" />
+                Add Custom Field (Single College)
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex h-10 min-w-55 items-center gap-2 rounded-md border border-[#dbe6f8] bg-white px-3 text-xs font-bold text-[#4965aa]">
+                <Search className="size-4" />
+                <input
+                  className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#8a9bc6]"
+                  placeholder="Search college..."
+                  value={detailSearchText}
+                  onChange={(event) => setDetailSearchText(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowFilters((value) => !value)}
+                className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-xs font-extrabold ${showFilters || detailStatusFilter !== "all" ? "border-[#4f32f6] bg-[#f4f2ff] text-[#4f32f6]" : "border-[#dbe6f8] bg-white text-[#10235d]"}`}
+              >
+                <Filter className="size-4" />
+                Filters
+              </button>
+            </div>
+          </div>
+
+          {showFilters ? (
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#e7eefb] bg-[#fbfcff] px-3 py-3">
+              {(["all", "Valid", "Invalid", "Review"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setDetailStatusFilter(status)}
+                  className={`rounded-md px-3 py-2 text-xs font-extrabold ${detailStatusFilter === status ? "bg-[#4f32f6] text-white" : "border border-[#dbe6f8] bg-white text-[#31509c]"}`}
+                >
+                  {status === "all" ? "All Status" : status}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailSearchText("");
+                  setDetailStatusFilter("all");
+                }}
+                className="rounded-md border border-[#dbe6f8] bg-white px-3 py-2 text-xs font-extrabold text-[#ef233c]"
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
+
+          <div className="sticky top-0 z-10 border-b border-[#e7eefb] bg-white">
+            <div className="flex gap-2 px-3 py-2">
+              {(Object.keys(bulkSheetLabels) as BulkSheetKey[]).map((sheet) => {
+                const count = previewRows.filter((row) => row.sheet === sheet).length;
+                return (
+                  <button
+                    key={sheet}
+                    type="button"
+                    onClick={() => {
+                      setActiveDetailSheet(sheet);
+                      setCurrentDetailPage(1);
+                    }}
+                    className={`rounded-md px-3 py-2 text-xs font-extrabold ${activeDetailSheet === sheet ? "bg-[#4f32f6] text-white" : "border border-[#dbe6f8] bg-white text-[#31509c]"}`}
+                  >
+                    {bulkSheetLabels[sheet]} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="responsive-data-table pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
+            <table className="w-full min-w-450 border-collapse text-left text-xs">
+              <thead className="bg-[#f3f5ff] text-[#10235d]">
+                <tr>
+                  {["S.No", ...activeDetailColumns, "Status", "Actions"].map((heading) => {
+                    const isStatusColumn = heading === "Status";
+                    const isActionsColumn = heading === "Actions";
+                    return (
+                      <th
+                        key={heading || "select"}
+                        className={`border-b border-[#e7eefb] px-4 py-3 font-extrabold ${
+                          isStatusColumn ? "sticky right-16 z-20 bg-[#f3f5ff]" : isActionsColumn ? "sticky right-0 z-20 bg-[#f3f5ff]" : ""
+                        }`}
+                      >
+                        {displayColumnName(heading)}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edf2fb] border-b-2 border-[#e7eefb]">
+                {paginatedDetailRows.length ? paginatedDetailRows.map((row) => (
+                  <tr key={row.id} className="bg-white text-[#10235d]">
+                    <td className="px-4 py-3 font-extrabold">{row.id}</td>
+                    {activeDetailColumns.map((column) => {
+                      const rankingRange = getPreviewRankingRangeValues(row.data.ranking || "");
+                      const value =
+                        column === "rankingMin"
+                          ? rankingRange.rankingMin
+                          : column === "rankingMax"
+                            ? rankingRange.rankingMax
+                            : row.data[column] || "";
+                      const isImagePreviewColumn = ["logoImage", "coverImage", "imageName"].includes(column);
+                      const previewAsset = value
+                        ? resolveZipAssetRecord(validatedZipAssetIndex, value, row.data.collegeCode || "")
+                        : null;
+                      const previewUrl = previewAsset ? mediaPreviewUrls[previewAsset.normalizedPath] : "";
+                      const isBooleanColumn = ["cctvAvailability", "isBestCollege", "lateralEntry", "bestCourse"].includes(column);
+                      const isEditing = editingRowId === row.id;
+                      const issueColumn = column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
+                      const fieldIssue = row.fieldIssues[issueColumn];
+                      const issueLabel =
+                        fieldIssue?.level === "missing"
+                          ? "Missing"
+                          : fieldIssue?.level === "invalid"
+                            ? "Invalid"
+                            : fieldIssue?.level === "duplicate"
+                              ? "Duplicate"
+                              : fieldIssue?.level === "exists"
+                                ? "Already Exists"
+                                : fieldIssue?.level === "review"
+                                  ? "Review"
+                                  : "";
+                      const issueClassName =
+                        fieldIssue?.level === "missing"
+                          ? "bg-[#fff4e5] text-[#b45309]"
+                          : fieldIssue?.level === "invalid"
+                            ? "bg-[#ffe9e9] text-[#ef233c]"
+                            : fieldIssue?.level === "duplicate" || fieldIssue?.level === "exists"
+                              ? "bg-[#fff1f1] text-[#c81e1e]"
+                              : "bg-[#fff7e6] text-[#e8790a]";
+                      return (
+                        <td key={`${row.id}-${column}`} className="max-w-55 px-4 py-3 font-bold">
+                          {isEditing ? (
+                            isBooleanColumn ? (
+                              <input
+                                type="checkbox"
+                                checked={isCheckedPreviewBoolean(value)}
+                                onChange={(event) => updatePreviewCell(row.id, column, event.target.checked ? "TRUE" : "FALSE")}
+                                className="size-4 accent-[#4f32f6]"
+                              />
+                            ) : (
+                              <input
+                                value={value}
+                                onChange={(event) => updatePreviewCell(row.id, column, event.target.value)}
+                                className="min-w-30 rounded-sm border border-[#cbd7ee] bg-white px-2 py-1 text-xs font-bold text-[#10235d] outline-none focus:border-[#4f32f6]"
+                              />
+                            )
+                          ) : isBooleanColumn ? (
+                            <input type="checkbox" checked={isCheckedPreviewBoolean(value)} readOnly className="size-4 accent-[#4f32f6]" />
+                          ) : isImagePreviewColumn && previewUrl ? (
+                            <div className="space-y-2">
+                              <span className="flex min-w-24 items-center gap-2">
+                                {/* Blob URLs from uploaded ZIP files cannot be optimized by next/image. */}
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={previewUrl}
+                                  alt={value}
+                                  className="h-12 w-20 rounded-md border border-[#dbe6f8] object-cover"
+                                />
+                              </span>
+                              {fieldIssue ? (
+                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
+                                  {issueLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <span className={`block min-w-22.5 truncate ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
+                                {value || (fieldIssue?.level === "missing" ? "Missing" : "-")}
+                              </span>
+                              {fieldIssue ? (
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}
+                                  title={fieldIssue.messages.join(" | ")}
+                                >
+                                  {issueLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="sticky right-16 z-20 bg-white px-4 py-3">
+                      <span
+                        className={`inline-flex min-w-16 justify-center rounded-sm px-2 py-1 text-[11px] font-extrabold ${
+                          row.status === "Valid" ? "bg-[#e8f8ee] text-[#16a34a]" : row.status === "Review" ? "bg-[#fff7e6] text-[#e8790a]" : "bg-[#ffe9e9] text-[#ef233c]"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="sticky right-0 z-20 bg-white px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {editingRowId === row.id ? (
+                          <>
+                            <button type="button" className="text-[#16a34a]" aria-label="Save row changes" onClick={saveEditingRow}>
+                              <BadgeCheck className="size-4" />
+                            </button>
+                            <button type="button" className="text-[#ef233c]" aria-label="Cancel row changes" onClick={cancelEditingRow}>
+                              <X className="size-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" className="text-[#31509c]" aria-label="Edit row" onClick={() => startEditingRow(row)}>
+                              <PencilLine className="size-4" />
+                            </button>
+                            <button type="button" className="text-[#ef233c]" aria-label="Delete selected cell data" onClick={() => startDeleteCellDataMode(row)}>
+                              <Trash2 className="size-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={activeDetailColumns.length + 3} className="px-4 py-10 text-center text-sm font-bold text-[#4965aa]">
+                      {previewRows.length ? "No records match the current search or filter." : "Upload bulk Excel data to show records in this table."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {detailRows.length > 0 && (
+            <div className="flex items-center justify-between border-t border-[#e7eefb] bg-white px-4 py-3">
+              <div className="text-xs font-bold text-[#10235d]">
+                Showing {startIndex + 1} to {Math.min(endIndex, detailRows.length)} of {detailRows.length} records
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentDetailPage(Math.max(1, currentDetailPage - 1))}
+                  disabled={currentDetailPage === 1}
+                  className="rounded-md border border-[#dbe6f8] bg-white px-3 py-2 text-xs font-extrabold text-[#31509c] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f3f5ff]"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentDetailPage(page)}
+                    className={`rounded-md px-3 py-2 text-xs font-extrabold ${
+                      currentDetailPage === page
+                        ? "bg-[#4f32f6] text-white"
+                        : "border border-[#dbe6f8] bg-white text-[#31509c] hover:bg-[#f3f5ff]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentDetailPage(Math.min(totalPages, currentDetailPage + 1))}
+                  disabled={currentDetailPage === totalPages}
+                  className="rounded-md border border-[#dbe6f8] bg-white px-3 py-2 text-xs font-extrabold text-[#31509c] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f3f5ff]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+      
+
+<div className="border-t border-[#e7eefb] bg-white p-3">
+  <div className="overflow-hidden rounded-2xl border border-[#f4b7b7] bg-linear-to-br from-[#fff5f5] to-white shadow-sm">
+
+    {/* Header */}
+    <div className="flex flex-col gap-3 border-b border-[#f3dede] px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+
+      <div className="flex items-center gap-3">
+
+        {/* Warning Icon */}
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ffe3e3]">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-[#e11d2e]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v4m0 4h.01M10.29 3.86l-8 14A1 1 0 003.14 19h17.72a1 1 0 00.85-1.5l-8-14a1 1 0 00-1.72 0z"
+            />
+          </svg>
+        </div>
+
+        {/* Title */}
+        <div>
+          <h2 className="text-xl font-extrabold text-[#a11220]">
+            Errors ({activeErrors.length})
+          </h2>
+
+          <p className="mt-1 text-sm font-medium text-[#5b6678]">
+            {activeErrors.length} issues found while processing your file
+          </p>
+        </div>
+      </div>
+
+      {/* Error Badge */}
+      <div className="rounded-full border border-[#f2b7b7] bg-[#fff5f5] px-4 py-2 text-sm font-bold text-[#d11a2a] shadow-sm">
+        ⚠ {activeErrors.length} Errors
+      </div>
+    </div>
+
+    {/* Error List */}
+    <div className="space-y-3 px-4 py-4">
+
+      {(showAllErrors ? activeErrors : activeErrors.slice(0, 4)).map(
+        (error, index) => (
+          <div
+            key={`${index}-${error}`}
+            className="flex items-center justify-between rounded-xl border border-[#ececec] bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+
+              {/* Dot */}
+              <div className="h-3 w-3 rounded-full bg-[#ef233c]" />
+
+              {/* Error Text */}
+              <p className="text-sm font-semibold text-[#a11220]">
+                {error}
+              </p>
+            </div>
+
+            {/* Badge */}
+            <div className="rounded-lg bg-[#fff1f1] px-3 py-1 text-xs font-bold text-[#d11a2a]">
+              Error
+            </div>
+          </div>
+        )
+      )}
+    </div>
+
+    {/* Footer */}
+    <div className="flex flex-col gap-3 border-t border-[#e6e6e6] px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+
+      <p className="text-sm font-medium text-[#6b7280]">
+        Please fix the above errors and try uploading again.
+      </p>
+
+      <div className="flex items-center gap-3">
+
+        {/* Total Count */}
+        <div className="rounded-lg bg-[#fff1f1] px-4 py-2 text-sm font-bold text-[#d11a2a]">
+          Total Errors: {activeErrors.length}
+        </div>
+
+        {/* View All Button */}
+        {activeErrors.length > 4 && (
+          <button
+            type="button"
+            onClick={() => setShowAllErrors(!showAllErrors)}
+            className="rounded-lg bg-[#ef233c] px-4 py-2 text-sm font-bold text-white shadow-md transition hover:bg-[#d90429]"
+          >
+            {showAllErrors ? "Show Less" : "View All Errors →"}
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
+
+            {openFieldPanel ? (
+              <div className="grid gap-3 rounded-md border border-[#dbe6f8] bg-white p-4 shadow-[0_8px_20px_rgba(25,61,137,0.08)] sm:grid-cols-2">
+                <span className="col-span-full text-sm font-extrabold text-[#10235d]">
+                  {openFieldPanel === "all" ? "Add New Field for All Colleges" : "Add Custom Field for One College"}
+                </span>
+                {openFieldPanel === "single" ? (
+                  <label className="text-[11px] font-extrabold text-[#31509c]">
+                    College
+                    <select
+                      className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
+                      value={customFieldForm.selectedCollegeRowId}
+                      onChange={(event) => setCustomFieldForm((form) => ({ ...form, selectedCollegeRowId: event.target.value }))}
+                    >
+                      {previewRows.filter((row) => row.sheet === "colleges").map((row) => (
+                        <option key={row.id} value={row.id}>{row.data.collegeName || row.data.collegeCode || `Row ${row.rowNumber}`}</option>
+                      ))}
+                      {!previewRows.some((row) => row.sheet === "colleges") ? <option value="">No college loaded</option> : null}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="text-[11px] font-extrabold text-[#31509c]">
+                  Field Name
+                  <input
+                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
+                    value={customFieldForm.fieldName}
+                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldName: event.target.value }))}
+                  />
+                </label>
+                <label className="text-[11px] font-extrabold text-[#31509c]">
+                  Field Type
+                  <select
+                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
+                    value={customFieldForm.fieldType}
+                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldType: event.target.value }))}
+                  >
+                    <option>Number</option>
+                    <option>Text</option>
+                    <option>TRUE/FALSE</option>
+                  </select>
+                </label>
+                <label className="text-[11px] font-extrabold text-[#31509c]">
+                  Default Value
+                  <input
+                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
+                    value={customFieldForm.defaultValue}
+                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, defaultValue: event.target.value }))}
+                  />
+                </label>
+                <button type="button" className="rounded-md border border-[#dbe6f8] px-4 py-2 text-xs font-extrabold text-[#31509c]" onClick={() => setOpenFieldPanel(null)}>Cancel</button>
+                <button type="button" className="rounded-md bg-[#4f32f6] px-4 py-2 text-xs font-extrabold text-white" onClick={addCustomFieldToTable}>Add Field</button>
+              </div>
+            ) : null}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  cancelEditingRow();
+                  setShowFullDetails(false);
+                  setOpenFieldPanel(null);
+                  setShowFilters(false);
+                }}
+                className="h-11 rounded-md border border-[#dbe6f8] px-8 text-xs font-extrabold text-[#31509c]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={validationSummary.validRecords === 0 || editingRowId !== null || isImporting}
+                onClick={() => {
+                  void importValidData();
+                }}
+                className={`h-11 rounded-md px-8 text-xs font-extrabold shadow-[0_8px_18px_rgba(79,50,246,0.22)] ${
+                  validationSummary.validRecords === 0 || editingRowId !== null || isImporting
+                    ? "cursor-not-allowed bg-[#c7cbe0] text-white"
+                    : "bg-[#4f32f6] text-white"
+                }`}
+              >
+                {isImporting
+                  ? "Importing..."
+                  : `Import Valid Data (${validationSummary.validRecords || 0})`}
+              </button>
+            </div>
+          
+
+          {fieldErrorText ? (
+            <div className="fixed bottom-6 right-6 z-40 flex w-[min(360px,calc(100vw-2rem))] items-start gap-3 rounded-md border border-[#ffb4b4] bg-[#fff5f5] p-4 text-xs shadow-[0_14px_34px_rgba(239,35,60,0.14)]">
+              <X className="mt-0.5 size-4 shrink-0 rounded-full bg-[#ef233c] p-0.5 text-white" />
+              <div className="min-w-0 flex-1">
+                <span className="block font-extrabold text-[#a11220]">Cannot add field</span>
+                <span className="mt-1 block font-bold text-[#6b2830]">{fieldErrorText}</span>
+              </div>
+              <button type="button" onClick={() => setFieldErrorText("")} className="text-[#8a9bc6]">
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 function AdminPageContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1242,7 +3688,10 @@ function AdminPageContent() {
     () => [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
       ...(canAccess("colleges")
-        ? [{ id: "colleges", label: "Colleges", icon: Building2 }]
+        ? [
+            { id: "colleges", label: "Colleges", icon: Building2 },
+            { id: "bulk-upload", label: "Bulk Data Upload", icon: ImageUp },
+          ]
         : []),
       ...(canAccess("college-requests")
         ? [{ id: "college-notifications", label: "College Notifications", icon: FileClock }]
@@ -1329,6 +3778,12 @@ function AdminPageContent() {
       setLoading(false);
     }
   }, [router]);
+
+  const handleBulkImportComplete = useCallback(async () => {
+    if (!token) return;
+    await loadAdminData(token, currentUser);
+    setActiveTab("colleges");
+  }, [currentUser, loadAdminData, token]);
 
   useEffect(() => {
     setSavedExams(
@@ -1546,6 +4001,88 @@ function AdminPageContent() {
         )
         .map((course) => buildEmbeddedCourseDraft(course, collegeId)),
     );
+
+  const openCollegeEditor = (college: AdminCollege, targetStep = 0) => {
+    const rangeData = formatFeeRange(college.feesStructure);
+    const placementData = college.placements || {};
+    const hostelFees = college.hostelDetails?.hostelFees || {};
+    const hostelData = college.hostelDetails || {};
+
+    setEditCollegeId(college._id);
+    setCollegeStep(targetStep);
+    setShowCollegeForm(true);
+    setLogoFile(null);
+    setCoverImageFile(null);
+    setImageFiles([]);
+    setBrochureFile(null);
+    setCollegeFieldErrors({});
+    setCustomFacilityInput("");
+    setCustomQuotaInput("");
+    setCustomScholarshipInput("");
+    setShowCourseForm(false);
+    setShowSavedCourseList(false);
+    resetEmbeddedCourseEditor();
+    setEmbeddedCourses(buildEmbeddedCoursesForCollege(college._id));
+    setCollegeForm({
+      name: college.name || "",
+      establishedYear: String(college.establishedYear || ""),
+      ownershipType: college.ownershipType || "",
+      university: college.university || "",
+      country: college.country || "India",
+      state: college.state || "",
+      city: college.city || "",
+      district: college.district || "",
+      address: college.address || "",
+      pincode: college.pincode || "",
+      description: college.description || "",
+      reviews: college.reviews || "",
+      admissionProcess: college.admissionProcess || "",
+      applicationMode: college.applicationMode || "",
+      ranking: formatRankingRangeForSave(String(college.ranking || "")),
+      placementRate: String(placementData.placementRate ?? college.placementRate ?? ""),
+      feeMin: rangeData.min,
+      feeMax: rangeData.max,
+      locationLink: college.locationLink || college.mapUrl || "",
+      website: college.website || "",
+      contactEmail: college.contactEmail || "",
+      contactPhone: college.contactPhone || college.phone || "",
+      alternatePhone: college.alternatePhone || "",
+      accreditation: college.accreditation || "",
+      awardsRecognitions: college.awardsRecognitions || "",
+      quotas: Array.isArray(college.quotas) ? college.quotas.join(", ") : (college.quotas || ""),
+      brochurePdfUrl: college.brochurePdfUrl || college.brochureUrl || "",
+      campusVideoUrl: college.campusVideoUrl || "",
+      isTopCollege: Boolean(college.isTopCollege),
+      isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
+      logo: college.logo || "",
+      coverImage: college.image || "",
+      images: Array.isArray(college.images) ? college.images : [],
+      courseTags: college.courseTags || "",
+      facilities: Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || ""),
+      scholarships: college.scholarships || "",
+      highestPackage: String(placementData.highestPackage || ""),
+      averagePackage: String(placementData.averagePackage || ""),
+      companiesVisited: String(placementData.companiesVisited || ""),
+      hostelAvailability: hostelData.availability || "not_available",
+      hostelType: hostelData.hostelType || "",
+      hostelFeeMin: String(hostelFees.minAmount || ""),
+      hostelFeeMax: String(hostelFees.maxAmount || ""),
+      cctvAvailable: String(hostelData.cctvAvailable || ""),
+      boysRoomsCount: String(hostelData.boysRoomsCount || ""),
+      girlsRoomsCount: String(hostelData.girlsRoomsCount || ""),
+      hostelFacilityOptions: Array.isArray(hostelData.facilityOptions) ? hostelData.facilityOptions.join(", ") : "",
+      waterAvailability: String(hostelData.waterAvailability || ""),
+      powerBackup: String(hostelData.powerBackup || ""),
+      wifiAvailable: String(hostelData.internet?.wifiAvailable || ""),
+      wifiSpeed: String(hostelData.internet?.speed || ""),
+      wifiPricing: String(hostelData.internet?.pricing || ""),
+      foodAvailability: String(hostelData.foodAvailability || "not_available"),
+      foodTimings: String(hostelData.foodTimings || ""),
+      laundryService: String(hostelData.laundryService || ""),
+      roomCleaningFrequency: String(hostelData.roomCleaningFrequency || ""),
+      hostelRules: String(hostelData.rules || ""),
+    });
+  };
 
   const resetEmbeddedCourseEditor = () => {
     setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(collegeForm.university.trim()));
@@ -2127,8 +4664,8 @@ function AdminPageContent() {
       { valid: Boolean(collegeForm.pincode.trim()), step: 1, field: "pincode", message: "Location: Pincode is required" },
       { valid: Boolean(collegeForm.contactEmail.trim()), step: 2, field: "contactEmail", message: "Contact: Official email is required" },
       { valid: Boolean(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Phone number is required" },
-      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Enter a valid 10 digit mobile number" },
-      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 2, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate number" },
+      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Enter a valid 10 digit phone number" },
+      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 2, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate phone number" },
       { valid: Boolean(nextLogo.trim()), step: 3, field: "logo", message: "Media: College logo is required" },
       { valid: Boolean(nextCoverImage.trim()), step: 3, field: "coverImage", message: "Media: Cover image is required" },
       { valid: nextImages.length >= 2, step: 3, field: "images", message: "Media: At least 2 gallery images are required" },
@@ -2962,7 +5499,7 @@ function AdminPageContent() {
               type="button"
               onClick={() => void sendSuperAdminPasswordChangeLink()}
               disabled={isSendingPasswordLink}
-              className="inline-flex items-center justify-center rounded-[1rem] border border-[rgba(15,76,129,0.14)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(15,76,129,0.24)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+              className="inline-flex items-center justify-center rounded-2xl border border-[rgba(15,76,129,0.14)] bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[rgba(15,76,129,0.24)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
             >
               <KeyRound className="size-4" />
               <span className="ml-2">
@@ -2994,7 +5531,7 @@ function AdminPageContent() {
               <div className="absolute right-0 top-[calc(100%+0.6rem)] z-30 w-[min(22rem,calc(100vw-1.25rem))] rounded-[1.25rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,250,255,0.96))] p-3 shadow-[0_24px_48px_rgba(148,163,184,0.2)] backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--brand-primary)">
                       Notifications
                     </p>
                     <p className="mt-1 text-sm font-bold text-slate-900">College Notifications</p>
@@ -3007,7 +5544,7 @@ function AdminPageContent() {
                     Close
                   </button>
                 </div>
-                <div className="mt-3 max-h-[22rem] space-y-2 overflow-y-auto">
+                <div className="mt-3 max-h-88 space-y-2 overflow-y-auto">
                   {unreadRequestNotifications.length > 0 ? (
                     unreadRequestNotifications.map((item) => (
                       <button
@@ -3018,9 +5555,9 @@ function AdminPageContent() {
                           setShowRequestNotifications(false);
                           handleTabChange(item.tab);
                         }}
-                        className="w-full rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white px-3.5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
+                        className="w-full rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white px-3.5 py-3 text-left transition hover:bg-[rgba(15,76,129,0.04)]"
                       >
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-(--brand-primary)">
                           {item.kind}
                         </p>
                         <p className="mt-1 text-sm font-bold text-slate-900">{item.name}</p>
@@ -3028,7 +5565,7 @@ function AdminPageContent() {
                       </button>
                     ))
                   ) : (
-                    <div className="rounded-[1rem] border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
+                    <div className="rounded-2xl border border-dashed border-[rgba(15,76,129,0.14)] bg-white px-4 py-8 text-center text-sm text-slate-500">
                       No new college notifications.
                     </div>
                   )}
@@ -3048,7 +5585,7 @@ function AdminPageContent() {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`admin-skeleton-${index}`} className="h-28 rounded-[1.5rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-[0_16px_28px_rgba(148,163,184,0.1)]" />
+            <div key={`admin-skeleton-${index}`} className="h-28 rounded-3xl border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#f3f8ff_100%)] shadow-[0_16px_28px_rgba(148,163,184,0.1)]" />
           ))}
         </div>
       ) : null}
@@ -3058,7 +5595,7 @@ function AdminPageContent() {
           <article className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,#ffffff_0%,#f5faff_100%)] p-5 shadow-[0_24px_48px_rgba(148,163,184,0.12)]">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="max-w-2xl min-w-0">
-                <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
+                <div className="inline-flex rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-(--brand-primary)">
                   Home Page Background
                 </div>
                 <h3 className="mt-3 text-lg font-bold text-slate-900">Change the home page hero background image</h3>
@@ -3146,7 +5683,7 @@ function AdminPageContent() {
                   </div>
                   <div className="relative mt-7 flex items-end justify-between gap-3">
                     <p className="text-4xl font-bold tracking-[-0.04em] text-slate-900">{item.value}</p>
-                    <div className="rounded-[1rem] border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
+                    <div className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Live Status</p>
                       <p className="mt-1 text-xs font-semibold text-slate-700">Updated from dashboard</p>
                     </div>
@@ -3244,7 +5781,7 @@ function AdminPageContent() {
                       {collegeDashboardEditStatus.notEdited.map((college) => (
                         <div
                           key={`pending-college-mobile-${college._id}`}
-                          className="rounded-[1rem] border border-amber-100 bg-[linear-gradient(135deg,#ffffff_0%,#fffbeb_100%)] p-3"
+                          className="rounded-2xl border border-amber-100 bg-[linear-gradient(135deg,#ffffff_0%,#fffbeb_100%)] p-3"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -3278,7 +5815,7 @@ function AdminPageContent() {
                         <tbody className="divide-y divide-slate-100 bg-white">
                           {collegeDashboardEditStatus.notEdited.map((college) => (
                             <tr key={`pending-college-${college._id}`} className="align-middle">
-                              <td className="px-4 py-3 font-semibold text-slate-900 break-words">{college.name || "College"}</td>
+                              <td className="px-4 py-3 font-semibold text-slate-900 wrap-break-word">{college.name || "College"}</td>
                               <td className="px-4 py-3 text-slate-600 break-all">{college.contactEmail || college.ownerEmail || "-"}</td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="inline-flex whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -3302,6 +5839,10 @@ function AdminPageContent() {
         </div>
       ) : null}
 
+      {!loading && activeTab === "bulk-upload" ? (
+        <BulkUploadDashboard onImportComplete={handleBulkImportComplete} existingColleges={adminState.colleges} />
+      ) : null}
+
       {!loading && activeTab === "colleges" ? (
         <div className="space-y-4">
           <div className="flex justify-end">
@@ -3319,9 +5860,9 @@ function AdminPageContent() {
             <form ref={collegeFormRef} onSubmit={saveCollege} className="rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 text-sm shadow-[0_24px_46px_rgba(148,163,184,0.14)] sm:p-4">
               <div className="mb-4 rounded-[1.3rem] border border-[rgba(148,163,184,0.16)] bg-[linear-gradient(135deg,#fffdf8_0%,#f4faff_100%)] px-4 py-5">
                 <div className="relative hidden sm:block">
-                  <div className="absolute left-[3%] right-[3%] top-[1.15rem] h-[4px] rounded-full bg-[#dbeafe]" />
+                  <div className="absolute left-[3%] right-[3%] top-[1.15rem] h-1 rounded-full bg-[#dbeafe]" />
                   <div
-                    className="absolute left-[3%] top-[1.15rem] h-[4px] rounded-full bg-[linear-gradient(90deg,#f59e0b_0%,#38bdf8_100%)] transition-all"
+                    className="absolute left-[3%] top-[1.15rem] h-1 rounded-full bg-[linear-gradient(90deg,#f59e0b_0%,#38bdf8_100%)] transition-all"
                     style={{ width: `${Math.max(0, (collegeStep / Math.max(collegeSteps.length - 1, 1)) * 94)}%` }}
                   />
                   <div
@@ -3509,12 +6050,12 @@ function AdminPageContent() {
                 </label>
                 <label>
                   <span className={labelClass}>Phone Number<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit mobile number" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
+                  <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit phone number" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
                   {collegeFieldErrors.contactPhone ? <span className={errorTextClass}>{collegeFieldErrors.contactPhone}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Alternate Phone</span>
-                  <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit alternate number" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
+                  <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit alternate phone number" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
                   {collegeFieldErrors.alternatePhone ? <span className={errorTextClass}>{collegeFieldErrors.alternatePhone}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
@@ -3809,7 +6350,7 @@ function AdminPageContent() {
                   <button
                     type="button"
                     onClick={addCustomFacility}
-                    className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
+                    className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-27`}
                   >
                     Add Facility
                   </button>
@@ -3870,7 +6411,7 @@ function AdminPageContent() {
                       <button
                         type="button"
                         onClick={addCustomQuota}
-                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
+                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-27`}
                       >
                         Add Quota
                       </button>
@@ -3953,7 +6494,7 @@ function AdminPageContent() {
                       <button
                         type="button"
                         onClick={addCustomScholarship}
-                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-[108px]`}
+                        className={`${softButtonClass} w-full justify-center sm:w-auto sm:min-w-27`}
                       >
                         Add Scholarship
                       </button>
@@ -4942,6 +7483,11 @@ function AdminPageContent() {
                       <h3 className="text-base font-bold text-slate-900">{college.name || "College"}</h3>
                       <p className="text-sm text-slate-600">{college.university || "-"}</p>
                       <p className="mt-0.5 text-xs text-slate-500">{[college.district, college.state].filter(Boolean).join(", ")}</p>
+                      {college.isTopCollege || college.isBestCollege ? (
+                        <span className="mt-1 inline-flex rounded-full bg-[rgba(15,76,129,0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
+                          Best College
+                        </span>
+                      ) : null}
                       {isExpanded ? (
                         <>
                         <p className="mt-1 text-xs text-slate-500">
@@ -4980,11 +7526,11 @@ function AdminPageContent() {
                               : [...prev, college._id],
                           )
                         }
-                        className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-xs sm:w-auto sm:min-w-[132px]`}
+                        className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-xs sm:w-auto sm:min-w-33`}
                       >
                         {isExpanded ? "Hide Info" : "See Details"}
                       </button>
-                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-sm sm:w-auto sm:min-w-[132px]`}>
+                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-sm sm:w-auto sm:min-w-33`}>
                         View
                         <ExternalLink className="size-4" />
                       </Link>
@@ -4992,85 +7538,19 @@ function AdminPageContent() {
                     <div className="flex flex-wrap justify-center gap-3">
                       <button
                         type="button"
-                        onClick={() => {
-                        const rangeData = formatFeeRange(college.feesStructure);
-                        const placementData = college.placements || {};
-                        const hostelFees = college.hostelDetails?.hostelFees || {};
-                        const hostelData = college.hostelDetails || {};
-                        setEditCollegeId(college._id);
-                        setCollegeStep(0);
-                        setShowCollegeForm(true);
-                        setBrochureFile(null);
-                        setCoverImageFile(null);
-                        setCustomFacilityInput("");
-                        setCustomQuotaInput("");
-                        setCustomScholarshipInput("");
-                        resetEmbeddedCourseEditor();
-                        setEmbeddedCourses(buildEmbeddedCoursesForCollege(college._id));
-                        setCollegeForm({
-                          name: college.name || "",
-                          establishedYear: String(college.establishedYear || ""),
-                          ownershipType: college.ownershipType || "",
-                          university: college.university || "",
-                          country: college.country || "India",
-                          state: college.state || "",
-                          city: college.city || "",
-                          district: college.district || "",
-                          address: college.address || "",
-                          pincode: college.pincode || "",
-                          description: college.description || "",
-                          reviews: college.reviews || "",
-                          admissionProcess: college.admissionProcess || "",
-                          applicationMode: college.applicationMode || "",
-                          ranking: formatRankingRangeForSave(String(college.ranking || "")),
-                          placementRate: String(placementData.placementRate ?? college.placementRate ?? ""),
-                          feeMin: rangeData.min,
-                          feeMax: rangeData.max,
-                          locationLink: college.locationLink || college.mapUrl || "",
-                          website: college.website || "",
-                          contactEmail: college.contactEmail || "",
-                          contactPhone: college.contactPhone || college.phone || "",
-                          alternatePhone: college.alternatePhone || "",
-                          accreditation: college.accreditation || "",
-                          awardsRecognitions: college.awardsRecognitions || "",
-                          quotas: Array.isArray(college.quotas) ? college.quotas.join(", ") : (college.quotas || ""),
-                          brochurePdfUrl: college.brochurePdfUrl || college.brochureUrl || "",
-                          campusVideoUrl: college.campusVideoUrl || "",
-                          isTopCollege: Boolean(college.isTopCollege),
-                          isBestCollege: Boolean(college.isBestCollege || college.isTopCollege),
-                          logo: college.logo || "",
-                          coverImage: college.image || "",
-                          images: Array.isArray(college.images) ? college.images : [],
-                          courseTags: college.courseTags || "",
-                          facilities: Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || ""),
-                          scholarships: college.scholarships || "",
-                          highestPackage: String(placementData.highestPackage || ""),
-                          averagePackage: String(placementData.averagePackage || ""),
-                          companiesVisited: String(placementData.companiesVisited || ""),
-                          hostelAvailability: hostelData.availability || "not_available",
-                          hostelType: hostelData.hostelType || "",
-                          hostelFeeMin: String(hostelFees.minAmount || ""),
-                          hostelFeeMax: String(hostelFees.maxAmount || ""),
-                          cctvAvailable: String(hostelData.cctvAvailable || ""),
-                          boysRoomsCount: String(hostelData.boysRoomsCount || ""),
-                          girlsRoomsCount: String(hostelData.girlsRoomsCount || ""),
-                          hostelFacilityOptions: Array.isArray(hostelData.facilityOptions) ? hostelData.facilityOptions.join(", ") : "",
-                          waterAvailability: String(hostelData.waterAvailability || ""),
-                          powerBackup: String(hostelData.powerBackup || ""),
-                          wifiAvailable: String(hostelData.internet?.wifiAvailable || ""),
-                          wifiSpeed: String(hostelData.internet?.speed || ""),
-                          wifiPricing: String(hostelData.internet?.pricing || ""),
-                          foodAvailability: String(hostelData.foodAvailability || "not_available"),
-                          foodTimings: String(hostelData.foodTimings || ""),
-                          laundryService: String(hostelData.laundryService || ""),
-                          roomCleaningFrequency: String(hostelData.roomCleaningFrequency || ""),
-                          hostelRules: String(hostelData.rules || ""),
-                        });
-                        }}
+                        onClick={() => openCollegeEditor(college)}
                         className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
                       >
                         <PencilLine className="size-4" />
                         Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openCollegeEditor(college, 3)}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.24)] bg-white px-4 py-2 text-xs font-semibold text-[#0f4c81] shadow-[0_10px_20px_rgba(148,163,184,0.12)] transition duration-200 hover:bg-[#eff6ff] hover:shadow-[0_12px_24px_rgba(59,130,246,0.14)]"
+                      >
+                        <ImageUp className="size-4" />
+                        Edit Images
                       </button>
                       <button
                         type="button"
@@ -6070,7 +8550,7 @@ function AdminPageContent() {
               No users found right now.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-[1rem] border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
               <table className="min-w-full text-left text-[13px] text-slate-700">
                 <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   <tr>

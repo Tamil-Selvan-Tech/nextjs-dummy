@@ -80,7 +80,7 @@ export function AdminPortalShell({
 
   return (
     <>
-      <section className="section-shell min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_20%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),linear-gradient(180deg,#fffdf8_0%,#f8fbff_54%,#f3f8ff_100%)] text-[color:var(--text-dark)]">
+      <section className="admin-typography section-shell min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_20%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),linear-gradient(180deg,#fffdf8_0%,#f8fbff_54%,#f3f8ff_100%)] text-[color:var(--text-dark)]">
 
         <div className="pointer-events-none mesh-bg opacity-20" />
 

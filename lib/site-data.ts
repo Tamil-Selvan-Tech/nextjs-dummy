@@ -41,6 +41,10 @@ export type College = {
   feesStructure?: Record<string, unknown>;
   placements?: Record<string, unknown>;
   hostelDetails?: Record<string, unknown>;
+  campusHighlights?: Array<{
+    label: string;
+    value: string;
+  }>;
 };
 
 export type Course = {
