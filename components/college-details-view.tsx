@@ -220,6 +220,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     new Set([college.image, ...(college.images || [])].map((image) => String(image || "").trim()).filter(Boolean)),
   );
   const mainImage = galleryImages[0] || college.image;
+  const hasGalleryImages = galleryImages.length > 0;
   const collageImages = galleryImages.slice(1, 3);
   const remainingImageCount = Math.max(galleryImages.length - 3, 0);
   const activeTabIndex = tabs.findIndex((tab) => tab.key === activeTab);
@@ -288,6 +289,13 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     { label: "Website", value: college.website?.trim() || "Not available" },
     { label: "Map Link", value: college.locationLink?.trim() || college.mapUrl?.trim() || "Not available" },
   ];
+  const campusPlaceholder = () => (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-[linear-gradient(135deg,#f8fbff_0%,#e8f3ff_55%,#dcecff_100%)] text-center text-[color:var(--brand-primary)]">
+      <Building2 className="size-10" />
+      <p className="mt-3 text-sm font-bold text-[color:var(--text-dark)]">Campus Visual Coming Soon</p>
+      <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">We&apos;re preparing a great view for you.</p>
+    </div>
+  );
   const downloadBrochure = () => {
     if (brochureUrl) {
       window.open(brochureUrl, "_blank", "noopener,noreferrer");
@@ -659,19 +667,26 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openGallery(0)}
-                    className="group relative block h-44 w-full overflow-hidden sm:h-52 rounded-[1.25rem] border border-white/60"
-                  >
-                    <img
-                      src={mainImage}
-                      alt={`${college.name} primary view`}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,20,38,0.04),rgba(7,20,38,0.46))]" />
-                  </button>
+                  {hasGalleryImages ? (
+                    <button
+                      type="button"
+                      onClick={() => openGallery(0)}
+                      className="group relative block h-44 w-full overflow-hidden sm:h-52 rounded-[1.25rem] border border-white/60"
+                    >
+                      <img
+                        src={mainImage}
+                        alt={`${college.name} primary view`}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,20,38,0.04),rgba(7,20,38,0.46))]" />
+                    </button>
+                  ) : (
+                    <div className="h-44 w-full overflow-hidden rounded-[1.25rem] border border-white/60 sm:h-52">
+                      {campusPlaceholder()}
+                    </div>
+                  )}
 
+                  {collageImages.length ? (
                   <div className={`mt-3 grid gap-3 ${collageImages.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                     {collageImages.length ? collageImages.map((image, index) => {
                       const imageIndex = index + 1;
@@ -711,23 +726,9 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         </div>
                       </button>
                     );
-                    }) : (
-                      <button
-                        type="button"
-                        onClick={() => openGallery(0)}
-                        className="group relative overflow-hidden rounded-[1.15rem] border border-white/65 transition hover:border-[rgba(15,76,129,0.22)]"
-                      >
-                        <div className="h-40 overflow-hidden">
-                          <img
-                            src={mainImage}
-                            alt={`${college.name} additional campus view`}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,20,38,0.03),rgba(7,20,38,0.28))]" />
-                        </div>
-                      </button>
-                    )}
+                    }) : null}
                   </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1311,15 +1312,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
             </button>
           ) : null}
 
-          <div className="w-full max-w-5xl overflow-hidden rounded-[1.8rem] border border-white/20 bg-white/8 shadow-[0_24px_64px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
-            <div className="relative bg-transparent px-3 py-3 md:px-6 md:py-5">
-              <img
-                src={galleryImages[activeGalleryIndex] || mainImage}
-                alt={`${college.name} full view ${activeGalleryIndex + 1}`}
-                className="max-h-[72vh] w-full rounded-[1.25rem] object-contain transition-transform duration-500 ease-out"
-              />
+          {hasGalleryImages ? (
+            <div className="w-full max-w-5xl overflow-hidden rounded-[1.8rem] border border-white/20 bg-white/8 shadow-[0_24px_64px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
+              <div className="relative bg-transparent px-3 py-3 md:px-6 md:py-5">
+                <img
+                  src={galleryImages[activeGalleryIndex] || mainImage}
+                  alt={`${college.name} full view ${activeGalleryIndex + 1}`}
+                  className="max-h-[72vh] w-full rounded-[1.25rem] object-contain transition-transform duration-500 ease-out"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {galleryImages.length > 1 ? (
             <button

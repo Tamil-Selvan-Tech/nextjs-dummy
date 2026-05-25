@@ -8,8 +8,6 @@ import {
   type Course,
 } from "@/lib/site-data";
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80";
 const BROKEN_IMAGE_URLS = new Set([
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
 ]);
@@ -398,16 +396,6 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
   });
 };
 
-const getFallbackCollegeImage = (item: BackendCollege) => {
-  const matchedCollege = fallbackColleges.find(
-    (college) =>
-      normalizeText(college.name) === normalizeText(String(item.name || "")) ||
-      normalizeText(college.university) === normalizeText(String(item.university || "")),
-  );
-
-  return matchedCollege?.image || FALLBACK_IMAGE;
-};
-
 const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[] =>
   records.map((item, index) => {
     const matchingCourseRows = courseRows.filter(
@@ -476,7 +464,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       image:
         resolvedImage && !BROKEN_IMAGE_URLS.has(resolvedImage)
           ? resolvedImage
-          : getFallbackCollegeImage(item),
+          : "",
       images: toList(item.images),
       logo: String(item.logo || ""),
       isBestCollege: Boolean(item.isBestCollege || item.isTopCollege),

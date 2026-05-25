@@ -45,6 +45,29 @@ const accountModes = {
   },
 } as const;
 
+function GoogleMark({ className = "size-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M21.6 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.39a4.61 4.61 0 0 1-2 3.02v2.5h3.23c1.89-1.73 2.98-4.28 2.98-7.35Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.96-.9 6.61-2.42l-3.23-2.5c-.9.6-2.05.95-3.38.95-2.6 0-4.8-1.75-5.59-4.1H3.08v2.58A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC04"
+        d="M6.41 13.93A5.99 5.99 0 0 1 6.1 12c0-.67.12-1.31.31-1.93V7.5H3.08A10 10 0 0 0 2 12c0 1.61.39 3.14 1.08 4.5l3.33-2.57Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.97c1.47 0 2.8.51 3.84 1.5l2.88-2.88C16.95 2.94 14.7 2 12 2A10 10 0 0 0 3.08 7.5l3.33 2.57C7.2 7.72 9.4 5.97 12 5.97Z"
+      />
+    </svg>
+  );
+}
+
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 type GoogleCredentialResponse = {
@@ -141,7 +164,9 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGoogleScriptReady, setIsGoogleScriptReady] = useState(false);
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(0);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const googleButtonShellRef = useRef<HTMLDivElement | null>(null);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   useStatusToast(status);
 
@@ -243,7 +268,31 @@ function LoginPageContent() {
   }, []);
 
   useEffect(() => {
-    if (!googleClientId || !isGoogleScriptReady || !googleButtonRef.current) {
+    if (!googleClientId || !googleButtonShellRef.current) {
+      return;
+    }
+
+    const shell = googleButtonShellRef.current;
+    const syncGoogleButtonWidth = () => {
+      const nextWidth = Math.round(Math.max(188, Math.min(280, shell.offsetWidth || 0)));
+      setGoogleButtonWidth((current) => (current === nextWidth ? current : nextWidth));
+    };
+
+    syncGoogleButtonWidth();
+
+    const observer =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(syncGoogleButtonWidth) : null;
+    observer?.observe(shell);
+    window.addEventListener("resize", syncGoogleButtonWidth);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", syncGoogleButtonWidth);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId || !isGoogleScriptReady || !googleButtonRef.current || !googleButtonWidth) {
       return;
     }
 
@@ -261,12 +310,12 @@ function LoginPageContent() {
     googleAccountsId.renderButton(googleButtonRef.current, {
       theme: "outline",
       size: "large",
-      text: "continue_with",
-      shape: "pill",
-      width: Math.max(280, Math.min(360, googleButtonRef.current.offsetWidth || 360)),
+      text: "signin_with",
+      shape: "rectangular",
+      width: googleButtonWidth,
       logo_alignment: "left",
     });
-  }, [isGoogleScriptReady]);
+  }, [googleButtonWidth, isGoogleScriptReady]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -492,23 +541,41 @@ function LoginPageContent() {
                 </Link>
               </p>
               <div className="mt-5">
-                <div className="relative mb-4">
+                <div className="relative mb-3 sm:mb-4">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-200" />
+                    <span className="w-full border-t border-[rgba(15,76,129,0.12)]" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-3 text-[color:var(--text-muted)]">
+                    <span className="bg-white px-3 tracking-[0.18em] text-[color:var(--text-muted)]">
                       Or continue with
                     </span>
                   </div>
                 </div>
 
-                <div className="rounded-[1.1rem] border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                <div className="px-1 py-1 sm:px-2">
                   {googleClientId ? (
                     <div
-                      ref={googleButtonRef}
-                      className={`flex min-h-11 items-center justify-center ${isGoogleLoading ? "pointer-events-none opacity-70" : ""}`}
-                    />
+                      ref={googleButtonShellRef}
+                      className={`google-cta-frame relative mx-auto w-full max-w-[280px] ${
+                        isGoogleLoading ? "opacity-80" : ""
+                      }`}
+                    >
+                      <div className="google-cta-shell pointer-events-none flex min-h-12 items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-3 text-left shadow-[0_12px_24px_rgba(22,50,79,0.08)]">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(15,76,129,0.06)]">
+                          <GoogleMark className="size-4.5" />
+                        </span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold text-[color:var(--text-dark)]">
+                          {isGoogleLoading ? "Checking Google account..." : "Continue with Google"}
+                        </span>
+                      </div>
+                      <div
+                        ref={googleButtonRef}
+                        className={`google-signin-hitbox absolute inset-0 ${
+                          isGoogleLoading ? "pointer-events-none" : ""
+                        }`}
+                        aria-label="Continue with Google"
+                      />
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -520,7 +587,7 @@ function LoginPageContent() {
                   )}
                 </div>
 
-                <p className="mt-3 text-center text-xs text-[color:var(--text-muted)]">
+                <p className="mt-3 px-2 text-center text-[11px] leading-5 text-[color:var(--text-muted)] sm:text-xs">
                   OTP will be sent to the same Google email after sign-in.
                 </p>
               </div>

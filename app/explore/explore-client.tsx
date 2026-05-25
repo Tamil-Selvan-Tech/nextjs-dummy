@@ -100,6 +100,32 @@ const matchesCourseQuery = (
   return courseText.includes(searchText);
 };
 
+const CollegeImage = ({ college }: { college: College }) => {
+  const imageSrc = college.image?.trim();
+  const initials = college.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("");
+
+  if (!imageSrc) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f8fafc,#e0f2fe)] text-2xl font-extrabold text-[color:var(--brand-primary)]">
+        {initials || "CE"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={college.name}
+      className="h-full w-full object-cover transition group-hover:scale-105"
+    />
+  );
+};
+
 export function ExploreClient({
   query,
   streamFilter = "",
@@ -410,7 +436,7 @@ export function ExploreClient({
                       className="group cursor-pointer overflow-hidden rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)] transition hover:-translate-y-0.5 hover:border-[rgba(255,138,61,0.28)]"
                     >
                       <div className="relative h-36 overflow-hidden bg-slate-100">
-                        <img src={college.image} alt={college.name} className="h-full w-full object-cover transition group-hover:scale-105" />
+                        <CollegeImage college={college} />
                       </div>
                       <div className="p-3.5">
                         <h3 className="text-sm font-bold text-[color:var(--text-dark)] md:text-[15px]">{college.name}</h3>
@@ -470,7 +496,7 @@ export function ExploreClient({
                   }`}
                 >
                   <div className="relative h-36 overflow-hidden bg-slate-100">
-                    <img src={college.image} alt={college.name} className="h-full w-full object-cover transition group-hover:scale-105" />
+                    <CollegeImage college={college} />
                     {college.isBestCollege ? (
                       <div className="absolute right-2 top-2 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
                         Best

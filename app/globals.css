@@ -78,6 +78,77 @@ body {
   -ms-overflow-style: none;
 }
 
+.google-signin-hitbox {
+  overflow: hidden;
+  border-radius: 1rem;
+  opacity: 0;
+}
+
+.google-cta-shell {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+  animation: googleCtaFloatIn 320ms ease-out;
+}
+
+.google-cta-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.92) 50%, transparent 82%);
+  transform: translateX(-140%);
+  opacity: 0.75;
+  transition: transform 480ms ease;
+}
+
+.google-cta-frame:hover .google-cta-shell,
+.google-cta-shell:hover {
+  transform: translateY(-1px) scale(1.01);
+  border-color: rgba(60, 126, 182, 0.22);
+  box-shadow: 0 16px 30px rgba(22, 50, 79, 0.14);
+}
+
+.google-cta-frame:hover .google-cta-shell::after,
+.google-cta-shell:hover::after {
+  transform: translateX(140%);
+}
+
+.google-cta-frame:active .google-cta-shell,
+.google-cta-shell:active {
+  transform: scale(0.985);
+  box-shadow: 0 9px 18px rgba(22, 50, 79, 0.12);
+}
+
+@keyframes googleCtaFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.google-signin-hitbox > div,
+.google-signin-hitbox > div > div,
+.google-signin-hitbox iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.google-signin-hitbox > div,
+.google-signin-hitbox > div > div,
+.google-signin-hitbox iframe {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
 .home-theme {
   font-family: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
   font-optical-sizing: auto;

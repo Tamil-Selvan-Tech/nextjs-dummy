@@ -2141,15 +2141,6 @@ function BulkUploadDashboard({
           preparationNotes: "Practice previous year questions",
         },
       },
-      {
-        name: "CollegeImages",
-        headers: ["collegeCode", "imageType", "imageName"],
-        row: {
-          collegeCode: "CLG001",
-          imageType: "campus",
-          imageName: "clg001-campus-1.jpg",
-        },
-      },
     ];
 
     const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -2342,6 +2333,17 @@ function BulkUploadDashboard({
   const activeDetailColumns = [...getBulkPreviewColumns(activeDetailSheet), ...customSheetColumns[activeDetailSheet]];
   const getIssueColumnForPreviewColumn = (column: string) =>
     column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
+  const getCollegeInitials = (row: BulkPreviewRow) => {
+    const source = row.data.collegeName || row.data.collegeCode || "College";
+    const initials = String(source)
+      .split(/\s+/)
+      .map((part) => part.trim()[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+    return initials || "CL";
+  };
   const errorItems = useMemo(
     () =>
       previewRows.flatMap((row, rowIndex) =>
@@ -2600,7 +2602,6 @@ function BulkUploadDashboard({
       });
 
       const summary = data?.summary || {};
-      const issues = Array.isArray(data?.issues) ? data.issues : [];
       const nextStatusText = [
         data?.message || "Bulk import completed.",
         summary.importedColleges ? `${summary.importedColleges} colleges synced` : "",
@@ -2612,15 +2613,6 @@ function BulkUploadDashboard({
         .join(" ");
 
       setValidationStatusText(nextStatusText);
-      showToast(nextStatusText, issues.length > 0 ? "info" : "success");
-
-      if (issues.length > 0) {
-        const issuePreview = issues
-          .slice(0, 3)
-          .map((issue) => `${issue.sheet || "row"} ${issue.rowNumber || ""}: ${issue.message || "Skipped"}`.trim())
-          .join(" | ");
-        showToast(issuePreview, "info");
-      }
 
       setShowFullDetails(false);
       setShowFinishPopup(true);
@@ -2647,6 +2639,92 @@ function BulkUploadDashboard({
         : "border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30";
     const fileMetaClasses = selectedFile ? "border-green-100 bg-green-50" : "border-slate-100 bg-slate-50";
     const iconClasses = isZipCard ? "text-blue-600" : isManualCard ? "text-purple-600" : "text-green-600";
+
+    if (isZipCard) {
+      return (
+        <article className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_18px_44px_rgba(15,23,42,0.06)] sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+              <FileClock className="size-6" />
+            </span>
+            <div>
+              <h3 className="text-base font-black leading-6 text-slate-950">Add College Images ZIP</h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">
+                ZIP should contain logo, cover, and college images
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="mt-4 flex min-h-40 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-br from-blue-50/80 via-white to-blue-50 px-4 py-6 text-center"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              selectUploadFile(item, event.dataTransfer.files?.[0] || null);
+            }}
+          >
+            <FileClock className="size-14 text-blue-600" />
+            <p className="mt-3 text-sm font-black text-slate-950">Drag & drop ZIP file here</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Supported formats: ZIP (Max size: 100MB)</p>
+            <label className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.2)] transition hover:bg-blue-700">
+              Choose ZIP File
+              <input
+                type="file"
+                accept={item.accept}
+                className="hidden"
+                onChange={(event) => {
+                  selectUploadFile(item, event.target.files?.[0] || null);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {uploadError ? (
+              <span className="mt-3 block text-xs font-bold leading-5 text-red-600">{uploadError}</span>
+            ) : null}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-blue-50/80 p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                <span className="text-xs font-black">i</span>
+              </span>
+              <div className="text-xs font-semibold leading-5 text-slate-700">
+                <p className="font-black text-blue-700">Important Instructions</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  <li>Upload a ZIP file only.</li>
+                  <li>ZIP must contain college logo and cover image.</li>
+                  <li>File names must follow the college code.</li>
+                  <li>
+                    Example: If college code is <span className="rounded-md bg-white px-1.5 py-0.5 font-black">CLG001</span>, then files should be:
+                  </li>
+                </ul>
+                <div className="mt-1 flex flex-wrap items-center gap-2 pl-4">
+                  <span className="rounded-md bg-white px-2 py-1 font-black">CLG001.logo</span>
+                  <span>and</span>
+                  <span className="rounded-md bg-white px-2 py-1 font-black">CLG001.coverimage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {selectedFile ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="max-w-full truncate rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-sm">
+                {selectedFile.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => resetUploadSelection("3")}
+                className="flex size-10 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                aria-label="Remove selected ZIP file"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+          ) : null}
+        </article>
+      );
+    }
 
     return (
       <article
@@ -2726,7 +2804,21 @@ function BulkUploadDashboard({
               <span className="whitespace-nowrap text-xs font-semibold leading-5 text-slate-500">
                 {formatFileSize(selectedFile.size)}
               </span>
-              <BadgeCheck className="size-5 shrink-0 text-green-600" />
+              {isZipCard ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    resetUploadSelection("3");
+                  }}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                  aria-label="Remove selected ZIP file"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : (
+                <BadgeCheck className="size-5 shrink-0 text-green-600" />
+              )}
             </span>
           ) : null}
         </div>
@@ -2840,15 +2932,6 @@ function BulkUploadDashboard({
                     Back
                   </button>
                 ) : null}
-                {showZipUploadStep ? (
-                  <button
-                    type="button"
-                    onClick={() => resetUploadSelection("3")}
-                    className="rounded-xl border border-red-100 px-4 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50"
-                  >
-                    Cancel ZIP
-                  </button>
-                ) : null}
                 {!showZipUploadStep ? (
                   activeExcelFile && activeUploadStep ? (
                     <button
@@ -2871,6 +2954,15 @@ function BulkUploadDashboard({
                     className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:from-purple-300 disabled:to-blue-300 disabled:shadow-none"
                   >
                     Next
+                  </button>
+                ) : null}
+                {showZipUploadStep ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowValidationSummaryStep(true)}
+                    className="rounded-xl border border-blue-100 bg-white px-5 py-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50"
+                  >
+                    Skip
                   </button>
                 ) : null}
                 {showZipUploadStep ? (
@@ -3083,18 +3175,25 @@ function BulkUploadDashboard({
             </div>
           </div>
 
-          <div className="responsive-data-table pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
-            <table className="w-full min-w-450 border-collapse text-left text-xs">
+          <div className="responsive-data-table overflow-auto pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
+            <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
               <thead className="bg-[#f3f5ff] text-[#10235d]">
                 <tr>
                   {["S.No", ...activeDetailColumns, "Status", "Actions"].map((heading) => {
                     const isStatusColumn = heading === "Status";
                     const isActionsColumn = heading === "Actions";
+                    const isSerialColumn = heading === "S.No";
                     return (
                       <th
                         key={heading || "select"}
-                        className={`border-b border-[#e7eefb] px-4 py-3 font-extrabold ${
-                          isStatusColumn ? "sticky right-16 z-20 bg-[#f3f5ff]" : isActionsColumn ? "sticky right-0 z-20 bg-[#f3f5ff]" : ""
+                        className={`border-b border-r border-[#e7eefb] px-3 py-3 align-top font-extrabold ${
+                          isSerialColumn
+                            ? "w-16"
+                            : isStatusColumn
+                              ? "sticky right-20 z-20 w-24 bg-[#f3f5ff]"
+                              : isActionsColumn
+                                ? "sticky right-0 z-20 w-20 bg-[#f3f5ff]"
+                                : "w-44 min-w-44"
                         }`}
                       >
                         {displayColumnName(heading)}
@@ -3106,7 +3205,7 @@ function BulkUploadDashboard({
               <tbody className="divide-y divide-[#edf2fb] border-b-2 border-[#e7eefb]">
                 {paginatedDetailRows.length ? paginatedDetailRows.map((row) => (
                   <tr key={row.id} className="bg-white text-[#10235d]">
-                    <td className="px-4 py-3 font-extrabold">{row.id}</td>
+                    <td className="w-16 border-r border-[#edf2fb] px-3 py-3 align-top font-extrabold">{row.id}</td>
                     {activeDetailColumns.map((column) => {
                       const rankingRange = getPreviewRankingRangeValues(row.data.ranking || "");
                       const value =
@@ -3124,6 +3223,7 @@ function BulkUploadDashboard({
                       const isEditing = editingRowId === row.id;
                       const issueColumn = column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
                       const fieldIssue = row.fieldIssues[issueColumn];
+                      const collegeInitials = getCollegeInitials(row);
                       const issueLabel =
                         fieldIssue?.level === "missing"
                           ? "Missing"
@@ -3145,7 +3245,7 @@ function BulkUploadDashboard({
                               ? "bg-[#fff1f1] text-[#c81e1e]"
                               : "bg-[#fff7e6] text-[#e8790a]";
                       return (
-                        <td key={`${row.id}-${column}`} className="max-w-55 px-4 py-3 font-bold">
+                        <td key={`${row.id}-${column}`} className="w-44 min-w-44 border-r border-[#edf2fb] px-3 py-3 align-top font-bold">
                           {isEditing ? (
                             isBooleanColumn ? (
                               <input
@@ -3180,9 +3280,40 @@ function BulkUploadDashboard({
                                 </span>
                               ) : null}
                             </div>
+                          ) : column === "logoImage" ? (
+                            <div className="space-y-2">
+                              <CollegeLogoBadge
+                                alt={`${row.data.collegeName || row.data.collegeCode || "College"} logo`}
+                                className="h-14 w-14 rounded-xl"
+                                fallback={<span className="text-base font-black tracking-wide">{collegeInitials}</span>}
+                              />
+                              {fieldIssue ? (
+                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
+                                  {issueLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : column === "coverImage" ? (
+                            <div className="space-y-2">
+                              <div className="relative h-20 w-40 overflow-hidden rounded-xl border border-blue-100 bg-[linear-gradient(135deg,#f8fbff_0%,#e8f3ff_55%,#dcecff_100%)] shadow-[0_8px_18px_rgba(37,99,235,0.08)]">
+                                <div className="absolute inset-x-0 bottom-0 h-9 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(147,197,253,0.35)_100%)]" />
+                                <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-blue-900">
+                                  <Building2 className="size-7 text-blue-600" />
+                                  <span className="mt-1 text-[11px] font-black leading-4">Campus Visual</span>
+                                  <span className="mt-1 rounded-md bg-blue-700 px-2.5 py-1 text-[10px] font-black text-white">
+                                    {collegeInitials}
+                                  </span>
+                                </div>
+                              </div>
+                              {fieldIssue ? (
+                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
+                                  {issueLabel}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : (
                             <div className="space-y-2">
-                              <span className={`block min-w-22.5 truncate ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
+                              <span className={`block min-w-0 break-words leading-5 ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
                                 {value || (fieldIssue?.level === "missing" ? "Missing" : "-")}
                               </span>
                               {fieldIssue ? (
@@ -3198,7 +3329,7 @@ function BulkUploadDashboard({
                         </td>
                       );
                     })}
-                    <td className="sticky right-16 z-20 bg-white px-4 py-3">
+                    <td className="sticky right-20 z-20 w-24 border-r border-[#edf2fb] bg-white px-3 py-3 align-top">
                       <span
                         className={`inline-flex min-w-16 justify-center rounded-sm px-2 py-1 text-[11px] font-extrabold ${
                           row.status === "Valid" ? "bg-[#e8f8ee] text-[#16a34a]" : row.status === "Review" ? "bg-[#fff7e6] text-[#e8790a]" : "bg-[#ffe9e9] text-[#ef233c]"
@@ -3207,8 +3338,8 @@ function BulkUploadDashboard({
                         {row.status}
                       </span>
                     </td>
-                    <td className="sticky right-0 z-20 bg-white px-4 py-3">
-                      <div className="flex items-center gap-3">
+                    <td className="sticky right-0 z-20 w-20 bg-white px-3 py-3 align-top">
+                      <div className="flex items-center justify-center gap-3">
                         {editingRowId === row.id ? (
                           <>
                             <button type="button" className="text-[#16a34a]" aria-label="Save row changes" onClick={saveEditingRow}>
@@ -3447,7 +3578,7 @@ function BulkUploadDashboard({
               </div>
             ) : null}
 
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3 border-t border-[#e7eefb] bg-white px-4 py-4">
               <button
                 type="button"
                 onClick={() => {

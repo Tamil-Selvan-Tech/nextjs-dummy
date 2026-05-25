@@ -90,7 +90,7 @@ export function AdminPortalShell({
 
         <div className="pointer-events-none absolute right-[4%] top-8 h-44 w-44 rounded-full bg-[rgba(125,211,252,0.14)] blur-3xl" />
 
-        <div className="page-container-full relative z-10 px-2 py-2 sm:px-3 sm:py-4">
+        <div className="page-container-full relative z-10 !max-w-[94rem] px-2 py-2 sm:px-3 sm:py-4 xl:!px-5 2xl:!px-6">
 
           {sidebarOpen && (
             <div
@@ -99,7 +99,7 @@ export function AdminPortalShell({
             />
           )}
 
-          <div className="grid min-h-0 gap-2.5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="grid min-h-0 gap-2.5 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
 
             {/* SIDEBAR */}
 
@@ -135,15 +135,14 @@ export function AdminPortalShell({
 
               <div className="mt-3 rounded-[1.2rem] border border-[rgba(148,163,184,0.15)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,250,255,0.92))] p-3 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
 
-                <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(56,189,248,0.18)] bg-[rgba(224,242,254,0.9)] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#0f4c81]">
-                  <Sparkles className="size-3.5 text-[#0284c7]" />
+                <div className="space-y-2.5">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(56,189,248,0.18)] bg-[rgba(224,242,254,0.9)] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#0f4c81]">
+                    <Sparkles className="size-3.5 text-[#0284c7]" />
 
-                  {currentUser?.isSuperAdmin
-                    ? "Super Admin"
-                    : "Admin"}
-                </div>
-
-                <div className="mt-3 space-y-2.5">
+                    {currentUser?.isSuperAdmin
+                      ? "Super Admin"
+                      : "Admin"}
+                  </div>
 
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm">
                     <UserRound className="mt-0.5 size-4 shrink-0 text-[color:var(--brand-primary)]" />
@@ -153,10 +152,10 @@ export function AdminPortalShell({
                     </span>
                   </div>
 
-                  <div className="flex items-start gap-2.5 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2 text-xs">
                     <Mail className="mt-0.5 size-4 shrink-0 text-[color:var(--brand-primary)]" />
 
-                    <span className="min-w-0 break-all whitespace-normal text-slate-700">
+                    <span className="min-w-0 whitespace-nowrap text-[11px] text-slate-700 xl:text-xs">
                       {currentUser?.email || "-"}
                     </span>
                   </div>

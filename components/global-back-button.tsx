@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { navigateToSafeBack } from "@/lib/safe-back";
 
 type PageBackButtonProps = {
@@ -11,18 +12,16 @@ type PageBackButtonProps = {
 export function PageBackButton({ className = "" }: PageBackButtonProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentRoute = useMemo(() => {
+    if (!pathname) return "/";
+    const query = searchParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
 
   if (!pathname || pathname === "/") return null;
 
   const handleBack = () => {
-    const query = typeof window !== "undefined" ? window.location.search : "";
-    if (pathname === "/cutoff") {
-      const destination = query ? `/find${query}` : "/find";
-      router.replace(destination);
-      return;
-    }
-
-    const currentRoute = query ? `${pathname}${query}` : pathname;
     navigateToSafeBack(router, currentRoute, "/");
   };
 
@@ -30,7 +29,7 @@ export function PageBackButton({ className = "" }: PageBackButtonProps) {
     <button
       type="button"
       onClick={handleBack}
-      className={`hidden md:inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white/96 px-4 py-2 text-[13px] font-semibold text-slate-900 shadow-[0_12px_28px_rgba(22,50,79,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_34px_rgba(22,50,79,0.16)] ${className}`.trim()}
+      className={`inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white/96 px-4 py-2 text-[13px] font-semibold text-slate-900 shadow-[0_12px_28px_rgba(22,50,79,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_34px_rgba(22,50,79,0.16)] ${className}`.trim()}
       aria-label="Go back"
     >
       <ArrowLeft className="size-4" />
