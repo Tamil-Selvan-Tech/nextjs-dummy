@@ -967,16 +967,19 @@ const bulkColumnAliases: Record<string, string> = {
 
 function BulkUploadDashboard({
   onImportComplete,
+  onAddManualCollege,
   existingColleges = [],
 }: {
   onImportComplete?: () => Promise<void> | void;
+  onAddManualCollege?: () => void;
   existingColleges?: AdminCollege[];
 }) {
   const previewDetailsRef = useRef<HTMLElement | null>(null);
   const [selectedUploadFiles, setSelectedUploadFiles] = useState<Record<string, File | null>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
-  const [activeUploadStep, setActiveUploadStep] = useState<"1" | "2">("1");
+  const [activeUploadStep, setActiveUploadStep] = useState<"1" | "2" | null>(null);
   const [showZipUploadStep, setShowZipUploadStep] = useState(false);
+  const [showValidationSummaryStep, setShowValidationSummaryStep] = useState(false);
   const [validationSummary, setValidationSummary] = useState({
     totalRecords: 0,
     validRecords: 0,
@@ -988,6 +991,8 @@ function BulkUploadDashboard({
   
   const [validationStatusText, setValidationStatusText] = useState("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
   const [showFullDetails, setShowFullDetails] = useState(false);
+  const [showFinishPopup, setShowFinishPopup] = useState(false);
+  const [furthestWorkflowStep, setFurthestWorkflowStep] = useState(0);
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [activeDetailSheet, setActiveDetailSheet] = useState<BulkSheetKey>("colleges");
   const [detailSearchText, setDetailSearchText] = useState("");
@@ -1001,9 +1006,9 @@ function BulkUploadDashboard({
     collegeimages: [],
   });
   const [customFieldForm, setCustomFieldForm] = useState({
-    fieldName: "Placement rate",
+    fieldName: "",
     fieldType: "Number",
-    defaultValue: "90",
+    defaultValue: "",
     selectedCollegeRowId: "",
   });
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
@@ -1897,7 +1902,13 @@ function BulkUploadDashboard({
     if (step !== "3") {
       setActiveUploadStep(step);
       setShowZipUploadStep(false);
+      setFurthestWorkflowStep(0);
+    } else {
+      setFurthestWorkflowStep(1);
     }
+    setShowValidationSummaryStep(false);
+    setShowFullDetails(false);
+    setShowFinishPopup(false);
   }, []);
 
   const selectUploadFile = (item: (typeof uploadCards)[number], file: File | null) => {
@@ -1911,12 +1922,15 @@ function BulkUploadDashboard({
       if (item.step === "3") {
         setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
         setUploadErrors((previous) => ({ ...previous, "3": error }));
+        setFurthestWorkflowStep((previous) => Math.max(previous, 1));
         return;
       }
 
       const otherExcelStep = item.step === "1" ? "2" : "1";
       setActiveUploadStep(item.step as "1" | "2");
       setShowZipUploadStep(false);
+      setShowFullDetails(false);
+      setFurthestWorkflowStep(0);
       setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: null, [otherExcelStep]: null, "3": null }));
       setUploadErrors((previous) => ({ ...previous, [item.step]: error, [otherExcelStep]: "", "3": "" }));
       return;
@@ -1925,19 +1939,54 @@ function BulkUploadDashboard({
     if (item.step === "3") {
       setSelectedUploadFiles((previous) => ({ ...previous, "3": file }));
       setUploadErrors((previous) => ({ ...previous, "3": "" }));
+      setShowValidationSummaryStep(false);
+      setShowFinishPopup(false);
+      setFurthestWorkflowStep((previous) => Math.max(previous, 1));
       return;
     }
 
     const otherExcelStep = item.step === "1" ? "2" : "1";
     setActiveUploadStep(item.step as "1" | "2");
     setShowZipUploadStep(false);
+    setShowValidationSummaryStep(false);
+    setShowFullDetails(false);
+    setShowFinishPopup(false);
+    setFurthestWorkflowStep(0);
     setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
     setUploadErrors((previous) => ({ ...previous, [item.step]: "", [otherExcelStep]: "", "3": "" }));
   };
 
-  const activeExcelUploadCard = uploadCards.find((item) => item.step === activeUploadStep) || uploadCards[0];
-  const activeExcelFile = selectedUploadFiles[activeUploadStep];
+  const activeExcelFile = activeUploadStep ? selectedUploadFiles[activeUploadStep] : null;
   const selectedZipFile = selectedUploadFiles["3"];
+  const workflowSteps = [
+    "College Data",
+    "College Images ZIP",
+    "Validation Summary",
+    "Review Uploaded Data",
+    "Finish",
+  ];
+  const visibleWorkflowStep = showFullDetails
+    ? 3
+    : showFinishPopup
+      ? 4
+      : showValidationSummaryStep
+        ? 2
+        : showZipUploadStep
+          ? 1
+          : 0;
+  const currentWorkflowStep = Math.max(visibleWorkflowStep, furthestWorkflowStep);
+  const summaryCardStyles = [
+    "border-blue-100 bg-blue-50 text-blue-700",
+    "border-green-100 bg-green-50 text-green-700",
+    "border-red-100 bg-red-50 text-red-700",
+    "border-orange-100 bg-orange-50 text-orange-700",
+    "border-purple-100 bg-purple-50 text-purple-700",
+    "border-amber-100 bg-amber-50 text-amber-700",
+  ];
+
+  useEffect(() => {
+    setFurthestWorkflowStep((previous) => Math.max(previous, visibleWorkflowStep));
+  }, [visibleWorkflowStep]);
 
   const downloadSampleTemplates = () => {
     const escapeXml = (value: string) =>
@@ -2417,9 +2466,9 @@ function BulkUploadDashboard({
     setActiveDetailSheet("colleges");
     setOpenFieldPanel((panel) => (panel === "all" ? null : "all"));
     setCustomFieldForm({
-      fieldName: "Placement rate",
+      fieldName: "",
       fieldType: "Number",
-      defaultValue: "90",
+      defaultValue: "",
       selectedCollegeRowId: "",
     });
     setFieldErrorText("");
@@ -2430,9 +2479,9 @@ function BulkUploadDashboard({
     setActiveDetailSheet("colleges");
     setOpenFieldPanel((panel) => (panel === "single" ? null : "single"));
     setCustomFieldForm({
-      fieldName: "Scholarship",
-      fieldType: "Text",
-      defaultValue: "50% Tuition Fee Waiver",
+      fieldName: "",
+      fieldType: "Number",
+      defaultValue: "",
       selectedCollegeRowId: firstCollege ? String(firstCollege.id) : "",
     });
     setFieldErrorText("");
@@ -2574,9 +2623,7 @@ function BulkUploadDashboard({
       }
 
       setShowFullDetails(false);
-      if (onImportComplete) {
-        await onImportComplete();
-      }
+      setShowFinishPopup(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Bulk import failed.";
       setValidationStatusText(message);
@@ -2591,76 +2638,95 @@ function BulkUploadDashboard({
     const selectedFile = selectedUploadFiles[item.step];
     const uploadError = uploadErrors[item.step];
     const isZipCard = item.step === "3";
+    const isManualCard = item.step === "2";
+    const isSelectedExcel = !isZipCard && activeUploadStep === item.step;
     const cardClasses = isZipCard
-      ? "border-[#e5d7ff]"
-      : item.step === "2"
-        ? "border-[#cdeccf]"
-        : "border-[#c9dcfb]";
-    const dropZoneClasses = isZipCard
-      ? "border-2 border-dashed border-[#d8b4ff] bg-[#faf5ff]"
-      : item.step === "2"
-        ? "border border-[#cdeccf] bg-[#f3fcf5]"
-        : "border border-[#b8d4ff] bg-[#f4f9ff]";
-    const buttonClasses = isZipCard ? "bg-[#7c3aed]" : item.step === "2" ? "bg-[#16a34a]" : "bg-[#0b5cff]";
-    const fileMetaClasses = isZipCard ? "border-[#e7d4ff] bg-[#faf5ff]" : "border-[#dbe6f8] bg-white";
-    const iconClasses = isZipCard ? "text-[#7c3aed]" : item.step === "2" ? "text-[#16a34a]" : "text-[#0b5cff]";
+      ? "border border-blue-200 bg-white"
+      : isSelectedExcel
+        ? "border-2 border-blue-400 bg-blue-50/60 ring-2 ring-blue-100"
+        : "border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30";
+    const fileMetaClasses = selectedFile ? "border-green-100 bg-green-50" : "border-slate-100 bg-slate-50";
+    const iconClasses = isZipCard ? "text-blue-600" : isManualCard ? "text-purple-600" : "text-green-600";
 
     return (
-      <article className={`flex h-full flex-col rounded-lg border ${cardClasses} bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.06)]`}>
-        <div className="mb-3">
-          <h3 className="text-base font-extrabold leading-snug text-[#10235d]">{item.title}</h3>
-          <span className="mt-1 block text-[13px] font-semibold leading-4.5 text-[#31509c]">{item.subtitle}</span>
+      <article
+        className={`relative flex h-full flex-col rounded-2xl p-5 shadow-[0_18px_44px_rgba(15,23,42,0.06)] transition ${!isZipCard ? "cursor-pointer" : ""} ${cardClasses}`}
+        onClick={() => {
+          if (!isZipCard) {
+            setActiveUploadStep(item.step as "1" | "2");
+          }
+        }}
+      >
+        {!isZipCard && isSelectedExcel ? (
+          <span className="absolute right-4 top-4 flex size-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+            <BadgeCheck className="size-4" />
+          </span>
+        ) : null}
+        <div className="mb-4 flex items-start gap-3 pr-8">
+          <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${isZipCard ? "bg-blue-100" : isManualCard ? "bg-purple-50" : "bg-green-50"}`}>
+            <Icon className={`size-6 ${iconClasses}`} />
+          </span>
+          <div>
+            <h3 className="text-base font-bold leading-snug text-slate-950">{item.title}</h3>
+            <span className="mt-1 block text-sm font-medium leading-5 text-slate-500">
+              {isZipCard ? "ZIP should contain logo, cover, and college images" : isManualCard ? "Add college details manually one by one" : "Upload Excel file for multiple colleges"}
+            </span>
+          </div>
         </div>
 
         <div
-          className={`flex min-h-44 flex-col items-center justify-center rounded-md px-4 py-4 text-center ${dropZoneClasses}`}
+          className={`flex ${isZipCard ? "min-h-52 border-2 border-dashed border-blue-300 bg-gradient-to-br from-blue-50 to-white" : "min-h-36 border border-slate-100 bg-white"} flex-col items-center justify-center rounded-2xl px-4 py-5 text-center transition`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault();
             selectUploadFile(item, event.dataTransfer.files?.[0] || null);
           }}
         >
-          <Icon className={`size-10 ${iconClasses}`} />
-          <span className="mt-2.5 block max-w-xs text-[13px] font-extrabold leading-4.5 text-[#10235d]">{item.dropText}</span>
-          <span className="mt-1.5 block text-[12px] font-bold leading-4 text-[#31509c]">or</span>
-          <label className={`mt-2.5 cursor-pointer rounded-md ${buttonClasses} px-4 py-2 text-[12px] font-extrabold leading-none text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)] transition hover:opacity-90`}>
-            {item.action}
-            <input
-              type="file"
-              accept={item.accept}
-              className="hidden"
-              onChange={(event) => {
-                selectUploadFile(item, event.target.files?.[0] || null);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          {!isZipCard ? (
+          {isZipCard ? <FileClock className="size-14 text-blue-600" /> : null}
+          <span className="mt-2 block max-w-xs text-sm font-bold leading-5 text-slate-900">
+            {isZipCard ? "Drag & drop ZIP file here" : isManualCard ? "Add college details manually" : "Upload Excel file"}
+          </span>
+          <span className="mt-1 block text-xs font-semibold leading-4 text-slate-500">
+            {isZipCard ? "Supported formats: JPG, PNG, JPEG. Maximum ZIP size: 100MB." : item.note}
+          </span>
+          {item.step === "2" ? (
             <button
               type="button"
-              onClick={() => resetUploadSelection(item.step as "1" | "2")}
-              className="mt-2.5 rounded-md border border-[#ffd2d7] px-4 py-2 text-[12px] font-extrabold leading-none text-[#ef233c] transition hover:bg-[#fff5f6]"
+              onClick={onAddManualCollege}
+              className="mt-4 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-bold leading-none text-blue-700 shadow-[0_12px_24px_rgba(37,99,235,0.08)] transition hover:bg-blue-50"
             >
-              Cancel
+              Add Manually
             </button>
-          ) : null}
-          <span className="mt-3 block max-w-sm text-[12px] font-semibold leading-4.25 text-[#31509c]">{item.note}</span>
+          ) : (
+            <label className={`mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition ${isZipCard ? "bg-blue-600 hover:bg-blue-700" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"}`}>
+              {isZipCard ? "Choose ZIP File" : "Upload Excel File"}
+              <input
+                type="file"
+                accept={item.accept}
+                className="hidden"
+                onChange={(event) => {
+                  selectUploadFile(item, event.target.files?.[0] || null);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          )}
           {uploadError ? (
-            <span className="mt-2 block text-[12px] font-extrabold leading-4.25 text-[#ef233c]">{uploadError}</span>
+            <span className="mt-3 block text-xs font-bold leading-5 text-red-600">{uploadError}</span>
           ) : null}
         </div>
 
-        <div className={`mt-3 grid min-h-13 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2.5 ${fileMetaClasses}`}>
+        <div className={`mt-4 grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-3 ${fileMetaClasses}`}>
           <FileClock className={`size-5 shrink-0 ${iconClasses}`} />
-          <span className="min-w-0 overflow-hidden wrap-break-word text-[12px] font-extrabold leading-4.25 text-[#10235d] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+          <span className="min-w-0 overflow-hidden wrap-break-word text-xs font-bold leading-5 text-slate-900 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
             {selectedFile?.name || "No file selected"}
           </span>
           {selectedFile ? (
             <span className="flex shrink-0 items-center gap-2">
-              <span className="whitespace-nowrap text-[12px] font-bold leading-4.25 text-[#31509c]">
+              <span className="whitespace-nowrap text-xs font-semibold leading-5 text-slate-500">
                 {formatFileSize(selectedFile.size)}
               </span>
-              <BadgeCheck className="size-5 shrink-0 text-[#16a34a]" />
+              <BadgeCheck className="size-5 shrink-0 text-green-600" />
             </span>
           ) : null}
         </div>
@@ -2669,93 +2735,107 @@ function BulkUploadDashboard({
   };
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] bg-[#f8fbff] px-0 py-0 text-[#11245a]">
-      <div className="border-b border-[#d8e4f7] pb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-extrabold leading-tight text-[#10235d]">Bulk Upload</h1>
-            <p className="mt-1 text-sm font-semibold text-[#31509c]">
-              Upload and manage college data &bull; Validate &bull; Import &bull; Monitor
-            </p>
-          </div>
+    <div className="min-h-[calc(100vh-8rem)] rounded-[1.5rem] bg-gradient-to-br from-white via-blue-50/70 to-slate-50 px-4 py-5 text-slate-900 sm:px-6">
+      <div className="flex flex-col gap-4 border-b border-blue-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">College Data Upload</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500 sm:text-base">
+            Upload college data and images in a few simple steps
+          </p>
         </div>
+        <Link
+          href="/admin"
+          className="inline-flex w-fit items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-blue-200 hover:bg-blue-50"
+        >
+          <LayoutDashboard className="size-4" />
+          Back to Dashboard
+        </Link>
       </div>
 
-      <div className="mt-4 space-y-4">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)]">
-          <div className="space-y-4">
-            <section className="rounded-xl border border-[#dbe6f8] bg-white p-4 shadow-[0_10px_28px_rgba(25,61,137,0.08)]">
-              <div className="border-b border-[#e7eefb] pb-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <h2 className="text-lg font-extrabold text-[#10235d]">
-                      {showZipUploadStep ? uploadCards[2].title : "College Data Upload"}
-                    </h2>
+      <div className="mt-6">
+        <main className="min-w-0 space-y-5">
+          <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] sm:p-6">
+            <div className="relative hidden items-start justify-between gap-3 md:flex">
+              <div className="absolute left-[5%] right-[5%] top-5 h-1 rounded-full bg-slate-100" />
+              <div
+                className="absolute left-[5%] top-5 h-1 rounded-full bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 transition-all"
+                style={{ width: `${Math.max(0, (currentWorkflowStep / Math.max(workflowSteps.length - 1, 1)) * 90)}%` }}
+              />
+              {workflowSteps.map((step, index) => {
+                const completed = index < currentWorkflowStep;
+                const active = index === currentWorkflowStep;
+                return (
+                  <div key={step} className="relative z-10 flex flex-1 flex-col items-center text-center">
+                    <span className={`flex size-10 items-center justify-center rounded-full text-sm font-bold shadow-sm ${completed ? "bg-green-600 text-white" : active ? "bg-blue-600 text-white ring-4 ring-blue-100" : "bg-white text-slate-400 ring-1 ring-slate-200"}`}>
+                      {completed ? <BadgeCheck className="size-5" /> : index + 1}
+                    </span>
+                    <span className={`mt-2 text-xs font-bold ${active ? "text-blue-700" : completed ? "text-green-700" : "text-slate-500"}`}>
+                      {step}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
+          </section>
 
-                  <div className="inline-flex w-full max-w-md rounded-full border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)] p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveUploadStep("1");
-                        setShowZipUploadStep(false);
-                      }}
-                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
-                        activeUploadStep === "1"
-                          ? "bg-(--brand-primary) text-white"
-                          : "text-(--text-muted) hover:bg-white"
-                      }`}
-                    >
-                      <ImageUp className="size-4" />
-                      Bulk College Data
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveUploadStep("2");
-                        setShowZipUploadStep(false);
-                      }}
-                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition sm:px-5 ${
-                        activeUploadStep === "2"
-                          ? "bg-(--brand-support) text-white"
-                          : "text-(--text-muted) hover:bg-white"
-                      }`}
-                    >
-                      <Building2 className="size-4" />
-                      Single College Data
-                    </button>
+          {!showValidationSummaryStep ? (
+            <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] sm:p-6">
+              <div className="mb-5">
+                <h2 className="text-lg font-bold text-slate-950">
+                  {showZipUploadStep ? "Step 2: Add College Images ZIP" : "Step 1: College Data"}
+                </h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  {showZipUploadStep ? "Upload a ZIP file containing logo, cover and college images" : "Choose an option to add college data"}
+                </p>
+              </div>
+
+              {showZipUploadStep ? (
+                <div className="space-y-4">
+                  {renderUploadCard(uploadCards[2])}
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-blue-700">
+                    {selectedZipFile ? "ZIP file selected. Validation results are updated automatically." : "Excel is ready. Upload one combined ZIP with logo, cover, and college images."}
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4">
-                {showZipUploadStep ? (
-                  <div className="space-y-4">
-                    {renderUploadCard(uploadCards[2])}
-                    <div className="rounded-lg border border-[#efe4ff] bg-[#faf5ff] px-4 py-3 text-sm font-semibold leading-6 text-[#6b46c1]">
-                      {selectedZipFile
-                        ? "ZIP file selected. Validation results are updated automatically."
-                        : "The Excel file is ready. Upload the combined ZIP file in this same section."}
+              ) : (
+                <div className="space-y-5">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {renderUploadCard(uploadCards[0])}
+                    {renderUploadCard(uploadCards[1])}
+                  </div>
+                  <div className="rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-blue-50 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-700">
+                          <Download className="size-5" />
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-950">Download Sample Excel</h3>
+                          <p className="mt-1 text-sm font-medium text-slate-500">Download sample Excel file with the correct format.</p>
+                          <p className="mt-1 text-xs font-semibold text-green-700">Use this format to avoid validation errors</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={downloadSampleTemplates}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 text-xs font-bold text-green-700 shadow-sm transition hover:bg-green-50"
+                      >
+                        <Download className="size-4" />
+                        Download Sample
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {renderUploadCard(activeExcelUploadCard)}
-                    <div className="rounded-lg border border-[#dbe6f8] bg-[#f8fbff] px-4 py-3 text-sm font-semibold leading-6 text-[#4965aa]">
-                      {activeExcelFile
-                        ? "The Excel file is selected. Use Next to open the ZIP upload in this same area, or Cancel to clear the current selection."
-                        : "Select the Excel file for the chosen upload type. The ZIP upload will appear here after you click Next."}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#e7eefb] pt-4">
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-blue-50 pt-5">
                 {showZipUploadStep ? (
                   <button
                     type="button"
-                    onClick={() => setShowZipUploadStep(false)}
-                    className="rounded-md border border-[#dbe6f8] px-4 py-2 text-xs font-extrabold text-[#31509c] transition hover:bg-[#f4f9ff]"
+                    onClick={() => {
+                      setShowZipUploadStep(false);
+                      setShowValidationSummaryStep(false);
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                   >
                     Back
                   </button>
@@ -2764,77 +2844,155 @@ function BulkUploadDashboard({
                   <button
                     type="button"
                     onClick={() => resetUploadSelection("3")}
-                    className="rounded-md border border-[#ffd2d7] px-4 py-2 text-xs font-extrabold text-[#ef233c] transition hover:bg-[#fff5f6]"
+                    className="rounded-xl border border-red-100 px-4 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50"
                   >
                     Cancel ZIP
                   </button>
                 ) : null}
                 {!showZipUploadStep ? (
+                  activeExcelFile && activeUploadStep ? (
+                    <button
+                      type="button"
+                      onClick={() => resetUploadSelection(activeUploadStep)}
+                      className="rounded-xl border border-red-100 px-5 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50"
+                    >
+                      Cancel
+                    </button>
+                  ) : null
+                ) : null}
+                {!showZipUploadStep ? (
                   <button
                     type="button"
-                    onClick={() => setShowZipUploadStep(true)}
+                    onClick={() => {
+                      setShowZipUploadStep(true);
+                      setShowValidationSummaryStep(false);
+                    }}
                     disabled={!activeExcelFile}
-                    className="rounded-md bg-[#0b5cff] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#9bbcff] disabled:shadow-none"
+                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:from-purple-300 disabled:to-blue-300 disabled:shadow-none"
+                  >
+                    Next
+                  </button>
+                ) : null}
+                {showZipUploadStep ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowValidationSummaryStep(true)}
+                    disabled={!selectedZipFile}
+                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:from-purple-300 disabled:to-blue-300 disabled:shadow-none"
                   >
                     Next
                   </button>
                 ) : null}
               </div>
             </section>
-          </div>
+          ) : null}
 
-          <aside className="space-y-4">
-            <section className="rounded-lg border border-[#dbe6f8] bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.06)]">
-              <h2 className="mb-4 text-base font-extrabold text-[#10235d]">Validation Summary</h2>
-              <span className="mb-3 block text-[12px] font-semibold leading-4.25 text-[#4965aa]">
-                {validationStatusText}
-              </span>
-              <div className="divide-y divide-[#e7eefb]">
-                {summaryRows.map((row) => {
-                  const Icon = row.icon;
-                  return (
-                    <div key={row.label} className="flex items-center gap-3 py-2.5">
-                      <span className={`flex size-5 items-center justify-center rounded-full ${row.dot} text-white`}>
-                        <Icon className="size-3.5" />
-                      </span>
-                      <span className="flex-1 text-sm font-bold text-[#4965aa]">{row.label}</span>
-                      <span className={`text-sm font-extrabold ${row.color}`}>{row.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={openPreviewTable}
-                className="mt-4 w-full rounded-md bg-[#0b5cff] py-3 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(11,92,255,0.24)]"
-              >
-                Preview Data
-              </button>
-            </section>
-
-            <section className="rounded-lg border border-[#e6edf7] bg-white p-4 shadow-[0_8px_22px_rgba(25,61,137,0.08)]">
-              <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#eefdf4] text-[#22c55e]">
-                  <Download className="size-6" />
-                </span>
-                <div className="min-w-0">
-                  <span className="block text-sm font-extrabold leading-5 text-[#1f2937]">Download Sample Excel</span>
-                  <span className="mt-2 block text-xs font-medium leading-5 text-[#4b5563]">
-                    Download sample Excel file with the correct format.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={downloadSampleTemplates}
-                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-sm border border-[#86efac] bg-white px-4 py-2 text-xs font-extrabold text-[#16a34a] shadow-[0_1px_2px_rgba(22,163,74,0.08)] transition hover:bg-[#f0fdf4]"
-                  >
-                    <Download className="size-4" />
-                    Download Sample
-                  </button>
+          {showValidationSummaryStep ? (
+            <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-950">Step 3: Validation Summary</h2>
+                  <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-slate-500">
+                    Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={openPreviewTable}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700"
+                >
+                  Preview Data
+                  <ExternalLink className="size-4" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+                {summaryRows.map((row, index) => (
+                  <div key={row.label} className={`rounded-2xl border p-4 ${summaryCardStyles[index] || summaryCardStyles[0]}`}>
+                    <span className="text-xs font-bold">{row.label}</span>
+                    <strong className="mt-2 block text-2xl font-black">{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 flex border-t border-blue-50 pt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowValidationSummaryStep(false);
+                    setShowZipUploadStep(true);
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Back
+                </button>
               </div>
             </section>
-          </aside>
-        </div>
+          ) : null}
+        </main>
+
+        {false ? (
+        <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+          <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
+            <h2 className="text-base font-bold text-slate-950">Upload Progress</h2>
+            <div className="mt-4 space-y-1">
+              {workflowSteps.map((step, index) => {
+                const completed = index < currentWorkflowStep;
+                const active = index === currentWorkflowStep;
+                return (
+                  <div key={step} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${completed ? "bg-green-600 text-white" : active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"}`}>
+                        {completed ? <BadgeCheck className="size-4" /> : index + 1}
+                      </span>
+                      {index < workflowSteps.length - 1 ? <span className="h-8 w-px bg-slate-200" /> : null}
+                    </div>
+                    <div className="pb-3">
+                      <p className={`text-sm font-bold ${active ? "text-slate-950" : "text-slate-600"}`}>{step}</p>
+                      <p className="mt-0.5 text-xs font-medium text-slate-400">{completed ? "Completed" : active ? "In progress" : "Pending"}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
+            <h2 className="text-base font-bold text-slate-950">Summary</h2>
+            <div className="mt-4 space-y-2">
+              {summaryRows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                  <span className="text-xs font-bold text-slate-600">{row.label}</span>
+                  <span className={`text-sm font-black ${row.color}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
+            <h2 className="text-base font-bold text-slate-950">Guidelines</h2>
+            <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
+              {["Excel format: .xlsx, .xls", "ZIP format: .zip", "Image formats: JPG, PNG, JPEG", "Max ZIP size: 100MB", "ZIP should contain logo, cover & images", "File names should not contain special characters"].map((guide) => (
+                <div key={guide} className="flex gap-2">
+                  <BadgeCheck className="mt-0.5 size-4 shrink-0 text-blue-600" />
+                  <span>{guide}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-green-100 bg-green-50 p-5 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
+            <div className="flex items-start gap-3">
+              <Download className="mt-1 size-5 text-green-700" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-green-900">Need Help?</h3>
+                <p className="mt-1 text-xs font-semibold leading-5 text-green-800">Download sample files and view format guidelines.</p>
+                <button type="button" onClick={downloadSampleTemplates} className="mt-4 w-full rounded-xl border border-green-200 bg-white px-4 py-2.5 text-xs font-bold text-green-700 transition hover:bg-green-50">
+                  Download Sample Files
+                </button>
+              </div>
+            </div>
+          </section>
+        </aside>
+        ) : null}
       </div>
 
       {showFullDetails ? (
@@ -3126,15 +3284,16 @@ function BulkUploadDashboard({
 
       
 
+{false ? (
 <div className="border-t border-[#e7eefb] bg-white p-3">
   <div className="overflow-hidden rounded-2xl border border-[#f4b7b7] bg-linear-to-br from-[#fff5f5] to-white shadow-sm">
 
-    {/* Header */}
+  
     <div className="flex flex-col gap-3 border-b border-[#f3dede] px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
 
       <div className="flex items-center gap-3">
 
-        {/* Warning Icon */}
+      
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ffe3e3]">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -3152,7 +3311,7 @@ function BulkUploadDashboard({
           </svg>
         </div>
 
-        {/* Title */}
+        
         <div>
           <h2 className="text-xl font-extrabold text-[#a11220]">
             Errors ({activeErrors.length})
@@ -3164,13 +3323,13 @@ function BulkUploadDashboard({
         </div>
       </div>
 
-      {/* Error Badge */}
+ 
       <div className="rounded-full border border-[#f2b7b7] bg-[#fff5f5] px-4 py-2 text-sm font-bold text-[#d11a2a] shadow-sm">
         ⚠ {activeErrors.length} Errors
       </div>
     </div>
 
-    {/* Error List */}
+
     <div className="space-y-3 px-4 py-4">
 
       {(showAllErrors ? activeErrors : activeErrors.slice(0, 4)).map(
@@ -3181,16 +3340,16 @@ function BulkUploadDashboard({
           >
             <div className="flex items-center gap-3">
 
-              {/* Dot */}
+             
               <div className="h-3 w-3 rounded-full bg-[#ef233c]" />
 
-              {/* Error Text */}
+           
               <p className="text-sm font-semibold text-[#a11220]">
                 {error}
               </p>
             </div>
 
-            {/* Badge */}
+           
             <div className="rounded-lg bg-[#fff1f1] px-3 py-1 text-xs font-bold text-[#d11a2a]">
               Error
             </div>
@@ -3199,7 +3358,7 @@ function BulkUploadDashboard({
       )}
     </div>
 
-    {/* Footer */}
+  
     <div className="flex flex-col gap-3 border-t border-[#e6e6e6] px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
 
       <p className="text-sm font-medium text-[#6b7280]">
@@ -3208,12 +3367,12 @@ function BulkUploadDashboard({
 
       <div className="flex items-center gap-3">
 
-        {/* Total Count */}
+    
         <div className="rounded-lg bg-[#fff1f1] px-4 py-2 text-sm font-bold text-[#d11a2a]">
           Total Errors: {activeErrors.length}
         </div>
 
-        {/* View All Button */}
+    
         {activeErrors.length > 4 && (
           <button
             type="button"
@@ -3225,59 +3384,66 @@ function BulkUploadDashboard({
         )}
       </div>
     </div>
-  </div>
 </div>
+</div>
+) : null}
 
             {openFieldPanel ? (
-              <div className="grid gap-3 rounded-md border border-[#dbe6f8] bg-white p-4 shadow-[0_8px_20px_rgba(25,61,137,0.08)] sm:grid-cols-2">
-                <span className="col-span-full text-sm font-extrabold text-[#10235d]">
-                  {openFieldPanel === "all" ? "Add New Field for All Colleges" : "Add Custom Field for One College"}
-                </span>
-                {openFieldPanel === "single" ? (
-                  <label className="text-[11px] font-extrabold text-[#31509c]">
-                    College
-                    <select
-                      className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
-                      value={customFieldForm.selectedCollegeRowId}
-                      onChange={(event) => setCustomFieldForm((form) => ({ ...form, selectedCollegeRowId: event.target.value }))}
-                    >
-                      {previewRows.filter((row) => row.sheet === "colleges").map((row) => (
-                        <option key={row.id} value={row.id}>{row.data.collegeName || row.data.collegeCode || `Row ${row.rowNumber}`}</option>
-                      ))}
-                      {!previewRows.some((row) => row.sheet === "colleges") ? <option value="">No college loaded</option> : null}
-                    </select>
-                  </label>
-                ) : null}
-                <label className="text-[11px] font-extrabold text-[#31509c]">
-                  Field Name
-                  <input
-                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
-                    value={customFieldForm.fieldName}
-                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldName: event.target.value }))}
-                  />
-                </label>
-                <label className="text-[11px] font-extrabold text-[#31509c]">
-                  Field Type
-                  <select
-                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
-                    value={customFieldForm.fieldType}
-                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldType: event.target.value }))}
-                  >
-                    <option>Number</option>
-                    <option>Text</option>
-                    <option>TRUE/FALSE</option>
-                  </select>
-                </label>
-                <label className="text-[11px] font-extrabold text-[#31509c]">
-                  Default Value
-                  <input
-                    className="mt-1 w-full rounded-md border border-[#dbe6f8] px-3 py-2 text-xs outline-none"
-                    value={customFieldForm.defaultValue}
-                    onChange={(event) => setCustomFieldForm((form) => ({ ...form, defaultValue: event.target.value }))}
-                  />
-                </label>
-                <button type="button" className="rounded-md border border-[#dbe6f8] px-4 py-2 text-xs font-extrabold text-[#31509c]" onClick={() => setOpenFieldPanel(null)}>Cancel</button>
-                <button type="button" className="rounded-md bg-[#4f32f6] px-4 py-2 text-xs font-extrabold text-white" onClick={addCustomFieldToTable}>Add Field</button>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm">
+                <div className="w-full max-w-3xl rounded-2xl border border-blue-100 bg-white p-5 shadow-[0_28px_80px_rgba(15,23,42,0.24)]">
+                  <span className="block text-lg font-bold text-slate-950">
+                    {openFieldPanel === "all" ? "Add New Field for All Colleges" : "Add Custom Field for Single College"}
+                  </span>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {openFieldPanel === "single" ? (
+                      <label className="text-xs font-bold text-slate-600">
+                        College
+                        <select
+                          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-purple-300 focus:ring-4 focus:ring-purple-50"
+                          value={customFieldForm.selectedCollegeRowId}
+                          onChange={(event) => setCustomFieldForm((form) => ({ ...form, selectedCollegeRowId: event.target.value }))}
+                        >
+                          {previewRows.filter((row) => row.sheet === "colleges").map((row) => (
+                            <option key={row.id} value={row.id}>{row.data.collegeName || row.data.collegeCode || `Row ${row.rowNumber}`}</option>
+                          ))}
+                          {!previewRows.some((row) => row.sheet === "colleges") ? <option value="">No college loaded</option> : null}
+                        </select>
+                      </label>
+                    ) : null}
+                    <label className="text-xs font-bold text-slate-600">
+                      Field Name
+                      <input
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-purple-300 focus:ring-4 focus:ring-purple-50"
+                        value={customFieldForm.fieldName}
+                        onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldName: event.target.value }))}
+                      />
+                    </label>
+                    <label className="text-xs font-bold text-slate-600">
+                      Field Type
+                      <select
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-purple-300 focus:ring-4 focus:ring-purple-50"
+                        value={customFieldForm.fieldType}
+                        onChange={(event) => setCustomFieldForm((form) => ({ ...form, fieldType: event.target.value }))}
+                      >
+                        <option>Number</option>
+                        <option>Text</option>
+                        <option>TRUE/FALSE</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-bold text-slate-600">
+                      Default Value
+                      <input
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-purple-300 focus:ring-4 focus:ring-purple-50"
+                        value={customFieldForm.defaultValue}
+                        onChange={(event) => setCustomFieldForm((form) => ({ ...form, defaultValue: event.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50" onClick={() => setOpenFieldPanel(null)}>Cancel</button>
+                    <button type="button" className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700" onClick={addCustomFieldToTable}>Add Field</button>
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -3326,6 +3492,39 @@ function BulkUploadDashboard({
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {showFinishPopup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-green-100 bg-white p-6 text-center shadow-[0_28px_80px_rgba(15,23,42,0.24)]">
+            <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100 text-green-700">
+              <BadgeCheck className="size-9" />
+            </span>
+            <h2 className="mt-5 text-xl font-bold text-slate-950">All college data and images uploaded successfully</h2>
+            <p className="mt-2 text-sm font-medium text-slate-500">You can now proceed or go back to dashboard.</p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => setShowFinishPopup(false)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFinishPopup(false);
+                  if (onImportComplete) {
+                    void onImportComplete();
+                  }
+                }}
+                className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(22,163,74,0.22)] transition hover:from-green-700 hover:to-emerald-600"
+              >
+                Finish Upload
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -3690,7 +3889,7 @@ function AdminPageContent() {
       ...(canAccess("colleges")
         ? [
             { id: "colleges", label: "Colleges", icon: Building2 },
-            { id: "bulk-upload", label: "Bulk Data Upload", icon: ImageUp },
+            { id: "bulk-upload", label: "College Data Upload", icon: ImageUp },
           ]
         : []),
       ...(canAccess("college-requests")
@@ -5840,7 +6039,15 @@ function AdminPageContent() {
       ) : null}
 
       {!loading && activeTab === "bulk-upload" ? (
-        <BulkUploadDashboard onImportComplete={handleBulkImportComplete} existingColleges={adminState.colleges} />
+        <BulkUploadDashboard
+          onImportComplete={handleBulkImportComplete}
+          onAddManualCollege={() => {
+            handleTabChange("colleges");
+            resetCollegeForm();
+            setShowCollegeForm(true);
+          }}
+          existingColleges={adminState.colleges}
+        />
       ) : null}
 
       {!loading && activeTab === "colleges" ? (
