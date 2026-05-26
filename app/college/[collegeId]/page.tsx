@@ -54,12 +54,18 @@ export default async function CollegeDetailsPage({
                   className="group rounded-2xl border border-[rgba(15,76,129,0.1)] bg-white p-4 shadow-[0_14px_30px_rgba(15,76,129,0.06)] transition hover:-translate-y-0.5 hover:border-[rgba(15,76,129,0.2)]"
                 >
                   <div className="overflow-hidden rounded-xl border border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.04)]">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-32 w-full object-cover transition duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="h-32 w-full object-cover transition duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-32 w-full items-center justify-center bg-[linear-gradient(135deg,#f8fbff_0%,#e8f3ff_100%)] px-3 text-center text-sm font-bold text-[color:var(--brand-primary)]">
+                        {item.name}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-3 text-sm font-semibold text-[color:var(--text-dark)]">{item.name}</div>
                   <div className="mt-1 text-xs text-[color:var(--text-muted)]">

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { API_BASE_URL } from "@/lib/api";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import type { College, Course } from "@/lib/site-data";
 import { EnquiryForm } from "@/components/enquiry-form";
@@ -45,6 +46,23 @@ const tabs = [
   { key: "hostel", label: "Hostel Details" },
 ] as const;
 type TabKey = (typeof tabs)[number]["key"];
+
+const getCourseDisplayTitle = (course: Course) => {
+  const specialization = String(course.specialization || "").trim();
+  const baseCourse = String(course.course || "").trim();
+  const streamLabel = String(course.stream || course.courseCategory || "").trim();
+  const normalizedBaseCourse = streamLabel
+    ? baseCourse
+        .split(" - ")
+        .filter((part) => part.trim().toLowerCase() !== streamLabel.toLowerCase())
+        .join(" - ")
+        .trim()
+    : baseCourse;
+  if (specialization && normalizedBaseCourse.toLowerCase().includes(specialization.toLowerCase())) {
+    return normalizedBaseCourse;
+  }
+  return [normalizedBaseCourse, specialization].filter(Boolean).join(" - ");
+};
 
 export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsViewProps) {
   const router = useRouter();
@@ -181,11 +199,15 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const campusHighlights = Array.isArray(college.campusHighlights)
     ? college.campusHighlights.filter((item) => item?.label?.trim() && item?.value?.trim())
     : [];
+  const hasCampusHighlights = campusHighlights.length > 0;
+  const visibleTabs = hasCampusHighlights
+    ? tabs
+    : tabs.filter((tab) => tab.key !== "campusHighlights");
 
   const groupedCourses = useMemo(() => {
     const groups = new Map<string, Course[]>();
     relatedCourses.forEach((course) => {
-      const key = course.courseType || course.course || "Course";
+      const key = getCourseDisplayTitle(course) || course.courseType || course.course || "Course";
       const list = groups.get(key) || [];
       list.push(course);
       groups.set(key, list);
@@ -199,22 +221,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     });
   }, [relatedCourses]);
 
-  const getCourseTitle = (course: Course) => {
-    const specialization = String(course.specialization || "").trim();
-    const baseCourse = String(course.course || "").trim();
-    const streamLabel = String(course.stream || course.courseCategory || "").trim();
-    const normalizedBaseCourse = streamLabel
-      ? baseCourse
-          .split(" - ")
-          .filter((part) => part.trim().toLowerCase() !== streamLabel.toLowerCase())
-          .join(" - ")
-          .trim()
-      : baseCourse;
-    if (specialization && normalizedBaseCourse.toLowerCase().includes(specialization.toLowerCase())) {
-      return normalizedBaseCourse;
-    }
-    return [normalizedBaseCourse, specialization].filter(Boolean).join(" - ");
-  };
+  const getCourseTitle = (course: Course) => getCourseDisplayTitle(course);
 
   const galleryImages = Array.from(
     new Set([college.image, ...(college.images || [])].map((image) => String(image || "").trim()).filter(Boolean)),
@@ -223,7 +230,8 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const hasGalleryImages = galleryImages.length > 0;
   const collageImages = galleryImages.slice(1, 3);
   const remainingImageCount = Math.max(galleryImages.length - 3, 0);
-  const activeTabIndex = tabs.findIndex((tab) => tab.key === activeTab);
+  const selectedActiveTab = visibleTabs.some((tab) => tab.key === activeTab) ? activeTab : "overview";
+  const activeTabIndex = visibleTabs.findIndex((tab) => tab.key === selectedActiveTab);
   const feeMin = fees.length ? Math.min(...fees) : null;
   const feeMax = fees.length ? Math.max(...fees) : null;
   const admissionSteps = college.admissionProcess?.trim()
@@ -262,7 +270,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       label: "Hostel Fees Structure",
       value: `${formatMoney(hostelFeeMin)} - ${formatMoney(hostelFeeMax)}`,
     },
-    { label: "CCTV Availability", value: String(hostelDetails.cctvAvailable || "").trim() || "Not available" },
+    {
+      label: "CCTV Availability",
+      value: ["true", "yes", "1", "available"].includes(String(hostelDetails.cctvAvailable || "").trim().toLowerCase())
+        ? "Yes"
+        : "No",
+    },
     { label: "Facilities", value: hostelFacilityOptions.length ? hostelFacilityOptions.join(", ") : "Not available" },
   ];
   const scholarshipItems = college.scholarships?.trim()
@@ -298,7 +311,10 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   );
   const downloadBrochure = () => {
     if (brochureUrl) {
-      window.open(brochureUrl, "_blank", "noopener,noreferrer");
+      const downloadUrl = college.id
+        ? `${API_BASE_URL}/api/public/colleges/${encodeURIComponent(college.id)}/brochure-download`
+        : brochureUrl;
+      window.open(downloadUrl, "_blank", "noopener,noreferrer");
       return;
     }
 
@@ -808,21 +824,30 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     })}
                   </div>
 
-                  <div className="mt-auto pt-4">
-                  <div className="grid grid-cols-[1fr_0.85fr_1.15fr] gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[7.75rem] md:flex-none md:px-3.5">
-                      <Globe className="size-3.5 sm:size-4" />
-                      Website
-                    </a>
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:w-auto md:min-w-[6.75rem] md:flex-none md:px-3.5">
-                      <MapPin className="size-3.5 sm:size-4" />
-                      Map
-                    </a>
-                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm md:flex-1">
+                  <div className="mt-auto space-y-2 pt-4">
+                  <div className={`grid gap-2 ${brochureUrl ? "grid-cols-2" : "grid-cols-1"} md:grid-cols-2`}>
+                    {brochureUrl ? (
+                      <button type="button" onClick={downloadBrochure} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(37,99,235,0.18)] bg-[rgba(37,99,235,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(37,99,235,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
+                        <span className="sm:hidden">Brochure</span>
+                        <span className="hidden sm:inline">Download Brochure</span>
+                        <Download className="size-3.5 sm:size-4" />
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
                       <span className="sm:hidden">Compare</span>
                       <span className="hidden sm:inline">Compare College</span>
                       <ArrowRight className="size-3.5 sm:size-4" />
                     </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+                      <Globe className="size-3.5 sm:size-4" />
+                      Website
+                    </a>
+                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+                      <MapPin className="size-3.5 sm:size-4" />
+                      Map
+                    </a>
                   </div>
                   </div>
                 </div>
@@ -978,11 +1003,11 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
             >
               <div className="rounded-[1.35rem] border border-[rgba(15,76,129,0.08)] bg-white/80 px-4 pt-4 shadow-[0_10px_22px_rgba(22,50,79,0.04)] md:px-5">
                 <div className="flex gap-4 overflow-x-auto pb-3 whitespace-nowrap">
-                  {tabs.map((tab) => (
+                  {visibleTabs.map((tab) => (
                     <button key={tab.key} type="button" onClick={() => {
                       hasTabInteractionRef.current = true;
                       setActiveTab(tab.key);
-                    }} className={`border-b-2 pb-2 text-sm font-semibold transition ${activeTab === tab.key ? "border-[color:var(--brand-primary)] text-[color:var(--brand-primary)]" : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"}`}>
+                    }} className={`border-b-2 pb-2 text-sm font-semibold transition ${selectedActiveTab === tab.key ? "border-[color:var(--brand-primary)] text-[color:var(--brand-primary)]" : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"}`}>
                       {tab.label}
                     </button>
                   ))}
@@ -993,18 +1018,18 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 <button type="button" onClick={() => {
                   if (activeTabIndex > 0) {
                     hasTabInteractionRef.current = true;
-                    setActiveTab(tabs[activeTabIndex - 1].key);
+                    setActiveTab(visibleTabs[activeTabIndex - 1].key);
                   }
                 }} disabled={activeTabIndex <= 0} className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 font-medium text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] disabled:cursor-not-allowed disabled:opacity-40"><span className="inline-flex items-center gap-2"><ChevronLeft className="size-4" />Previous Tab</span></button>
                 <button type="button" onClick={() => {
-                  if (activeTabIndex < tabs.length - 1) {
+                  if (activeTabIndex < visibleTabs.length - 1) {
                     hasTabInteractionRef.current = true;
-                    setActiveTab(tabs[activeTabIndex + 1].key);
+                    setActiveTab(visibleTabs[activeTabIndex + 1].key);
                   }
-                }} disabled={activeTabIndex >= tabs.length - 1} className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 font-medium text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] disabled:cursor-not-allowed disabled:opacity-40"><span className="inline-flex items-center gap-2">Next Tab<ChevronRight className="size-4" /></span></button>
+                }} disabled={activeTabIndex >= visibleTabs.length - 1} className="rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 font-medium text-[color:var(--brand-primary)] transition hover:bg-[rgba(15,76,129,0.04)] disabled:cursor-not-allowed disabled:opacity-40"><span className="inline-flex items-center gap-2">Next Tab<ChevronRight className="size-4" /></span></button>
               </div>
 
-              {activeTab === "overview" ? (
+              {selectedActiveTab === "overview" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-1">
                     <div className="grid gap-4 md:grid-cols-3">
@@ -1066,7 +1091,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "courses" ? (
+              {selectedActiveTab === "courses" ? (
                 <div className="mt-6 space-y-4">
                   <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
@@ -1137,7 +1162,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "career" ? (
+              {selectedActiveTab === "career" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]"><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Placement Rate</p><p className="mt-2 text-xl font-bold text-[color:var(--brand-primary)]">{placementRateDisplay}</p></article>
@@ -1162,7 +1187,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "fees" ? (
+              {selectedActiveTab === "fees" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <article className="rounded-[1.4rem] border border-[rgba(15,76,129,0.08)] bg-white p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
@@ -1182,7 +1207,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "admission" ? (
+              {selectedActiveTab === "admission" ? (
                 <div className="mt-6 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-2">
                     {admissionSteps.map((step, index) => (
@@ -1197,7 +1222,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "campusHighlights" ? (
+              {selectedActiveTab === "campusHighlights" && hasCampusHighlights ? (
                 <div className="mt-6 space-y-4">
                   <article className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-6 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1206,35 +1231,29 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         <h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Campus Highlights</h3>
                       </div>
                       <span className="rounded-full bg-[rgba(15,76,129,0.08)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
-                        {campusHighlights.length ? `${campusHighlights.length} highlights` : "Not available"}
+                        {`${campusHighlights.length} highlights`}
                       </span>
                     </div>
-                    {campusHighlights.length ? (
-                      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {campusHighlights.map((item) => (
-                          <article key={`${item.label}-${item.value}`} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(22,50,79,0.04)]">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="size-4 text-[color:var(--brand-primary)]" />
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
-                                {item.label}
-                              </p>
-                            </div>
-                            <p className="mt-3 text-sm leading-6 text-[color:var(--text-dark)]">
-                              {item.value}
+                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {campusHighlights.map((item) => (
+                        <article key={`${item.label}-${item.value}`} className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4 shadow-[0_10px_24px_rgba(22,50,79,0.04)]">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="size-4 text-[color:var(--brand-primary)]" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+                              {item.label}
                             </p>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-5 text-sm text-[color:var(--text-muted)]">
-                        Campus highlights are not available for this college.
-                      </p>
-                    )}
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-[color:var(--text-dark)]">
+                            {item.value}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
                   </article>
                 </div>
               ) : null}
 
-              {activeTab === "scholarships" ? (
+              {selectedActiveTab === "scholarships" ? (
                 <div className="mt-6 space-y-4">
                   <article className="rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] p-6 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1264,7 +1283,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                 </div>
               ) : null}
 
-              {activeTab === "hostel" ? (
+              {selectedActiveTab === "hostel" ? (
                 <div className="mt-6 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.96))] p-5 shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Residential Life</p><h3 className="mt-2 text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Hostel Details</h3></div>

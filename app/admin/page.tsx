@@ -33,7 +33,7 @@ import {
   readCurrentUser,
   type SafeAuthUser,
 } from "@/lib/auth-storage";
-import { request, withAuth } from "@/lib/api";
+import { API_BASE_URL, request, withAuth } from "@/lib/api";
 import {
   COLLEGE_ACCREDITATION_OPTIONS,
   INDIA_STATE_DISTRICT_MAP,
@@ -51,7 +51,6 @@ import {
   isValidRankingRange,
   normalizeRankingRangeInput,
 } from "@/lib/ranking-utils";
-import { showToast } from "@/lib/toast";
 import {
   formatCompactIndianCurrency,
   formatCompactIndianCurrencyRange,
@@ -88,6 +87,20 @@ type DeleteCollegeDialogState = {
   left: number;
   width: number;
   placement: "top" | "bottom";
+} | null;
+type DeleteUserDialogState = {
+  id: string;
+  name: string;
+  email: string;
+} | null;
+type DeleteEnquiryDialogState = {
+  id: string;
+  name: string;
+  email: string;
+} | null;
+type DeleteSubAdminDialogState = {
+  id: string;
+  email: string;
 } | null;
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
@@ -873,16 +886,10 @@ const buildFeeRange = (min: string, max: string) => ({
 });
 
 const collegeSteps = [
-  "Basic Info",
-  "Location",
-  "Contact",
-  "Media",
-  "Highlights",
-  "Facilities",
-  "Admission",
-  "Placement",
-  "Hostel",
-  "Courses",
+  "College Basic Details",
+  "Media & Facilities",
+  "Admission & Placement",
+  "Courses & Cutoff",
 ];
 
 const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
@@ -1068,9 +1075,9 @@ function BulkUploadDashboard({
       title: "Add College Images ZIP",
       subtitle: "Upload logo, cover, brochure, and gallery files for each college",
       icon: FileClock,
-      dropText: "Drag & drop combined image ZIP here",
+      dropText: "Drag & drop combined media ZIP here",
       action: "Choose ZIP File",
-      note: "Excel image columns must contain ZIP file names only. Max size: 50MB",
+      note: "Excel media columns must contain ZIP file names only. Max size: 50MB",
       accept: ".zip",
       allowedExtensions: [".zip"],
       maxSize: 50 * 1024 * 1024,
@@ -1160,10 +1167,31 @@ function BulkUploadDashboard({
     return { byPath, byName };
   };
 
+  const findBrochureZipAssetRecord = (
+    zipAssetIndex: ZipAssetIndex | null,
+    collegeCode = "",
+  ): ZipAssetRecord | null => {
+    if (!zipAssetIndex) return null;
+
+    const collegeToken = normalizeUploadKey(collegeCode);
+    const records = [...zipAssetIndex.byPath.values()].filter((record) =>
+      !collegeToken || record.matchTokens.has(collegeToken),
+    );
+
+    const brochureNamedRecords = records.filter((record) => record.normalizedName.includes("brochure"));
+    if (brochureNamedRecords.length > 0) return brochureNamedRecords[0];
+
+    const pdfRecords = records.filter((record) => getFileExtension(record.normalizedName) === ".pdf");
+    if (pdfRecords.length === 1) return pdfRecords[0];
+
+    return null;
+  };
+
   const resolveZipAssetRecord = (
     zipAssetIndex: ZipAssetIndex | null,
     fileName: string,
     collegeCode = "",
+    options: { preferBrochure?: boolean } = {},
   ): ZipAssetRecord | null => {
     const raw = String(fileName || "").trim();
     if (!raw || !zipAssetIndex) return null;
@@ -1176,13 +1204,29 @@ function BulkUploadDashboard({
     const normalizedName = normalizeZipName(raw);
     if (!normalizedName) return null;
 
-    const candidates = zipAssetIndex.byName.get(normalizedName) || [];
-    if (candidates.length <= 1) return candidates[0] || null;
-
     const collegeToken = normalizeUploadKey(collegeCode);
-    if (collegeToken) {
+    const candidates = zipAssetIndex.byName.get(normalizedName) || [];
+    if (candidates.length <= 1) {
+      if (candidates[0]) return candidates[0];
+    } else if (collegeToken) {
       const tokenMatches = candidates.filter((candidate) => candidate.matchTokens.has(collegeToken));
       if (tokenMatches.length > 0) return tokenMatches[0];
+    }
+
+    const requestedBaseToken = normalizeUploadKey(
+      normalizedName.replace(/\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i, ""),
+    );
+    if (requestedBaseToken) {
+      const looseMatches = [...zipAssetIndex.byPath.values()].filter((record) => {
+        if (collegeToken && !record.matchTokens.has(collegeToken)) return false;
+        const recordBaseToken = normalizeUploadKey(record.normalizedName.replace(/\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i, ""));
+        return recordBaseToken === requestedBaseToken || recordBaseToken.includes(requestedBaseToken);
+      });
+      if (looseMatches.length > 0) return looseMatches[0];
+    }
+
+    if (options.preferBrochure) {
+      return findBrochureZipAssetRecord(zipAssetIndex, collegeCode);
     }
 
     return candidates[0] || null;
@@ -1723,16 +1767,10 @@ function BulkUploadDashboard({
               addFieldIssue(fieldIssues, column, "invalid", `${name} not found in ZIP`);
             }
           });
-          if (brochureValue && !isRemoteAssetReference(brochureValue) && !resolveZipAssetRecord(zipAssetIndex, brochureValue, cell("collegeCode"))) {
-            addFieldIssue(fieldIssues, "brochurePdf", "invalid", `${brochureValue} not found in ZIP`);
-          }
-        } else if (localImageMediaNames.length || (brochureValue && !isRemoteAssetReference(brochureValue))) {
+        } else if (localImageMediaNames.length) {
           if (localImageMediaNames.length) {
             addFieldIssue(fieldIssues, "logoImage", "review", "Upload combined media ZIP to validate logo and cover files");
             addFieldIssue(fieldIssues, "coverImage", "review", "Upload combined media ZIP to validate logo and cover files");
-          }
-          if (brochureValue && !isRemoteAssetReference(brochureValue)) {
-            addFieldIssue(fieldIssues, "brochurePdf", "review", "Upload combined media ZIP to validate brochure files");
           }
         }
       }
@@ -1744,6 +1782,9 @@ function BulkUploadDashboard({
         });
         if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
           addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
+        }
+        if (cell("collegeCode") && existingCollegeCodeSet.has(cell("collegeCode").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeCode", "exists", "collegeCode already exists in the system");
         }
         numeric.forEach((column) => {
           if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
@@ -2049,7 +2090,7 @@ function BulkUploadDashboard({
           phoneNumber: "9876543210",
           alternatePhone: "9444455555",
           websiteUrl: "https://abccollege.edu",
-          brochurePdf: "clg001-brochure.pdf",
+          brochurePdf: "CLG001.brochure.pdf",
           campusVideo: "https://youtube.com/watch?v=sample",
           ranking_min: "10",
           ranking_max: "25",
@@ -2246,7 +2287,9 @@ function BulkUploadDashboard({
           Boolean(imageZipFile),
           Boolean(singleExcelFile && !bulkExcelFile),
         );
-        const duplicateRows = nextPreviewRows.filter((row) => row.errors.includes("Duplicate collegeCode")).length;
+        const duplicateRows = nextPreviewRows.filter((row) =>
+          row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system")),
+        ).length;
         const invalidRows = nextPreviewRows.filter((row) => row.status === "Invalid").length;
         const rowsNeedingZipReview = nextPreviewRows.filter((row) => row.status === "Review").length;
         const totalRecords = nextPreviewRows.length;
@@ -2333,6 +2376,18 @@ function BulkUploadDashboard({
   const activeDetailColumns = [...getBulkPreviewColumns(activeDetailSheet), ...customSheetColumns[activeDetailSheet]];
   const getIssueColumnForPreviewColumn = (column: string) =>
     column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
+  const getPreviewColumnWidthClass = (column: string) => {
+    if (["facilities", "quotas", "hostelFacilities", "address", "awards", "reviews"].includes(column)) {
+      return "w-72 min-w-72";
+    }
+    if (["googleMapUrl", "websiteUrl", "campusVideo", "brochurePdf", "courseDescription", "description"].includes(column)) {
+      return "w-64 min-w-64";
+    }
+    if (["logoImage", "coverImage", "imageName"].includes(column)) {
+      return "w-52 min-w-52";
+    }
+    return "w-48 min-w-48";
+  };
   const getCollegeInitials = (row: BulkPreviewRow) => {
     const source = row.data.collegeName || row.data.collegeCode || "College";
     const initials = String(source)
@@ -2554,7 +2609,6 @@ function BulkUploadDashboard({
     const authToken = readAuthToken();
     if (!authToken) {
       setValidationStatusText("Admin session expired. Please login again.");
-      showToast("Admin session expired. Please login again.", "error");
       return;
     }
 
@@ -2568,15 +2622,44 @@ function BulkUploadDashboard({
       return;
     }
 
+    const validPreviewRows = previewRows.filter((row) => row.status === "Valid");
+    const backendSheetNames: Record<BulkSheetKey, string> = {
+      colleges: "College",
+      courses: "Courses",
+      entranceexams: "EntranceExams",
+      collegeimages: "CollegeImages",
+    };
+    const backendPreviewRows = validPreviewRows.map((row) => ({
+      ...row,
+      sheet: backendSheetNames[row.sheet] || row.sheet,
+      sheetKey: row.sheet,
+      status: "Valid",
+      statusKey: "valid",
+      displayStatus: "Valid",
+      isValid: true,
+    }));
+    const validRowsBySheet = {
+      colleges: validPreviewRows.filter((row) => row.sheet === "colleges").map((row) => row.data),
+      courses: validPreviewRows.filter((row) => row.sheet === "courses").map((row) => row.data),
+      entranceExams: validPreviewRows.filter((row) => row.sheet === "entranceexams").map((row) => row.data),
+      collegeImages: validPreviewRows.filter((row) => row.sheet === "collegeimages").map((row) => row.data),
+    };
     const formData = new FormData();
-    formData.append("previewRows", JSON.stringify(previewRows));
+    formData.append("previewRows", JSON.stringify(backendPreviewRows));
+    formData.append("validRows", JSON.stringify(backendPreviewRows));
+    formData.append("colleges", JSON.stringify(validRowsBySheet.colleges));
+    formData.append("courses", JSON.stringify(validRowsBySheet.courses));
+    formData.append("entranceExams", JSON.stringify(validRowsBySheet.entranceExams));
+    formData.append("entranceexams", JSON.stringify(validRowsBySheet.entranceExams));
+    formData.append("collegeImages", JSON.stringify(validRowsBySheet.collegeImages));
+    formData.append("collegeimages", JSON.stringify(validRowsBySheet.collegeImages));
     const imageZipFile = selectedUploadFiles["3"];
     if (imageZipFile) {
       formData.append("imageZip", imageZipFile);
     }
 
     setIsImporting(true);
-    setValidationStatusText("Importing validated college data to the backend...");
+    setValidationStatusText("");
 
     try {
       const data = await request<{
@@ -2617,9 +2700,12 @@ function BulkUploadDashboard({
       setShowFullDetails(false);
       setShowFinishPopup(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Bulk import failed.";
+      const rawMessage = error instanceof Error ? error.message : "Bulk import failed.";
+      const message =
+        rawMessage === "Failed to fetch"
+          ? `Bulk import failed. Backend is not reachable at ${API_BASE_URL}.`
+          : rawMessage;
       setValidationStatusText(message);
-      showToast(message, "error");
     } finally {
       setIsImporting(false);
     }
@@ -2650,7 +2736,7 @@ function BulkUploadDashboard({
             <div>
               <h3 className="text-base font-black leading-6 text-slate-950">Add College Images ZIP</h3>
               <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">
-                ZIP should contain logo, cover, and college images
+                ZIP should contain logo, cover, brochure, and college images
               </p>
             </div>
           </div>
@@ -2665,7 +2751,7 @@ function BulkUploadDashboard({
           >
             <FileClock className="size-14 text-blue-600" />
             <p className="mt-3 text-sm font-black text-slate-950">Drag & drop ZIP file here</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Supported formats: ZIP (Max size: 100MB)</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Supported formats: ZIP with images and PDF (Max size: 100MB)</p>
             <label className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.2)] transition hover:bg-blue-700">
               Choose ZIP File
               <input
@@ -2692,7 +2778,7 @@ function BulkUploadDashboard({
                 <p className="font-black text-blue-700">Important Instructions</p>
                 <ul className="mt-1 list-disc space-y-0.5 pl-4">
                   <li>Upload a ZIP file only.</li>
-                  <li>ZIP must contain college logo and cover image.</li>
+                  <li>ZIP must contain college logo, cover image, brochure PDF, and gallery images.</li>
                   <li>File names must follow the college code.</li>
                   <li>
                     Example: If college code is <span className="rounded-md bg-white px-1.5 py-0.5 font-black">CLG001</span>, then files should be:
@@ -2702,6 +2788,8 @@ function BulkUploadDashboard({
                   <span className="rounded-md bg-white px-2 py-1 font-black">CLG001.logo</span>
                   <span>and</span>
                   <span className="rounded-md bg-white px-2 py-1 font-black">CLG001.coverimage</span>
+                  <span>and</span>
+                  <span className="rounded-md bg-white px-2 py-1 font-black">CLG001.brochure.pdf</span>
                 </div>
               </div>
             </div>
@@ -2747,7 +2835,7 @@ function BulkUploadDashboard({
           <div>
             <h3 className="text-base font-bold leading-snug text-slate-950">{item.title}</h3>
             <span className="mt-1 block text-sm font-medium leading-5 text-slate-500">
-              {isZipCard ? "ZIP should contain logo, cover, and college images" : isManualCard ? "Add college details manually one by one" : "Upload Excel file for multiple colleges"}
+              {isZipCard ? "ZIP should contain logo, cover, brochure, and college images" : isManualCard ? "Add college details manually one by one" : "Upload Excel file for multiple colleges"}
             </span>
           </div>
         </div>
@@ -2765,7 +2853,7 @@ function BulkUploadDashboard({
             {isZipCard ? "Drag & drop ZIP file here" : isManualCard ? "Add college details manually" : "Upload Excel file"}
           </span>
           <span className="mt-1 block text-xs font-semibold leading-4 text-slate-500">
-            {isZipCard ? "Supported formats: JPG, PNG, JPEG. Maximum ZIP size: 100MB." : item.note}
+            {isZipCard ? "Supported formats: JPG, PNG, JPEG, PDF brochure. Maximum ZIP size: 100MB." : item.note}
           </span>
           {item.step === "2" ? (
             <button
@@ -2877,7 +2965,7 @@ function BulkUploadDashboard({
                   {showZipUploadStep ? "Step 2: Add College Images ZIP" : "Step 1: College Data"}
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  {showZipUploadStep ? "Upload a ZIP file containing logo, cover and college images" : "Choose an option to add college data"}
+                  {showZipUploadStep ? "Upload a ZIP file containing logo, cover, brochure and college images" : "Choose an option to add college data"}
                 </p>
               </div>
 
@@ -2885,7 +2973,7 @@ function BulkUploadDashboard({
                 <div className="space-y-4">
                   {renderUploadCard(uploadCards[2])}
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-blue-700">
-                    {selectedZipFile ? "ZIP file selected. Validation results are updated automatically." : "Excel is ready. Upload one combined ZIP with logo, cover, and college images."}
+                    {selectedZipFile ? "ZIP file selected. Validation results are updated automatically." : "Excel is ready. Upload one combined ZIP with logo, cover, brochure, and college images."}
                   </div>
                 </div>
               ) : (
@@ -2904,6 +2992,12 @@ function BulkUploadDashboard({
                           <h3 className="text-sm font-bold text-slate-950">Download Sample Excel</h3>
                           <p className="mt-1 text-sm font-medium text-slate-500">Download sample Excel file with the correct format.</p>
                           <p className="mt-1 text-xs font-semibold text-green-700">Use this format to avoid validation errors</p>
+                          <p className="mt-2 text-[11px] font-semibold leading-5 text-slate-600">
+                            Brochure example: <span className="font-black text-slate-900">CLG001.brochure.pdf</span>
+                          </p>
+                          <p className="text-[11px] font-semibold leading-5 text-slate-600">
+                            Matching ZIP examples: <span className="font-black text-slate-900">CLG001.logo.png</span>, <span className="font-black text-slate-900">CLG001.cover.png</span>, <span className="font-black text-slate-900">CLG001.brochure.pdf</span>
+                          </p>
                         </div>
                       </div>
                       <button
@@ -2985,7 +3079,7 @@ function BulkUploadDashboard({
                 <div>
                   <h2 className="text-lg font-bold text-slate-950">Step 3: Validation Summary</h2>
                   <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-slate-500">
-                    Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.
+                    Excel validated. Upload one combined ZIP with logo, cover, brochure, and college images to verify media files.
                   </p>
                 </div>
                 <button
@@ -3005,6 +3099,11 @@ function BulkUploadDashboard({
                   </div>
                 ))}
               </div>
+              {validationStatusText ? (
+                <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold leading-6 text-blue-800">
+                  {validationStatusText}
+                </div>
+              ) : null}
               <div className="mt-5 flex border-t border-blue-50 pt-5">
                 <button
                   type="button"
@@ -3062,7 +3161,7 @@ function BulkUploadDashboard({
           <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
             <h2 className="text-base font-bold text-slate-950">Guidelines</h2>
             <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
-              {["Excel format: .xlsx, .xls", "ZIP format: .zip", "Image formats: JPG, PNG, JPEG", "Max ZIP size: 100MB", "ZIP should contain logo, cover & images", "File names should not contain special characters"].map((guide) => (
+              {["Excel format: .xlsx, .xls", "ZIP format: .zip", "Image formats: JPG, PNG, JPEG", "Brochure format: PDF", "Max ZIP size: 100MB", "ZIP should contain logo, cover, brochure & images", "File names should not contain special characters"].map((guide) => (
                 <div key={guide} className="flex gap-2">
                   <BadgeCheck className="mt-0.5 size-4 shrink-0 text-blue-600" />
                   <span>{guide}</span>
@@ -3155,7 +3254,7 @@ function BulkUploadDashboard({
           ) : null}
 
           <div className="sticky top-0 z-10 border-b border-[#e7eefb] bg-white">
-            <div className="flex gap-2 px-3 py-2">
+            <div className="flex flex-wrap gap-2 px-3 py-2">
               {(Object.keys(bulkSheetLabels) as BulkSheetKey[]).map((sheet) => {
                 const count = previewRows.filter((row) => row.sheet === sheet).length;
                 return (
@@ -3175,26 +3274,25 @@ function BulkUploadDashboard({
             </div>
           </div>
 
-          <div className="responsive-data-table overflow-auto pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
-            <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
+          <div className="responsive-data-table max-w-full overflow-auto pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
+            <table className="min-w-max border-separate border-spacing-0 text-left text-xs">
               <thead className="bg-[#f3f5ff] text-[#10235d]">
                 <tr>
                   {["S.No", ...activeDetailColumns, "Status", "Actions"].map((heading) => {
                     const isStatusColumn = heading === "Status";
                     const isActionsColumn = heading === "Actions";
                     const isSerialColumn = heading === "S.No";
+                    const columnWidthClass = isSerialColumn
+                      ? "w-16 min-w-16"
+                      : isStatusColumn
+                        ? "w-28 min-w-28 bg-[#f3f5ff] md:sticky md:right-20 md:z-20"
+                        : isActionsColumn
+                          ? "w-24 min-w-24 bg-[#f3f5ff] md:sticky md:right-0 md:z-20"
+                          : getPreviewColumnWidthClass(heading);
                     return (
                       <th
                         key={heading || "select"}
-                        className={`border-b border-r border-[#e7eefb] px-3 py-3 align-top font-extrabold ${
-                          isSerialColumn
-                            ? "w-16"
-                            : isStatusColumn
-                              ? "sticky right-20 z-20 w-24 bg-[#f3f5ff]"
-                              : isActionsColumn
-                                ? "sticky right-0 z-20 w-20 bg-[#f3f5ff]"
-                                : "w-44 min-w-44"
-                        }`}
+                        className={`border-b border-r border-[#e7eefb] px-3 py-3 align-top font-extrabold whitespace-nowrap ${columnWidthClass}`}
                       >
                         {displayColumnName(heading)}
                       </th>
@@ -3216,9 +3314,22 @@ function BulkUploadDashboard({
                             : row.data[column] || "";
                       const isImagePreviewColumn = ["logoImage", "coverImage", "imageName"].includes(column);
                       const previewAsset = value
-                        ? resolveZipAssetRecord(validatedZipAssetIndex, value, row.data.collegeCode || "")
+                        ? resolveZipAssetRecord(
+                            validatedZipAssetIndex,
+                            value,
+                            row.data.collegeCode || "",
+                            column === "brochurePdf" ? { preferBrochure: true } : {},
+                          )
                         : null;
                       const previewUrl = previewAsset ? mediaPreviewUrls[previewAsset.normalizedPath] : "";
+                      const brochureDisplayName =
+                        column === "brochurePdf"
+                          ? previewAsset?.normalizedName || normalizeZipName(value) || "brochure.pdf"
+                          : "";
+                      const brochureDisplayPath =
+                        column === "brochurePdf"
+                          ? previewAsset?.normalizedPath || (isRemoteAssetReference(value) ? value : normalizeZipPath(value))
+                          : "";
                       const isBooleanColumn = ["cctvAvailability", "isBestCollege", "lateralEntry", "bestCourse"].includes(column);
                       const isEditing = editingRowId === row.id;
                       const issueColumn = column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
@@ -3245,7 +3356,7 @@ function BulkUploadDashboard({
                               ? "bg-[#fff1f1] text-[#c81e1e]"
                               : "bg-[#fff7e6] text-[#e8790a]";
                       return (
-                        <td key={`${row.id}-${column}`} className="w-44 min-w-44 border-r border-[#edf2fb] px-3 py-3 align-top font-bold">
+                        <td key={`${row.id}-${column}`} className={`${getPreviewColumnWidthClass(column)} border-r border-[#edf2fb] px-3 py-3 align-top font-bold`}>
                           {isEditing ? (
                             isBooleanColumn ? (
                               <input
@@ -3311,14 +3422,57 @@ function BulkUploadDashboard({
                                 </span>
                               ) : null}
                             </div>
+                          ) : column === "brochurePdf" && value ? (
+                            <div className="space-y-2">
+                              <div className="rounded-xl border border-sky-100 bg-[linear-gradient(135deg,#f8fbff_0%,#eff6ff_55%,#e0f2fe_100%)] p-3 shadow-[0_8px_18px_rgba(14,116,144,0.08)]">
+                                <div className="flex items-start gap-3">
+                                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-[0_10px_20px_rgba(2,132,199,0.22)]">
+                                    <Download className="size-4" />
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-sky-700">Brochure PDF</p>
+                                    <p className="mt-1 truncate text-sm font-black text-slate-900" title={brochureDisplayName}>
+                                      {brochureDisplayName}
+                                    </p>
+                                    <p className="mt-1 break-all text-[11px] font-semibold leading-4 text-slate-600" title={brochureDisplayPath}>
+                                      {brochureDisplayPath}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 ring-1 ring-sky-100">
+                                    {previewAsset ? "Matched in ZIP" : isRemoteAssetReference(value) ? "Remote URL" : "Sample PDF"}
+                                  </span>
+                                  {isRemoteAssetReference(value) ? (
+                                    <a
+                                      href={value}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white"
+                                    >
+                                      Open File
+                                      <ExternalLink className="size-3" />
+                                    </a>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {fieldIssue ? (
+                                <span
+                                  className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}
+                                  title={fieldIssue.messages.join(" | ")}
+                                >
+                                  {issueLabel}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : (
                             <div className="space-y-2">
-                              <span className={`block min-w-0 break-words leading-5 ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
+                              <span className={`block min-w-0 whitespace-normal break-normal leading-5 [overflow-wrap:normal] ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
                                 {value || (fieldIssue?.level === "missing" ? "Missing" : "-")}
                               </span>
                               {fieldIssue ? (
                                 <span
-                                  className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}
+                                  className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}
                                   title={fieldIssue.messages.join(" | ")}
                                 >
                                   {issueLabel}
@@ -3329,16 +3483,16 @@ function BulkUploadDashboard({
                         </td>
                       );
                     })}
-                    <td className="sticky right-20 z-20 w-24 border-r border-[#edf2fb] bg-white px-3 py-3 align-top">
+                    <td className="w-28 min-w-28 border-r border-[#edf2fb] bg-white px-3 py-3 align-top md:sticky md:right-20 md:z-20">
                       <span
-                        className={`inline-flex min-w-16 justify-center rounded-sm px-2 py-1 text-[11px] font-extrabold ${
+                        className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-sm px-2 py-1 text-[11px] font-extrabold ${
                           row.status === "Valid" ? "bg-[#e8f8ee] text-[#16a34a]" : row.status === "Review" ? "bg-[#fff7e6] text-[#e8790a]" : "bg-[#ffe9e9] text-[#ef233c]"
                         }`}
                       >
                         {row.status}
                       </span>
                     </td>
-                    <td className="sticky right-0 z-20 w-20 bg-white px-3 py-3 align-top">
+                    <td className="w-24 min-w-24 bg-white px-3 py-3 align-top md:sticky md:right-0 md:z-20">
                       <div className="flex items-center justify-center gap-3">
                         {editingRowId === row.id ? (
                           <>
@@ -3579,6 +3733,11 @@ function BulkUploadDashboard({
             ) : null}
 
             <div className="flex justify-end gap-3 border-t border-[#e7eefb] bg-white px-4 py-4">
+              {validationStatusText ? (
+                <div className="mr-auto flex min-h-11 max-w-xl items-center rounded-md border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-bold leading-5 text-blue-800">
+                  {validationStatusText}
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -3671,7 +3830,6 @@ function AdminPageContent() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [statusText, setStatusText] = useState("");
-  const lastToastMessageRef = useRef("");
   const collegeFormRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCollegeForm, setShowCollegeForm] = useState(false);
@@ -3705,16 +3863,14 @@ function AdminPageContent() {
   const [savedExams, setSavedExams] = useState<SavedExamSchedule[]>([]);
   const [editExamId, setEditExamId] = useState("");
   const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
-  const [homeHeroImageFile, setHomeHeroImageFile] = useState<File | null>(null);
-  const [isUploadingHomeHeroImage, setIsUploadingHomeHeroImage] = useState(false);
   const [deleteCollegeDialog, setDeleteCollegeDialog] = useState<DeleteCollegeDialogState>(null);
-  const [deleteCollegeConfirmationName, setDeleteCollegeConfirmationName] = useState("");
   const [isDeletingCollege, setIsDeletingCollege] = useState(false);
-  useEffect(() => {
-    if (!statusText || statusText === lastToastMessageRef.current) return;
-    showToast(statusText, "info");
-    lastToastMessageRef.current = statusText;
-  }, [statusText]);
+  const [deleteUserDialog, setDeleteUserDialog] = useState<DeleteUserDialogState>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [deleteEnquiryDialog, setDeleteEnquiryDialog] = useState<DeleteEnquiryDialogState>(null);
+  const [isDeletingEnquiry, setIsDeletingEnquiry] = useState(false);
+  const [deleteSubAdminDialog, setDeleteSubAdminDialog] = useState<DeleteSubAdminDialogState>(null);
+  const [isDeletingSubAdmin, setIsDeletingSubAdmin] = useState(false);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [customQuotaInput, setCustomQuotaInput] = useState("");
   const [customScholarshipInput, setCustomScholarshipInput] = useState("");
@@ -3734,13 +3890,6 @@ function AdminPageContent() {
   const coverImagePreviewUrl = useMemo(
     () => (coverImageFile ? URL.createObjectURL(coverImageFile) : collegeForm.coverImage || ""),
     [collegeForm.coverImage, coverImageFile],
-  );
-  const homeHeroPreviewUrl = useMemo(
-    () =>
-      homeHeroImageFile
-        ? URL.createObjectURL(homeHeroImageFile)
-        : String(siteSettings.homeHeroImageUrl || "").trim(),
-    [homeHeroImageFile, siteSettings.homeHeroImageUrl],
   );
   const selectedFacilities = useMemo(
     () =>
@@ -4199,10 +4348,9 @@ function AdminPageContent() {
     return () => {
       if (logoFile && logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
       if (coverImageFile && coverImagePreviewUrl) URL.revokeObjectURL(coverImagePreviewUrl);
-      if (homeHeroImageFile && homeHeroPreviewUrl) URL.revokeObjectURL(homeHeroPreviewUrl);
       collegeImagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
     };
-  }, [collegeImagePreviews, coverImageFile, coverImagePreviewUrl, homeHeroImageFile, homeHeroPreviewUrl, logoFile, logoPreviewUrl]);
+  }, [collegeImagePreviews, coverImageFile, coverImagePreviewUrl, logoFile, logoPreviewUrl]);
 
   useEffect(() => {
     const nextUniversity = collegeForm.university.trim();
@@ -4864,7 +5012,7 @@ function AdminPageContent() {
   const openDeleteCollegeDialog = (college: AdminCollege, anchorElement: HTMLElement) => {
     const preferredWidth = 340;
     const viewportPadding = 12;
-    const preferredHeight = 220;
+    const preferredHeight = 190;
     const rect = anchorElement.getBoundingClientRect();
     const availableWidth = Math.max(window.innerWidth - viewportPadding * 2, 280);
     const width = Math.min(preferredWidth, availableWidth);
@@ -4887,7 +5035,6 @@ function AdminPageContent() {
       width,
       placement,
     });
-    setDeleteCollegeConfirmationName("");
   };
 
   const closeDeleteCollegeDialog = () => {
@@ -4895,17 +5042,10 @@ function AdminPageContent() {
       return;
     }
     setDeleteCollegeDialog(null);
-    setDeleteCollegeConfirmationName("");
   };
 
-  const isDeleteCollegeNameMatched =
-    deleteCollegeDialog !== null &&
-    deleteCollegeConfirmationName.trim().localeCompare(deleteCollegeDialog.name, undefined, {
-      sensitivity: "accent",
-    }) === 0;
-
   const confirmDeleteCollege = async () => {
-    if (!token || !deleteCollegeDialog || !isDeleteCollegeNameMatched || isDeletingCollege) {
+    if (!token || !deleteCollegeDialog || isDeletingCollege) {
       return;
     }
 
@@ -4916,18 +5056,109 @@ function AdminPageContent() {
         withAuth(token, {
           method: "DELETE",
           body: JSON.stringify({
-            confirmCollegeName: deleteCollegeConfirmationName.trim(),
+            confirmCollegeName: deleteCollegeDialog.name,
           }),
         }),
       );
       setStatusText(data?.message || "College deleted");
       setDeleteCollegeDialog(null);
-      setDeleteCollegeConfirmationName("");
       await loadAdminData(token, currentUser);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete college");
     } finally {
       setIsDeletingCollege(false);
+    }
+  };
+
+  const openDeleteUserDialog = (user: PlatformUser) => {
+    setDeleteUserDialog({
+      id: user._id,
+      name: user.name || "User",
+      email: user.email || "",
+    });
+  };
+
+  const closeDeleteUserDialog = () => {
+    if (isDeletingUser) return;
+    setDeleteUserDialog(null);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!token || !deleteUserDialog || isDeletingUser) {
+      return;
+    }
+
+    setIsDeletingUser(true);
+    try {
+      const data = await request(`/api/admin/users/${deleteUserDialog.id}`, withAuth(token, { method: "DELETE" }));
+      setStatusText(data?.message || "User deleted");
+      setDeleteUserDialog(null);
+      await loadAdminData(token, currentUser);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to delete user");
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
+  const openDeleteEnquiryDialog = (enquiry: Enquiry) => {
+    setDeleteEnquiryDialog({
+      id: enquiry._id,
+      name: enquiry.name || enquiry.user?.name || "Enquiry",
+      email: enquiry.email || enquiry.user?.email || "",
+    });
+  };
+
+  const closeDeleteEnquiryDialog = () => {
+    if (isDeletingEnquiry) return;
+    setDeleteEnquiryDialog(null);
+  };
+
+  const confirmDeleteEnquiry = async () => {
+    if (!token || !deleteEnquiryDialog || isDeletingEnquiry) {
+      return;
+    }
+
+    setIsDeletingEnquiry(true);
+    try {
+      const data = await request(`/api/admin/enquiries/${deleteEnquiryDialog.id}`, withAuth(token, { method: "DELETE" }));
+      setStatusText(data?.message || "Enquiry deleted");
+      setDeleteEnquiryDialog(null);
+      await loadAdminData(token, currentUser);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to delete enquiry");
+    } finally {
+      setIsDeletingEnquiry(false);
+    }
+  };
+
+  const openDeleteSubAdminDialog = (item: SubAdmin) => {
+    setDeleteSubAdminDialog({
+      id: item._id,
+      email: item.email || "Sub-admin",
+    });
+  };
+
+  const closeDeleteSubAdminDialog = () => {
+    if (isDeletingSubAdmin) return;
+    setDeleteSubAdminDialog(null);
+  };
+
+  const confirmDeleteSubAdmin = async () => {
+    if (!token || !deleteSubAdminDialog || isDeletingSubAdmin) {
+      return;
+    }
+
+    setIsDeletingSubAdmin(true);
+    try {
+      const data = await request(`/api/admin/sub-admins/${deleteSubAdminDialog.id}`, withAuth(token, { method: "DELETE" }));
+      setStatusText(data?.message || "Admin deleted");
+      setDeleteSubAdminDialog(null);
+      await loadAdminData(token, currentUser);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Unable to delete admin");
+    } finally {
+      setIsDeletingSubAdmin(false);
     }
   };
 
@@ -4949,83 +5180,51 @@ function AdminPageContent() {
     }
   };
 
-  const uploadHomeHeroImage = async () => {
-    if (!token || !currentUser?.isSuperAdmin || !homeHeroImageFile || isUploadingHomeHeroImage) {
-      return;
-    }
-
-    setIsUploadingHomeHeroImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("homeHeroImage", homeHeroImageFile);
-
-      const data = await request("/api/admin/site-settings/home-hero-image", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      setSiteSettings((data as { settings?: SiteSettings })?.settings || {});
-      setHomeHeroImageFile(null);
-      setStatusText(
-        (data as { message?: string })?.message || "Home page background image updated",
-      );
-    } catch (error) {
-      setStatusText(
-        error instanceof Error ? error.message : "Unable to update home page background image",
-      );
-    } finally {
-      setIsUploadingHomeHeroImage(false);
-    }
-  };
-
   const validateCollegeForm = (nextLogo: string, nextCoverImage: string, nextImages: string[]) => {
     const validations: CollegeValidation[] = [
       { valid: Boolean(collegeForm.name.trim()), step: 0, field: "name", message: "Basic Info: College name is required" },
       { valid: Boolean(collegeForm.description.trim()), step: 0, field: "description", message: "Basic Info: Description is required" },
       { valid: Boolean(collegeForm.establishedYear.trim()), step: 0, field: "establishedYear", message: "Basic Info: Established year is required" },
       { valid: Boolean(collegeForm.university.trim()), step: 0, field: "university", message: "Basic Info: University / affiliation is required" },
-      { valid: Boolean(collegeForm.country.trim()), step: 1, field: "country", message: "Location: Country is required" },
-      { valid: Boolean(collegeForm.state.trim()), step: 1, field: "state", message: "Location: State is required" },
-      { valid: Boolean(collegeForm.city.trim()), step: 1, field: "city", message: "Location: City is required" },
-      { valid: Boolean(collegeForm.address.trim()), step: 1, field: "address", message: "Location: Address is required" },
-      { valid: Boolean(collegeForm.pincode.trim()), step: 1, field: "pincode", message: "Location: Pincode is required" },
-      { valid: Boolean(collegeForm.contactEmail.trim()), step: 2, field: "contactEmail", message: "Contact: Official email is required" },
-      { valid: Boolean(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Phone number is required" },
-      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 2, field: "contactPhone", message: "Contact: Enter a valid 10 digit phone number" },
-      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 2, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate phone number" },
-      { valid: Boolean(nextLogo.trim()), step: 3, field: "logo", message: "Media: College logo is required" },
-      { valid: Boolean(nextCoverImage.trim()), step: 3, field: "coverImage", message: "Media: Cover image is required" },
-      { valid: nextImages.length >= 2, step: 3, field: "images", message: "Media: At least 2 gallery images are required" },
-      { valid: nextImages.length <= 7, step: 3, field: "images", message: "Media: Maximum 7 gallery images allowed" },
+      { valid: Boolean(collegeForm.country.trim()), step: 0, field: "country", message: "Location: Country is required" },
+      { valid: Boolean(collegeForm.state.trim()), step: 0, field: "state", message: "Location: State is required" },
+      { valid: Boolean(collegeForm.city.trim()), step: 0, field: "city", message: "Location: City is required" },
+      { valid: Boolean(collegeForm.address.trim()), step: 0, field: "address", message: "Location: Address is required" },
+      { valid: Boolean(collegeForm.pincode.trim()), step: 0, field: "pincode", message: "Location: Pincode is required" },
+      { valid: Boolean(collegeForm.contactEmail.trim()), step: 0, field: "contactEmail", message: "Contact: Official email is required" },
+      { valid: Boolean(collegeForm.contactPhone.trim()), step: 0, field: "contactPhone", message: "Contact: Phone number is required" },
+      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 0, field: "contactPhone", message: "Contact: Enter a valid 10 digit phone number" },
+      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 0, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate phone number" },
+      { valid: Boolean(nextLogo.trim()), step: 1, field: "logo", message: "Media: College logo is required" },
+      { valid: Boolean(nextCoverImage.trim()), step: 1, field: "coverImage", message: "Media: Cover image is required" },
+      { valid: nextImages.length >= 2, step: 1, field: "images", message: "Media: At least 2 gallery images are required" },
+      { valid: nextImages.length <= 7, step: 1, field: "images", message: "Media: Maximum 7 gallery images allowed" },
       {
         valid: !String(collegeForm.ranking || "").trim() || isValidRankingRange(collegeForm.ranking),
-        step: 4,
+        step: 0,
         field: "ranking",
         message: "Highlights: Use NIRF format like 101-150. Both numbers must be between 1 and 9999.",
       },
       {
         valid: Boolean(collegeForm.feeMin.trim()) && Boolean(collegeForm.feeMax.trim()),
-        step: 6,
+        step: 2,
         field: "feeMin",
         message: "Admission: Minimum fee and maximum fee are required",
       },
-      { valid: Boolean(collegeForm.admissionProcess.trim()), step: 6, field: "admissionProcess", message: "Admission: Admission process is required" },
-      { valid: Boolean(collegeForm.applicationMode.trim()), step: 6, field: "applicationMode", message: "Admission: Application mode is required" },
+      { valid: Boolean(collegeForm.admissionProcess.trim()), step: 2, field: "admissionProcess", message: "Admission: Admission process is required" },
+      { valid: Boolean(collegeForm.applicationMode.trim()), step: 2, field: "applicationMode", message: "Admission: Application mode is required" },
     ];
 
     if (hasHostelFacility) {
       validations.push(
-        { valid: Boolean(collegeForm.hostelType.trim()), step: 8, field: "hostelType", message: "Hostel: Hostel type is required" },
+        { valid: Boolean(collegeForm.hostelType.trim()), step: 1, field: "hostelType", message: "Hostel: Hostel type is required" },
         {
           valid: Boolean(collegeForm.hostelFeeMin.trim()) || Boolean(collegeForm.hostelFeeMax.trim()),
-          step: 8,
+          step: 1,
           field: "hostelFeeMin",
           message: "Hostel: Hostel fee structure is required",
         },
-        { valid: Boolean(collegeForm.cctvAvailable.trim()), step: 8, field: "cctvAvailable", message: "Hostel: CCTV availability is required" },
+        { valid: Boolean(collegeForm.cctvAvailable.trim()), step: 1, field: "cctvAvailable", message: "Hostel: CCTV availability is required" },
       );
     }
 
@@ -5922,6 +6121,7 @@ function AdminPageContent() {
 
       {!loading && activeTab === "overview" ? (
         <div className="space-y-4">
+          {/*
           <article className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(135deg,#ffffff_0%,#f5faff_100%)] p-5 shadow-[0_24px_48px_rgba(148,163,184,0.12)]">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="max-w-2xl min-w-0">
@@ -5988,6 +6188,7 @@ function AdminPageContent() {
               </div>
             </div>
           </article>
+          */}
 
           <div className="grid gap-4 md:grid-cols-2">
             {stats.map((item) => {
@@ -6237,7 +6438,7 @@ function AdminPageContent() {
                     })}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 sm:hidden">
+                <div className="grid grid-cols-2 gap-3 sm:hidden">
                   {collegeSteps.map((stepLabel, index) => {
                     const isActive = collegeStep === index;
                     const isCompleted = index < collegeStep;
@@ -6311,7 +6512,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 1 ? (
+              {collegeStep === 0 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Location Details</p>
@@ -6369,7 +6570,7 @@ function AdminPageContent() {
 
               </>
               ) : null}
-              {collegeStep === 2 ? (
+              {collegeStep === 0 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Contact Details</p>
@@ -6404,7 +6605,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 3 ? (
+              {collegeStep === 1 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Media Upload</p>
@@ -6551,7 +6752,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 4 ? (
+              {collegeStep === 0 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Highlights Section</p>
@@ -6654,7 +6855,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 5 ? (
+              {collegeStep === 1 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Facilities</p>
@@ -6707,7 +6908,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 6 ? (
+              {collegeStep === 2 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Admission Info</p>
@@ -6853,7 +7054,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 7 ? (
+              {collegeStep === 2 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Placement Details</p>
@@ -6877,7 +7078,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 8 ? (
+              {collegeStep === 1 ? (
               <>
               <div className="mb-3">
                 <p className="text-sm font-semibold text-slate-900">Hostel Details</p>
@@ -6948,7 +7149,7 @@ function AdminPageContent() {
               </>
               ) : null}
 
-              {collegeStep === 9 ? (
+              {collegeStep === 3 ? (
               <>
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -7810,17 +8011,17 @@ function AdminPageContent() {
             </div>
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleCollegeCards.map((college) => {
               const range = formatFeeRange(college.feesStructure);
               const isExpanded = expandedCollegeIds.includes(college._id);
               return (
-                <article key={college._id} className="rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.12)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">{college.name || "College"}</h3>
-                      <p className="text-sm text-slate-600">{college.university || "-"}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{[college.district, college.state].filter(Boolean).join(", ")}</p>
+                <article key={college._id} className="flex h-full flex-col rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_34px_rgba(148,163,184,0.12)]">
+                  <div className="flex flex-1 items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-base font-bold leading-6 text-slate-900">{college.name || "College"}</h3>
+                      <p className="mt-1 break-words text-sm leading-5 text-slate-600">{college.university || "-"}</p>
+                      <p className="mt-1 min-h-4 break-words text-xs leading-4 text-slate-500">{[college.district, college.state].filter(Boolean).join(", ") || "-"}</p>
                       {college.isTopCollege || college.isBestCollege ? (
                         <span className="mt-1 inline-flex rounded-full bg-[rgba(15,76,129,0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
                           Best College
@@ -7843,18 +8044,18 @@ function AdminPageContent() {
                       <CollegeLogoBadge
                         src={college.logo}
                         alt={college.name || "College"}
-                        className="h-14 w-14 rounded-[1rem]"
+                        className="h-14 w-14 shrink-0 rounded-[1rem]"
                         imageClassName="p-2"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#eff6ff_0%,#fff7ed_100%)]">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#eff6ff_0%,#fff7ed_100%)]">
                         <Building2 className="size-7 text-[#0f4c81]" />
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-3 space-y-2">
-                    <div className="flex flex-wrap justify-center gap-3">
+                  <div className="mt-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() =>
@@ -7864,20 +8065,20 @@ function AdminPageContent() {
                               : [...prev, college._id],
                           )
                         }
-                        className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-xs sm:w-auto sm:min-w-33`}
+                        className={`${softButtonClass} h-9 w-full justify-center px-3 py-1.5 text-xs`}
                       >
                         {isExpanded ? "Hide Info" : "See Details"}
                       </button>
-                      <Link href={`/college/${college._id}`} className={`${softButtonClass} w-full justify-center px-3 py-1.5 text-sm sm:w-auto sm:min-w-33`}>
+                      <Link href={`/college/${college._id}`} className={`${softButtonClass} h-9 w-full justify-center px-3 py-1.5 text-xs`}>
                         View
                         <ExternalLink className="size-4" />
                       </Link>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => openCollegeEditor(college)}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
                       >
                         <PencilLine className="size-4" />
                         Edit
@@ -7885,7 +8086,7 @@ function AdminPageContent() {
                       <button
                         type="button"
                         onClick={() => openCollegeEditor(college, 3)}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.24)] bg-white px-4 py-2 text-xs font-semibold text-[#0f4c81] shadow-[0_10px_20px_rgba(148,163,184,0.12)] transition duration-200 hover:bg-[#eff6ff] hover:shadow-[0_12px_24px_rgba(59,130,246,0.14)]"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.24)] bg-white px-3 py-2 text-xs font-semibold text-[#0f4c81] shadow-[0_10px_20px_rgba(148,163,184,0.12)] transition duration-200 hover:bg-[#eff6ff] hover:shadow-[0_12px_24px_rgba(59,130,246,0.14)]"
                       >
                         <ImageUp className="size-4" />
                         Edit Images
@@ -7895,7 +8096,7 @@ function AdminPageContent() {
                         onClick={(event) => {
                           openDeleteCollegeDialog(college, event.currentTarget);
                         }}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
+                        className="col-span-2 mx-auto inline-flex h-9 w-36 items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
                       >
                         <Trash2 className="size-4" />
                         Delete
@@ -7922,7 +8123,7 @@ function AdminPageContent() {
                 setEmbeddedCourses([]);
                 handleTabChange("colleges");
                 setShowCollegeForm(true);
-                setCollegeStep(5);
+                setCollegeStep(3);
               }}
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
@@ -8889,7 +9090,7 @@ function AdminPageContent() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
-              <table className="min-w-full text-left text-[13px] text-slate-700">
+              <table className="min-w-[760px] text-left text-[13px] text-slate-700">
                 <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   <tr>
                     <th className="px-3 py-2.5">Name</th>
@@ -8911,14 +9112,8 @@ function AdminPageContent() {
                       <td className="px-3 py-2.5 text-right">
                         <button
                           type="button"
-                          onClick={() =>
-                            void runAction(`user-${user._id}`, async () => {
-                              const data = await request(`/api/admin/users/${user._id}`, withAuth(token, { method: "DELETE" }));
-                              setStatusText(data?.message || "User deleted");
-                              await loadAdminData(token, currentUser);
-                            })
-                          }
-                          className="rounded-full bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white"
+                          onClick={() => openDeleteUserDialog(user)}
+                          className="inline-flex min-w-20 items-center justify-center whitespace-nowrap rounded-full bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white"
                         >
                           Delete
                         </button>
@@ -8946,14 +9141,8 @@ function AdminPageContent() {
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  void runAction(`enquiry-${enquiry._id}`, async () => {
-                    const data = await request(`/api/admin/enquiries/${enquiry._id}`, withAuth(token, { method: "DELETE" }));
-                    setStatusText(data?.message || "Enquiry deleted");
-                    await loadAdminData(token, currentUser);
-                  })
-                }
-                className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => openDeleteEnquiryDialog(enquiry)}
+                className="inline-flex min-w-24 items-center justify-center whitespace-nowrap rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
               >
                 Delete
               </button>
@@ -8965,9 +9154,9 @@ function AdminPageContent() {
       {!loading && activeTab === "college-notifications" ? (
         <div className="space-y-3">
           {collegeChangeNotifications.map((item) => (
-            <article key={item._id} className="luxe-card flex items-start justify-between gap-4 p-5">
-              <div>
-                <div className="flex items-center gap-3">
+            <article key={item._id} className="luxe-card p-5">
+              <div className="w-full min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
                   <h3 className="font-bold text-slate-900">
                     {item.payload?.name || item.requesterName || "College update"}
                   </h3>
@@ -8983,17 +9172,17 @@ function AdminPageContent() {
                     {item.status || "pending"}
                   </span>
                 </div>
-                <p className="text-sm text-slate-500">
+                <p className="mt-1 break-words text-sm text-slate-500">
                   Edited by login email: {item.requesterEmail || "-"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   Updated on {formatDate(item.updatedAt || item.createdAt)}
                 </p>
-                <div className="mt-3 grid gap-2">
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {(item.changeSummary || []).map((change, index) => (
                     <div
                       key={`${item._id}-${change.field || index}`}
-                      className="rounded-[0.9rem] border border-slate-200 bg-slate-50 px-3 py-2"
+                      className="min-w-0 rounded-[0.9rem] border border-slate-200 bg-slate-50 px-3 py-3"
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                         {change.label || change.field || "Field"}
@@ -9303,13 +9492,13 @@ function AdminPageContent() {
 
           <div className="space-y-3">
             {adminState.subAdmins.map((item) => (
-              <article key={item._id} className="luxe-card flex items-center justify-between gap-4 p-5">
-                <div>
+              <article key={item._id} className="luxe-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <h3 className="font-bold text-slate-900">{item.email || "Sub-admin"}</h3>
                   <p className="text-sm text-slate-500">{(item.permissions || []).join(", ") || "No permissions"}</p>
                   <p className="text-sm text-slate-500">{item.mustResetPassword ? "Password setup pending" : "Ready"} • {formatDate(item.createdAt)}</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -9321,27 +9510,156 @@ function AdminPageContent() {
                         permissions: item.permissions || [],
                       });
                     }}
-                    className={solidBlueButtonClass}
+                    className={`${solidBlueButtonClass} min-w-24 whitespace-nowrap`}
                   >
                     <PencilLine className="size-4" />
                     Edit
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      void runAction(`sub-admin-${item._id}`, async () => {
-                        const data = await request(`/api/admin/sub-admins/${item._id}`, withAuth(token, { method: "DELETE" }));
-                        setStatusText(data?.message || "Admin deleted");
-                        await loadAdminData(token, currentUser);
-                      })
-                    }
-                    className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                    onClick={() => openDeleteSubAdminDialog(item)}
+                    className="inline-flex min-w-24 items-center justify-center whitespace-nowrap rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
                   >
                     Delete
                   </button>
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {deleteUserDialog ? (
+        <div
+          className="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeDeleteUserDialog}
+        >
+          <div
+            className="w-full max-w-sm rounded-[1.35rem] border border-rose-100 bg-white p-5 shadow-[0_26px_60px_rgba(15,23,42,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <TriangleAlert className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-500">Delete User</p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">
+                  Are you sure you want to delete {deleteUserDialog.name}?
+                </h3>
+                <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">
+                  {deleteUserDialog.email || "This user"} will be removed from the platform.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteUserDialog}
+                disabled={isDeletingUser}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteUser()}
+                disabled={isDeletingUser}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingUser ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteEnquiryDialog ? (
+        <div
+          className="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeDeleteEnquiryDialog}
+        >
+          <div
+            className="w-full max-w-sm rounded-[1.35rem] border border-rose-100 bg-white p-5 shadow-[0_26px_60px_rgba(15,23,42,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <TriangleAlert className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-500">Delete Enquiry</p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">
+                  Are you sure you want to delete this enquiry?
+                </h3>
+                <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">
+                  {deleteEnquiryDialog.name}{deleteEnquiryDialog.email ? ` - ${deleteEnquiryDialog.email}` : ""} will be removed.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteEnquiryDialog}
+                disabled={isDeletingEnquiry}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteEnquiry()}
+                disabled={isDeletingEnquiry}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingEnquiry ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteSubAdminDialog ? (
+        <div
+          className="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeDeleteSubAdminDialog}
+        >
+          <div
+            className="w-full max-w-sm rounded-[1.35rem] border border-rose-100 bg-white p-5 shadow-[0_26px_60px_rgba(15,23,42,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <TriangleAlert className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-500">Delete Admin</p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">
+                  Are you sure you want to delete this admin?
+                </h3>
+                <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">
+                  {deleteSubAdminDialog.email} will lose admin access.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteSubAdminDialog}
+                disabled={isDeletingSubAdmin}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteSubAdmin()}
+                disabled={isDeletingSubAdmin}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingSubAdmin ? "Deleting..." : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -9390,37 +9708,13 @@ function AdminPageContent() {
                     Delete {deleteCollegeDialog.name}?
                   </h3>
                   <p className="mt-1.5 text-xs leading-5 text-slate-500">
-                    Type the college name to continue.
+                    Are you sure you want to delete this college? This action cannot be undone.
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(135deg,#fffdf5_0%,#fff7ed_100%)] p-3">
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-800">
-                    Confirm name
-                  </span>
-                  <input
-                    type="text"
-                    value={deleteCollegeConfirmationName}
-                    onChange={(event) => setDeleteCollegeConfirmationName(event.target.value)}
-                    placeholder={deleteCollegeDialog.name}
-                    autoFocus
-                    className="mt-2.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
-                  />
-                </label>
-                <div className="mt-3 flex items-center gap-2 text-xs font-medium">
-                  <span
-                    className={`inline-flex size-2 rounded-full ${
-                      isDeleteCollegeNameMatched ? "bg-emerald-500" : "bg-slate-300"
-                    }`}
-                  />
-                  <span className={isDeleteCollegeNameMatched ? "text-emerald-700" : "text-slate-500"}>
-                    {isDeleteCollegeNameMatched
-                      ? "Ready to delete"
-                      : deleteCollegeDialog.name}
-                  </span>
-                </div>
+              <div className="mt-4 rounded-[1.25rem] border border-rose-100 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">
+                Confirm delete to remove {deleteCollegeDialog.name}.
               </div>
 
               <div className="mt-4 flex items-center justify-end gap-2">
@@ -9435,7 +9729,7 @@ function AdminPageContent() {
                 <button
                   type="button"
                   onClick={() => void confirmDeleteCollege()}
-                  disabled={!isDeleteCollegeNameMatched || isDeletingCollege}
+                  disabled={isDeletingCollege}
                   className="inline-flex items-center justify-center rounded-xl bg-[linear-gradient(135deg,#ef4444_0%,#dc2626_100%)] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_28px_rgba(239,68,68,0.2)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isDeletingCollege ? "Deleting..." : "Delete"}

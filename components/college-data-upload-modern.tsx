@@ -224,7 +224,7 @@ export function CollegeDataUploadModern({
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-slate-900">Step 2: Add College Images ZIP</h2>
-        <p className="mt-1 text-sm text-slate-600">Upload a combined ZIP with logo, cover, and college images</p>
+        <p className="mt-1 text-sm text-slate-600">Upload a combined ZIP with logo, cover, brochure, and college images</p>
       </div>
 
       <div className="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center hover:border-blue-400 transition-colors">
@@ -244,9 +244,9 @@ export function CollegeDataUploadModern({
             />
           </label>
           <div className="mt-4 space-y-1 text-xs text-slate-500">
-            <p>Supported formats: JPG, PNG, JPEG</p>
+            <p>Supported formats: JPG, PNG, JPEG, PDF brochure</p>
             <p>Maximum ZIP size: 100MB</p>
-            <p>ZIP should contain: logo, cover, and college images</p>
+            <p>ZIP should contain: logo, cover, brochure, and college images</p>
           </div>
         </div>
       </div>
@@ -558,7 +558,7 @@ export function CollegeDataUploadModern({
               "ZIP format: .zip",
               "Image formats: JPG, PNG, JPEG",
               "Max ZIP size: 100MB",
-              "ZIP should contain: logo, cover & images",
+              "ZIP should contain: logo, cover, brochure & images",
               "File names should not contain special characters",
             ].map((guide, idx) => (
               <div key={idx} className="flex gap-2">

@@ -44,9 +44,29 @@ const fetchJson = async (
 
 const getErrorMessage = (data: unknown) => {
   if (typeof data === "string" && data.trim()) return data;
-  if (data && typeof data === "object" && "message" in data) {
-    const message = (data as { message?: unknown }).message;
+  if (data && typeof data === "object") {
+    const payload = data as {
+      message?: unknown;
+      error?: unknown;
+      errors?: unknown;
+      issues?: unknown;
+    };
+    const message = payload.message;
     if (typeof message === "string" && message.trim()) return message;
+    const error = payload.error;
+    if (typeof error === "string" && error.trim()) return error;
+    const issueList = Array.isArray(payload.issues) ? payload.issues : Array.isArray(payload.errors) ? payload.errors : [];
+    const issueMessages = issueList
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "message" in item) {
+          const itemMessage = (item as { message?: unknown }).message;
+          return typeof itemMessage === "string" ? itemMessage : "";
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (issueMessages.length > 0) return issueMessages.slice(0, 3).join(" | ");
   }
   return "Request failed";
 };

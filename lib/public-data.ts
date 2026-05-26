@@ -375,6 +375,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
 
   return mappedCourses.filter((course) => {
     const signature = [
+      normalizeText(course.collegeId),
       normalizeText(course.course),
       normalizeText(course.college),
       normalizeText(course.university),
@@ -400,8 +401,12 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
   records.map((item, index) => {
     const matchingCourseRows = courseRows.filter(
       (course) =>
+        String(course.collegeId || "").trim() === String(item._id || "").trim() ||
         normalizeText(course.college) === normalizeText(String(item.name || "")) ||
-        normalizeText(course.university) === normalizeText(String(item.university || "")),
+        course.collegeDetails.some(
+          (detail) =>
+            normalizeText(detail.college) === normalizeText(String(item.name || "")),
+        ),
     );
 
     const streams = [
