@@ -1750,7 +1750,7 @@ export function HomePage({
                     {/* Top exams overview */}
                     <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1 lg:col-span-2 2xl:max-w-[84rem]" data-scroll-animate>
                       <div className="relative w-full">
-                        <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="mb-4 flex items-center gap-3">
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
@@ -1759,14 +1759,6 @@ export function HomePage({
                               Master Your Entry Strategy
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => router.push("/exams")}
-                            className="inline-flex items-center gap-2 text-sm font-medium text-[#1d4ed8]"
-                          >
-                            View all exams
-                            <ArrowRight className="size-4" />
-                          </button>
                         </div>
 
                         <div className="hidden gap-4 lg:grid lg:grid-cols-4">

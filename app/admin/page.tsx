@@ -425,13 +425,35 @@ const normalizeIndianPhoneInput = (value: string) => {
   return digits.slice(0, 10);
 };
 const isValidIndianPhone = (value: string) => /^\d{10}$/.test(value);
-const adminModules = ["colleges", "college-requests", "users", "enquiries", "exams"];
 const adminModuleLabels: Record<string, string> = {
+  overview: "Overview",
   colleges: "Colleges",
+  "bulk-upload": "College Data Upload",
+  courses: "Courses",
+  "college-notifications": "College Notifications",
   "college-requests": "College Notifications",
   users: "Users",
   enquiries: "Enquiries",
   exams: "Exams",
+};
+const adminAccessSections = [
+  { id: "overview", label: adminModuleLabels.overview, icon: LayoutDashboard },
+  { id: "colleges", label: adminModuleLabels.colleges, icon: Building2 },
+  { id: "bulk-upload", label: adminModuleLabels["bulk-upload"], icon: ImageUp },
+  { id: "college-notifications", label: adminModuleLabels["college-notifications"], icon: FileClock },
+  { id: "users", label: adminModuleLabels.users, icon: UserRound },
+  { id: "enquiries", label: adminModuleLabels.enquiries, icon: MailOpen },
+  { id: "exams", label: adminModuleLabels.exams, icon: BadgeCheck },
+] as const;
+const formatAdminPermissionSummary = (permissions?: string[]) => {
+  const labels = Array.from(
+    new Set(
+      (permissions || [])
+        .map((item) => adminModuleLabels[item] || item)
+        .filter(Boolean),
+    ),
+  );
+  return labels.join(", ") || "No permissions";
 };
 const inputClass = "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:px-3.5 sm:text-sm md:text-sm";
 const labelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:mb-1.5 sm:text-[11px]";
@@ -442,6 +464,9 @@ const dangerButtonClass = "inline-flex items-center justify-center gap-1 rounded
 const requiredMarkClass = "ml-1 text-rose-500";
 const errorTextClass = "mt-1 block text-[10px] font-medium text-rose-600 sm:text-[11px]";
 const formSectionClass = "grid gap-2 grid-cols-1 sm:gap-3 md:grid-cols-2 xl:grid-cols-3";
+const mediaUploadCardClass = "group relative overflow-hidden rounded-[1.5rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95))] p-4 shadow-[0_16px_34px_rgba(148,163,184,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(56,189,248,0.26)] hover:shadow-[0_22px_42px_rgba(125,211,252,0.14)]";
+const mediaUploadButtonClass = "inline-flex h-[110px] w-[110px] shrink-0 flex-col items-center justify-center gap-2 rounded-[1.15rem] border border-[rgba(15,23,42,0.08)] bg-white px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition duration-200 group-hover:border-[rgba(56,189,248,0.24)] group-hover:text-[#0f4c81]";
+const mediaPreviewTileClass = "group relative overflow-hidden rounded-[1.2rem] border border-[rgba(148,163,184,0.18)] bg-white p-2 shadow-[0_14px_28px_rgba(148,163,184,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(148,163,184,0.12)]";
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
@@ -928,6 +953,23 @@ const bulkSheetLabels: Record<BulkSheetKey, string> = {
   entranceexams: "EntranceExams",
   collegeimages: "CollegeImages",
 };
+const parseCollegeCodeSequence = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^(.*?)(\d+)$/);
+  if (!match) return null;
+  const [, prefix, numberPart] = match;
+  const numericValue = Number(numberPart);
+  if (!Number.isFinite(numericValue)) return null;
+  return {
+    code: raw,
+    prefix,
+    numericValue,
+    padLength: numberPart.length,
+  };
+};
+const normalizeAccreditationOptionValue = (value: string) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+const collegeAccreditationOptionSet = new Set(COLLEGE_ACCREDITATION_OPTIONS.map(normalizeAccreditationOptionValue));
 const bulkCutoffCategories = ["OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"] as const;
 const bulkCutoffCategoryKeyMap = Object.fromEntries(
   bulkCutoffCategories.map((category) => [category, category.toLowerCase()]),
@@ -950,7 +992,7 @@ const bulkSheetColumns: Record<BulkSheetKey, string[]> = {
     "collegeCode", "degreeType", "stream", "specialization", "courseName", "duration", "mode", "lateralEntry", "bestCourse", "minimumQualification", "university", "allottedSeats", "applicationFee", "courseDescription", "semesterFees", "totalFees", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max",
   ],
   entranceexams: [
-    "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max", "specifiedSubjects", "preparationNotes",
+    "collegeCode", "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max", "specifiedSubjects", "preparationNotes",
   ],
   collegeimages: ["collegeCode", "imageType", "imageName"],
 };
@@ -999,7 +1041,6 @@ function BulkUploadDashboard({
   const [validationStatusText, setValidationStatusText] = useState("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [showFinishPopup, setShowFinishPopup] = useState(false);
-  const [furthestWorkflowStep, setFurthestWorkflowStep] = useState(0);
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [activeDetailSheet, setActiveDetailSheet] = useState<BulkSheetKey>("colleges");
   const [detailSearchText, setDetailSearchText] = useState("");
@@ -1047,6 +1088,44 @@ function BulkUploadDashboard({
       ),
     [existingColleges],
   );
+  const lastCollegeCodeInsight = useMemo(() => {
+    const parsedCodes = existingColleges
+      .map((college) => parseCollegeCodeSequence(String(college.collegeCode || "")))
+      .filter(Boolean) as Array<{
+      code: string;
+      prefix: string;
+      numericValue: number;
+      padLength: number;
+    }>;
+
+    if (parsedCodes.length) {
+      const highestCode = parsedCodes.reduce((best, current) => {
+        if (current.numericValue !== best.numericValue) {
+          return current.numericValue > best.numericValue ? current : best;
+        }
+        if (current.prefix !== best.prefix) {
+          return current.prefix.localeCompare(best.prefix) > 0 ? current : best;
+        }
+        return current.code.localeCompare(best.code) > 0 ? current : best;
+      });
+      const nextSuggestedCode = `${highestCode.prefix}${String(highestCode.numericValue + 1).padStart(highestCode.padLength, "0")}`;
+      return {
+        lastCode: highestCode.code,
+        nextSuggestedCode,
+      };
+    }
+
+    const fallbackCode = existingColleges
+      .map((college) => String(college.collegeCode || "").trim())
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right))
+      .at(-1);
+
+    return {
+      lastCode: fallbackCode || "",
+      nextSuggestedCode: "",
+    };
+  }, [existingColleges]);
   const uploadCards = [
     {
       step: "1",
@@ -1583,6 +1662,35 @@ function BulkUploadDashboard({
     const year = parseLooseNumber(raw);
     return year !== undefined && year >= 1800 && year <= new Date().getFullYear() + 1;
   };
+  const isStrictIntegerValue = (value: string) => {
+    const raw = String(value || "").trim();
+    return !raw || /^\d+$/.test(raw);
+  };
+  const isValidDurationValue = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    return /^\d+(?:\.\d+)?\s*(year|years|month|months|semester|semesters)$/i.test(raw);
+  };
+  const isValidAccreditationValue = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return true;
+    return collegeAccreditationOptionSet.has(normalizeAccreditationOptionValue(raw));
+  };
+  const getBulkRankingValidationMessage = (value: string) => {
+    const normalized = normalizeRankingRangeInput(String(value || "")).replace(/\s+/g, "");
+    if (!normalized) return "";
+    const [startText = "", endText = ""] = normalized.split("-");
+    if (!startText || !endText) return "Both rankingMin and rankingMax are required when entering ranking";
+    return "rankingMin must be less than or equal to rankingMax";
+  };
+  const isValidBulkRankingValue = (value: string) => {
+    const normalized = normalizeRankingRangeInput(String(value || "")).replace(/\s+/g, "");
+    if (!normalized) return true;
+    const [startText = "", endText = ""] = normalized.split("-");
+    if (!startText && !endText) return true;
+    if (!startText || !endText) return false;
+    return isValidRankingRange(`${startText}-${endText}`);
+  };
   const isNumberWithinRange = (value: string, minimum: number, maximum: number) => {
     const parsed = parseLooseNumber(value);
     return parsed === undefined || (parsed >= minimum && parsed <= maximum);
@@ -1735,6 +1843,10 @@ function BulkUploadDashboard({
         if (!isValidUrlValue(cell("websiteUrl"))) addFieldIssue(fieldIssues, "websiteUrl", "invalid", "websiteUrl must be a valid URL");
         if (!isValidUrlValue(cell("googleMapUrl"))) addFieldIssue(fieldIssues, "googleMapUrl", "invalid", "googleMapUrl must be a valid URL");
         if (!isValidUrlValue(cell("campusVideo"))) addFieldIssue(fieldIssues, "campusVideo", "invalid", "campusVideo must be a valid URL");
+        if (!isValidBulkRankingValue(cell("ranking"))) addFieldIssue(fieldIssues, "ranking", "invalid", getBulkRankingValidationMessage(cell("ranking")));
+        if (!isValidAccreditationValue(cell("accreditation"))) {
+          addFieldIssue(fieldIssues, "accreditation", "invalid", "accreditation must match a valid accreditation option or be left empty");
+        }
         if (!isNumberWithinRange(cell("placementPercentage"), 0, 100)) addFieldIssue(fieldIssues, "placementPercentage", "invalid", "placementPercentage must be between 0 and 100");
         if (parseLooseNumber(cell("minFee")) !== undefined && parseLooseNumber(cell("maxFee")) !== undefined && (parseLooseNumber(cell("minFee")) || 0) > (parseLooseNumber(cell("maxFee")) || 0)) {
           addFieldIssue(fieldIssues, "minFee", "invalid", "minFee must be less than or equal to maxFee");
@@ -1777,7 +1889,7 @@ function BulkUploadDashboard({
 
       if (row.sheet === "courses") {
         const numeric = ["allottedSeats", "applicationFee", "semesterFees", "totalFees", ...bulkCutoffColumns];
-        ["collegeCode", "courseName", "degreeType", "stream", "duration", "mode"].forEach((column) => {
+        ["collegeCode", "courseName", "degreeType", "stream", "specialization", "duration", "mode"].forEach((column) => {
           if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
         });
         if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
@@ -1789,6 +1901,8 @@ function BulkUploadDashboard({
         numeric.forEach((column) => {
           if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
         });
+        if (isFilledCell("duration") && !isValidDurationValue(cell("duration"))) addFieldIssue(fieldIssues, "duration", "invalid", "duration must be like 4 Years, 5.5 Years, or 6 Months");
+        if (!isStrictIntegerValue(cell("allottedSeats"))) addFieldIssue(fieldIssues, "allottedSeats", "invalid", "allottedSeats must contain digits only");
         validateBulkCutoffRanges(rowData).forEach((message) => {
           const matchedColumns = bulkCutoffColumns.filter((column) => message.includes(displayColumnName(column)) || message.includes(column));
           if (matchedColumns.length) {
@@ -1808,9 +1922,12 @@ function BulkUploadDashboard({
 
       if (row.sheet === "entranceexams") {
         const numeric = ["examWeightage", ...bulkRangeCutoffColumns];
-        ["courseName", "examName"].forEach((column) => {
+        ["collegeCode", "courseName", "examName"].forEach((column) => {
           if (!isFilledCell(column)) addFieldIssue(fieldIssues, column, "missing", `${column} is required`);
         });
+        if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
+          addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
+        }
         if (isFilledCell("courseName") && !courseNames.has(cell("courseName").toLowerCase())) {
           addFieldIssue(fieldIssues, "courseName", "invalid", "courseName does not exist in Courses sheet");
         }
@@ -1876,9 +1993,7 @@ function BulkUploadDashboard({
     const makeRow = (sheet: BulkSheetKey, row: Record<string, string>, index: number): Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data"> => {
       const data = Object.fromEntries(bulkSheetColumns[sheet].map((column) => [column, cellValue(row, column)]));
       if (sheet === "colleges") {
-        data.ranking =
-          cellValue(row, "ranking") ||
-          [cellValue(row, "rankingMin"), cellValue(row, "rankingMax")].filter(Boolean).join(" - ");
+        data.ranking = cellValue(row, "ranking") || normalizeRankingRangeInput(`${cellValue(row, "rankingMin")}-${cellValue(row, "rankingMax")}`);
       }
 
       return {
@@ -1943,9 +2058,6 @@ function BulkUploadDashboard({
     if (step !== "3") {
       setActiveUploadStep(step);
       setShowZipUploadStep(false);
-      setFurthestWorkflowStep(0);
-    } else {
-      setFurthestWorkflowStep(1);
     }
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
@@ -1963,7 +2075,6 @@ function BulkUploadDashboard({
       if (item.step === "3") {
         setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
         setUploadErrors((previous) => ({ ...previous, "3": error }));
-        setFurthestWorkflowStep((previous) => Math.max(previous, 1));
         return;
       }
 
@@ -1971,7 +2082,6 @@ function BulkUploadDashboard({
       setActiveUploadStep(item.step as "1" | "2");
       setShowZipUploadStep(false);
       setShowFullDetails(false);
-      setFurthestWorkflowStep(0);
       setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: null, [otherExcelStep]: null, "3": null }));
       setUploadErrors((previous) => ({ ...previous, [item.step]: error, [otherExcelStep]: "", "3": "" }));
       return;
@@ -1982,7 +2092,6 @@ function BulkUploadDashboard({
       setUploadErrors((previous) => ({ ...previous, "3": "" }));
       setShowValidationSummaryStep(false);
       setShowFinishPopup(false);
-      setFurthestWorkflowStep((previous) => Math.max(previous, 1));
       return;
     }
 
@@ -1992,7 +2101,6 @@ function BulkUploadDashboard({
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
     setShowFinishPopup(false);
-    setFurthestWorkflowStep(0);
     setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
     setUploadErrors((previous) => ({ ...previous, [item.step]: "", [otherExcelStep]: "", "3": "" }));
   };
@@ -2015,7 +2123,7 @@ function BulkUploadDashboard({
         : showZipUploadStep
           ? 1
           : 0;
-  const currentWorkflowStep = Math.max(visibleWorkflowStep, furthestWorkflowStep);
+  const currentWorkflowStep = visibleWorkflowStep;
   const summaryCardStyles = [
     "border-blue-100 bg-blue-50 text-blue-700",
     "border-green-100 bg-green-50 text-green-700",
@@ -2024,10 +2132,6 @@ function BulkUploadDashboard({
     "border-purple-100 bg-purple-50 text-purple-700",
     "border-amber-100 bg-amber-50 text-amber-700",
   ];
-
-  useEffect(() => {
-    setFurthestWorkflowStep((previous) => Math.max(previous, visibleWorkflowStep));
-  }, [visibleWorkflowStep]);
 
   const downloadSampleTemplates = () => {
     const escapeXml = (value: string) =>
@@ -2068,42 +2172,44 @@ function BulkUploadDashboard({
 
     const workbookSheets = [
       {
-        name: "College",
+        name: "Colleges",
         headers: [
-          "collegeCode", "collegeName", "description", "establishedYear", "ownershipType", "university", "country", "state", "city", "district", "address", "pincode", "googleMapUrl", "officialEmail", "phoneNumber", "alternatePhone", "websiteUrl", "brochurePdf", "campusVideo", "ranking_min", "ranking_max", "accreditation", "awards", "reviews", "facilities", "quotas", "minFee", "maxFee", "admissionProcess", "applicationMode", "scholarship", "placementPercentage", "averagePackage", "highestPackage", "hostelGeneralInfo", "hostelType", "hostelMinFee", "hostelMaxFee", "cctvAvailability", "hostelFacilities", "isBestCollege",
+          "collegeCode", "collegeName", "description", "establishedYear", "ownershipType", "university", "country", "state", "city", "district", "address", "pincode", "googleMapUrl", "officialEmail", "phoneNumber", "alternatePhone", "websiteUrl", "logoImage", "coverImage", "brochurePdf", "campusVideo", "ranking_min", "ranking_max", "accreditation", "awards", "reviews", "facilities", "quotas", "minFee", "maxFee", "admissionProcess", "applicationMode", "scholarships", "placementPercentage", "averagePackage", "highestPackage", "hostelGeneralInfo", "hostelType", "hostelMinFee", "hostelMaxFee", "cctvAvailability", "hostelFacilities", "isBestCollege",
         ],
         row: {
           collegeCode: "CLG001",
-          collegeName: "ABC College",
-          description: "Sample college description",
+          collegeName: "ABC Engineering College",
+          description: "NAAC accredited engineering college in Chennai",
           establishedYear: "2001",
           ownershipType: "Private",
-          university: "Sample University",
+          university: "Anna University",
           country: "India",
           state: "Tamil Nadu",
           city: "Chennai",
           district: "Chennai",
-          address: "Sample Address",
+          address: "123 Sample Road, Guindy",
           pincode: "600001",
-          googleMapUrl: "https://maps.google.com",
+          googleMapUrl: "https://maps.google.com/?q=ABC+Engineering+College+Chennai",
           officialEmail: "info@abccollege.edu",
           phoneNumber: "9876543210",
           alternatePhone: "9444455555",
           websiteUrl: "https://abccollege.edu",
-          brochurePdf: "CLG001.brochure.pdf",
-          campusVideo: "https://youtube.com/watch?v=sample",
+          logoImage: "clg001-logo.png",
+          coverImage: "clg001-cover.jpg",
+          brochurePdf: "clg001-brochure.pdf",
+          campusVideo: "https://www.youtube.com/watch?v=college-demo",
           ranking_min: "10",
           ranking_max: "25",
           accreditation: "NAAC A+",
-          awards: "Sample Award",
-          reviews: "Good campus environment",
+          awards: "Best Emerging Engineering College 2025",
+          reviews: "Strong placements and modern campus facilities",
           facilities: "Sports,WiFi,Labs",
           quotas: "Management Quota,Government Quota,Reservation Quota",
           minFee: "50000",
           maxFee: "85000",
           admissionProcess: "Online Application",
           applicationMode: "Online",
-          scholarship: "Merit Scholarship",
+          scholarships: "Merit Scholarship",
           placementPercentage: "92",
           averagePackage: "450000",
           highestPackage: "1800000",
@@ -2117,22 +2223,25 @@ function BulkUploadDashboard({
         },
       },
       {
-        name: "Course",
+        name: "Courses",
         headers: [
-          "collegeCode", "degreeType", "stream", "specialization", "courseName", "duration", "mode", "lateralEntry", "bestCourse", "minimumQualification", "university", "semesterFees", "totalFees", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_st_min", "cutoff_st_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sca_min", "cutoff_sca_max", "allottedSeats", "applicationFee", "courseDescription",
+          "collegeCode", "degreeType", "stream", "specialization", "courseName", "duration", "mode", "lateralEntry", "bestCourse", "minimumQualification", "university", "allottedSeats", "applicationFee", "courseDescription", "semesterFees", "totalFees", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max",
         ],
         row: {
           collegeCode: "CLG001",
           degreeType: "UG",
           stream: "Engineering",
-          specialization: "Computer Science",
-          courseName: "B.E CSE",
+          specialization: "Computer Science Engineering",
+          courseName: "Computer Science Engineering",
           duration: "4 Years",
-          mode: "Full Time",
+          mode: "Full-time",
           lateralEntry: "TRUE",
           bestCourse: "TRUE",
           minimumQualification: "12th Pass",
-          university: "Sample University",
+          university: "Anna University",
+          allottedSeats: "120",
+          applicationFee: "500",
+          courseDescription: "Industry-aligned computer science program",
           semesterFees: "50000",
           totalFees: "400000",
           cutoff_oc_min: "180",
@@ -2141,27 +2250,24 @@ function BulkUploadDashboard({
           cutoff_bc_max: "185",
           cutoff_bcm_min: "172",
           cutoff_bcm_max: "182",
-          cutoff_sc_min: "160",
-          cutoff_sc_max: "170",
-          cutoff_st_min: "150",
-          cutoff_st_max: "160",
           cutoff_mbc_min: "170",
           cutoff_mbc_max: "180",
+          cutoff_sc_min: "160",
+          cutoff_sc_max: "170",
           cutoff_sca_min: "155",
           cutoff_sca_max: "165",
-          allottedSeats: "120",
-          applicationFee: "500",
-          courseDescription: "Sample course description",
+          cutoff_st_min: "150",
+          cutoff_st_max: "160",
         },
       },
       {
-        name: "Enterence exam",
+        name: "EntranceExams",
         headers: [
-          "collegeCode", "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_st_min", "cutoff_st_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sca_min", "cutoff_sca_max", "specifiedPaperOrSyllabus", "preparationNotes",
+          "collegeCode", "courseName", "examName", "examWeightage", "cutoff_oc_min", "cutoff_oc_max", "cutoff_bc_min", "cutoff_bc_max", "cutoff_bcm_min", "cutoff_bcm_max", "cutoff_mbc_min", "cutoff_mbc_max", "cutoff_sc_min", "cutoff_sc_max", "cutoff_sca_min", "cutoff_sca_max", "cutoff_st_min", "cutoff_st_max", "specifiedSubjects", "preparationNotes",
         ],
         row: {
           collegeCode: "CLG001",
-          courseName: "B.E CSE",
+          courseName: "Computer Science Engineering",
           examName: "TNEA",
           examWeightage: "80",
           cutoff_oc_min: "180",
@@ -2170,16 +2276,25 @@ function BulkUploadDashboard({
           cutoff_bc_max: "185",
           cutoff_bcm_min: "172",
           cutoff_bcm_max: "182",
-          cutoff_sc_min: "160",
-          cutoff_sc_max: "170",
-          cutoff_st_min: "150",
-          cutoff_st_max: "160",
           cutoff_mbc_min: "170",
           cutoff_mbc_max: "180",
+          cutoff_sc_min: "160",
+          cutoff_sc_max: "170",
           cutoff_sca_min: "155",
           cutoff_sca_max: "165",
-          specifiedPaperOrSyllabus: "PCM Subjects",
+          cutoff_st_min: "150",
+          cutoff_st_max: "160",
+          specifiedSubjects: "Physics, Chemistry, Mathematics",
           preparationNotes: "Practice previous year questions",
+        },
+      },
+      {
+        name: "CollegeImages",
+        headers: ["collegeCode", "imageType", "imageName"],
+        row: {
+          collegeCode: "CLG001",
+          imageType: "campus",
+          imageName: "clg001-campus-01.jpg",
         },
       },
     ];
@@ -2457,23 +2572,37 @@ function BulkUploadDashboard({
   };
 
   const updatePreviewCell = (rowId: number, column: string, value: string) => {
-    setPreviewRows((rows) =>
-      rows.map((row) => {
-        if (row.id !== rowId) return row;
+    setPreviewRows((rows) => {
+      const editingTargetRow = rows.find((row) => row.id === rowId);
+      const previousCollegeCode =
+        editingTargetRow?.sheet === "colleges" && column === "collegeCode"
+          ? String(editingTargetRow.data.collegeCode || "").trim().toLowerCase()
+          : "";
+
+      return rows.map((row) => {
         if (column === "rankingMin" || column === "rankingMax") {
+          if (row.id !== rowId) return row;
           const currentRange = getPreviewRankingRangeValues(row.data.ranking || "");
           const nextRange = {
             rankingMin: column === "rankingMin" ? value : currentRange.rankingMin,
             rankingMax: column === "rankingMax" ? value : currentRange.rankingMax,
           };
-          const formattedRanking = formatRankingRangeForSave(
-            [nextRange.rankingMin.trim(), nextRange.rankingMax.trim()].filter(Boolean).join(" - "),
-          );
-          return { ...row, data: { ...row.data, ranking: formattedRanking } };
+          const nextRanking = normalizeRankingRangeInput(`${nextRange.rankingMin.trim()}-${nextRange.rankingMax.trim()}`);
+          return { ...row, data: { ...row.data, ranking: nextRanking } };
         }
-        return { ...row, data: { ...row.data, [column]: value } };
-      }),
-    );
+        if (row.id === rowId) {
+          return { ...row, data: { ...row.data, [column]: value } };
+        }
+        if (
+          previousCollegeCode &&
+          ["courses", "entranceexams", "collegeimages"].includes(row.sheet) &&
+          String(row.data.collegeCode || "").trim().toLowerCase() === previousCollegeCode
+        ) {
+          return { ...row, data: { ...row.data, collegeCode: value } };
+        }
+        return row;
+      });
+    });
   };
 
   const getFirstIssueColumn = (row: BulkPreviewRow) => {
@@ -2499,7 +2628,7 @@ function BulkUploadDashboard({
     setEditingRowId(null);
     setEditingFocusField("");
     setEditingRowBackup(null);
-    setValidationStatusText("Preview row updated and revalidated.");
+    setValidationStatusText("");
   };
 
   const cancelEditingRow = () => {
@@ -2978,6 +3107,29 @@ function BulkUploadDashboard({
                 </div>
               ) : (
                 <div className="space-y-5">
+                  <div className="rounded-2xl border border-amber-200 bg-[linear-gradient(135deg,#fff8e7_0%,#eef4ff_100%)] px-4 py-3 shadow-[0_14px_30px_rgba(245,158,11,0.08)]">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2] text-[#b45309]">
+                          <KeyRound className="size-4" />
+                        </span>
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#b45309]">College Code</p>
+                          <p className="text-xs font-semibold text-slate-600">Use this to decide the next code</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <div className="rounded-xl border border-white/80 bg-white/90 px-3 py-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Last</span>
+                          <p className="mt-1 text-lg font-black text-slate-950">{lastCollegeCodeInsight.lastCode || "No code yet"}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#c7d2fe] bg-[#eef2ff] px-3 py-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#4338ca]">Next</span>
+                          <p className="mt-1 text-lg font-black text-[#312e81]">{lastCollegeCodeInsight.nextSuggestedCode || "Create first code"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div className="grid gap-4 lg:grid-cols-2">
                     {renderUploadCard(uploadCards[0])}
                     {renderUploadCard(uploadCards[1])}
@@ -3334,6 +3486,8 @@ function BulkUploadDashboard({
                       const isEditing = editingRowId === row.id;
                       const issueColumn = column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
                       const fieldIssue = row.fieldIssues[issueColumn];
+                      const fieldIssueMessage = fieldIssue?.messages.join(" | ") || "";
+                      const editingFieldKey = `${row.id}-${column}`;
                       const collegeInitials = getCollegeInitials(row);
                       const issueLabel =
                         fieldIssue?.level === "missing"
@@ -3358,20 +3512,49 @@ function BulkUploadDashboard({
                       return (
                         <td key={`${row.id}-${column}`} className={`${getPreviewColumnWidthClass(column)} border-r border-[#edf2fb] px-3 py-3 align-top font-bold`}>
                           {isEditing ? (
-                            isBooleanColumn ? (
-                              <input
-                                type="checkbox"
-                                checked={isCheckedPreviewBoolean(value)}
-                                onChange={(event) => updatePreviewCell(row.id, column, event.target.checked ? "TRUE" : "FALSE")}
-                                className="size-4 accent-[#4f32f6]"
-                              />
-                            ) : (
-                              <input
-                                value={value}
-                                onChange={(event) => updatePreviewCell(row.id, column, event.target.value)}
-                                className="min-w-30 rounded-sm border border-[#cbd7ee] bg-white px-2 py-1 text-xs font-bold text-[#10235d] outline-none focus:border-[#4f32f6]"
-                              />
-                            )
+                            <div className="min-w-30 space-y-2">
+                              {isBooleanColumn ? (
+                                <label className={`inline-flex items-center gap-2 rounded-md border px-2 py-1.5 ${fieldIssue ? "border-[#ef233c] bg-[#fff5f5]" : "border-[#cbd7ee] bg-white"}`}>
+                                  <input
+                                    ref={(node) => {
+                                      editingFieldRefs.current[editingFieldKey] = node;
+                                    }}
+                                    type="checkbox"
+                                    checked={isCheckedPreviewBoolean(value)}
+                                    onChange={(event) => updatePreviewCell(row.id, column, event.target.checked ? "TRUE" : "FALSE")}
+                                    className="size-4 accent-[#4f32f6]"
+                                    aria-invalid={Boolean(fieldIssue)}
+                                  />
+                                  <span className={`text-[11px] font-extrabold ${fieldIssue ? "text-[#ef233c]" : "text-[#31509c]"}`}>
+                                    {isCheckedPreviewBoolean(value) ? "TRUE" : "FALSE"}
+                                  </span>
+                                </label>
+                              ) : (
+                                <input
+                                  ref={(node) => {
+                                    editingFieldRefs.current[editingFieldKey] = node;
+                                  }}
+                                  value={value}
+                                  onChange={(event) => updatePreviewCell(row.id, column, event.target.value)}
+                                  aria-invalid={Boolean(fieldIssue)}
+                                  className={`min-w-30 rounded-sm border px-2 py-1 text-xs font-bold outline-none ${
+                                    fieldIssue
+                                      ? "border-[#ef233c] bg-[#fff5f5] text-[#b42318] focus:border-[#ef233c]"
+                                      : "border-[#cbd7ee] bg-white text-[#10235d] focus:border-[#4f32f6]"
+                                  }`}
+                                />
+                              )}
+                              {fieldIssue ? (
+                                <div className="space-y-1">
+                                  <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
+                                    {issueLabel}
+                                  </span>
+                                  <p className="text-[11px] font-semibold leading-4 text-[#b42318]" title={fieldIssueMessage}>
+                                    {fieldIssueMessage}
+                                  </p>
+                                </div>
+                              ) : null}
+                            </div>
                           ) : isBooleanColumn ? (
                             <input type="checkbox" checked={isCheckedPreviewBoolean(value)} readOnly className="size-4 accent-[#4f32f6]" />
                           ) : isImagePreviewColumn && previewUrl ? (
@@ -3928,6 +4111,8 @@ function AdminPageContent() {
       })),
     [imageFiles],
   );
+  const totalCollegeImageCount = collegeForm.images.length + imageFiles.length;
+  const firstCollegeImagePreviewUrl = collegeImagePreviews[0]?.url || collegeForm.images[0] || "";
   const availableStreamOptions = useMemo(
     () =>
       Array.from(
@@ -4165,25 +4350,7 @@ function AdminPageContent() {
 
   const navItems = useMemo(
     () => [
-      { id: "overview", label: "Overview", icon: LayoutDashboard },
-      ...(canAccess("colleges")
-        ? [
-            { id: "colleges", label: "Colleges", icon: Building2 },
-            { id: "bulk-upload", label: "College Data Upload", icon: ImageUp },
-          ]
-        : []),
-      ...(canAccess("college-requests")
-        ? [{ id: "college-notifications", label: "College Notifications", icon: FileClock }]
-        : []),
-      ...(canAccess("users")
-        ? [{ id: "users", label: "Users", icon: UserRound }]
-        : []),
-      ...(canAccess("enquiries")
-        ? [{ id: "enquiries", label: "Enquiries", icon: MailOpen }]
-        : []),
-      ...(canAccess("exams")
-        ? [{ id: "exams", label: "Exams", icon: BadgeCheck }]
-        : []),
+      ...adminAccessSections.filter((section) => canAccess(section.id)),
       ...(currentUser?.isSuperAdmin
         ? [{ id: "admin-access", label: "Admin Access", icon: KeyRound }]
         : []),
@@ -4225,13 +4392,17 @@ function AdminPageContent() {
         Boolean(nextUser.isSuperAdmin || nextUser.permissions?.includes(module));
 
       const jobs: Array<Promise<unknown>> = [
-        canRead("colleges") ? request("/api/admin/colleges", withAuth(authToken)) : Promise.resolve({}),
+        canRead("colleges") || canRead("courses")
+          ? request("/api/admin/colleges", withAuth(authToken))
+          : Promise.resolve({}),
         canRead("courses") ? request("/api/admin/courses", withAuth(authToken)) : Promise.resolve({}),
         canRead("users") ? request("/api/admin/users", withAuth(authToken)) : Promise.resolve({}),
         canRead("enquiries") ? request("/api/admin/enquiries", withAuth(authToken)) : Promise.resolve({}),
-        canRead("college-requests") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
+        canRead("college-notifications") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
         nextUser.isSuperAdmin ? request("/api/admin/sub-admins", withAuth(authToken)).catch(() => ({})) : Promise.resolve({}),
-        request("/api/admin/site-settings", withAuth(authToken)).catch(() => ({})),
+        canRead("exams") || canRead("overview")
+          ? request("/api/admin/site-settings", withAuth(authToken)).catch(() => ({}))
+          : Promise.resolve({}),
       ];
 
       const [colleges, courses, users, enquiries, collegeRequests, subAdmins, settings] =
@@ -6611,21 +6782,142 @@ function AdminPageContent() {
                 <p className="text-sm font-semibold text-slate-900">Media Upload</p>
                 <p className="text-xs text-slate-500">Upload logo, cover, gallery images, video, and brochure.</p>
               </div>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <label>
-                  <span className={labelClass}>Logo Image<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("logo")} type="file" accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml" onChange={(event) => { clearCollegeFieldError("logo"); setLogoFile(event.target.files?.[0] || null); }} />
-                  {collegeFieldErrors.logo ? <span className={errorTextClass}>{collegeFieldErrors.logo}</span> : null}
-                </label>
-                <label>
-                  <span className={labelClass}>Cover Image<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("coverImage")} type="file" accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml" onChange={(event) => { clearCollegeFieldError("coverImage"); setCoverImageFile(event.target.files?.[0] || null); }} />
-                  {collegeFieldErrors.coverImage ? <span className={errorTextClass}>{collegeFieldErrors.coverImage}</span> : null}
-                </label>
-                <label className="md:col-span-2">
+              <div className="mt-2 space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <span className={labelClass}>Logo Image<span className={requiredMarkClass}>*</span></span>
+                    <div className="relative">
+                      <input
+                        id="college-logo-upload"
+                        className="sr-only"
+                        type="file"
+                        accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml"
+                        onChange={(event) => {
+                          clearCollegeFieldError("logo");
+                          setLogoFile(event.target.files?.[0] || null);
+                        }}
+                      />
+                      <label htmlFor="college-logo-upload" className={`${mediaUploadCardClass} block min-h-[250px] cursor-pointer`}>
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.12),transparent_45%)]" />
+                        <div className="relative flex h-full flex-col gap-6">
+                          <p className="pr-12 text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[1.15rem]">
+                            Upload logo image
+                          </p>
+                          <div className="grid gap-5 sm:grid-cols-[auto_auto] sm:items-center sm:justify-between">
+                            <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-[linear-gradient(135deg,#f8fafc_0%,#eef6ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(148,163,184,0.12)]">
+                              {logoPreviewUrl ? (
+                                <>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={logoPreviewUrl}
+                                    alt="College logo preview"
+                                    className="h-full w-full rounded-full object-cover transition duration-300 group-hover:scale-110"
+                                  />
+                                </>
+                              ) : (
+                                <ImageUp className="size-9 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="sm:justify-self-end">
+                              <span className={mediaUploadButtonClass}>
+                                <ImageUp className="size-6" />
+                                {logoPreviewUrl ? "Change image" : "Upload image"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="min-w-0 max-w-[320px]">
+                            <p className="text-sm font-semibold leading-7 text-slate-500">Formats allowed are `.jpg`, `.jpeg`, `.svg`.</p>
+                            <p className="mt-3 text-sm font-semibold leading-7 text-slate-500">Square or transparent logos look best.</p>
+                          </div>
+                        </div>
+                      </label>
+                      {logoPreviewUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLogoFile(null);
+                            setCollegeForm((prev) => ({ ...prev, logo: "" }));
+                          }}
+                          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white shadow-[0_10px_24px_rgba(225,29,72,0.28)] transition hover:bg-rose-700"
+                          aria-label="Remove logo"
+                        >
+                          X
+                        </button>
+                      ) : null}
+                    </div>
+                    {collegeFieldErrors.logo ? <span className={errorTextClass}>{collegeFieldErrors.logo}</span> : null}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className={labelClass}>Cover Image<span className={requiredMarkClass}>*</span></span>
+                    <div className="relative">
+                      <input
+                        id="college-cover-upload"
+                        className="sr-only"
+                        type="file"
+                        accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml"
+                        onChange={(event) => {
+                          clearCollegeFieldError("coverImage");
+                          setCoverImageFile(event.target.files?.[0] || null);
+                        }}
+                      />
+                      <label htmlFor="college-cover-upload" className={`${mediaUploadCardClass} block min-h-[250px] cursor-pointer`}>
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_45%)]" />
+                        <div className="relative flex h-full flex-col gap-6">
+                          <p className="pr-12 text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[1.15rem]">
+                            Upload cover image
+                          </p>
+                          <div className="grid gap-5 sm:grid-cols-[auto_auto] sm:items-center sm:justify-between">
+                            <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-[1.2rem] border border-white/80 bg-[linear-gradient(135deg,#f8fafc_0%,#eef6ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(148,163,184,0.12)]">
+                              {coverImagePreviewUrl ? (
+                                <>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={coverImagePreviewUrl}
+                                    alt="College cover preview"
+                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
+                                  />
+                                </>
+                              ) : (
+                                <ImageUp className="size-9 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="sm:justify-self-end">
+                              <span className={mediaUploadButtonClass}>
+                                <ImageUp className="size-6" />
+                                {coverImagePreviewUrl ? "Change image" : "Upload image"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="min-w-0 max-w-[340px]">
+                            <p className="text-sm font-semibold leading-7 text-slate-500">Best ratio is 16:9 for the college hero banner.</p>
+                            <p className="mt-2 text-sm font-semibold leading-7 text-slate-500">Prefer 1600x900 or 1920x1080 for a crisp preview.</p>
+                          </div>
+                        </div>
+                      </label>
+                      {coverImagePreviewUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCoverImageFile(null);
+                            setCollegeForm((prev) => ({ ...prev, coverImage: "" }));
+                          }}
+                          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white shadow-[0_10px_24px_rgba(225,29,72,0.28)] transition hover:bg-rose-700"
+                          aria-label="Remove cover image"
+                        >
+                          X
+                        </button>
+                      ) : null}
+                    </div>
+                    {collegeFieldErrors.coverImage ? <span className={errorTextClass}>{collegeFieldErrors.coverImage}</span> : null}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <span className={labelClass}>College Images<span className={requiredMarkClass}>*</span></span>
                   <input
-                    className={getCollegeInputClass("images")}
+                    id="college-gallery-upload"
+                    className="sr-only"
                     type="file"
                     accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml"
                     multiple
@@ -6638,112 +6930,101 @@ function AdminPageContent() {
                       event.currentTarget.value = "";
                     }}
                   />
+                  <label htmlFor="college-gallery-upload" className={`${mediaUploadCardClass} block cursor-pointer`}>
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.12),transparent_48%)]" />
+                    <div className="relative grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+                      <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-[1.1rem] border border-white/80 bg-[linear-gradient(135deg,#f8fafc_0%,#eef6ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_24px_rgba(148,163,184,0.12)]">
+                        {firstCollegeImagePreviewUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={firstCollegeImagePreviewUrl}
+                              alt="College gallery preview"
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
+                            />
+                          </>
+                        ) : (
+                          <ImageUp className="size-8 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 lg:pr-2">
+                        <p className="text-lg font-semibold leading-tight tracking-[-0.02em] text-slate-900">Upload college gallery</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">Only JPG or SVG images are recommended.</p>
+                        <p className="text-sm leading-6 text-slate-500">Minimum 2 images, maximum 7 images. Selected: {totalCollegeImageCount}</p>
+                      </div>
+                      <div className="lg:justify-self-end">
+                        <span className={mediaUploadButtonClass}>{totalCollegeImageCount > 0 ? "Add more images" : "Upload images"}</span>
+                      </div>
+                    </div>
+                  </label>
                   {collegeFieldErrors.images ? <span className={errorTextClass}>{collegeFieldErrors.images}</span> : null}
-                  <span className="mt-1 block text-[11px] text-slate-500">Upload high-quality images in 16:9 ratio, preferably 1600x900 or 1920x1080.</span>
+                  <span className="block text-[11px] text-slate-500">Upload high-quality images in 16:9 ratio, preferably 1600x900 or 1920x1080.</span>
                   <span className="block text-[11px] text-slate-500">Low quality or portrait images may appear cropped or blurry.</span>
-                  <span className="block text-[11px] text-slate-500">Only JPG or SVG images are recommended. Minimum 2 images, Maximum 7 images.</span>
-                  <span className="block text-[11px] font-semibold text-slate-600">Selected count: {collegeForm.images.length + imageFiles.length}</span>
-                </label>
-                <label className="md:col-span-2">
-                  <span className={labelClass}>Brochure PDF</span>
-                  <input className={inputClass} type="file" accept="application/pdf" onChange={(event) => setBrochureFile(event.target.files?.[0] || null)} />
-                </label>
-                <label className="md:col-span-2">
-                  <span className={labelClass}>Campus Video (YouTube link)</span>
-                  <input className={inputClass} placeholder="YouTube video link" value={collegeForm.campusVideoUrl} onChange={(event) => setCollegeForm((prev) => ({ ...prev, campusVideoUrl: event.target.value }))} />
-                </label>
+                </div>
+
+                {totalCollegeImageCount > 0 ? (
+                  <div className="space-y-3 rounded-[1.4rem] border border-[rgba(148,163,184,0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.94))] p-4 shadow-[0_16px_32px_rgba(148,163,184,0.08)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview Images</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      {collegeForm.images.map((image, index) => (
+                        <div key={`existing-college-image-${index}`} className={`${mediaPreviewTileClass} w-[132px]`}>
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Image {index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCollegeImageAt(index)}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white transition hover:bg-rose-700"
+                              aria-label={`Remove college image ${index + 1}`}
+                            >
+                              X
+                            </button>
+                          </div>
+                          <div className="h-24 w-full overflow-hidden rounded-[0.95rem] border border-slate-100 bg-slate-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={image} alt={`College preview ${index + 1}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
+                          </div>
+                        </div>
+                      ))}
+
+                      {collegeImagePreviews.map((item, index) => (
+                        <div key={`new-college-image-${item.key}`} className={`${mediaPreviewTileClass} w-[132px]`}>
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">New {index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCollegeImageAt(collegeForm.images.length + index)}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white transition hover:bg-rose-700"
+                              aria-label={`Remove new college image ${index + 1}`}
+                            >
+                              X
+                            </button>
+                          </div>
+                          <div className="h-24 w-full overflow-hidden rounded-[0.95rem] border border-slate-100 bg-slate-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.url} alt={item.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label>
+                    <span className={labelClass}>Brochure PDF</span>
+                    <input className={inputClass} type="file" accept="application/pdf" onChange={(event) => setBrochureFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <label>
+                    <span className={labelClass}>Campus Video (YouTube link)</span>
+                    <input className={inputClass} placeholder="YouTube video link" value={collegeForm.campusVideoUrl} onChange={(event) => setCollegeForm((prev) => ({ ...prev, campusVideoUrl: event.target.value }))} />
+                  </label>
+                </div>
               </div>
-              {logoPreviewUrl ? (
-                <div className="mt-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Logo Preview</p>
-                  <div className="relative inline-block rounded-lg border border-slate-300 bg-white p-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLogoFile(null);
-                        setCollegeForm((prev) => ({ ...prev, logo: "" }));
-                      }}
-                      className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"
-                      aria-label="Remove logo"
-                    >
-                      X
-                    </button>
-                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded border border-slate-200 bg-slate-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={logoPreviewUrl}
-                        alt="College logo preview"
-                        className="h-16 w-16 rounded object-cover"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {coverImagePreviewUrl ? (
-                <div className="mt-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Cover Image Preview</p>
-                  <div className="relative inline-block rounded-lg border border-slate-300 bg-white p-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCoverImageFile(null);
-                        setCollegeForm((prev) => ({ ...prev, coverImage: "" }));
-                      }}
-                      className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"
-                      aria-label="Remove cover image"
-                    >
-                      X
-                    </button>
-                    <div className="flex h-16 w-24 items-center justify-center overflow-hidden rounded border border-slate-200 bg-slate-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={coverImagePreviewUrl}
-                        alt="College cover preview"
-                        className="h-16 w-24 rounded object-cover"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {collegeForm.images.length > 0 || collegeImagePreviews.length > 0 ? (
-                <div className="mt-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">College Image Preview</p>
-                  <div className="flex flex-wrap gap-2">
-                    {collegeForm.images.map((image, index) => (
-                      <div key={`existing-college-image-${index}`} className="relative rounded-lg border border-slate-300 bg-white p-1.5">
-                        <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={image} alt={`College preview ${index + 1}`} className="h-16 w-16 rounded object-cover" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeCollegeImageAt(index)}
-                          className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"
-                          aria-label={`Remove college image ${index + 1}`}
-                        >
-                          X
-                        </button>
-                      </div>
-                    ))}
-                    {collegeImagePreviews.map((item, index) => (
-                      <div key={`new-college-image-${item.key}`} className="relative rounded-lg border border-slate-300 bg-white p-1.5">
-                        <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.url} alt={item.name} className="h-16 w-16 rounded object-cover" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeCollegeImageAt(collegeForm.images.length + index)}
-                          className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"
-                          aria-label={`Remove new college image ${index + 1}`}
-                        >
-                          X
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
               {collegeForm.brochurePdfUrl ? (
                 <p className="mt-2 text-xs text-slate-500">
                   Brochure ready: {collegeForm.brochurePdfUrl}
@@ -8074,29 +8355,21 @@ function AdminPageContent() {
                         <ExternalLink className="size-4" />
                       </Link>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => openCollegeEditor(college)}
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
+                        className="inline-flex h-9 min-w-24 items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
                       >
                         <PencilLine className="size-4" />
                         Edit
                       </button>
                       <button
                         type="button"
-                        onClick={() => openCollegeEditor(college, 3)}
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[rgba(15,76,129,0.24)] bg-white px-3 py-2 text-xs font-semibold text-[#0f4c81] shadow-[0_10px_20px_rgba(148,163,184,0.12)] transition duration-200 hover:bg-[#eff6ff] hover:shadow-[0_12px_24px_rgba(59,130,246,0.14)]"
-                      >
-                        <ImageUp className="size-4" />
-                        Edit Images
-                      </button>
-                      <button
-                        type="button"
                         onClick={(event) => {
                           openDeleteCollegeDialog(college, event.currentTarget);
                         }}
-                        className="col-span-2 mx-auto inline-flex h-9 w-36 items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
+                        className="inline-flex h-9 min-w-24 items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
                       >
                         <Trash2 className="size-4" />
                         Delete
@@ -9460,21 +9733,21 @@ function AdminPageContent() {
               </div>
 
               <div className="grid gap-2 md:grid-cols-2">
-                {adminModules.map((module) => (
-                  <label key={module} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                {adminAccessSections.map((section) => (
+                  <label key={section.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
                     <input
                       type="checkbox"
-                      checked={subAdminForm.permissions.includes(module)}
+                      checked={subAdminForm.permissions.includes(section.id)}
                       onChange={(event) =>
                         setSubAdminForm((prev) => ({
                           ...prev,
                           permissions: event.target.checked
-                            ? [...new Set([...prev.permissions, module])]
-                            : prev.permissions.filter((item) => item !== module),
+                            ? [...new Set([...prev.permissions, section.id])]
+                            : prev.permissions.filter((item) => item !== section.id),
                         }))
                       }
                     />
-                    {adminModuleLabels[module] || module}
+                    {section.label}
                   </label>
                 ))}
               </div>
@@ -9495,7 +9768,7 @@ function AdminPageContent() {
               <article key={item._id} className="luxe-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <h3 className="font-bold text-slate-900">{item.email || "Sub-admin"}</h3>
-                  <p className="text-sm text-slate-500">{(item.permissions || []).join(", ") || "No permissions"}</p>
+                  <p className="text-sm text-slate-500">{formatAdminPermissionSummary(item.permissions)}</p>
                   <p className="text-sm text-slate-500">{item.mustResetPassword ? "Password setup pending" : "Ready"} • {formatDate(item.createdAt)}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">

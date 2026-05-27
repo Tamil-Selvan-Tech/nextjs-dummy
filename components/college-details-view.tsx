@@ -309,6 +309,12 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">We&apos;re preparing a great view for you.</p>
     </div>
   );
+  const brochureActionClassName =
+    "inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(37,99,235,0.18)] bg-[rgba(37,99,235,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(37,99,235,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm";
+  const compareActionClassName =
+    "inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm";
+  const utilityLinkClassName =
+    "inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm";
   const downloadBrochure = () => {
     if (brochureUrl) {
       const downloadUrl = college.id
@@ -824,31 +830,57 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     })}
                   </div>
 
-                  <div className="mt-auto space-y-2 pt-4">
-                  <div className={`grid gap-2 ${brochureUrl ? "grid-cols-2" : "grid-cols-1"} md:grid-cols-2`}>
+                  <div className="mt-auto pt-4">
                     {brochureUrl ? (
-                      <button type="button" onClick={downloadBrochure} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(37,99,235,0.18)] bg-[rgba(37,99,235,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(37,99,235,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
-                        <span className="sm:hidden">Brochure</span>
-                        <span className="hidden sm:inline">Download Brochure</span>
-                        <Download className="size-3.5 sm:size-4" />
-                      </button>
-                    ) : null}
-                    <button type="button" onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)} className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(255,138,61,0.18)] bg-[rgba(255,138,61,0.08)] px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-accent-deep)] transition hover:-translate-y-0.5 hover:bg-[rgba(255,138,61,0.12)] sm:h-auto sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
-                      <span className="sm:hidden">Compare</span>
-                      <span className="hidden sm:inline">Compare College</span>
-                      <ArrowRight className="size-3.5 sm:size-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
-                      <Globe className="size-3.5 sm:size-4" />
-                      Website
-                    </a>
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 text-[11px] font-semibold leading-4 text-[color:var(--brand-primary)] transition hover:-translate-y-0.5 hover:bg-[rgba(15,76,129,0.04)] sm:h-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
-                      <MapPin className="size-3.5 sm:size-4" />
-                      Map
-                    </a>
-                  </div>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2 md:gap-3">
+                          <button type="button" onClick={downloadBrochure} className={brochureActionClassName}>
+                            <span className="sm:hidden">Brochure</span>
+                            <span className="hidden sm:inline">Download Brochure</span>
+                            <Download className="size-3.5 sm:size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)}
+                            className={compareActionClassName}
+                          >
+                            <span className="sm:hidden">Compare</span>
+                            <span className="hidden sm:inline">Compare College</span>
+                            <ArrowRight className="size-3.5 sm:size-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 md:gap-3">
+                          <a href={websiteUrl} target="_blank" rel="noreferrer" className={utilityLinkClassName}>
+                            <Globe className="size-3.5 sm:size-4" />
+                            Website
+                          </a>
+                          <a href={mapUrl} target="_blank" rel="noreferrer" className={utilityLinkClassName}>
+                            <MapPin className="size-3.5 sm:size-4" />
+                            Map
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 md:gap-3">
+                        <a href={websiteUrl} target="_blank" rel="noreferrer" className={`${utilityLinkClassName} shrink-0 px-3 sm:px-4`}>
+                          <Globe className="size-3.5 sm:size-4" />
+                          Website
+                        </a>
+                        <a href={mapUrl} target="_blank" rel="noreferrer" className={`${utilityLinkClassName} shrink-0 px-3 sm:px-4`}>
+                          <MapPin className="size-3.5 sm:size-4" />
+                          Map
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/compare?college=${encodeURIComponent(college.id)}`)}
+                          className={`${compareActionClassName} flex-1 px-3 sm:px-5`}
+                        >
+                          <span className="sm:hidden">Compare</span>
+                          <span className="hidden sm:inline">Compare College</span>
+                          <ArrowRight className="size-3.5 sm:size-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
