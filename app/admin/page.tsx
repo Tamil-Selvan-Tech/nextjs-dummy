@@ -55,6 +55,7 @@ import {
   formatCompactIndianCurrency,
   formatCompactIndianCurrencyRange,
 } from "@/lib/currency-format";
+import { showToast } from "@/lib/toast";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
@@ -467,6 +468,17 @@ const formSectionClass = "grid gap-2 grid-cols-1 sm:gap-3 md:grid-cols-2 xl:grid
 const mediaUploadCardClass = "group relative overflow-hidden rounded-[1.5rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95))] p-4 shadow-[0_16px_34px_rgba(148,163,184,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(56,189,248,0.26)] hover:shadow-[0_22px_42px_rgba(125,211,252,0.14)]";
 const mediaUploadButtonClass = "inline-flex h-[110px] w-[110px] shrink-0 flex-col items-center justify-center gap-2 rounded-[1.15rem] border border-[rgba(15,23,42,0.08)] bg-white px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition duration-200 group-hover:border-[rgba(56,189,248,0.24)] group-hover:text-[#0f4c81]";
 const mediaPreviewTileClass = "group relative overflow-hidden rounded-[1.2rem] border border-[rgba(148,163,184,0.18)] bg-white p-2 shadow-[0_14px_28px_rgba(148,163,184,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(148,163,184,0.12)]";
+const inferToastTypeFromMessage = (message: string): "success" | "error" | "info" => {
+  const normalized = String(message || "").trim().toLowerCase();
+  if (!normalized) return "info";
+  if (/(unable|invalid|error|failed|expired|required|select |should be|must be|not authorized|not found|session|different email|reserved|already exists)/.test(normalized)) {
+    return "error";
+  }
+  if (/(saved|updated|deleted|processed|completed|added|sent|successful|created|validated|synced|ready)/.test(normalized)) {
+    return "success";
+  }
+  return "info";
+};
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
@@ -4012,7 +4024,14 @@ function AdminPageContent() {
   const [adminState, setAdminState] = useState<AdminState>(emptyState);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
-  const [statusText, setStatusText] = useState("");
+  const [statusState, setStatusState] = useState({ text: "", nonce: 0 });
+  const statusText = statusState.text;
+  const setStatusText = useCallback((nextText: string) => {
+    setStatusState((prev) => ({
+      text: String(nextText || ""),
+      nonce: prev.nonce + 1,
+    }));
+  }, []);
   const collegeFormRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCollegeForm, setShowCollegeForm] = useState(false);
@@ -4066,6 +4085,10 @@ function AdminPageContent() {
   const lastSeenNotificationAtRef = useRef(0);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
+  useEffect(() => {
+    if (!statusState.text.trim()) return;
+    showToast(statusState.text, inferToastTypeFromMessage(statusState.text));
+  }, [statusState]);
   const logoPreviewUrl = useMemo(
     () => (logoFile ? URL.createObjectURL(logoFile) : collegeForm.logo || ""),
     [collegeForm.logo, logoFile],
@@ -4427,7 +4450,7 @@ function AdminPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, setStatusText]);
 
   const handleBulkImportComplete = useCallback(async () => {
     if (!token) return;
@@ -5779,6 +5802,12 @@ function AdminPageContent() {
   const saveSubAdmin = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!token) return;
+    const normalizedSubAdminEmail = subAdminForm.email.trim().toLowerCase();
+    const normalizedCurrentAdminEmail = String(currentUser?.email || "").trim().toLowerCase();
+    if (normalizedSubAdminEmail && normalizedCurrentAdminEmail && normalizedSubAdminEmail === normalizedCurrentAdminEmail) {
+      setStatusText("This is admin mail. Please use a different email for sub admin.");
+      return;
+    }
 
     await runAction(editSubAdminId || "sub-admin-new", async () => {
       const data = await request(
@@ -5786,7 +5815,7 @@ function AdminPageContent() {
         withAuth(token, {
           method: editSubAdminId ? "PUT" : "POST",
           body: JSON.stringify({
-            email: subAdminForm.email.trim(),
+            email: normalizedSubAdminEmail,
             password: subAdminForm.password.trim(),
             permissions: subAdminForm.permissions,
           }),
@@ -9728,8 +9757,15 @@ function AdminPageContent() {
           {showSubAdminForm ? (
             <form onSubmit={saveSubAdmin} className="luxe-card space-y-4 p-5">
               <div className="grid gap-3 md:grid-cols-2">
-                <input className={inputClass} type="email" placeholder="Admin email" value={subAdminForm.email} onChange={(event) => setSubAdminForm((prev) => ({ ...prev, email: event.target.value }))} required />
-                <input className={inputClass} type="password" placeholder={editSubAdminId ? "New password (optional)" : "Password"} value={subAdminForm.password} onChange={(event) => setSubAdminForm((prev) => ({ ...prev, password: event.target.value }))} />
+                <label className="block">
+                  <span className={labelClass}>Sub Admin Mail</span>
+                  <input className={inputClass} type="email" placeholder="Enter sub admin email address" value={subAdminForm.email} onChange={(event) => setSubAdminForm((prev) => ({ ...prev, email: event.target.value }))} required />
+                  <span className="mt-1 block text-[11px] text-slate-500">Use a different mail id from the main admin email.</span>
+                </label>
+                <label className="block">
+                  <span className={labelClass}>Password</span>
+                  <input className={inputClass} type="password" placeholder={editSubAdminId ? "New password (optional)" : "Password"} value={subAdminForm.password} onChange={(event) => setSubAdminForm((prev) => ({ ...prev, password: event.target.value }))} />
+                </label>
               </div>
 
               <div className="grid gap-2 md:grid-cols-2">

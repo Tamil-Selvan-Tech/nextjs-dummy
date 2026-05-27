@@ -37,7 +37,10 @@ export function useStatusToast(status: ToastStatus, options?: ToastOptions) {
   const previousMessageRef = useRef("");
 
   useEffect(() => {
-    if (!status?.text) return;
+    if (!status?.text) {
+      previousMessageRef.current = "";
+      return;
+    }
     const key = `${status.type}:${status.text}`;
     if (previousMessageRef.current === key) return;
     previousMessageRef.current = key;
