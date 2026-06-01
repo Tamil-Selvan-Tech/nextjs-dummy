@@ -49,6 +49,7 @@ import {
   formatRankingRangeForDisplay,
   formatRankingRangeForSave,
   isValidRankingRange,
+  parseRankingRange,
   normalizeRankingRangeInput,
 } from "@/lib/ranking-utils";
 import {
@@ -908,9 +909,61 @@ const renderChangeValue = (value: unknown) => {
   return text || "Empty";
 };
 
+const stripTrailingZeroDecimal = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return raw.replace(/^(-?\d+)\.0+$/, "$1");
+};
+
+const isCutoffPreviewColumn = (column?: string) =>
+  column === "cutoff" || String(column || "").startsWith("cutoff_");
+
 const formatFeeRange = (value?: Record<string, unknown>) => {
   const tuition = ((value?.tuitionFee as Record<string, unknown> | undefined) || value || {}) as Record<string, unknown>;
-  return { min: String(tuition.minAmount ?? value?.minAmount ?? "").trim(), max: String(tuition.maxAmount ?? value?.maxAmount ?? "").trim() };
+  return {
+    min: stripTrailingZeroDecimal(tuition.minAmount ?? value?.minAmount ?? ""),
+    max: stripTrailingZeroDecimal(tuition.maxAmount ?? value?.maxAmount ?? ""),
+  };
+};
+
+const expandScientificInteger = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/[eE]/.test(raw)) return raw.replace(/\.0+$/, "");
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return raw;
+  const normalized = numeric.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: 0,
+  });
+  return normalized;
+};
+
+const normalizeRankingInteger = (value: string) => {
+  const raw = expandScientificInteger(String(value || "").trim());
+  if (!raw) return "";
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return raw.replace(/[^\d]/g, "");
+  return String(Math.trunc(numeric));
+};
+
+const formatPreviewCellValue = (value: unknown, column?: string) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return column === "accreditation" ? "Empty" : "-";
+  if (column === "phoneNumber" || column === "alternatePhone" || column === "pincode") return expandScientificInteger(raw);
+  if (isCutoffPreviewColumn(column)) return raw;
+  if (/^-?\d+\.0+$/.test(raw)) return stripTrailingZeroDecimal(raw);
+  if (/^\d+$/.test(raw) && raw.length > 1 && raw.startsWith("0")) return raw;
+  return raw;
+};
+
+const normalizeScientificInteger = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/[eE]/.test(raw)) return raw.replace(/\.0+$/, "");
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return raw;
+  return parsed.toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 0 });
 };
 
 const buildFeeRange = (min: string, max: string) => ({
@@ -1424,30 +1477,6 @@ function BulkUploadDashboard({
     for (const collegeRow of colleges) {
       const collegeCode = String(collegeRow[collegeCodeKey] || "").trim();
       if (!collegeCode) continue;
-
-      const inferredMedia = inferZipMediaForCollege(zipAssetIndex, collegeCode, hasSingleCollege);
-
-      if (!String(collegeRow[logoImageKey] || "").trim() && inferredMedia.logoImage) {
-        collegeRow[logoImageKey] = inferredMedia.logoImage;
-      }
-      if (!String(collegeRow[coverImageKey] || "").trim() && inferredMedia.coverImage) {
-        collegeRow[coverImageKey] = inferredMedia.coverImage;
-      }
-      if (!String(collegeRow[brochurePdfKey] || "").trim() && inferredMedia.brochurePdf) {
-        collegeRow[brochurePdfKey] = inferredMedia.brochurePdf;
-      }
-
-      for (const galleryImage of inferredMedia.galleryImages) {
-        const galleryKey = `${collegeCode.toLowerCase()}|${normalizeZipPath(galleryImage.imageName)}`;
-        if (existingImageKeys.has(galleryKey)) continue;
-
-        collegeImages.push({
-          [collegeCodeKey]: collegeCode,
-          [imageTypeKey]: galleryImage.imageType,
-          [imageNameKey]: galleryImage.imageName,
-        });
-        existingImageKeys.add(galleryKey);
-      }
     }
 
     nextSheets.set("colleges", colleges);
@@ -1639,6 +1668,12 @@ function BulkUploadDashboard({
     const parsed = Number(match[0]);
     return Number.isFinite(parsed) ? parsed : undefined;
   };
+  const normalizeIntegerishValue = (value: string) => {
+    const raw = String(value || "").trim().replace(/,/g, "");
+    if (!raw) return "";
+    if (/^\d+\.0+$/.test(raw)) return raw.replace(/\.0+$/, "");
+    return raw;
+  };
   const isFlexibleBooleanValue = (value: string) => {
     const normalized = String(value || "").trim().toLowerCase();
     return !normalized || ["true", "false", "yes", "no", "1", "0", "available", "not_available", "not available"].includes(normalized);
@@ -1650,13 +1685,15 @@ function BulkUploadDashboard({
   const isValidPhoneValue = (value: string) => {
     const raw = String(value || "").trim();
     if (!raw) return true;
-    const digits = raw.replace(/\D/g, "");
+    const digits = normalizeScientificInteger(raw).replace(/\D/g, "");
+    if (/^\d{10}$/.test(digits)) return true;
+    if (digits.length === 11 && digits.startsWith("0")) return true;
     const normalized = digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
     return /^\d{10}$/.test(normalized);
   };
   const isValidPincodeValue = (value: string) => {
-    const raw = String(value || "").trim();
-    return !raw || /^\d{6}$/.test(raw.replace(/\s/g, ""));
+    const raw = normalizeScientificInteger(normalizeIntegerishValue(value)).replace(/\s/g, "");
+    return !raw || /^\d{6}$/.test(raw);
   };
   const isValidUrlValue = (value: string) => {
     const raw = String(value || "").trim();
@@ -1675,7 +1712,7 @@ function BulkUploadDashboard({
     return year !== undefined && year >= 1800 && year <= new Date().getFullYear() + 1;
   };
   const isStrictIntegerValue = (value: string) => {
-    const raw = String(value || "").trim();
+    const raw = normalizeScientificInteger(normalizeIntegerishValue(value));
     return !raw || /^\d+$/.test(raw);
   };
   const isValidDurationValue = (value: string) => {
@@ -1689,19 +1726,18 @@ function BulkUploadDashboard({
     return collegeAccreditationOptionSet.has(normalizeAccreditationOptionValue(raw));
   };
   const getBulkRankingValidationMessage = (value: string) => {
-    const normalized = normalizeRankingRangeInput(String(value || "")).replace(/\s+/g, "");
+    const normalized = String(value || "").trim();
     if (!normalized) return "";
-    const [startText = "", endText = ""] = normalized.split("-");
+    const [startText = "", endText = ""] = normalized.split("-").map((item) => normalizeRankingInteger(item));
     if (!startText || !endText) return "Both rankingMin and rankingMax are required when entering ranking";
-    return "rankingMin must be less than or equal to rankingMax";
+    if (Number(startText) > Number(endText)) return "rankingMin must be less than or equal to rankingMax";
+    return "";
   };
   const isValidBulkRankingValue = (value: string) => {
-    const normalized = normalizeRankingRangeInput(String(value || "")).replace(/\s+/g, "");
+    const normalized = String(value || "").trim();
     if (!normalized) return true;
-    const [startText = "", endText = ""] = normalized.split("-");
-    if (!startText && !endText) return true;
-    if (!startText || !endText) return false;
-    return isValidRankingRange(`${startText}-${endText}`);
+    const [startText = "", endText = ""] = normalized.split("-").map((item) => normalizeRankingInteger(item));
+    return Boolean(startText && endText && Number.isFinite(Number(startText)) && Number.isFinite(Number(endText)));
   };
   const isNumberWithinRange = (value: string, minimum: number, maximum: number) => {
     const parsed = parseLooseNumber(value);
@@ -1718,8 +1754,9 @@ function BulkUploadDashboard({
       ? bulkSheetColumns.colleges.flatMap((column) => (column === "ranking" ? ["rankingMin", "rankingMax"] : [column]))
       : bulkSheetColumns[sheet];
   const getPreviewRankingRangeValues = (rankingValue: string) => {
-    const normalized = normalizeRankingRangeInput(rankingValue);
-    const [rankingMin = "", rankingMax = ""] = normalized.split("-");
+    const normalized = String(rankingValue || "").trim();
+    if (!normalized) return { rankingMin: "", rankingMax: "" };
+    const [rankingMin = "", rankingMax = ""] = normalized.split("-").map((item) => normalizeRankingInteger(item));
     return { rankingMin, rankingMax };
   };
   const createFieldIssue = (level: BulkFieldIssueLevel, message: string): BulkFieldIssue => ({
@@ -1807,6 +1844,31 @@ function BulkUploadDashboard({
     }, {});
     const collegeCodes = new Set(Object.keys(collegeCodeCounts));
     const courseNames = new Set(courses.map((row) => String(row.data.courseName || "").trim().toLowerCase()).filter(Boolean));
+    const courseNameTokens = new Set(
+      courses.flatMap((row) =>
+        String(row.data.courseName || "")
+          .split(/[,\/|]/)
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    const courseNameList = (value: string) =>
+      String(value || "")
+        .split(/[,\/|]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const isValidEntranceExamCourseName = (value: string) => {
+      const names = courseNameList(value);
+      if (names.length === 0) return true;
+      return names.every((name) => {
+        const normalizedName = name.toLowerCase();
+        if (courseNames.has(normalizedName) || courseNameTokens.has(normalizedName)) return true;
+        return [...courseNames, ...courseNameTokens].some((courseName) => {
+          const courseTokens = courseName.split(/[,\/|]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
+          return courseTokens.includes(normalizedName) || normalizedName.includes(courseName);
+        });
+      });
+    };
     const imageCountByCollege = collegeImages.reduce<Record<string, number>>((counts, row) => {
       const code = String(row.data.collegeCode || "").trim().toLowerCase();
       if (code) counts[code] = (counts[code] || 0) + 1;
@@ -1923,7 +1985,6 @@ function BulkUploadDashboard({
             addFieldIssue(fieldIssues, "cutoff_oc", "invalid", message);
           }
         });
-        if (!hasAnyBulkCutoffValue(rowData)) addFieldIssue(fieldIssues, "cutoff_oc", "missing", "At least one cutoff value is required");
         if (!isTrueFalsePreviewCell("lateralEntry")) addFieldIssue(fieldIssues, "lateralEntry", "invalid", "lateralEntry must be TRUE or FALSE");
         if (!isTrueFalsePreviewCell("bestCourse")) addFieldIssue(fieldIssues, "bestCourse", "invalid", "bestCourse must be TRUE or FALSE");
         if (parseLooseNumber(cell("semesterFees")) !== undefined && parseLooseNumber(cell("totalFees")) !== undefined && (parseLooseNumber(cell("semesterFees")) || 0) > (parseLooseNumber(cell("totalFees")) || 0)) {
@@ -1940,9 +2001,6 @@ function BulkUploadDashboard({
         if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
           addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
         }
-        if (isFilledCell("courseName") && !courseNames.has(cell("courseName").toLowerCase())) {
-          addFieldIssue(fieldIssues, "courseName", "invalid", "courseName does not exist in Courses sheet");
-        }
         numeric.forEach((column) => {
           if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
         });
@@ -1954,7 +2012,6 @@ function BulkUploadDashboard({
             addFieldIssue(fieldIssues, "cutoff_oc_min", "invalid", message);
           }
         });
-        if (!hasAnyBulkCutoffValue(rowData, bulkRangeCutoffColumns)) addFieldIssue(fieldIssues, "cutoff_oc_min", "missing", "At least one cutoff range is required");
         if (!isNumberWithinRange(cell("examWeightage"), 0, 100)) addFieldIssue(fieldIssues, "examWeightage", "invalid", "examWeightage must be between 0 and 100");
       }
 
@@ -1984,7 +2041,12 @@ function BulkUploadDashboard({
 
       return {
         ...row,
-        status: errors.some((message) => !reviewErrors.includes(message)) ? "Invalid" : reviewErrors.length ? "Review" : "Valid",
+        status:
+          errors.some((message) => !reviewErrors.includes(message))
+            ? "Invalid"
+            : reviewErrors.length && !Object.keys(fieldIssues).every((column) => ["logoImage", "coverImage"].includes(column))
+              ? "Review"
+              : "Valid",
         errors,
         fieldIssues,
       };
@@ -2005,7 +2067,10 @@ function BulkUploadDashboard({
     const makeRow = (sheet: BulkSheetKey, row: Record<string, string>, index: number): Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data"> => {
       const data = Object.fromEntries(bulkSheetColumns[sheet].map((column) => [column, cellValue(row, column)]));
       if (sheet === "colleges") {
-        data.ranking = cellValue(row, "ranking") || normalizeRankingRangeInput(`${cellValue(row, "rankingMin")}-${cellValue(row, "rankingMax")}`);
+        const rankingValue = cellValue(row, "ranking");
+        const rankingMinValue = cellValue(row, "rankingMin");
+        const rankingMaxValue = cellValue(row, "rankingMax");
+        data.ranking = rankingValue || (rankingMinValue || rankingMaxValue ? `${normalizeRankingInteger(rankingMinValue)}-${normalizeRankingInteger(rankingMaxValue)}` : "");
       }
 
       return {
@@ -2514,17 +2579,6 @@ function BulkUploadDashboard({
       return "w-52 min-w-52";
     }
     return "w-48 min-w-48";
-  };
-  const getCollegeInitials = (row: BulkPreviewRow) => {
-    const source = row.data.collegeName || row.data.collegeCode || "College";
-    const initials = String(source)
-      .split(/\s+/)
-      .map((part) => part.trim()[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
-    return initials || "CL";
   };
   const errorItems = useMemo(
     () =>
@@ -3438,7 +3492,7 @@ function BulkUploadDashboard({
             </div>
           </div>
 
-          <div className="responsive-data-table max-w-full overflow-auto pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
+          <div className="responsive-data-table max-h-[58vh] max-w-full overflow-auto rounded-[1.1rem] border border-[#e7eefb] bg-white pb-2 [scrollbar-color:#31509c_#dbe6f8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#31509c] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#dbe6f8]">
             <table className="min-w-max border-separate border-spacing-0 text-left text-xs">
               <thead className="bg-[#f3f5ff] text-[#10235d]">
                 <tr>
@@ -3486,21 +3540,12 @@ function BulkUploadDashboard({
                           )
                         : null;
                       const previewUrl = previewAsset ? mediaPreviewUrls[previewAsset.normalizedPath] : "";
-                      const brochureDisplayName =
-                        column === "brochurePdf"
-                          ? previewAsset?.normalizedName || normalizeZipName(value) || "brochure.pdf"
-                          : "";
-                      const brochureDisplayPath =
-                        column === "brochurePdf"
-                          ? previewAsset?.normalizedPath || (isRemoteAssetReference(value) ? value : normalizeZipPath(value))
-                          : "";
                       const isBooleanColumn = ["cctvAvailability", "isBestCollege", "lateralEntry", "bestCourse"].includes(column);
                       const isEditing = editingRowId === row.id;
                       const issueColumn = column === "rankingMin" || column === "rankingMax" ? "ranking" : column;
                       const fieldIssue = row.fieldIssues[issueColumn];
                       const fieldIssueMessage = fieldIssue?.messages.join(" | ") || "";
                       const editingFieldKey = `${row.id}-${column}`;
-                      const collegeInitials = getCollegeInitials(row);
                       const issueLabel =
                         fieldIssue?.level === "missing"
                           ? "Missing"
@@ -3510,9 +3555,11 @@ function BulkUploadDashboard({
                               ? "Duplicate"
                               : fieldIssue?.level === "exists"
                                 ? "Already Exists"
-                                : fieldIssue?.level === "review"
-                                  ? "Review"
-                                  : "";
+                              : fieldIssue?.level === "review"
+                                ? ["logoImage", "coverImage"].includes(column)
+                                  ? "Missing"
+                                  : "Review"
+                                : "";
                       const issueClassName =
                         fieldIssue?.level === "missing"
                           ? "bg-[#fff4e5] text-[#b45309]"
@@ -3521,6 +3568,8 @@ function BulkUploadDashboard({
                             : fieldIssue?.level === "duplicate" || fieldIssue?.level === "exists"
                               ? "bg-[#fff1f1] text-[#c81e1e]"
                               : "bg-[#fff7e6] text-[#e8790a]";
+                      const displayValue = formatPreviewCellValue(value, column);
+                      const isAssetValueColumn = isImagePreviewColumn || column === "brochurePdf";
                       return (
                         <td key={`${row.id}-${column}`} className={`${getPreviewColumnWidthClass(column)} border-r border-[#edf2fb] px-3 py-3 align-top font-bold`}>
                           {isEditing ? (
@@ -3569,88 +3618,40 @@ function BulkUploadDashboard({
                             </div>
                           ) : isBooleanColumn ? (
                             <input type="checkbox" checked={isCheckedPreviewBoolean(value)} readOnly className="size-4 accent-[#4f32f6]" />
-                          ) : isImagePreviewColumn && previewUrl ? (
+                          ) : isAssetValueColumn ? (
                             <div className="space-y-2">
-                              <span className="flex min-w-24 items-center gap-2">
-                                {/* Blob URLs from uploaded ZIP files cannot be optimized by next/image. */}
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={previewUrl}
-                                  alt={value}
-                                  className="h-12 w-20 rounded-md border border-[#dbe6f8] object-cover"
-                                />
+                              <span
+                                className={`block min-w-0 whitespace-normal break-all leading-5 ${fieldIssue ? "text-[#10235d]" : ""}`}
+                                title={displayValue}
+                              >
+                                {displayValue === "-"
+                                  ? fieldIssue?.level === "missing"
+                                    ? "Missing"
+                                    : "-"
+                                  : displayValue}
                               </span>
-                              {fieldIssue ? (
-                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
-                                  {issueLabel}
+                              {previewUrl && isImagePreviewColumn ? (
+                                <span className="flex min-w-24 items-center gap-2">
+                                  {/* Blob URLs from uploaded ZIP files cannot be optimized by next/image. */}
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={previewUrl}
+                                    alt={value}
+                                    className="h-12 w-20 rounded-md border border-[#dbe6f8] object-cover"
+                                  />
                                 </span>
                               ) : null}
-                            </div>
-                          ) : column === "logoImage" ? (
-                            <div className="space-y-2">
-                              <CollegeLogoBadge
-                                alt={`${row.data.collegeName || row.data.collegeCode || "College"} logo`}
-                                className="h-14 w-14 rounded-xl"
-                                fallback={<span className="text-base font-black tracking-wide">{collegeInitials}</span>}
-                              />
-                              {fieldIssue ? (
-                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
-                                  {issueLabel}
-                                </span>
+                              {column === "brochurePdf" && isRemoteAssetReference(value) ? (
+                                <a
+                                  href={value}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white"
+                                >
+                                  Open File
+                                  <ExternalLink className="size-3" />
+                                </a>
                               ) : null}
-                            </div>
-                          ) : column === "coverImage" ? (
-                            <div className="space-y-2">
-                              <div className="relative h-20 w-40 overflow-hidden rounded-xl border border-blue-100 bg-[linear-gradient(135deg,#f8fbff_0%,#e8f3ff_55%,#dcecff_100%)] shadow-[0_8px_18px_rgba(37,99,235,0.08)]">
-                                <div className="absolute inset-x-0 bottom-0 h-9 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(147,197,253,0.35)_100%)]" />
-                                <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-blue-900">
-                                  <Building2 className="size-7 text-blue-600" />
-                                  <span className="mt-1 text-[11px] font-black leading-4">Campus Visual</span>
-                                  <span className="mt-1 rounded-md bg-blue-700 px-2.5 py-1 text-[10px] font-black text-white">
-                                    {collegeInitials}
-                                  </span>
-                                </div>
-                              </div>
-                              {fieldIssue ? (
-                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}>
-                                  {issueLabel}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : column === "brochurePdf" && value ? (
-                            <div className="space-y-2">
-                              <div className="rounded-xl border border-sky-100 bg-[linear-gradient(135deg,#f8fbff_0%,#eff6ff_55%,#e0f2fe_100%)] p-3 shadow-[0_8px_18px_rgba(14,116,144,0.08)]">
-                                <div className="flex items-start gap-3">
-                                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-[0_10px_20px_rgba(2,132,199,0.22)]">
-                                    <Download className="size-4" />
-                                  </span>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-sky-700">Brochure PDF</p>
-                                    <p className="mt-1 truncate text-sm font-black text-slate-900" title={brochureDisplayName}>
-                                      {brochureDisplayName}
-                                    </p>
-                                    <p className="mt-1 break-all text-[11px] font-semibold leading-4 text-slate-600" title={brochureDisplayPath}>
-                                      {brochureDisplayPath}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="mt-3 flex flex-wrap items-center gap-2">
-                                  <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 ring-1 ring-sky-100">
-                                    {previewAsset ? "Matched in ZIP" : isRemoteAssetReference(value) ? "Remote URL" : "Sample PDF"}
-                                  </span>
-                                  {isRemoteAssetReference(value) ? (
-                                    <a
-                                      href={value}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white"
-                                    >
-                                      Open File
-                                      <ExternalLink className="size-3" />
-                                    </a>
-                                  ) : null}
-                                </div>
-                              </div>
                               {fieldIssue ? (
                                 <span
                                   className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] ${issueClassName}`}
@@ -3662,8 +3663,15 @@ function BulkUploadDashboard({
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              <span className={`block min-w-0 whitespace-normal break-normal leading-5 [overflow-wrap:normal] ${fieldIssue ? "text-[#10235d]" : ""}`} title={value || "-"}>
-                                {value || (fieldIssue?.level === "missing" ? "Missing" : "-")}
+                              <span
+                                className={`block min-w-0 whitespace-normal break-normal leading-5 [overflow-wrap:normal] ${fieldIssue ? "text-[#10235d]" : ""}`}
+                                title={formatPreviewCellValue(value, column)}
+                              >
+                                {formatPreviewCellValue(value, column) === "-"
+                                  ? fieldIssue?.level === "missing"
+                                    ? "Missing"
+                                    : "-"
+                                  : formatPreviewCellValue(value, column)}
                               </span>
                               {fieldIssue ? (
                                 <span
@@ -3723,38 +3731,50 @@ function BulkUploadDashboard({
           </div>
 
           {detailRows.length > 0 && (
-            <div className="flex items-center justify-between border-t border-[#e7eefb] bg-white px-4 py-3">
+            <div className="flex flex-col gap-3 border-t border-[#e7eefb] bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs font-bold text-[#10235d]">
                 Showing {startIndex + 1} to {Math.min(endIndex, detailRows.length)} of {detailRows.length} records
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex max-w-full items-center gap-1 overflow-x-auto pb-1 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => setCurrentDetailPage(Math.max(1, currentDetailPage - 1))}
                   disabled={currentDetailPage === 1}
-                  className="rounded-md border border-[#dbe6f8] bg-white px-3 py-2 text-xs font-extrabold text-[#31509c] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f3f5ff]"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-[#dbe6f8] bg-white px-3 text-xs font-extrabold text-[#31509c] transition hover:bg-[#f3f5ff] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Previous
+                  Prev
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => setCurrentDetailPage(page)}
-                    className={`rounded-md px-3 py-2 text-xs font-extrabold ${
-                      currentDetailPage === page
-                        ? "bg-[#4f32f6] text-white"
-                        : "border border-[#dbe6f8] bg-white text-[#31509c] hover:bg-[#f3f5ff]"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {(() => {
+                  const visiblePages = new Set<number>([1, totalPages, currentDetailPage - 1, currentDetailPage, currentDetailPage + 1]);
+                  const pages = Array.from(visiblePages)
+                    .filter((page) => page >= 1 && page <= totalPages)
+                    .sort((left, right) => left - right);
+                  return pages.map((page, index) => {
+                    const previousPage = pages[index - 1];
+                    const needsGap = previousPage && page - previousPage > 1;
+                    return (
+                      <div key={page} className="flex items-center gap-1">
+                        {needsGap ? <span className="px-1 text-sm font-black text-[#7a8ab3]">...</span> : null}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentDetailPage(page)}
+                          className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-xs font-extrabold transition ${
+                            currentDetailPage === page
+                              ? "border-[#4f32f6] bg-[#4f32f6] text-white shadow-[0_10px_18px_rgba(79,50,246,0.18)]"
+                              : "border-[#dbe6f8] bg-white text-[#31509c] hover:bg-[#f3f5ff]"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
                 <button
                   type="button"
                   onClick={() => setCurrentDetailPage(Math.min(totalPages, currentDetailPage + 1))}
                   disabled={currentDetailPage === totalPages}
-                  className="rounded-md border border-[#dbe6f8] bg-white px-3 py-2 text-xs font-extrabold text-[#31509c] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f3f5ff]"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-[#dbe6f8] bg-white px-3 text-xs font-extrabold text-[#31509c] transition hover:bg-[#f3f5ff] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -4697,7 +4717,7 @@ function AdminPageContent() {
     setEmbeddedCourses(buildEmbeddedCoursesForCollege(college._id));
     setCollegeForm({
       name: college.name || "",
-      establishedYear: String(college.establishedYear || ""),
+      establishedYear: stripTrailingZeroDecimal(college.establishedYear),
       ownershipType: college.ownershipType || "",
       university: college.university || "",
       country: college.country || "India",
@@ -4711,7 +4731,7 @@ function AdminPageContent() {
       admissionProcess: college.admissionProcess || "",
       applicationMode: college.applicationMode || "",
       ranking: formatRankingRangeForSave(String(college.ranking || "")),
-      placementRate: String(placementData.placementRate ?? college.placementRate ?? ""),
+      placementRate: stripTrailingZeroDecimal(placementData.placementRate ?? college.placementRate ?? ""),
       feeMin: rangeData.min,
       feeMax: rangeData.max,
       locationLink: college.locationLink || college.mapUrl || "",
@@ -4732,13 +4752,13 @@ function AdminPageContent() {
       courseTags: college.courseTags || "",
       facilities: Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || ""),
       scholarships: college.scholarships || "",
-      highestPackage: String(placementData.highestPackage || ""),
-      averagePackage: String(placementData.averagePackage || ""),
-      companiesVisited: String(placementData.companiesVisited || ""),
+      highestPackage: stripTrailingZeroDecimal(placementData.highestPackage || ""),
+      averagePackage: stripTrailingZeroDecimal(placementData.averagePackage || ""),
+      companiesVisited: stripTrailingZeroDecimal(placementData.companiesVisited || ""),
       hostelAvailability: hostelData.availability || "not_available",
       hostelType: hostelData.hostelType || "",
-      hostelFeeMin: String(hostelFees.minAmount || ""),
-      hostelFeeMax: String(hostelFees.maxAmount || ""),
+      hostelFeeMin: stripTrailingZeroDecimal(hostelFees.minAmount || ""),
+      hostelFeeMax: stripTrailingZeroDecimal(hostelFees.maxAmount || ""),
       cctvAvailable: String(hostelData.cctvAvailable || ""),
       boysRoomsCount: String(hostelData.boysRoomsCount || ""),
       girlsRoomsCount: String(hostelData.girlsRoomsCount || ""),
@@ -10138,6 +10158,7 @@ function AdminPageContent() {
                     key: "intake",
                     label: "Intake",
                     className: "whitespace-nowrap",
+                    render: (value) => formatPreviewCellValue(value, "intake"),
                   },
                   {
                     key: "applicationFee",

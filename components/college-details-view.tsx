@@ -562,13 +562,16 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     printWindow.document.close();
   };
 
+  const accreditationDisplay = college.accreditation?.trim() || "";
   const topInfoCards = [
     { label: "Ranking", value: fixedRankingDisplay, icon: Trophy },
     { label: "Placement", value: placementRateDisplay, icon: BadgeCheck },
     { label: "Courses", value: String(courseCount), icon: BookOpen },
     { label: "Application Mode", value: college.applicationMode?.trim() || "Not available", icon: BadgeCheck },
     { label: "Hostel", value: hasHostel ? "Available" : "No", icon: Building2 },
-    { label: "Accreditation", value: college.accreditation, icon: ShieldCheck },
+    ...(accreditationDisplay
+      ? [{ label: "Accreditation", value: accreditationDisplay, icon: ShieldCheck }]
+      : []),
   ];
   const topInfoCardMobileOrder: Record<string, string> = {
     Placement: "order-1 sm:order-none",

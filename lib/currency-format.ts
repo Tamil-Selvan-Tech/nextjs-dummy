@@ -16,7 +16,7 @@ const toNumericValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 };
 
-const trimTrailingZeros = (value: string) => value.replace(/\.0+$|(\.\d*[1-9])0+$/, "$1");
+const trimTrailingZeros = (value: string) => value.replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
 
 export const formatCompactIndianCurrency = (
   value: unknown,

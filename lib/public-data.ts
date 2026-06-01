@@ -29,6 +29,12 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const stripTrailingZeroDecimal = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return raw.replace(/^(-?\d+)\.0+$/, "$1");
+};
+
 const toCutoffText = (value: unknown) => {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
@@ -451,7 +457,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       name: String(item.name || "College"),
       university: String(item.university || ""),
       description: String(item.description || "College information will appear here."),
-      establishedYear: String(item.establishedYear || ""),
+      establishedYear: stripTrailingZeroDecimal(item.establishedYear),
       ownershipType: String(
         item.ownershipType ||
           item.ownership ||
@@ -474,7 +480,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       logo: String(item.logo || ""),
       isBestCollege: Boolean(item.isBestCollege || item.isTopCollege),
       isTopCollege: Boolean(item.isTopCollege || item.isBestCollege),
-      accreditation: String(item.accreditation || "Not available"),
+      accreditation: String(item.accreditation || "").trim(),
       ranking: String(item.ranking || "Not ranked"),
       placementRate: toNumber(placementRate),
       hasHostel,
