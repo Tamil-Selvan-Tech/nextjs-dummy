@@ -271,14 +271,13 @@ export function CollegeDataUploadModern({
         <p className="mt-1 text-sm text-slate-600">Excel validated. Upload images to verify media files.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {[
-          { label: "Total Records", value: stats.totalRecords, color: "bg-blue-50 text-blue-700", dot: "bg-blue-600" },
-          { label: "Valid Records", value: stats.validRecords, color: "bg-green-50 text-green-700", dot: "bg-green-600" },
-          { label: "Failed Records", value: stats.failedRecords, color: "bg-red-50 text-red-700", dot: "bg-red-600" },
-          { label: "Invalid Records", value: stats.invalidRecords, color: "bg-orange-50 text-orange-700", dot: "bg-orange-600" },
-          { label: "Duplicates", value: stats.duplicates, color: "bg-yellow-50 text-yellow-700", dot: "bg-yellow-600" },
-          { label: "Pending Review", value: stats.pendingReview, color: "bg-purple-50 text-purple-700", dot: "bg-purple-600" },
+          { label: "Total Colleges", value: stats.totalRecords, color: "bg-blue-50 text-blue-700", dot: "bg-blue-600" },
+          { label: "Valid Colleges", value: stats.validRecords, color: "bg-green-50 text-green-700", dot: "bg-green-600" },
+          { label: "Failed Colleges", value: stats.failedRecords, color: "bg-red-50 text-red-700", dot: "bg-red-600" },
+          { label: "Invalid Colleges", value: stats.invalidRecords, color: "bg-orange-50 text-orange-700", dot: "bg-orange-600" },
+          { label: "Duplicate Colleges", value: stats.duplicates, color: "bg-yellow-50 text-yellow-700", dot: "bg-yellow-600" },
         ].map((stat, idx) => (
           <div key={idx} className={`rounded-xl ${stat.color} p-4`}>
             <p className="text-xs font-medium opacity-75">{stat.label}</p>

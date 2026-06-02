@@ -1034,7 +1034,8 @@ const parseCollegeCodeSequence = (value: string) => {
   };
 };
 const normalizeAccreditationOptionValue = (value: string) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
-const collegeAccreditationOptionSet = new Set(COLLEGE_ACCREDITATION_OPTIONS.map(normalizeAccreditationOptionValue));
+const bulkEmptyLikeValues = new Set(["", "-", "na", "n/a", "none", "null", "not applicable", "not available"]);
+const isBulkEmptyLikeValue = (value: string) => bulkEmptyLikeValues.has(normalizeAccreditationOptionValue(value));
 const bulkCutoffCategories = ["OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"] as const;
 const bulkCutoffCategoryKeyMap = Object.fromEntries(
   bulkCutoffCategories.map((category) => [category, category.toLowerCase()]),
@@ -1077,6 +1078,85 @@ const bulkColumnAliases: Record<string, string> = {
   specifiedpaperorsyllabus: "specifiedsubjects",
   rankingmin: "rankingmin",
   rankingmax: "rankingmax",
+};
+
+const bulkSheetColumnAliases: Partial<Record<BulkSheetKey, Record<string, string>>> = {
+  colleges: {
+    name: "collegeName",
+    collegename: "collegeName",
+    collegeid: "collegeCode",
+    email: "officialEmail",
+    contactemail: "officialEmail",
+    phone: "phoneNumber",
+    contactphone: "phoneNumber",
+    mobile: "phoneNumber",
+    website: "websiteUrl",
+    locationlink: "googleMapUrl",
+    mapurl: "googleMapUrl",
+    logo: "logoImage",
+    cover: "coverImage",
+    brochure: "brochurePdf",
+    placementrate: "placementPercentage",
+    minrank: "rankingMin",
+    minimumrank: "rankingMin",
+    rankmin: "rankingMin",
+    maxrank: "rankingMax",
+    maximumrank: "rankingMax",
+    rankmax: "rankingMax",
+    rankingminimum: "rankingMin",
+    rankingmaximum: "rankingMax",
+  },
+  courses: {
+    course: "courseName",
+    coursename: "courseName",
+    collegeid: "collegeCode",
+    seats: "allottedSeats",
+    seat: "allottedSeats",
+    intake: "allottedSeats",
+    allottedseat: "allottedSeats",
+    allottedseats: "allottedSeats",
+    allotedseat: "allottedSeats",
+    allotedseats: "allottedSeats",
+    applicationfee: "applicationFee",
+    applicationfees: "applicationFee",
+    semesterfee: "semesterFees",
+    semesterfees: "semesterFees",
+    totalfee: "totalFees",
+    totalfees: "totalFees",
+    description: "courseDescription",
+  },
+  entranceexams: {
+    exam: "examName",
+    examname: "examName",
+    collegeid: "collegeCode",
+    course: "courseName",
+    weightage: "examWeightage",
+    subjects: "specifiedSubjects",
+    syllabus: "specifiedSubjects",
+    notes: "preparationNotes",
+  },
+  collegeimages: {
+    collegeid: "collegeCode",
+    type: "imageType",
+    image: "imageName",
+    name: "imageName",
+    filename: "imageName",
+  },
+};
+
+const bulkSheetNameAliases: Record<string, BulkSheetKey> = {
+  college: "colleges",
+  colleges: "colleges",
+  course: "courses",
+  courses: "courses",
+  entranceexam: "entranceexams",
+  entranceexams: "entranceexams",
+  enteranceexam: "entranceexams",
+  enteranceexams: "entranceexams",
+  enterenceexam: "entranceexams",
+  enterenceexams: "entranceexams",
+  collegeimage: "collegeimages",
+  collegeimages: "collegeimages",
 };
 
 function BulkUploadDashboard({
@@ -1173,10 +1253,8 @@ function BulkUploadDashboard({
         }
         return current.code.localeCompare(best.code) > 0 ? current : best;
       });
-      const nextSuggestedCode = `${highestCode.prefix}${String(highestCode.numericValue + 1).padStart(highestCode.padLength, "0")}`;
       return {
         lastCode: highestCode.code,
-        nextSuggestedCode,
       };
     }
 
@@ -1188,7 +1266,6 @@ function BulkUploadDashboard({
 
     return {
       lastCode: fallbackCode || "",
-      nextSuggestedCode: "",
     };
   }, [existingColleges]);
   const uploadCards = [
@@ -1520,16 +1597,50 @@ function BulkUploadDashboard({
     return rows;
   };
 
-  const rowsToObjects = (rows: string[][]) => {
-    const [headerRow = [], ...dataRows] = rows;
-    const headers = headerRow.map((item) => {
-      const normalized = normalizeUploadKey(item);
-      return bulkColumnAliases[normalized] || normalized;
+  const resolveBulkSheetKey = (value: string): BulkSheetKey | undefined =>
+    bulkSheetNameAliases[normalizeUploadKey(value)];
+
+  const getSchemaHeaderKey = (header: string, sheet?: BulkSheetKey) => {
+    const normalized = normalizeUploadKey(header);
+    if (!normalized) return "";
+
+    const sheetAlias = sheet ? bulkSheetColumnAliases[sheet]?.[normalized] : "";
+    const globalAlias = bulkColumnAliases[normalized];
+    const aliasTarget = sheetAlias || globalAlias;
+    if (aliasTarget) return normalizeUploadKey(aliasTarget);
+
+    const schemaColumns = sheet ? bulkSheetColumns[sheet] : Object.values(bulkSheetColumns).flat();
+    const schemaColumn = schemaColumns.find((column) => normalizeUploadKey(column) === normalized);
+    return schemaColumn ? normalizeUploadKey(schemaColumn) : "";
+  };
+
+  const getUploadHeaderKey = (header: string, sheet?: BulkSheetKey) => {
+    const knownKey = getSchemaHeaderKey(header, sheet);
+    return knownKey || normalizeUploadKey(header);
+  };
+
+  const findHeaderRowIndex = (rows: string[][], sheet?: BulkSheetKey) => {
+    const scoredRows = rows.map((row, index) => ({
+      index,
+      score: row.filter((cell) => getSchemaHeaderKey(cell, sheet)).length,
+    }));
+    const bestRow = scoredRows.reduce((best, current) => (current.score > best.score ? current : best), {
+      index: 0,
+      score: 0,
     });
+    return bestRow.score >= 2 ? bestRow.index : 0;
+  };
+
+  const rowsToObjects = (rows: string[][], sheet?: BulkSheetKey) => {
+    const headerRowIndex = findHeaderRowIndex(rows, sheet);
+    const headerRow = rows[headerRowIndex] || [];
+    const dataRows = rows.slice(headerRowIndex + 1);
+    const headers = headerRow.map((item) => getUploadHeaderKey(item, sheet));
     return dataRows
       .map((row) =>
         headers.reduce<Record<string, string>>((record, header, index) => {
-          if (header) record[header] = String(row[index] || "").trim();
+          const value = String(row[index] || "").trim();
+          if (header && value) record[header] = value;
           return record;
         }, {}),
       )
@@ -1560,6 +1671,21 @@ function BulkUploadDashboard({
   const columnIndexFromCellRef = (ref: string) => {
     const letters = (ref.match(/[A-Z]+/i)?.[0] || "").toUpperCase();
     return letters.split("").reduce((total, char) => total * 26 + char.charCodeAt(0) - 64, 0) - 1;
+  };
+
+  const getXlsxCellValue = (cellAttrs: string, cellXml: string, sharedStrings: string[]) => {
+    const attrsForCell = parseAttributes(cellAttrs);
+    const rawValue = cellXml.match(/<v[^>]*>([\s\S]*?)<\/v>/)?.[1] || "";
+    const inlineValues = [...cellXml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((match) => match[1]).join("");
+    const value =
+      attrsForCell.t === "s"
+        ? sharedStrings[Number(rawValue)] || ""
+        : decodeXml(inlineValues || rawValue);
+
+    return {
+      columnIndex: columnIndexFromCellRef(attrsForCell.r || ""),
+      value,
+    };
   };
 
   const parseXlsxFile = async (file: File) => {
@@ -1594,20 +1720,17 @@ function BulkUploadDashboard({
 
       sheetXml.replace(/<row\b[^>]*>([\s\S]*?)<\/row>/g, (_rowMatch, rowXml: string) => {
         const rowValues: string[] = [];
-        rowXml.replace(/<c\b([^>]*)>([\s\S]*?)<\/c>/g, (_cellMatch, cellAttrs: string, cellXml: string) => {
-          const attrsForCell = parseAttributes(cellAttrs);
-          const index = columnIndexFromCellRef(attrsForCell.r || "");
-          const rawValue = cellXml.match(/<v[^>]*>([\s\S]*?)<\/v>/)?.[1] || "";
-          const inlineValue = cellXml.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1] || "";
-          rowValues[index >= 0 ? index : rowValues.length] =
-            attrsForCell.t === "s" ? sharedStrings[Number(rawValue)] || "" : decodeXml(inlineValue || rawValue);
+        rowXml.replace(/<c\b([^>]*?)(?:>([\s\S]*?)<\/c>|\/>)/g, (_cellMatch, cellAttrs: string, cellXml = "") => {
+          const { columnIndex, value } = getXlsxCellValue(cellAttrs, cellXml, sharedStrings);
+          rowValues[columnIndex >= 0 ? columnIndex : rowValues.length] = value;
           return "";
         });
         if (rowValues.some(Boolean)) tableRows.push(rowValues);
         return "";
       });
 
-      sheets.set(normalizeUploadKey(attrs.name), rowsToObjects(tableRows));
+      const sheetKey = resolveBulkSheetKey(attrs.name);
+      sheets.set(sheetKey || normalizeUploadKey(attrs.name), rowsToObjects(tableRows, sheetKey));
       return "";
     });
 
@@ -1617,7 +1740,7 @@ function BulkUploadDashboard({
   const readWorkbookSheets = async (file: File) => {
     const extension = getFileExtension(file.name);
     if (extension === ".csv") {
-      return new Map([["colleges", rowsToObjects(parseCsvRows(await file.text()))]]);
+      return new Map([["colleges", rowsToObjects(parseCsvRows(await file.text()), "colleges")]]);
     }
     if (extension === ".xlsx") return parseXlsxFile(file);
     throw new Error("Please upload .xlsx or .csv files for bulk validation.");
@@ -1659,7 +1782,7 @@ function BulkUploadDashboard({
   const getZipOnlyAssetError = (column: string) => `${displayColumnName(column)} must be a ZIP file name, not a URL`;
   const parseLooseNumber = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw) return undefined;
+    if (isBulkEmptyLikeValue(raw)) return undefined;
     const cleaned = raw.replace(/,/g, "");
     const directParsed = Number(cleaned);
     if (Number.isFinite(directParsed)) return directParsed;
@@ -1670,21 +1793,25 @@ function BulkUploadDashboard({
   };
   const normalizeIntegerishValue = (value: string) => {
     const raw = String(value || "").trim().replace(/,/g, "");
-    if (!raw) return "";
+    if (isBulkEmptyLikeValue(raw)) return "";
     if (/^\d+\.0+$/.test(raw)) return raw.replace(/\.0+$/, "");
     return raw;
   };
   const isFlexibleBooleanValue = (value: string) => {
     const normalized = String(value || "").trim().toLowerCase();
-    return !normalized || ["true", "false", "yes", "no", "1", "0", "available", "not_available", "not available"].includes(normalized);
+    return isBulkEmptyLikeValue(normalized) || ["true", "false", "yes", "no", "y", "n", "1", "0", "available", "not_available"].includes(normalized);
+  };
+  const isBestCourseValue = (value: string) => {
+    const raw = String(value || "").trim();
+    return isBulkEmptyLikeValue(raw) || raw.length <= 120;
   };
   const isValidEmailValue = (value: string) => {
     const raw = String(value || "").trim();
-    return !raw || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+    return isBulkEmptyLikeValue(raw) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
   };
   const isValidPhoneValue = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw) return true;
+    if (isBulkEmptyLikeValue(raw)) return true;
     const digits = normalizeScientificInteger(raw).replace(/\D/g, "");
     if (/^\d{10}$/.test(digits)) return true;
     if (digits.length === 11 && digits.startsWith("0")) return true;
@@ -1693,11 +1820,11 @@ function BulkUploadDashboard({
   };
   const isValidPincodeValue = (value: string) => {
     const raw = normalizeScientificInteger(normalizeIntegerishValue(value)).replace(/\s/g, "");
-    return !raw || /^\d{6}$/.test(raw);
+    return isBulkEmptyLikeValue(raw) || /^\d{6}$/.test(raw);
   };
   const isValidUrlValue = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw || isRemoteAssetReference(raw)) return true;
+    if (isBulkEmptyLikeValue(raw) || isRemoteAssetReference(raw)) return true;
     try {
       const parsed = new URL(raw);
       return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -1707,23 +1834,22 @@ function BulkUploadDashboard({
   };
   const isValidYearValue = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw) return true;
+    if (isBulkEmptyLikeValue(raw)) return true;
     const year = parseLooseNumber(raw);
     return year !== undefined && year >= 1800 && year <= new Date().getFullYear() + 1;
   };
   const isStrictIntegerValue = (value: string) => {
     const raw = normalizeScientificInteger(normalizeIntegerishValue(value));
-    return !raw || /^\d+$/.test(raw);
+    return isBulkEmptyLikeValue(raw) || /^\d+$/.test(raw);
   };
   const isValidDurationValue = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw) return false;
+    if (isBulkEmptyLikeValue(raw)) return true;
     return /^\d+(?:\.\d+)?\s*(year|years|month|months|semester|semesters)$/i.test(raw);
   };
   const isValidAccreditationValue = (value: string) => {
     const raw = String(value || "").trim();
-    if (!raw) return true;
-    return collegeAccreditationOptionSet.has(normalizeAccreditationOptionValue(raw));
+    return isBulkEmptyLikeValue(raw) || Boolean(raw);
   };
   const getBulkRankingValidationMessage = (value: string) => {
     const normalized = String(value || "").trim();
@@ -1735,7 +1861,7 @@ function BulkUploadDashboard({
   };
   const isValidBulkRankingValue = (value: string) => {
     const normalized = String(value || "").trim();
-    if (!normalized) return true;
+    if (isBulkEmptyLikeValue(normalized)) return true;
     const [startText = "", endText = ""] = normalized.split("-").map((item) => normalizeRankingInteger(item));
     return Boolean(startText && endText && Number.isFinite(Number(startText)) && Number.isFinite(Number(endText)));
   };
@@ -1745,7 +1871,7 @@ function BulkUploadDashboard({
   };
   const isCheckedPreviewBoolean = (value: string) => {
     const normalized = String(value || "").trim().toLowerCase();
-    return ["true", "yes", "1", "available"].includes(normalized);
+    return ["true", "yes", "y", "1", "available", "best", "top", "recommended", "popular", "featured", "main"].includes(normalized);
   };
   const hasAnyBulkCutoffValue = (rowData: Record<string, string>, columns = bulkCutoffColumns) =>
     columns.some((column) => String(rowData[column] || "").trim());
@@ -1820,14 +1946,47 @@ function BulkUploadDashboard({
       return errors;
     });
 
-  const buildBulkValidationSummary = (rows: BulkPreviewRow[]) => ({
-    totalRecords: rows.length,
-    validRecords: rows.filter((row) => row.status === "Valid").length,
-    failedRecords: 0,
-    invalidRecords: rows.filter((row) => row.status === "Invalid").length,
-    duplicates: rows.filter((row) => row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"))).length,
-    pendingReview: rows.filter((row) => row.status === "Review").length,
-  });
+  const getBulkCollegeGroupKey = (row: Pick<BulkPreviewRow, "id" | "sheet" | "data">) => {
+    const collegeCode = String(row.data.collegeCode || "").trim().toLowerCase();
+    return collegeCode ? `code:${collegeCode}` : `missing:${row.sheet}:${row.id}`;
+  };
+
+  const hasDuplicateCollegeIssue = (row: BulkPreviewRow) =>
+    row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"));
+
+  const buildBulkCollegeGroups = (rows: BulkPreviewRow[]) => {
+    const groups = new Map<string, BulkPreviewRow[]>();
+    rows.forEach((row) => {
+      const key = getBulkCollegeGroupKey(row);
+      const group = groups.get(key) || [];
+      group.push(row);
+      groups.set(key, group);
+    });
+    return groups;
+  };
+
+  const getValidBulkCollegeGroupKeys = (rows: BulkPreviewRow[]) =>
+    new Set(
+      [...buildBulkCollegeGroups(rows).entries()]
+        .filter(([, group]) => group.every((row) => row.status === "Valid"))
+        .map(([key]) => key),
+    );
+
+  const buildBulkValidationSummary = (rows: BulkPreviewRow[]) => {
+    const collegeGroups = buildBulkCollegeGroups(rows);
+    const groupedRows = [...collegeGroups.values()];
+    const hasInvalidRow = (group: BulkPreviewRow[]) => group.some((row) => row.status === "Invalid");
+    const hasReviewRow = (group: BulkPreviewRow[]) => group.some((row) => row.status === "Review");
+
+    return {
+      totalRecords: groupedRows.length,
+      validRecords: groupedRows.filter((group) => group.every((row) => row.status === "Valid")).length,
+      failedRecords: 0,
+      invalidRecords: groupedRows.filter(hasInvalidRow).length,
+      duplicates: groupedRows.filter((group) => group.some(hasDuplicateCollegeIssue)).length,
+      pendingReview: groupedRows.filter((group) => !hasInvalidRow(group) && hasReviewRow(group)).length,
+    };
+  };
 
   const validateBulkPreviewRows = (
     rows: Array<Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data">>,
@@ -1882,7 +2041,7 @@ function BulkUploadDashboard({
       const isFilledCell = (column: string) => Boolean(cell(column));
       const isNumericPreviewCell = (column: string) => {
         const value = cell(column);
-        return !value || parseLooseNumber(value) !== undefined;
+        return isBulkEmptyLikeValue(value) || parseLooseNumber(value) !== undefined;
       };
       const isTrueFalsePreviewCell = (column: string) => {
         return isFlexibleBooleanValue(cell(column));
@@ -1986,7 +2145,7 @@ function BulkUploadDashboard({
           }
         });
         if (!isTrueFalsePreviewCell("lateralEntry")) addFieldIssue(fieldIssues, "lateralEntry", "invalid", "lateralEntry must be TRUE or FALSE");
-        if (!isTrueFalsePreviewCell("bestCourse")) addFieldIssue(fieldIssues, "bestCourse", "invalid", "bestCourse must be TRUE or FALSE");
+        if (!isBestCourseValue(cell("bestCourse"))) addFieldIssue(fieldIssues, "bestCourse", "invalid", "bestCourse must be 120 characters or less");
         if (parseLooseNumber(cell("semesterFees")) !== undefined && parseLooseNumber(cell("totalFees")) !== undefined && (parseLooseNumber(cell("semesterFees")) || 0) > (parseLooseNumber(cell("totalFees")) || 0)) {
           addFieldIssue(fieldIssues, "semesterFees", "invalid", "semesterFees must be less than or equal to totalFees");
           addFieldIssue(fieldIssues, "totalFees", "invalid", "semesterFees must be less than or equal to totalFees");
@@ -2094,12 +2253,11 @@ function BulkUploadDashboard({
   };
 
   const summaryRows = [
-    { label: "Total Records", value: `${validationSummary.totalRecords}`, color: "text-[#143071]", dot: "bg-[#16a34a]", icon: BadgeCheck },
-    { label: "Valid Records", value: `${validationSummary.validRecords}`, color: "text-[#16a34a]", dot: "bg-[#16a34a]", icon: BadgeCheck },
-    { label: "Failed Records", value: `${validationSummary.failedRecords}`, color: "text-[#ef233c]", dot: "bg-[#ef233c]", icon: X },
-    { label: "Invalid Records", value: `${validationSummary.invalidRecords}`, color: "text-[#ef233c]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
-    { label: "Duplicates", value: `${validationSummary.duplicates}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
-    { label: "Pending Review", value: `${validationSummary.pendingReview}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
+    { label: "Total Colleges", value: `${validationSummary.totalRecords}`, color: "text-[#143071]", dot: "bg-[#16a34a]", icon: BadgeCheck },
+    { label: "Valid Colleges", value: `${validationSummary.validRecords}`, color: "text-[#16a34a]", dot: "bg-[#16a34a]", icon: BadgeCheck },
+    { label: "Failed Colleges", value: `${validationSummary.failedRecords}`, color: "text-[#ef233c]", dot: "bg-[#ef233c]", icon: X },
+    { label: "Invalid Colleges", value: `${validationSummary.invalidRecords}`, color: "text-[#ef233c]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
+    { label: "Duplicate Colleges", value: `${validationSummary.duplicates}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
   ];
 
   const getUploadFileError = (file: File, item: (typeof uploadCards)[number]) => {
@@ -2479,14 +2637,6 @@ function BulkUploadDashboard({
           Boolean(imageZipFile),
           Boolean(singleExcelFile && !bulkExcelFile),
         );
-        const duplicateRows = nextPreviewRows.filter((row) =>
-          row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system")),
-        ).length;
-        const invalidRows = nextPreviewRows.filter((row) => row.status === "Invalid").length;
-        const rowsNeedingZipReview = nextPreviewRows.filter((row) => row.status === "Review").length;
-        const totalRecords = nextPreviewRows.length;
-        const validRecords = nextPreviewRows.filter((row) => row.status === "Valid").length;
-
         if (isCancelled) return;
         setValidatedZipAssetIndex(imageZipAssetIndex);
         setMediaPreviewUrls((previousUrls) => {
@@ -2497,14 +2647,7 @@ function BulkUploadDashboard({
         if (!nextPreviewRows.some((row) => row.sheet === activeDetailSheet)) {
           setActiveDetailSheet(nextPreviewRows[0]?.sheet || "colleges");
         }
-        setValidationSummary({
-          totalRecords,
-          validRecords,
-          failedRecords: 0,
-          invalidRecords: invalidRows,
-          duplicates: duplicateRows,
-          pendingReview: rowsNeedingZipReview,
-        });
+        setValidationSummary(buildBulkValidationSummary(nextPreviewRows));
         setValidationStatusText(
           imageZipFile
             ? "Excel and combined image ZIP validation completed."
@@ -2645,7 +2788,7 @@ function BulkUploadDashboard({
           ? String(editingTargetRow.data.collegeCode || "").trim().toLowerCase()
           : "";
 
-      return rows.map((row) => {
+      const updatedRows = rows.map((row) => {
         if (column === "rankingMin" || column === "rankingMax") {
           if (row.id !== rowId) return row;
           const currentRange = getPreviewRankingRangeValues(row.data.ranking || "");
@@ -2668,6 +2811,14 @@ function BulkUploadDashboard({
         }
         return row;
       });
+
+      const revalidatedRows = validateBulkPreviewRows(
+        updatedRows,
+        validatedZipAssetIndex,
+        Boolean(validatedZipAssetIndex?.byPath.size),
+      );
+      setValidationSummary(buildBulkValidationSummary(revalidatedRows));
+      return revalidatedRows;
     });
   };
 
@@ -2817,7 +2968,8 @@ function BulkUploadDashboard({
       return;
     }
 
-    const validPreviewRows = previewRows.filter((row) => row.status === "Valid");
+    const validCollegeGroupKeys = getValidBulkCollegeGroupKeys(previewRows);
+    const validPreviewRows = previewRows.filter((row) => validCollegeGroupKeys.has(getBulkCollegeGroupKey(row)));
     const backendSheetNames: Record<BulkSheetKey, string> = {
       colleges: "College",
       courses: "Courses",
@@ -3181,17 +3333,13 @@ function BulkUploadDashboard({
                         </span>
                         <div>
                           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#b45309]">College Code</p>
-                          <p className="text-xs font-semibold text-slate-600">Use this to decide the next code</p>
+                          <p className="text-xs font-semibold text-slate-600">Last college code in the system</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <div className="rounded-xl border border-white/80 bg-white/90 px-3 py-2">
                           <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Last</span>
                           <p className="mt-1 text-lg font-black text-slate-950">{lastCollegeCodeInsight.lastCode || "No code yet"}</p>
-                        </div>
-                        <div className="rounded-xl border border-[#c7d2fe] bg-[#eef2ff] px-3 py-2">
-                          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#4338ca]">Next</span>
-                          <p className="mt-1 text-lg font-black text-[#312e81]">{lastCollegeCodeInsight.nextSuggestedCode || "Create first code"}</p>
                         </div>
                       </div>
                     </div>
@@ -3309,7 +3457,7 @@ function BulkUploadDashboard({
                   <ExternalLink className="size-4" />
                 </button>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {summaryRows.map((row, index) => (
                   <div key={row.label} className={`rounded-2xl border p-4 ${summaryCardStyles[index] || summaryCardStyles[0]}`}>
                     <span className="text-xs font-bold">{row.label}</span>
