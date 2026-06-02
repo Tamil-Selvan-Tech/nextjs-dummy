@@ -29,6 +29,23 @@ const shouldTryRemoteFallback = isLocalApiBaseUrl(API_BASE_URL);
 
 const toUrl = (path: string, baseUrl = API_BASE_URL) => `${baseUrl}${path}`;
 
+const readResponseData = async (response: Response) => {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json().catch(() => ({}));
+  }
+
+  const text = await response.text().catch(() => "");
+  if (!text.trim()) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
 const fetchJson = async (
   path: string,
   options: RequestInit = {},
@@ -38,12 +55,16 @@ const fetchJson = async (
     ...options,
     cache: "no-store",
   });
-  const data = await response.json().catch(() => ({}));
+  const data = await readResponseData(response);
   return { response, data };
 };
 
 const getErrorMessage = (data: unknown) => {
-  if (typeof data === "string" && data.trim()) return data;
+  if (typeof data === "string" && data.trim()) {
+    const message = data.trim();
+    if (/^<!doctype|^<html|^<\w+/i.test(message)) return "Request failed";
+    return message;
+  }
   if (data && typeof data === "object") {
     const payload = data as {
       message?: unknown;
@@ -93,7 +114,8 @@ export const request = async <T = ApiResponseShape>(
   }
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(data));
+    const message = getErrorMessage(data);
+    throw new Error(message === "Request failed" && response.statusText ? response.statusText : message);
   }
 
   return data as T;

@@ -1,5 +1,5 @@
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
+import { CutoffClient } from "@/app/cutoff/cutoff-client";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import {
   degreeOptions,
@@ -124,6 +125,28 @@ const VALIDATION_FIELD_ORDER = [
 ] as const;
 
 const FIND_FORM_STORAGE_KEY = "collegeedwiser-find-form-state";
+const DETAIL_PARAM_KEYS = [
+  "phone",
+  "physics",
+  "chemistry",
+  "maths",
+  "engineeringScore",
+  "neet",
+  "boardTotal",
+  "nata",
+  "converted12th",
+  "clat",
+  "bestSubject1",
+  "bestSubject2",
+  "bestSubject3",
+  "artsScienceCuet",
+  "paramedicalBiology",
+  "paramedicalPhysics",
+  "paramedicalChemistry",
+  "agricultureBiology",
+  "agriculturePhysics",
+  "agricultureChemistry",
+] as const;
 
 type PersistedFindFormState = {
   selectedState: string;
@@ -250,11 +273,12 @@ const validateNumericRange = (
 };
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const hasHydratedPersistedForm = useRef(false);
+  const inlineMatchResultsRef = useRef<HTMLDivElement | null>(null);
   const [colleges, setColleges] = useState<College[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [inlineMatchQueryString, setInlineMatchQueryString] = useState("");
   const [selectedState, setSelectedState] = useState("Tamil Nadu");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -418,6 +442,10 @@ export default function FindPage() {
     setAgricultureBiologyMarks(searchParams.get("agricultureBiology") || "");
     setAgriculturePhysicsMarks(searchParams.get("agriculturePhysics") || "");
     setAgricultureChemistryMarks(searchParams.get("agricultureChemistry") || "");
+
+    if (searchParams.get("cutoff")) {
+      setInlineMatchQueryString(searchParams.toString());
+    }
   }, [searchParams]);
 
   const persistedFindFormState = useMemo<PersistedFindFormState>(
@@ -587,8 +615,9 @@ export default function FindPage() {
   const resetFormFields = () => {
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(FIND_FORM_STORAGE_KEY);
+      window.history.replaceState(window.history.state, "", "/find");
     }
-    router.replace("/find");
+    setInlineMatchQueryString("");
     setSelectedState("Tamil Nadu");
     setName("");
     setPhone("");
@@ -942,6 +971,7 @@ export default function FindPage() {
     if (hasSubmitted) setHasSubmitted(false);
     if (hasCalculatedPreview) setHasCalculatedPreview(false);
     if (showValidationPopup) setShowValidationPopup(false);
+    if (inlineMatchQueryString) setInlineMatchQueryString("");
   };
   const markFieldTouched = (fieldId: string) => {
     setTouchedFields((previous) => (previous[fieldId] ? previous : { ...previous, [fieldId]: true }));
@@ -980,6 +1010,32 @@ export default function FindPage() {
     isCompletedMarkField("agriculturePhysics", agriculturePhysicsMarks) &&
     isCompletedMarkField("agricultureChemistry", agricultureChemistryMarks);
   const showCalculatedScorePreview = hasCalculatedPreview && !hasValidationErrors;
+  const inlineMatchParams = useMemo(
+    () => new URLSearchParams(inlineMatchQueryString),
+    [inlineMatchQueryString],
+  );
+  const pickInlineMatchParam = (key: string) => inlineMatchParams.get(key) || "";
+  const inlineSubmittedDetails = useMemo(
+    () =>
+      Object.fromEntries(
+        DETAIL_PARAM_KEYS.map((key) => [key, inlineMatchParams.get(key) || ""]),
+      ),
+    [inlineMatchParams],
+  );
+  const inlineEnteredScore =
+    pickInlineMatchParam("cutoff") ||
+    pickInlineMatchParam("marks") ||
+    pickInlineMatchParam("rank");
+
+  useEffect(() => {
+    if (!inlineMatchQueryString) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      inlineMatchResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [inlineMatchQueryString]);
   const scrollToFirstInvalidField = () => {
     const firstInvalidField = VALIDATION_FIELD_ORDER.find((field) => validationErrors[field]);
     if (!firstInvalidField) return;
@@ -1072,10 +1128,7 @@ export default function FindPage() {
                   return;
                 }
                 setShowValidationPopup(false);
-                if (!hasCalculatedPreview) {
-                  setHasCalculatedPreview(true);
-                  return;
-                }
+                setHasCalculatedPreview(true);
                 if (typeof window !== "undefined") {
                   window.sessionStorage.setItem(
                     FIND_FORM_STORAGE_KEY,
@@ -1124,7 +1177,7 @@ export default function FindPage() {
                   const findUrl = `/find?${params.toString()}`;
                   window.history.replaceState(window.history.state, "", findUrl);
                 }
-                router.push(`/cutoff?${params.toString()}`);
+                setInlineMatchQueryString(params.toString());
               }}
               className="p-0"
             >
@@ -1883,12 +1936,42 @@ export default function FindPage() {
                   type="submit"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[#142a63] px-6 text-[0.95rem] font-semibold text-white shadow-[0_12px_22px_rgba(20,42,99,0.2)] transition hover:bg-[#0f1f4a] sm:min-w-[140px]"
                 >
-                  {showCalculatedScorePreview ? "View Our Match" : "Calculate"}
+                  Calculate
                 </button>
               </div>
             </form>
           </div>
         </section>
+        {inlineMatchQueryString ? (
+          <div ref={inlineMatchResultsRef} className="mt-8 scroll-mt-6 overflow-hidden rounded-[18px]">
+            <CutoffClient
+              embedded
+              selectedLevel={
+                pickInlineMatchParam("level") ||
+                pickInlineMatchParam("standard") ||
+                pickInlineMatchParam("class")
+              }
+              selectedState={pickInlineMatchParam("state") || "Tamil Nadu"}
+              selectedDegree={pickInlineMatchParam("degree")}
+              selectedCourse={pickInlineMatchParam("course")}
+              selectedSpecialization={pickInlineMatchParam("specialization")}
+              selectedCategory={pickInlineMatchParam("category")}
+              selectedDreamCollege={pickInlineMatchParam("dreamCollege")}
+              selectedCollegeType={pickInlineMatchParam("collegeType")}
+              selectedAdmissionType={pickInlineMatchParam("admissionType")}
+              enteredCutoff={inlineEnteredScore}
+              studentName={
+                pickInlineMatchParam("name") ||
+                pickInlineMatchParam("studentName") ||
+                pickInlineMatchParam("fullName") ||
+                pickInlineMatchParam("username")
+              }
+              submittedDetails={inlineSubmittedDetails}
+              colleges={colleges}
+              courses={courses}
+            />
+          </div>
+        ) : null}
         </div>
       </div>
     </main>

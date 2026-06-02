@@ -49,6 +49,7 @@ type CutoffClientProps = {
   submittedDetails: Record<string, string>;
   colleges: College[];
   courses: Course[];
+  embedded?: boolean;
 };
 
 type StandardId = "6" | "7" | "8" | "9" | "10";
@@ -952,6 +953,7 @@ export function CutoffClient({
   submittedDetails,
   colleges,
   courses,
+  embedded = false,
 }: CutoffClientProps) {
   const router = useRouter();
   // Core cutoff page state and active level selection.
@@ -1497,6 +1499,28 @@ export function CutoffClient({
       ? 120
       : getCutoffScale(selectedDegree, selectedAdmissionType);
   const enteredScoreLabel = formatResultValue(enteredCutoff);
+  const resultDetailRows = [
+    [
+      { label: "Maximum Cutoff", value: String(resultMaximumCutoff) },
+      { label: "Cutoff", value: enteredScoreLabel },
+    ],
+    [
+      { label: "Admission Type", value: selectedAdmissionType || "-" },
+      { label: "Degree", value: selectedDegree || "-" },
+    ],
+    [
+      { label: "Category", value: categoryDisplayLabel(selectedCategory) },
+      { label: "Name", value: safeStudentName },
+    ],
+    [
+      { label: "Phone", value: submittedDetails.phone || "-" },
+      { label: "Dream College", value: dreamCollegeName },
+    ],
+    [
+      { label: "Course", value: selectedCourse || "-" },
+      { label: "State", value: selectedState || "Tamil Nadu" },
+    ],
+  ];
   const selectedCollegeMatchCard = matchingColleges.find(
     (college) => matchesSelectedCollegeKey(college.id) || matchesSelectedCollegeKey(college.name),
   );
@@ -1646,46 +1670,38 @@ export function CutoffClient({
   if (!isJuniorLevel) {
     return (
       <>
-        <Navbar />
+        {!embedded ? <Navbar /> : null}
         <main className="min-h-screen bg-[#f5f5f5] px-4 py-4 text-slate-900 sm:px-6">
           <div className="mx-auto w-full max-w-[1180px]">
             
 
-            <section className="mt-5 overflow-hidden rounded-[10px] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-              <div className="bg-[linear-gradient(90deg,#142a63_0%,#25448f_100%)] px-6 py-4">
-                <h2 className="text-[1.35rem] font-bold text-white"> Your cutoff result</h2>
+            <section className="mt-5 overflow-hidden rounded-[10px] border border-[#edf0f5] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-4 px-6 pt-5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#1766f2] text-white shadow-[0_12px_22px_rgba(23,102,242,0.25)] ring-4 ring-[#e7efff]">
+                  <CheckCircle2 className="size-7" strokeWidth={2.7} />
+                </div>
+                <h2 className="text-[1.9rem] font-black leading-tight tracking-[-0.04em] text-[#09246b] sm:text-[2.15rem]">
+                  Your Cutoff Result
+                </h2>
               </div>
-              <div className="overflow-x-auto border-b border-[#c8d6ef] pb-3 [scrollbar-color:#1766f2_#e8eef8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1766f2] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e8eef8]">
-                <table className="w-full min-w-[1280px] border-collapse text-center">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-white">
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Maximum Cutoff</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Cutoff</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Admission Type</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Degree</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Category</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Name</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Phone</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Dream College</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">Course</th>
-                      <th className="px-6 py-5 text-[0.86rem] font-black uppercase tracking-[0.18em] text-slate-800">State</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-slate-100">
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{resultMaximumCutoff}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{enteredScoreLabel}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedAdmissionType || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedDegree || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{categoryDisplayLabel(selectedCategory)}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{safeStudentName}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{submittedDetails.phone || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{dreamCollegeName}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedCourse || "-"}</td>
-                      <td className="px-6 py-5 text-[0.95rem] font-medium text-slate-700">{selectedState || "Tamil Nadu"}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                {resultDetailRows.map((row, rowIndex) => (
+                  <div
+                    key={row.map((item) => item.label).join("-")}
+                    className={`grid gap-5 px-6 py-5 sm:grid-cols-2 ${
+                      rowIndex < resultDetailRows.length - 1 ? "border-b border-[#e5e7eb]" : ""
+                    }`}
+                  >
+                    {row.map((item) => (
+                      <div key={item.label} className="min-w-0">
+                        <div className="text-[0.92rem] font-semibold text-[#6b7280]">{item.label}</div>
+                        <div className="mt-2 break-words text-[1rem] font-semibold leading-6 text-[#2563EB]">
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </section>
 
@@ -2418,7 +2434,7 @@ export function CutoffClient({
 
   return (
     <>
-      <Navbar />
+      {!embedded ? <Navbar /> : null}
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(191,219,254,0.38),transparent_28%),radial-gradient(circle_at_top_right,rgba(196,181,253,0.24),transparent_24%),#f8fbff] text-slate-800">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
         {/* Header Welcome Section */}

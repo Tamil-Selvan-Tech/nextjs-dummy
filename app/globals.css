@@ -806,6 +806,27 @@ button,
   -ms-overflow-style: none;
 }
 
+.admin-users-table-scroll {
+  scrollbar-color: #0f4c81 #dbe6f8;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-users-table-scroll::-webkit-scrollbar {
+  display: block;
+  height: 0.45rem;
+}
+
+.admin-users-table-scroll::-webkit-scrollbar-track {
+  border-radius: 9999px;
+  background: #dbe6f8;
+}
+
+.admin-users-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #0f4c81, #38bdf8, #ff8a3d);
+}
+
 .editorial-kicker {
   display: inline-flex;
   align-items: center;

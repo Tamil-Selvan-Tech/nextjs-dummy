@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   Bell,
   Building2,
+  ChevronRight,
   Download,
   ExternalLink,
   FileClock,
@@ -14,12 +15,14 @@ import {
   KeyRound,
   LayoutDashboard,
   MailOpen,
+  MapPin,
   PencilLine,
   Plus,
   Search,
   TriangleAlert,
   Trash2,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -66,7 +69,7 @@ type AdminCourse = { _id: string; course?: string; courseName?: string; courseTy
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
-type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; createdAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string }; submittedPayload?: Record<string, unknown> | null; changeSummary?: ChangeSummaryItem[]; formAccessUsedAt?: string; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
+type RequestItem = { _id: string; requesterName?: string; requesterEmail?: string; email?: string; phone?: string; message?: string; status?: string; updatedAt?: string; createdAt?: string; actionType?: string; payload?: { name?: string; course?: string; courseName?: string; duration?: string; logo?: string; image?: string; coverImage?: string; logoImage?: string }; submittedPayload?: Record<string, unknown> | null; changeSummary?: ChangeSummaryItem[]; formAccessUsedAt?: string; grantedCollegeIds?: string[]; allowOwnCollegeCreate?: boolean };
 type SubAdmin = { _id: string; email?: string; permissions?: string[]; mustResetPassword?: boolean; createdAt?: string };
 type AdminState = { colleges: AdminCollege[]; courses: AdminCourse[]; users: PlatformUser[]; enquiries: Enquiry[]; collegeRequests: RequestItem[]; subAdmins: SubAdmin[] };
 type SiteSettings = { homeHeroImageUrl?: string; examSchedules?: SavedExamSchedule[] };
@@ -104,6 +107,15 @@ type DeleteSubAdminDialogState = {
   id: string;
   email: string;
 } | null;
+type DeleteExamDialogState = {
+  id: string;
+  name: string;
+} | null;
+
+const MAX_BULK_IMAGE_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_BULK_COLLEGE_ROWS = 100;
+const getBulkCollegeLimitMessage = () =>
+  `You can upload up to ${MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.`;
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, isBestCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
@@ -464,6 +476,28 @@ const softButtonClass = "inline-flex items-center justify-center gap-1 rounded-f
 const solidBlueButtonClass = "inline-flex items-center justify-center gap-1 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:bg-white hover:text-[#2563eb] hover:border-[rgba(37,99,235,0.34)] hover:shadow-[0_12px_24px_rgba(37,99,235,0.12)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
 const dangerButtonClass = "inline-flex items-center justify-center gap-1 rounded-full border border-[rgba(251,191,36,0.22)] bg-[linear-gradient(135deg,#fff8e7_0%,#fff0d2_100%)] px-3 py-2 text-xs font-semibold text-[#9a6700] shadow-[0_8px_18px_rgba(251,191,36,0.12)] transition duration-200 hover:bg-[linear-gradient(135deg,#fff4d6_0%,#ffebc2_100%)] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm";
 const requiredMarkClass = "ml-1 text-rose-500";
+const usersRowsPerPage = 10;
+const collegeEditStatusRowsPerPage = 10;
+const collegeNotificationsRowsPerPage = 5;
+const getUserRoleBadgeClass = (role?: string) =>
+  String(role || "").toLowerCase() === "college"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-blue-200 bg-blue-50 text-blue-700";
+const getCompactPaginationItems = (currentPage: number, totalPages: number): (number | string)[] => {
+  if (totalPages <= 6) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis", totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [1, "ellipsis", ...Array.from({ length: 5 }, (_, index) => totalPages - 4 + index)];
+  }
+
+  return [1, "ellipsis-left", currentPage - 1, currentPage, currentPage + 1, "ellipsis-right", totalPages];
+};
 const errorTextClass = "mt-1 block text-[10px] font-medium text-rose-600 sm:text-[11px]";
 const formSectionClass = "grid gap-2 grid-cols-1 sm:gap-3 md:grid-cols-2 xl:grid-cols-3";
 const mediaUploadCardClass = "group relative overflow-hidden rounded-[1.5rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95))] p-4 shadow-[0_16px_34px_rgba(148,163,184,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(56,189,248,0.26)] hover:shadow-[0_22px_42px_rgba(125,211,252,0.14)]";
@@ -909,6 +943,15 @@ const renderChangeValue = (value: unknown) => {
   return text || "Empty";
 };
 
+const getRequestAssetValue = (item: RequestItem, keys: string[]) => {
+  for (const key of keys) {
+    const value = item.payload?.[key as keyof NonNullable<RequestItem["payload"]>] ?? item.submittedPayload?.[key];
+    const normalizedValue = String(value ?? "").trim();
+    if (normalizedValue) return normalizedValue;
+  }
+  return "";
+};
+
 const stripTrailingZeroDecimal = (value: unknown) => {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
@@ -1184,6 +1227,7 @@ function BulkUploadDashboard({
   });
   
   const [validationStatusText, setValidationStatusText] = useState("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
+  const [showBulkLimitPopup, setShowBulkLimitPopup] = useState(false);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [showFinishPopup, setShowFinishPopup] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
@@ -1268,6 +1312,9 @@ function BulkUploadDashboard({
       lastCode: fallbackCode || "",
     };
   }, [existingColleges]);
+  const bulkCollegeRowCount = previewRows.filter((row) => row.sheet === "colleges").length;
+  const isBulkCollegeLimitExceeded = bulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
+  const bulkCollegeLimitMessage = isBulkCollegeLimitExceeded ? getBulkCollegeLimitMessage() : "";
   const uploadCards = [
     {
       step: "1",
@@ -1276,7 +1323,7 @@ function BulkUploadDashboard({
       icon: ImageUp,
       dropText: "Drag & drop your Excel file here",
       action: "Choose Excel File",
-      note: "Supports: .xlsx, .csv",
+      note: `Supports: .xlsx, .csv. Max ${MAX_BULK_COLLEGE_ROWS} colleges per bulk upload.`,
       accept: ".xlsx,.csv",
       allowedExtensions: [".xlsx", ".csv"],
     },
@@ -1298,10 +1345,10 @@ function BulkUploadDashboard({
       icon: FileClock,
       dropText: "Drag & drop combined media ZIP here",
       action: "Choose ZIP File",
-      note: "Excel media columns must contain ZIP file names only. Max size: 50MB",
+      note: `Excel media columns must contain ZIP file names only. Max size: 100MB. Keep it aligned with the ${MAX_BULK_COLLEGE_ROWS}-college limit.`,
       accept: ".zip",
       allowedExtensions: [".zip"],
-      maxSize: 50 * 1024 * 1024,
+      maxSize: MAX_BULK_IMAGE_ZIP_SIZE_BYTES,
     },
   ];
 
@@ -1659,6 +1706,45 @@ function BulkUploadDashboard({
     }
   };
 
+  const readZipEntryNames = async (file: File) => {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let endOffset = -1;
+
+    for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 66000); offset -= 1) {
+      if (view.getUint32(offset, true) === 0x06054b50) {
+        endOffset = offset;
+        break;
+      }
+    }
+
+    if (endOffset < 0) {
+      throw new Error("Unable to read ZIP file names.");
+    }
+
+    const decoder = new TextDecoder("utf-8");
+    const totalEntries = view.getUint16(endOffset + 10, true);
+    let centralOffset = view.getUint32(endOffset + 16, true);
+    const fileNames: string[] = [];
+
+    for (let entryIndex = 0; entryIndex < totalEntries; entryIndex += 1) {
+      if (centralOffset + 46 > bytes.length || view.getUint32(centralOffset, true) !== 0x02014b50) break;
+
+      const fileNameLength = view.getUint16(centralOffset + 28, true);
+      const extraLength = view.getUint16(centralOffset + 30, true);
+      const commentLength = view.getUint16(centralOffset + 32, true);
+      const nameStart = centralOffset + 46;
+      const nameEnd = nameStart + fileNameLength;
+      if (nameEnd > bytes.length) break;
+
+      const fileName = decoder.decode(bytes.slice(nameStart, nameEnd)).replace(/\\/g, "/");
+      if (fileName && !fileName.endsWith("/")) fileNames.push(fileName);
+      centralOffset += 46 + fileNameLength + extraLength + commentLength;
+    }
+
+    return fileNames;
+  };
+
   const parseAttributes = (value: string) => {
     const attrs: Record<string, string> = {};
     value.replace(/([\w:]+)="([^"]*)"/g, (_match, key: string, attrValue: string) => {
@@ -1747,8 +1833,13 @@ function BulkUploadDashboard({
   };
 
   const readZipAssetIndex = async (file: File) => {
-    const entries = await readZipEntries(file);
-    return buildZipAssetIndex(entries.keys());
+    try {
+      const entries = await readZipEntries(file);
+      return buildZipAssetIndex(entries.keys());
+    } catch {
+      const fileNames = await readZipEntryNames(file);
+      return buildZipAssetIndex(fileNames);
+    }
   };
 
   const getImageMimeType = (fileName: string) => {
@@ -1761,7 +1852,12 @@ function BulkUploadDashboard({
   };
 
   const readZipImagePreviewUrls = async (file: File) => {
-    const entries = await readZipEntries(file);
+    let entries: Map<string, Uint8Array>;
+    try {
+      entries = await readZipEntries(file);
+    } catch {
+      return {};
+    }
     const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
     return Object.fromEntries(
       [...entries.entries()]
@@ -2266,7 +2362,7 @@ function BulkUploadDashboard({
       return item.accept === ".zip" ? "Only .zip image archive files are allowed." : "Only .xlsx or .csv files are allowed.";
     }
     if (item.maxSize && file.size > item.maxSize) {
-      return "ZIP file size must be 50MB or less.";
+      return "ZIP file size must be 100MB or less.";
     }
     return "";
   };
@@ -2297,6 +2393,7 @@ function BulkUploadDashboard({
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
     setShowFinishPopup(false);
+    setShowBulkLimitPopup(false);
   }, []);
 
   const selectUploadFile = (item: (typeof uploadCards)[number], file: File | null) => {
@@ -2310,6 +2407,7 @@ function BulkUploadDashboard({
       if (item.step === "3") {
         setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
         setUploadErrors((previous) => ({ ...previous, "3": error }));
+        setShowBulkLimitPopup(false);
         return;
       }
 
@@ -2319,6 +2417,7 @@ function BulkUploadDashboard({
       setShowFullDetails(false);
       setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: null, [otherExcelStep]: null, "3": null }));
       setUploadErrors((previous) => ({ ...previous, [item.step]: error, [otherExcelStep]: "", "3": "" }));
+      setShowBulkLimitPopup(false);
       return;
     }
 
@@ -2336,6 +2435,7 @@ function BulkUploadDashboard({
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
     setShowFinishPopup(false);
+    setShowBulkLimitPopup(false);
     setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
     setUploadErrors((previous) => ({ ...previous, [item.step]: "", [otherExcelStep]: "", "3": "" }));
   };
@@ -2610,6 +2710,7 @@ function BulkUploadDashboard({
         });
         setValidationSummary(buildBulkValidationSummary([]));
         setValidationStatusText("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
+        setShowBulkLimitPopup(false);
         return;
       }
 
@@ -2647,11 +2748,17 @@ function BulkUploadDashboard({
         if (!nextPreviewRows.some((row) => row.sheet === activeDetailSheet)) {
           setActiveDetailSheet(nextPreviewRows[0]?.sheet || "colleges");
         }
-        setValidationSummary(buildBulkValidationSummary(nextPreviewRows));
+        const nextValidationSummary = buildBulkValidationSummary(nextPreviewRows);
+        const nextBulkCollegeRowCount = nextPreviewRows.filter((row) => row.sheet === "colleges").length;
+        const nextBulkLimitExceeded = nextBulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
+        setValidationSummary(nextValidationSummary);
+        setShowBulkLimitPopup(nextBulkLimitExceeded);
         setValidationStatusText(
-          imageZipFile
-            ? "Excel and combined image ZIP validation completed."
-            : "Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.",
+          nextBulkLimitExceeded
+            ? getBulkCollegeLimitMessage()
+            : imageZipFile
+              ? "Excel and combined image ZIP validation completed."
+              : "Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.",
         );
       } catch (error) {
         if (isCancelled) return;
@@ -2952,19 +3059,30 @@ function BulkUploadDashboard({
   };
 
   const importValidData = async () => {
+    const notifyImportStatus = (message: string, type: "success" | "error" | "info" = "info") => {
+      setValidationStatusText(message);
+      showToast(message, type);
+    };
+
     const authToken = readAuthToken();
-    if (!authToken) {
-      setValidationStatusText("Admin session expired. Please login again.");
+      if (!authToken) {
+      notifyImportStatus("Admin session expired. Please login again.", "error");
+      return;
+    }
+
+    if (isBulkCollegeLimitExceeded) {
+      notifyImportStatus(bulkCollegeLimitMessage, "error");
+      setShowBulkLimitPopup(true);
       return;
     }
 
     if (editingRowId !== null) {
-      setValidationStatusText("Finish editing the current row before importing.");
+      notifyImportStatus("Finish editing the current row before importing.", "error");
       return;
     }
 
     if (validationSummary.validRecords === 0) {
-      setValidationStatusText("No valid records are ready for import.");
+      notifyImportStatus("No valid records are ready for import.", "error");
       return;
     }
 
@@ -2985,21 +3103,8 @@ function BulkUploadDashboard({
       displayStatus: "Valid",
       isValid: true,
     }));
-    const validRowsBySheet = {
-      colleges: validPreviewRows.filter((row) => row.sheet === "colleges").map((row) => row.data),
-      courses: validPreviewRows.filter((row) => row.sheet === "courses").map((row) => row.data),
-      entranceExams: validPreviewRows.filter((row) => row.sheet === "entranceexams").map((row) => row.data),
-      collegeImages: validPreviewRows.filter((row) => row.sheet === "collegeimages").map((row) => row.data),
-    };
     const formData = new FormData();
     formData.append("previewRows", JSON.stringify(backendPreviewRows));
-    formData.append("validRows", JSON.stringify(backendPreviewRows));
-    formData.append("colleges", JSON.stringify(validRowsBySheet.colleges));
-    formData.append("courses", JSON.stringify(validRowsBySheet.courses));
-    formData.append("entranceExams", JSON.stringify(validRowsBySheet.entranceExams));
-    formData.append("entranceexams", JSON.stringify(validRowsBySheet.entranceExams));
-    formData.append("collegeImages", JSON.stringify(validRowsBySheet.collegeImages));
-    formData.append("collegeimages", JSON.stringify(validRowsBySheet.collegeImages));
     const imageZipFile = selectedUploadFiles["3"];
     if (imageZipFile) {
       formData.append("imageZip", imageZipFile);
@@ -3043,6 +3148,7 @@ function BulkUploadDashboard({
         .join(" ");
 
       setValidationStatusText(nextStatusText);
+      showToast(nextStatusText, inferToastTypeFromMessage(nextStatusText));
 
       setShowFullDetails(false);
       setShowFinishPopup(true);
@@ -3052,7 +3158,10 @@ function BulkUploadDashboard({
         rawMessage === "Failed to fetch"
           ? `Bulk import failed. Backend is not reachable at ${API_BASE_URL}.`
           : rawMessage;
-      setValidationStatusText(message);
+      notifyImportStatus(message, "error");
+    if (/100 colleges/i.test(message)) {
+      setShowBulkLimitPopup(true);
+    }
     } finally {
       setIsImporting(false);
     }
@@ -3322,6 +3431,9 @@ function BulkUploadDashboard({
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-blue-700">
                     {selectedZipFile ? "ZIP file selected. Validation results are updated automatically." : "Excel is ready. Upload one combined ZIP with logo, cover, brochure, and college images."}
                   </div>
+                  <div className="rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-blue-800 shadow-[0_10px_24px_rgba(37,99,235,0.06)]">
+                    The media ZIP is validated against the same bulk upload, so keep the logo, cover, brochure, and image files aligned with the 100-college Excel limit.
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -3343,6 +3455,14 @@ function BulkUploadDashboard({
                         </div>
                       </div>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-white px-4 py-3 shadow-[0_14px_30px_rgba(244,63,94,0.08)]">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                      <TriangleAlert className="size-5" />
+                    </span>
+                    <p className="text-sm font-semibold leading-6 text-rose-900">
+                      You can upload up to {MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.
+                    </p>
                   </div>
                   <div className="grid gap-4 lg:grid-cols-2">
                     {renderUploadCard(uploadCards[0])}
@@ -3466,7 +3586,13 @@ function BulkUploadDashboard({
                 ))}
               </div>
               {validationStatusText ? (
-                <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold leading-6 text-blue-800">
+                <div
+                  className={`mt-5 rounded-2xl px-4 py-3 text-sm font-bold leading-6 ${
+                    isBulkCollegeLimitExceeded
+                      ? "border border-rose-200 bg-rose-50 text-rose-800"
+                      : "border border-blue-100 bg-blue-50 text-blue-800"
+                  }`}
+                >
                   {validationStatusText}
                 </div>
               ) : null}
@@ -4097,7 +4223,13 @@ function BulkUploadDashboard({
 
             <div className="flex justify-end gap-3 border-t border-[#e7eefb] bg-white px-4 py-4">
               {validationStatusText ? (
-                <div className="mr-auto flex min-h-11 max-w-xl items-center rounded-md border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-bold leading-5 text-blue-800">
+                <div
+                  className={`mr-auto flex min-h-11 max-w-xl items-center rounded-md px-4 py-2 text-xs font-bold leading-5 ${
+                    isBulkCollegeLimitExceeded
+                      ? "border border-rose-200 bg-rose-50 text-rose-800"
+                      : "border border-blue-100 bg-blue-50 text-blue-800"
+                  }`}
+                >
                   {validationStatusText}
                 </div>
               ) : null}
@@ -4115,12 +4247,12 @@ function BulkUploadDashboard({
               </button>
               <button
                 type="button"
-                disabled={validationSummary.validRecords === 0 || editingRowId !== null || isImporting}
+                disabled={validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded}
                 onClick={() => {
                   void importValidData();
                 }}
                 className={`h-11 rounded-md px-8 text-xs font-extrabold shadow-[0_8px_18px_rgba(79,50,246,0.22)] ${
-                  validationSummary.validRecords === 0 || editingRowId !== null || isImporting
+                  validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded
                     ? "cursor-not-allowed bg-[#c7cbe0] text-white"
                     : "bg-[#4f32f6] text-white"
                 }`}
@@ -4174,6 +4306,46 @@ function BulkUploadDashboard({
                 className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(22,163,74,0.22)] transition hover:from-green-700 hover:to-emerald-600"
               >
                 Finish Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBulkLimitPopup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-3xl border border-rose-100 bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]">
+            <div className="flex items-start gap-4">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+                <TriangleAlert className="size-8" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-rose-700">Upload Limit Reached</p>
+                <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
+                  You can upload up to {MAX_BULK_COLLEGE_ROWS} colleges at a time.
+                </h2>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+                  Please split larger files and try again.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowBulkLimitPopup(false)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBulkLimitPopup(false);
+                  setShowValidationSummaryStep(true);
+                }}
+                className="rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(244,63,94,0.22)] transition hover:from-rose-700 hover:to-orange-600"
+              >
+                Review Data
               </button>
             </div>
           </div>
@@ -4237,10 +4409,18 @@ function AdminPageContent() {
   const [isDeletingCollege, setIsDeletingCollege] = useState(false);
   const [deleteUserDialog, setDeleteUserDialog] = useState<DeleteUserDialogState>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersSearchText, setUsersSearchText] = useState("");
+  const [editedCollegesPage, setEditedCollegesPage] = useState(1);
+  const [pendingCollegesPage, setPendingCollegesPage] = useState(1);
+  const [collegeNotificationsPage, setCollegeNotificationsPage] = useState(1);
+  const [collegeNotificationsSearchText, setCollegeNotificationsSearchText] = useState("");
   const [deleteEnquiryDialog, setDeleteEnquiryDialog] = useState<DeleteEnquiryDialogState>(null);
   const [isDeletingEnquiry, setIsDeletingEnquiry] = useState(false);
   const [deleteSubAdminDialog, setDeleteSubAdminDialog] = useState<DeleteSubAdminDialogState>(null);
   const [isDeletingSubAdmin, setIsDeletingSubAdmin] = useState(false);
+  const [deleteExamDialog, setDeleteExamDialog] = useState<DeleteExamDialogState>(null);
+  const [isDeletingExam, setIsDeletingExam] = useState(false);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
   const [customQuotaInput, setCustomQuotaInput] = useState("");
   const [customScholarshipInput, setCustomScholarshipInput] = useState("");
@@ -4667,6 +4847,53 @@ function AdminPageContent() {
     const nextTab = rawTab === "college-requests" ? "college-notifications" : rawTab;
     setActiveTab(nextTab);
   }, [searchParams]);
+
+  const filteredUsers = useMemo(() => {
+    const query = usersSearchText.trim().toLowerCase();
+    if (!query) return adminState.users;
+
+    return adminState.users.filter((user) =>
+      [user.name, user.email, user.phone, user.role]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value.includes(query)),
+    );
+  }, [adminState.users, usersSearchText]);
+  const usersTotalPages = Math.max(1, Math.ceil(filteredUsers.length / usersRowsPerPage));
+  const usersPageStart = filteredUsers.length === 0 ? 0 : (usersPage - 1) * usersRowsPerPage + 1;
+  const usersPageEnd = Math.min(usersPage * usersRowsPerPage, filteredUsers.length);
+  const visibleUsers = useMemo(
+    () => filteredUsers.slice((usersPage - 1) * usersRowsPerPage, usersPage * usersRowsPerPage),
+    [filteredUsers, usersPage],
+  );
+  const usersPaginationItems = useMemo<(number | string)[]>(() => {
+    if (usersTotalPages <= 6) {
+      return Array.from({ length: usersTotalPages }, (_, index) => index + 1);
+    }
+
+    if (usersPage <= 4) {
+      return [1, 2, 3, 4, 5, "ellipsis", usersTotalPages];
+    }
+
+    if (usersPage >= usersTotalPages - 3) {
+      return [1, "ellipsis", ...Array.from({ length: 5 }, (_, index) => usersTotalPages - 4 + index)];
+    }
+
+    return [1, "ellipsis-left", usersPage - 1, usersPage, usersPage + 1, "ellipsis-right", usersTotalPages];
+  }, [usersPage, usersTotalPages]);
+
+  useEffect(() => {
+    setUsersPage((current) => Math.min(current, usersTotalPages));
+  }, [usersTotalPages]);
+
+  useEffect(() => {
+    if (activeTab === "users") {
+      setUsersPage(1);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [usersSearchText]);
 
   useEffect(() => {
     if (collegeForm.state && !availableDistricts.includes(collegeForm.district)) {
@@ -6151,6 +6378,32 @@ function AdminPageContent() {
     }
   };
 
+  const openDeleteExamDialog = (exam: SavedExamSchedule) => {
+    setDeleteExamDialog({
+      id: exam.id,
+      name: exam.examName || "Exam",
+    });
+  };
+
+  const closeDeleteExamDialog = () => {
+    if (isDeletingExam) return;
+    setDeleteExamDialog(null);
+  };
+
+  const confirmDeleteExam = async () => {
+    if (!deleteExamDialog || isDeletingExam) {
+      return;
+    }
+
+    setIsDeletingExam(true);
+    try {
+      await removeExamSchedule(deleteExamDialog.id);
+      setDeleteExamDialog(null);
+    } finally {
+      setIsDeletingExam(false);
+    }
+  };
+
   const collegeChangeNotifications = useMemo(
     () =>
       adminState.collegeRequests
@@ -6162,6 +6415,83 @@ function AdminPageContent() {
         ),
     [adminState.collegeRequests],
   );
+  const filteredCollegeChangeNotifications = useMemo(() => {
+    const query = collegeNotificationsSearchText.trim().toLowerCase();
+    return query
+      ? collegeChangeNotifications.filter((item) => {
+          const searchableText = [
+            item.payload?.name,
+            item.requesterName,
+            item.requesterEmail,
+            item.status,
+            ...(item.changeSummary || []).flatMap((change) => [
+              change.label,
+              change.field,
+              String(change.before ?? ""),
+              String(change.after ?? ""),
+            ]),
+          ]
+            .map((value) => String(value || "").toLowerCase())
+            .join(" ");
+
+          return searchableText.includes(query);
+        })
+      : collegeChangeNotifications;
+  }, [collegeChangeNotifications, collegeNotificationsSearchText]);
+  const collegeNotificationsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredCollegeChangeNotifications.length / collegeNotificationsRowsPerPage),
+  );
+  const collegeNotificationsPageStart =
+    filteredCollegeChangeNotifications.length === 0
+      ? 0
+      : (collegeNotificationsPage - 1) * collegeNotificationsRowsPerPage + 1;
+  const collegeNotificationsPageEnd = Math.min(
+    collegeNotificationsPage * collegeNotificationsRowsPerPage,
+    filteredCollegeChangeNotifications.length,
+  );
+  const visibleCollegeChangeNotifications = useMemo(
+    () =>
+      filteredCollegeChangeNotifications.slice(
+        (collegeNotificationsPage - 1) * collegeNotificationsRowsPerPage,
+        collegeNotificationsPage * collegeNotificationsRowsPerPage,
+      ),
+    [collegeNotificationsPage, filteredCollegeChangeNotifications],
+  );
+  const collegeNotificationsPaginationItems = useMemo(
+    () => getCompactPaginationItems(collegeNotificationsPage, collegeNotificationsTotalPages),
+    [collegeNotificationsPage, collegeNotificationsTotalPages],
+  );
+  const getNotificationCollege = useCallback(
+    (item: RequestItem) => {
+      // First, try to find by grantedCollegeIds if available
+      if (item.grantedCollegeIds && item.grantedCollegeIds.length > 0) {
+        const collegeById = adminState.colleges.find((college) => item.grantedCollegeIds?.includes(college._id));
+        if (collegeById) return collegeById;
+      }
+
+      // Fall back to matching by name and email
+      const notificationName = String(item.payload?.name || item.requesterName || "").trim().toLowerCase();
+      const notificationEmail = String(item.requesterEmail || item.email || "").trim().toLowerCase();
+
+      return adminState.colleges.find((college) => {
+        const collegeName = String(college.name || "").trim().toLowerCase();
+        const collegeEmail = String(college.contactEmail || college.ownerEmail || "").trim().toLowerCase();
+        return (
+          (notificationName && collegeName && collegeName === notificationName) ||
+          (notificationEmail && collegeEmail && collegeEmail === notificationEmail)
+        );
+      });
+    },
+    [adminState.colleges],
+  );
+  useEffect(() => {
+    setCollegeNotificationsPage((current) => Math.min(current, collegeNotificationsTotalPages));
+  }, [collegeNotificationsTotalPages]);
+
+  useEffect(() => {
+    setCollegeNotificationsPage(1);
+  }, [collegeNotificationsSearchText]);
 
   const stats = [
     {
@@ -6237,6 +6567,61 @@ function AdminPageContent() {
     const notEdited = adminState.colleges.filter((item) => !item.lastDashboardEditAt);
     return { edited, notEdited };
   }, [adminState.colleges]);
+  const editedCollegesTotalPages = Math.max(
+    1,
+    Math.ceil(collegeDashboardEditStatus.edited.length / collegeEditStatusRowsPerPage),
+  );
+  const editedCollegesPageStart =
+    collegeDashboardEditStatus.edited.length === 0
+      ? 0
+      : (editedCollegesPage - 1) * collegeEditStatusRowsPerPage + 1;
+  const editedCollegesPageEnd = Math.min(
+    editedCollegesPage * collegeEditStatusRowsPerPage,
+    collegeDashboardEditStatus.edited.length,
+  );
+  const visibleEditedColleges = useMemo(
+    () =>
+      collegeDashboardEditStatus.edited.slice(
+        (editedCollegesPage - 1) * collegeEditStatusRowsPerPage,
+        editedCollegesPage * collegeEditStatusRowsPerPage,
+      ),
+    [collegeDashboardEditStatus.edited, editedCollegesPage],
+  );
+  const editedCollegesPaginationItems = useMemo(
+    () => getCompactPaginationItems(editedCollegesPage, editedCollegesTotalPages),
+    [editedCollegesPage, editedCollegesTotalPages],
+  );
+  const pendingCollegesTotalPages = Math.max(
+    1,
+    Math.ceil(collegeDashboardEditStatus.notEdited.length / collegeEditStatusRowsPerPage),
+  );
+  const pendingCollegesPageStart =
+    collegeDashboardEditStatus.notEdited.length === 0
+      ? 0
+      : (pendingCollegesPage - 1) * collegeEditStatusRowsPerPage + 1;
+  const pendingCollegesPageEnd = Math.min(
+    pendingCollegesPage * collegeEditStatusRowsPerPage,
+    collegeDashboardEditStatus.notEdited.length,
+  );
+  const visiblePendingColleges = useMemo(
+    () =>
+      collegeDashboardEditStatus.notEdited.slice(
+        (pendingCollegesPage - 1) * collegeEditStatusRowsPerPage,
+        pendingCollegesPage * collegeEditStatusRowsPerPage,
+      ),
+    [collegeDashboardEditStatus.notEdited, pendingCollegesPage],
+  );
+  const pendingCollegesPaginationItems = useMemo(
+    () => getCompactPaginationItems(pendingCollegesPage, pendingCollegesTotalPages),
+    [pendingCollegesPage, pendingCollegesTotalPages],
+  );
+  useEffect(() => {
+    setEditedCollegesPage((current) => Math.min(current, editedCollegesTotalPages));
+  }, [editedCollegesTotalPages]);
+
+  useEffect(() => {
+    setPendingCollegesPage((current) => Math.min(current, pendingCollegesTotalPages));
+  }, [pendingCollegesTotalPages]);
   const unreadRequestNotifications = useMemo(
     () =>
       isSeenNotificationsReady
@@ -6558,38 +6943,38 @@ function AdminPageContent() {
           </article>
           */}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {stats.map((item) => {
               const Icon = item.icon;
               return (
                 <article
                   key={item.label}
-                  className={`group relative overflow-hidden rounded-[1.6rem] border p-5 shadow-[0_24px_48px_rgba(148,163,184,0.14)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_56px_rgba(148,163,184,0.18)] ${item.cardClass}`}
+                  className={`group relative overflow-hidden rounded-[1rem] border p-3.5 shadow-[0_14px_28px_rgba(148,163,184,0.12)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(148,163,184,0.16)] ${item.cardClass}`}
                 >
                   <div className={`pointer-events-none absolute inset-0 ${item.glowClass}`} />
-                  <div className="relative flex items-start justify-between gap-4">
+                  <div className="relative flex items-start justify-between gap-3">
                     <div>
-                      <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${item.accentClass}`}>
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${item.accentClass}`}>
                         {item.accent}
                       </span>
-                      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                         {item.label}
                       </p>
                     </div>
-                    <span className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] ${item.iconWrapClass}`}>
-                      <Icon className="size-5" />
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.iconWrapClass}`}>
+                      <Icon className="size-4" />
                     </span>
                   </div>
-                  <div className="relative mt-7 flex items-end justify-between gap-3">
-                    <p className="text-4xl font-bold tracking-[-0.04em] text-slate-900">{item.value}</p>
-                    <div className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2 text-right shadow-[0_10px_20px_rgba(255,255,255,0.24)] backdrop-blur-sm">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Live Status</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-700">Updated from dashboard</p>
+                  <div className="relative mt-4 flex items-end justify-between gap-2">
+                    <p className="text-3xl font-bold text-slate-900">{item.value}</p>
+                    <div className="rounded-xl border border-white/70 bg-white/75 px-2.5 py-1.5 text-right shadow-[0_8px_16px_rgba(255,255,255,0.22)] backdrop-blur-sm">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400">Live Status</p>
+                      <p className="mt-0.5 text-[10px] font-semibold text-slate-700">Updated from dashboard</p>
                     </div>
                   </div>
-                  <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-white/70 pt-4">
-                    <p className="text-sm text-slate-600">{item.helper}</p>
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(74,222,128,0.14)]" />
+                  <div className="relative mt-3 flex items-center justify-between gap-2 border-t border-white/70 pt-2.5">
+                    <p className="text-xs text-slate-600">{item.helper}</p>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_5px_rgba(74,222,128,0.14)]" />
                   </div>
                 </article>
               );
@@ -6597,7 +6982,7 @@ function AdminPageContent() {
           </div>
 
           <article className="rounded-[1.6rem] border border-[rgba(15,76,129,0.1)] bg-white p-5 shadow-[0_20px_40px_rgba(148,163,184,0.1)]">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
                   College Edit Status
@@ -6617,79 +7002,137 @@ function AdminPageContent() {
                   })
                 }
                 disabled={!token || collegeDashboardEditStatus.notEdited.length === 0}
-                className={solidBlueButtonClass}
+                className="inline-flex h-9 w-full items-center justify-center gap-1 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 text-sm font-bold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:border-[rgba(37,99,235,0.34)] hover:bg-white hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-60 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5"
               >
                 Send Mail
               </button>
             </div>
 
             <div className="mt-5 grid gap-4">
-              <div className="overflow-hidden rounded-[1.25rem] border border-emerald-200">
-                <div className="flex items-center justify-between gap-3 border-b border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_100%)] px-4 py-3">
-                  <p className="text-sm font-bold text-emerald-900">Edited Colleges</p>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+              <div className="overflow-hidden rounded-[0.65rem] border border-[#c7d2fe] bg-[#fbfdff] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center justify-between gap-3 border-b border-[#c7d2fe] bg-[#eef2ff] px-3 py-2.5">
+                  <p className="text-[13px] font-bold text-[#3730a3]">Edited Colleges</p>
+                  <span className="rounded-md bg-white px-3 py-1 text-[12px] font-bold text-[#4338ca]">
                     {collegeDashboardEditStatus.edited.length}
                   </span>
                 </div>
                 {collegeDashboardEditStatus.edited.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Last Edit</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {collegeDashboardEditStatus.edited.map((college) => (
-                          <tr key={`edited-college-${college._id}`} className="align-middle">
-                            <td className="px-4 py-3 font-semibold text-slate-900">{college.name || "College"}</td>
-                            <td className="px-4 py-3 text-slate-600">{college.contactEmail || college.ownerEmail || "-"}</td>
-                            <td className="px-4 py-3 text-slate-600">
-                              {college.lastDashboardEditAt
-                                ? new Date(college.lastDashboardEditAt).toLocaleDateString("en-IN", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  })
-                                : "-"}
-                            </td>
+                  <>
+                    <div className="admin-users-table-scroll overflow-x-auto pb-2">
+                      <table className="w-full min-w-[860px] table-fixed text-left text-[13px] text-[#40557a]">
+                        <colgroup>
+                          <col className="w-[38%]" />
+                          <col className="w-[42%]" />
+                          <col className="w-[20%]" />
+                        </colgroup>
+                        <thead className="border-b border-[#c7d2fe] bg-[linear-gradient(90deg,#eef2ff_0%,#f8fbff_52%,#eef2ff_100%)] text-[11px] font-bold uppercase">
+                          <tr>
+                            {[
+                              { label: "College", tone: "bg-white text-[#3730a3]" },
+                              { label: "Email", tone: "bg-[#eef8ff] text-[#1d4ed8]" },
+                              { label: "Last Edit", tone: "bg-[#f5f3ff] text-[#6d28d9]" },
+                            ].map((column) => (
+                              <th key={column.label} className="px-4 py-2 text-left">
+                                <span className={`inline-flex items-center rounded-md px-2 py-1 ${column.tone}`}>
+                                  {column.label}
+                                </span>
+                              </th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-[#dbe3ee]">
+                          {visibleEditedColleges.map((college) => (
+                            <tr key={`edited-college-${college._id}`} className="bg-white align-middle transition hover:bg-[#f8fbff]">
+                              <td className="truncate px-4 py-2.5 font-bold leading-5 text-[#1e1b4b]">{college.name || "College"}</td>
+                              <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#40557a]">{college.contactEmail || college.ownerEmail || "-"}</td>
+                              <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#4338ca]">
+                                {college.lastDashboardEditAt
+                                  ? new Date(college.lastDashboardEditAt).toLocaleDateString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "-"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex flex-col gap-3 border-t border-[#c7d2fe] bg-white px-4 py-2.5 text-[12px] font-medium text-[#40557a] sm:flex-row sm:items-center sm:justify-between">
+                      <p>
+                        Showing {editedCollegesPageStart} to {editedCollegesPageEnd} of {collegeDashboardEditStatus.edited.length} colleges
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditedCollegesPage((current) => Math.max(1, current - 1))}
+                          disabled={editedCollegesPage === 1}
+                          className="rounded-md border border-[#c7d2fe] bg-white px-4 py-1.5 text-xs font-bold text-[#3730a3] transition hover:bg-[#eef2ff] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                        >
+                          Previous
+                        </button>
+                        {editedCollegesPaginationItems.map((item) =>
+                          typeof item === "number" ? (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => setEditedCollegesPage(item)}
+                              className={`h-8 min-w-8 rounded-md px-3 text-xs font-bold transition ${
+                                editedCollegesPage === item
+                                  ? "bg-[#eef2ff] text-[#4338ca]"
+                                  : "bg-white text-[#40557a] hover:bg-[#f8fafc]"
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          ) : (
+                            <span key={item} className="px-2 text-xs font-bold text-[#40557a]">
+                              ...
+                            </span>
+                          ),
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setEditedCollegesPage((current) => Math.min(editedCollegesTotalPages, current + 1))}
+                          disabled={editedCollegesPage === editedCollegesTotalPages}
+                          className="rounded-md border border-[#c7d2fe] bg-white px-4 py-1.5 text-xs font-bold text-[#3730a3] transition hover:bg-[#eef2ff] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : (
-                  <div className="bg-white px-4 py-6 text-sm text-slate-500">
+                  <div className="bg-white px-4 py-6 text-sm font-semibold text-[#60708f]">
                     No colleges have updated their dashboard yet.
                   </div>
                 )}
               </div>
 
-              <div className="overflow-hidden rounded-[1.25rem] border border-amber-200">
-                <div className="flex items-center justify-between gap-3 border-b border-amber-100 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] px-4 py-3">
-                  <p className="text-sm font-bold text-amber-900">Pending Colleges</p>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700">
+              <div className="overflow-hidden rounded-[0.65rem] border border-[#fecdd3] bg-[#fffafa] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center justify-between gap-3 border-b border-[#fecdd3] bg-[#fff1f2] px-3 py-2.5">
+                  <p className="text-[13px] font-bold text-[#be123c]">Pending Colleges</p>
+                  <span className="rounded-md bg-white px-3 py-1 text-[12px] font-bold text-[#e11d48]">
                     {collegeDashboardEditStatus.notEdited.length}
                   </span>
                 </div>
                 {collegeDashboardEditStatus.notEdited.length > 0 ? (
                   <div className="bg-white">
-                    <div className="space-y-3 p-4 sm:hidden">
-                      {collegeDashboardEditStatus.notEdited.map((college) => (
+                    <div className="space-y-3 p-3 sm:hidden">
+                      {visiblePendingColleges.map((college) => (
                         <div
                           key={`pending-college-mobile-${college._id}`}
-                          className="rounded-2xl border border-amber-100 bg-[linear-gradient(135deg,#ffffff_0%,#fffbeb_100%)] p-3"
+                          className="rounded-md border border-[#fecdd3] bg-[#fffafa] p-3"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="font-semibold text-slate-900">{college.name || "College"}</p>
-                              <p className="mt-1 break-all text-xs text-slate-500">
+                              <p className="font-bold text-[#881337]">{college.name || "College"}</p>
+                              <p className="mt-1 break-all text-xs font-medium text-[#7f5060]">
                                 {college.contactEmail || college.ownerEmail || "-"}
                               </p>
                             </div>
-                            <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                            <span className="inline-flex shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">
                               Pending
                             </span>
                           </div>
@@ -6697,27 +7140,35 @@ function AdminPageContent() {
                       ))}
                     </div>
 
-                    <div className="hidden overflow-x-auto sm:block">
-                      <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
+                    <div className="admin-users-table-scroll hidden overflow-x-auto pb-2 sm:block">
+                      <table className="w-full min-w-[860px] table-fixed text-left text-[13px] text-[#40557a]">
                         <colgroup>
-                          <col className="w-[34%]" />
-                          <col className="w-[46%]" />
+                          <col className="w-[38%]" />
+                          <col className="w-[42%]" />
                           <col className="w-[20%]" />
                         </colgroup>
-                        <thead className="bg-slate-50">
+                        <thead className="border-b border-[#fecdd3] bg-[linear-gradient(90deg,#fff1f2_0%,#fffafa_52%,#fff7ed_100%)] text-[11px] font-bold uppercase">
                           <tr>
-                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">College</th>
-                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</th>
-                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</th>
+                            {[
+                              { label: "College", tone: "bg-white text-[#be123c]" },
+                              { label: "Email", tone: "bg-[#fff1f2] text-[#e11d48]" },
+                              { label: "Status", tone: "bg-[#fff7ed] text-[#b45309]" },
+                            ].map((column) => (
+                              <th key={column.label} className="px-4 py-2 text-left">
+                                <span className={`inline-flex items-center rounded-md px-2 py-1 ${column.tone}`}>
+                                  {column.label}
+                                </span>
+                              </th>
+                            ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {collegeDashboardEditStatus.notEdited.map((college) => (
-                            <tr key={`pending-college-${college._id}`} className="align-middle">
-                              <td className="px-4 py-3 font-semibold text-slate-900 wrap-break-word">{college.name || "College"}</td>
-                              <td className="px-4 py-3 text-slate-600 break-all">{college.contactEmail || college.ownerEmail || "-"}</td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="inline-flex whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                        <tbody className="divide-y divide-[#dbe3ee]">
+                          {visiblePendingColleges.map((college) => (
+                            <tr key={`pending-college-${college._id}`} className="bg-white align-middle transition hover:bg-[#fffafa]">
+                              <td className="truncate px-4 py-2.5 font-bold leading-5 text-[#881337]">{college.name || "College"}</td>
+                              <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#7f5060]">{college.contactEmail || college.ownerEmail || "-"}</td>
+                              <td className="px-4 py-2.5 whitespace-nowrap">
+                                <span className="inline-flex min-w-[4.8rem] items-center justify-center whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600">
                                   Pending
                                 </span>
                               </td>
@@ -6726,9 +7177,52 @@ function AdminPageContent() {
                         </tbody>
                       </table>
                     </div>
+                    <div className="flex flex-col gap-3 border-t border-[#fecdd3] bg-white px-4 py-2.5 text-[12px] font-medium text-[#7f5060] sm:flex-row sm:items-center sm:justify-between">
+                      <p>
+                        Showing {pendingCollegesPageStart} to {pendingCollegesPageEnd} of {collegeDashboardEditStatus.notEdited.length} colleges
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPendingCollegesPage((current) => Math.max(1, current - 1))}
+                          disabled={pendingCollegesPage === 1}
+                          className="rounded-md border border-[#fecdd3] bg-white px-4 py-1.5 text-xs font-bold text-[#be123c] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                        >
+                          Previous
+                        </button>
+                        {pendingCollegesPaginationItems.map((item) =>
+                          typeof item === "number" ? (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => setPendingCollegesPage(item)}
+                              className={`h-8 min-w-8 rounded-md px-3 text-xs font-bold transition ${
+                                pendingCollegesPage === item
+                                  ? "bg-[#fff1f2] text-[#e11d48]"
+                                  : "bg-white text-[#7f5060] hover:bg-[#fffafa]"
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          ) : (
+                            <span key={item} className="px-2 text-xs font-bold text-[#7f5060]">
+                              ...
+                            </span>
+                          ),
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setPendingCollegesPage((current) => Math.min(pendingCollegesTotalPages, current + 1))}
+                          disabled={pendingCollegesPage === pendingCollegesTotalPages}
+                          className="rounded-md border border-[#fecdd3] bg-white px-4 py-1.5 text-xs font-bold text-[#be123c] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="bg-white px-4 py-6 text-sm text-slate-500">
+                  <div className="bg-white px-4 py-6 text-sm font-semibold text-[#60708f]">
                     Every college has updated the dashboard at least once.
                   </div>
                 )}
@@ -8489,51 +8983,87 @@ function AdminPageContent() {
             </div>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleCollegeCards.map((college) => {
               const range = formatFeeRange(college.feesStructure);
               const isExpanded = expandedCollegeIds.includes(college._id);
+              const courseCount = adminState.courses.filter((course) => {
+                const directMatch = (course.colleges || []).some((courseCollege) =>
+                  String(courseCollege?._id || "").trim() === college._id ||
+                  String(courseCollege?.name || "").trim().toLowerCase() === String(college.name || "").trim().toLowerCase(),
+                );
+                const detailMatch = (course.collegeDetails || []).some((detail) => {
+                  const detailCollege = detail.college;
+                  return typeof detailCollege === "string"
+                    ? detailCollege === college._id
+                    : String(detailCollege?._id || "").trim() === college._id ||
+                        String(detailCollege?.name || "").trim().toLowerCase() === String(college.name || "").trim().toLowerCase();
+                });
+                return directMatch || detailMatch;
+              }).length;
+
               return (
-                <article key={college._id} className="flex h-full flex-col rounded-[1.35rem] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_34px_rgba(148,163,184,0.12)]">
-                  <div className="flex flex-1 items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-base font-bold leading-6 text-slate-900">{college.name || "College"}</h3>
-                      <p className="mt-1 break-words text-sm leading-5 text-slate-600">{college.university || "-"}</p>
-                      <p className="mt-1 min-h-4 break-words text-xs leading-4 text-slate-500">{[college.district, college.state].filter(Boolean).join(", ") || "-"}</p>
-                      {college.isTopCollege || college.isBestCollege ? (
-                        <span className="mt-1 inline-flex rounded-full bg-[rgba(15,76,129,0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                          Best College
-                        </span>
-                      ) : null}
-                      {isExpanded ? (
-                        <>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Fees: {formatCompactIndianCurrencyRange(range.min, range.max)}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">Tags: {college.courseTags || "-"}</p>
-                        <p className="mt-1 text-xs text-slate-500">Facilities: {Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || "-")}</p>
-                        <p className="mt-1 text-xs text-slate-500">Placement: {String((college.placements?.placementRate ?? college.placementRate) || "-")}</p>
-                        <p className="mt-1 text-xs text-slate-500">Contact: {college.contactPhone || college.phone || "-"}</p>
-                        <p className="mt-1 text-xs text-slate-500">{college.isTopCollege || college.isBestCollege ? "Best college" : "Standard listing"}</p>
-                        </>
-                      ) : null}
-                    </div>
+                <article key={college._id} className="relative flex min-h-[18.5rem] flex-col rounded-[1.35rem] border border-[#e9f0fb] bg-white p-5 shadow-[0_18px_40px_rgba(59,91,139,0.12)]">
+                  <div className="flex items-start gap-4">
                     {college.logo ? (
                       <CollegeLogoBadge
                         src={college.logo}
                         alt={college.name || "College"}
-                        className="h-14 w-14 shrink-0 rounded-[1rem]"
-                        imageClassName="p-2"
+                        className="h-16 w-16 shrink-0 rounded-[1.25rem] bg-[#f1f6ff]"
+                        imageClassName="p-2.5"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#eff6ff_0%,#fff7ed_100%)]">
-                        <Building2 className="size-7 text-[#0f4c81]" />
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.25rem] bg-[#f1f6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                        <Building2 className="size-8 text-[#2563eb]" strokeWidth={1.9} />
                       </div>
                     )}
+
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-lg font-black leading-6 text-[#061647]">{college.name || "College"}</h3>
+                      <p className="mt-2 break-words text-sm font-semibold leading-6 text-[#526995]">{college.university || "-"}</p>
+                      <p className="mt-2 flex min-h-5 items-start gap-2 break-words text-sm font-semibold leading-5 text-[#526995]">
+                        <MapPin className="mt-0.5 size-4 shrink-0 fill-[#2563eb] text-[#2563eb]" />
+                        <span>{[college.district, college.state].filter(Boolean).join(", ") || "-"}</span>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="mt-4 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                  {college.isTopCollege || college.isBestCollege ? (
+                    <span className="mt-4 inline-flex w-max rounded-full bg-[#eff6ff] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2563eb]">
+                      Best College
+                    </span>
+                  ) : null}
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Courses", value: courseCount || "-", icon: Users },
+                      { label: "Type", value: college.ownershipType || "-", icon: Building2 },
+                    ].map((item) => {
+                      const MetricIcon = item.icon;
+                      return (
+                        <div key={item.label} className="flex min-h-[4.55rem] items-center gap-2 rounded-lg bg-[#f4f8ff] px-3 py-3">
+                          <MetricIcon className="size-5 shrink-0 text-[#2563eb]" strokeWidth={2} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold leading-4 text-[#445b85]">{item.label}</p>
+                            <p className="mt-1 break-words text-xs font-black leading-4 text-black sm:text-sm">{item.value}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {isExpanded ? (
+                    <div className="mt-4 rounded-lg border border-[#d8e6ff] bg-[#f8fbff] px-3 py-2.5 text-xs font-semibold leading-5 text-[#526995]">
+                      <p>Fees: {formatCompactIndianCurrencyRange(range.min, range.max)}</p>
+                      <p>Tags: {college.courseTags || "-"}</p>
+                      <p>Facilities: {Array.isArray(college.facilities) ? college.facilities.join(", ") : (college.facilities || "-")}</p>
+                      <p>Placement: {String((college.placements?.placementRate ?? college.placementRate) || "-")}</p>
+                      <p>Contact: {college.contactPhone || college.phone || "-"}</p>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-auto pt-6">
+                    <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() =>
@@ -8543,20 +9073,22 @@ function AdminPageContent() {
                               : [...prev, college._id],
                           )
                         }
-                        className={`${softButtonClass} h-9 w-full justify-center px-3 py-1.5 text-xs`}
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#80adff] bg-white px-3 text-sm font-black text-[#2563eb] transition hover:bg-[#eff6ff]"
                       >
                         {isExpanded ? "Hide Info" : "See Details"}
+                        <ChevronRight className="size-5" />
                       </button>
-                      <Link href={`/college/${college._id}`} className={`${softButtonClass} h-9 w-full justify-center px-3 py-1.5 text-xs`}>
+                      <Link href={`/college/${college._id}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-3 text-sm font-black text-white shadow-[0_12px_22px_rgba(37,99,235,0.2)] transition hover:bg-[#1d4ed8]">
                         View
                         <ExternalLink className="size-4" />
                       </Link>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#d7deea] pt-4">
                       <button
                         type="button"
                         onClick={() => openCollegeEditor(college)}
-                        className="inline-flex h-9 min-w-24 items-center justify-center gap-2 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition duration-200 hover:bg-[#2563eb] hover:shadow-[0_12px_24px_rgba(37,99,235,0.26)]"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-3 text-sm font-black text-white shadow-[0_10px_18px_rgba(37,99,235,0.18)] transition hover:bg-[#1d4ed8]"
                       >
                         <PencilLine className="size-4" />
                         Edit
@@ -8566,7 +9098,7 @@ function AdminPageContent() {
                         onClick={(event) => {
                           openDeleteCollegeDialog(college, event.currentTarget);
                         }}
-                        className="inline-flex h-9 min-w-24 items-center justify-center gap-2 rounded-full border border-[rgba(220,38,38,0.4)] bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition duration-200 hover:bg-[#dc2626] hover:shadow-[0_12px_24px_rgba(239,68,68,0.26)]"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#ef4444] px-3 text-sm font-black text-white shadow-[0_10px_18px_rgba(239,68,68,0.18)] transition hover:bg-[#dc2626]"
                       >
                         <Trash2 className="size-4" />
                         Delete
@@ -9559,39 +10091,122 @@ function AdminPageContent() {
               No users found right now.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
-              <table className="min-w-[760px] text-left text-[13px] text-slate-700">
-                <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                  <tr>
-                    <th className="px-3 py-2.5">Name</th>
-                    <th className="px-3 py-2.5">Email</th>
-                    <th className="px-3 py-2.5">Phone</th>
-                    <th className="px-3 py-2.5">Role</th>
-                    <th className="px-3 py-2.5">Joined</th>
-                    <th className="px-3 py-2.5 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminState.users.map((user) => (
-                    <tr key={user._id} className="border-t border-slate-100">
-                      <td className="px-3 py-2.5 font-semibold leading-5 text-slate-900">{user.name || "User"}</td>
-                      <td className="px-3 py-2.5 leading-5 text-slate-700">{user.email || "-"}</td>
-                      <td className="px-3 py-2.5 leading-5 text-slate-700">{user.phone || "-"}</td>
-                      <td className="px-3 py-2.5 capitalize leading-5 text-slate-700">{user.role || "user"}</td>
-                      <td className="px-3 py-2.5 leading-5 text-slate-700">{formatDate(user.createdAt)}</td>
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openDeleteUserDialog(user)}
-                          className="inline-flex min-w-20 items-center justify-center whitespace-nowrap rounded-full bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white"
-                        >
-                          Delete
-                        </button>
-                      </td>
+            <div className="overflow-hidden rounded-[0.65rem] border border-[#dbe3ee] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-col gap-2 border-b border-[#dbe3ee] bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full sm:max-w-sm">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8ba0bd]" />
+                  <input
+                    type="search"
+                    value={usersSearchText}
+                    onChange={(event) => setUsersSearchText(event.target.value)}
+                    placeholder="Search users"
+                    className="h-9 w-full rounded-md border border-[#dbe3ee] bg-[#f8fafc] pl-9 pr-3 text-[13px] font-medium text-[#263954] outline-none transition placeholder:text-[#8ba0bd] focus:border-[#93b4d8] focus:bg-white focus:ring-2 focus:ring-[#e7f0fb]"
+                  />
+                </div>
+                <p className="text-[12px] font-semibold text-[#60708f]">
+                  {filteredUsers.length} users
+                </p>
+              </div>
+              <div className="admin-users-table-scroll overflow-x-auto pb-2">
+                <table className="w-full min-w-[1040px] table-fixed text-left text-[13px] text-[#40557a]">
+                  <thead className="border-b border-[#dbe3ee] bg-[linear-gradient(90deg,#f0f7ff_0%,#f8fbff_50%,#fff7ed_100%)] text-[11px] font-bold uppercase">
+                    <tr>
+                      {[
+                        { label: "Name", width: "w-[20%]", align: "text-left", tone: "bg-[#eaf3ff] text-[#0f4c81]" },
+                        { label: "Email", width: "w-[27%]", align: "text-left", tone: "bg-[#eef8ff] text-[#2563eb]" },
+                        { label: "Phone", width: "w-[15%]", align: "text-left", tone: "bg-[#ecfdf5] text-[#0f766e]" },
+                        { label: "Role", width: "w-[13%]", align: "text-center", tone: "bg-[#f0fdf4] text-[#15803d]" },
+                        { label: "Joined", width: "w-[14%]", align: "text-left", tone: "bg-[#fff7ed] text-[#b45309]" },
+                        { label: "Action", width: "w-[11%]", align: "text-right", tone: "bg-[#fff1f2] text-[#be123c]" },
+                      ].map((column) => (
+                        <th key={column.label} className={`${column.width} px-4 py-2 ${column.align}`}>
+                          <span className={`inline-flex items-center rounded-md px-2 py-1 ${column.tone} ${column.align === "text-right" ? "justify-end" : ""}`}>
+                            {column.label}
+                          </span>
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#dbe3ee]">
+                    {visibleUsers.map((user) => {
+                      const role = user.role || "user";
+
+                      return (
+                        <tr key={user._id} className="bg-white transition hover:bg-[#f8fbff]">
+                          <td className="truncate px-4 py-2.5 font-bold leading-5 text-[#15213a]">{user.name || "User"}</td>
+                          <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#40557a]">{user.email || "-"}</td>
+                          <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#40557a]">{user.phone || "-"}</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`inline-flex min-w-[4.2rem] items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold capitalize ${getUserRoleBadgeClass(role)}`}>
+                              {role}
+                            </span>
+                          </td>
+                          <td className="truncate px-4 py-2.5 font-medium leading-5 text-[#2f4366]">{formatDate(user.createdAt)}</td>
+                          <td className="px-4 py-2.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => openDeleteUserDialog(user)}
+                              className="inline-flex min-w-20 items-center justify-center whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-600 hover:text-white"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {visibleUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-[#60708f]">
+                          No matching users found.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-col gap-3 border-t border-[#dbe3ee] bg-white px-4 py-2.5 text-[12px] font-medium text-[#40557a] sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  Showing {usersPageStart} to {usersPageEnd} of {filteredUsers.length} users
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUsersPage((current) => Math.max(1, current - 1))}
+                    disabled={usersPage === 1}
+                    className="rounded-md border border-[#dbe3ee] bg-white px-4 py-1.5 text-xs font-bold text-[#263954] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                  >
+                    Previous
+                  </button>
+                  {usersPaginationItems.map((item) =>
+                    typeof item === "number" ? (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setUsersPage(item)}
+                        className={`h-8 min-w-8 rounded-md px-3 text-xs font-bold transition ${
+                          usersPage === item
+                            ? "bg-[#eef0ff] text-[#4f46e5]"
+                            : "bg-white text-[#40557a] hover:bg-[#f8fafc]"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ) : (
+                      <span key={item} className="px-2 text-xs font-bold text-[#40557a]">
+                        ...
+                      </span>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setUsersPage((current) => Math.min(usersTotalPages, current + 1))}
+                    disabled={usersPage === usersTotalPages}
+                    className="rounded-md border border-[#dbe3ee] bg-white px-4 py-1.5 text-xs font-bold text-[#263954] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:text-[#b9c3d2]"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -9622,56 +10237,148 @@ function AdminPageContent() {
       ) : null}
 
       {!loading && activeTab === "college-notifications" ? (
-        <div className="space-y-3">
-          {collegeChangeNotifications.map((item) => (
-            <article key={item._id} className="luxe-card p-5">
-              <div className="w-full min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="font-bold text-slate-900">
-                    {item.payload?.name || item.requesterName || "College update"}
-                  </h3>
-                  <span
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
-                      item.status === "approved"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : item.status === "rejected"
-                          ? "border-rose-200 bg-rose-50 text-rose-700"
-                          : "border-amber-200 bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {item.status || "pending"}
-                  </span>
-                </div>
-                <p className="mt-1 break-words text-sm text-slate-500">
-                  Edited by login email: {item.requesterEmail || "-"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Updated on {formatDate(item.updatedAt || item.createdAt)}
-                </p>
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {(item.changeSummary || []).map((change, index) => (
-                    <div
-                      key={`${item._id}-${change.field || index}`}
-                      className="min-w-0 rounded-[0.9rem] border border-slate-200 bg-slate-50 px-3 py-3"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        {change.label || change.field || "Field"}
-                      </p>
-                      <p className="mt-1 text-sm text-rose-700">
-                        Before: {renderChangeValue(change.before)}
-                      </p>
-                      <p className="mt-0.5 text-sm text-emerald-700">
-                        Now: {renderChangeValue(change.after)}
-                      </p>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8ba0bd]" />
+              <input
+                type="search"
+                value={collegeNotificationsSearchText}
+                onChange={(event) => setCollegeNotificationsSearchText(event.target.value)}
+                placeholder="Search by college name"
+                className="h-10 w-full rounded-md border border-[#dbe3ee] bg-white pl-9 pr-3 text-[13px] font-medium text-[#263954] shadow-[0_8px_18px_rgba(15,23,42,0.04)] outline-none transition placeholder:text-[#8ba0bd] focus:border-[#93b4d8] focus:ring-2 focus:ring-[#e7f0fb]"
+              />
+            </div>
+
+          </div>
+
+          <div className="space-y-3">
+            {visibleCollegeChangeNotifications.map((item, index) => {
+              const matchedCollege = getNotificationCollege(item);
+              const collegeName = item.payload?.name || item.requesterName || matchedCollege?.name || "College update";
+              const collegeLogo = getRequestAssetValue(item, ["logo", "logoImage"]) || matchedCollege?.logo || "";
+              const serialNumber = collegeNotificationsPageStart + index;
+              const status = String(item.status || "pending").toLowerCase();
+              const statusClass =
+                status === "approved"
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                  : status === "rejected"
+                    ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+                    : "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+
+              return (
+                <article
+                  key={item._id}
+                  className="overflow-hidden rounded-xl border border-[#dbe3ee] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                >
+                  <div className="grid gap-0 lg:grid-cols-[26rem_minmax(0,1fr)]">
+                    <div className="flex gap-4 p-4 lg:border-r lg:border-[#dbe3ee]">
+                      <CollegeLogoBadge
+                        src={collegeLogo}
+                        alt={`${collegeName} logo`}
+                        className="h-16 w-16 shrink-0 rounded-full"
+                        fallback={<span className="text-base font-black">{serialNumber}</span>}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="min-w-0 text-[15px] font-black leading-5 text-[#15213a]">
+                            <span className="mr-1">{serialNumber}.</span>
+                            {collegeName}
+                          </h3>
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold capitalize ${statusClass}`}>
+                            {status}
+                          </span>
+                        </div>
+                        <div className="mt-3 space-y-1.5 text-[12px] font-medium text-[#60708f]">
+                          <p className="break-all">
+                            Edited by login email: {item.requesterEmail || "-"}
+                          </p>
+                          <p>Updated on {formatDate(item.updatedAt || item.createdAt)}</p>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="relative p-4">
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-[#8ba0bd] transition hover:bg-[#f8fafc] hover:text-[#263954]"
+                      >
+                        ...
+                      </button>
+                      <div className="grid gap-x-6 gap-y-4 pr-8 sm:grid-cols-2 xl:grid-cols-5">
+                        {(item.changeSummary || []).map((change, changeIndex) => (
+                          <div key={`${item._id}-${change.field || changeIndex}`} className="min-w-0">
+                            <p className="truncate text-[11px] font-black text-[#263954]">
+                              {change.label || change.field || "Field"}
+                            </p>
+                            <p className="mt-1 break-words text-[11px] font-bold leading-4 text-rose-600">
+                              Before: {renderChangeValue(change.before)}
+                            </p>
+                            <p className="break-words text-[11px] font-bold leading-4 text-emerald-600">
+                              Now: {renderChangeValue(change.after)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {filteredCollegeChangeNotifications.length > 0 ? (
+            <div className="flex flex-col gap-3 pt-1 text-[12px] font-medium text-[#60708f] sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Showing {collegeNotificationsPageStart} to {collegeNotificationsPageEnd} of {filteredCollegeChangeNotifications.length} colleges
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCollegeNotificationsPage((current) => Math.max(1, current - 1))}
+                  disabled={collegeNotificationsPage === 1}
+                  className="inline-flex h-9 min-w-24 items-center justify-center rounded-md border border-rose-200 bg-white px-4 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:bg-rose-50 disabled:text-rose-200"
+                >
+                  Previous
+                </button>
+                {collegeNotificationsPaginationItems.map((item) =>
+                  typeof item === "number" ? (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCollegeNotificationsPage(item)}
+                      className={`h-9 min-w-9 rounded-md px-3 text-sm font-bold transition ${
+                        collegeNotificationsPage === item
+                          ? "bg-rose-50 text-rose-600"
+                          : "bg-white text-[#8a4d61] hover:bg-rose-50 hover:text-rose-600"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span key={item} className="px-2 text-sm font-bold text-[#8a4d61]">
+                      ...
+                    </span>
+                  ),
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCollegeNotificationsPage((current) => Math.min(collegeNotificationsTotalPages, current + 1))
+                  }
+                  disabled={collegeNotificationsPage === collegeNotificationsTotalPages}
+                  className="inline-flex h-9 min-w-20 items-center justify-center rounded-md border border-rose-200 bg-white px-4 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:bg-rose-50 disabled:text-rose-200"
+                >
+                  Next
+                </button>
               </div>
-            </article>
-          ))}
-          {collegeChangeNotifications.length === 0 ? (
-            <div className="rounded-[1rem] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-              No field change notifications yet.
+            </div>
+          ) : null}
+
+          {filteredCollegeChangeNotifications.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#dbe3ee] bg-white px-4 py-8 text-center text-sm font-semibold text-[#60708f]">
+              No field change notifications found.
             </div>
           ) : null}
         </div>
@@ -9857,7 +10564,7 @@ function AdminPageContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void removeExamSchedule(item.id)}
+                      onClick={() => openDeleteExamDialog(item)}
                       className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
                     >
                       Delete
@@ -10002,6 +10709,51 @@ function AdminPageContent() {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {deleteExamDialog ? (
+        <div
+          className="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeDeleteExamDialog}
+        >
+          <div
+            className="w-full max-w-sm rounded-[1.35rem] border border-rose-100 bg-white p-5 shadow-[0_26px_60px_rgba(15,23,42,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <TriangleAlert className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-500">Delete Exam</p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">
+                  Are you sure you want to delete this exam schedule?
+                </h3>
+                <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">
+                  {deleteExamDialog.name} will be removed from the exams list.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteExamDialog}
+                disabled={isDeletingExam}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteExam()}
+                disabled={isDeletingExam}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingExam ? "Deleting..." : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
