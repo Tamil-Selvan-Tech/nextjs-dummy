@@ -204,6 +204,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
     ? tabs
     : tabs.filter((tab) => tab.key !== "campusHighlights");
 
+  const deduplicateEntranceExams = (exams: typeof relatedCourses[0]['entranceExams'] | undefined) => {
+    if (!Array.isArray(exams)) return [];
+    const seen = new Set<string>();
+    return exams.filter((exam) => {
+      const key = `${exam.examName || ''}|${exam.cutoffScoreOrRank || ''}|${exam.weightage || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const groupedCourses = useMemo(() => {
     const groups = new Map<string, Course[]>();
     relatedCourses.forEach((course) => {
@@ -1461,7 +1472,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                                     Entrance Exams
                                   </summary>
                                   <div className="mt-2 space-y-2">
-                                    {course.entranceExams.map((exam, index) => (
+                                    {deduplicateEntranceExams(course.entranceExams).map((exam, index) => (
                                       <div key={`${course.id}-exam-${index}`} className="rounded-[0.75rem] border border-[rgba(15,76,129,0.08)] bg-white px-3 py-2">
                                         <p className="text-xs font-semibold text-[color:var(--text-dark)]">{exam.examName || `Exam ${index + 1}`}</p>
                                         {exam.cutoffScoreOrRank ? <p className="mt-1 text-[11px]">Cutoff: {exam.cutoffScoreOrRank}</p> : null}

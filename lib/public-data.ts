@@ -156,6 +156,7 @@ const fetchJson = async <T>(path: string) => {
 
 type BackendCollege = {
   _id?: string;
+  collegeCode?: string;
   name?: string;
   university?: string;
   description?: string;
@@ -221,6 +222,7 @@ type BackendCourse = {
   university?: string;
   college?: string;
   collegeId?: string;
+  collegeCode?: string;
   courseName?: string;
   courseType?: string;
   courseCategory?: string;
@@ -233,6 +235,10 @@ type BackendCourse = {
   description?: string;
   entranceExams?: Array<{
     examName?: string;
+    college?: string;
+    collegeId?: string;
+    collegeCode?: string;
+    courseName?: string;
     cutoffScoreOrRank?: string;
     cutoffByCategory?: Array<{
       category?: string;
@@ -244,7 +250,9 @@ type BackendCourse = {
   }>;
   minimumQualification?: string;
   collegeDetails?: Array<{
-    college?: string | { _id?: string; name?: string };
+    college?: string | { _id?: string; name?: string; collegeCode?: string };
+    collegeId?: string;
+    collegeCode?: string;
     semesterFees?: number | string;
     totalFees?: number | string;
     hostelFees?: number | string;
@@ -322,9 +330,20 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
               typeof rawCollege === "string"
                 ? rawCollege
                 : String(rawCollege?.name || rawCollege?._id || "").trim();
+            const resolvedCollegeId =
+              typeof rawCollege === "string"
+                ? rawCollege
+                : String(rawCollege?._id || "").trim();
 
             return {
               college: resolvedCollege,
+              collegeId: String(detail.collegeId || resolvedCollegeId || "").trim(),
+              collegeCode: String(
+                detail.collegeCode ||
+                  (typeof rawCollege === "string" ? "" : rawCollege?.collegeCode) ||
+                  item.collegeCode ||
+                  "",
+              ).trim(),
               semesterFees: toNumber(detail.semesterFees),
               totalFees: toNumber(detail.totalFees),
               hostelFees: toNumber(detail.hostelFees),
@@ -351,6 +370,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       university: String(item.university || ""),
       college: String(item.college || ""),
       collegeId: String(item.collegeId || ""),
+      collegeCode: String(item.collegeCode || ""),
       specialization: String(
         item.specialization || item.courseName || item.courseCategory || "General",
       ),
@@ -366,6 +386,10 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       entranceExams: Array.isArray(item.entranceExams)
         ? item.entranceExams.map((exam) => ({
             examName: String(exam.examName || ""),
+            college: String(exam.college || ""),
+            collegeId: String(exam.collegeId || ""),
+            collegeCode: String(exam.collegeCode || ""),
+            courseName: String(exam.courseName || ""),
             cutoffScoreOrRank: String(exam.cutoffScoreOrRank || ""),
             cutoffByCategory: mapCutoffByCategory(exam.cutoffByCategory),
             weightage: String(exam.weightage || ""),
@@ -405,13 +429,21 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
 
 const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[] =>
   records.map((item, index) => {
+    const collegeIdentityValues = [
+      String(item._id || "").trim(),
+      String(item.collegeCode || "").trim(),
+      String(item.name || "").trim(),
+    ].filter(Boolean);
+    const normalizedCollegeIdentityValues = collegeIdentityValues.map((value) => normalizeText(value));
     const matchingCourseRows = courseRows.filter(
       (course) =>
-        String(course.collegeId || "").trim() === String(item._id || "").trim() ||
-        normalizeText(course.college) === normalizeText(String(item.name || "")) ||
-        course.collegeDetails.some(
-          (detail) =>
-            normalizeText(detail.college) === normalizeText(String(item.name || "")),
+        normalizedCollegeIdentityValues.includes(normalizeText(course.collegeId || "")) ||
+        normalizedCollegeIdentityValues.includes(normalizeText(course.collegeCode || "")) ||
+        normalizedCollegeIdentityValues.includes(normalizeText(course.college || "")) ||
+        course.collegeDetails.some((detail) =>
+          [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
+            normalizedCollegeIdentityValues.includes(normalizeText(value || "")),
+          ),
         ),
     );
 
@@ -454,6 +486,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
 
     return {
       id: String(item._id || `college-${index}`),
+      collegeCode: String(item.collegeCode || ""),
       name: String(item.name || "College"),
       university: String(item.university || ""),
       description: String(item.description || "College information will appear here."),

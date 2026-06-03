@@ -65,7 +65,7 @@ type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[]
 type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; collegeCode?: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; cutoffByCategory?: CategoryCutoff[]; cutoffCategory?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
-type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<{ _id?: string; name?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string }; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
+type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string; collegeCode?: string }; collegeCode?: string; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
@@ -116,6 +116,8 @@ const MAX_BULK_IMAGE_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
 const MAX_BULK_COLLEGE_ROWS = 100;
 const getBulkCollegeLimitMessage = () =>
   `You can upload up to ${MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.`;
+const getBulkZipLimitMessage = () =>
+  "ZIP file must be 100MB or less. Please upload a smaller ZIP file.";
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, isBestCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
@@ -1061,21 +1063,6 @@ const bulkSheetLabels: Record<BulkSheetKey, string> = {
   entranceexams: "EntranceExams",
   collegeimages: "CollegeImages",
 };
-const parseCollegeCodeSequence = (value: string) => {
-  const raw = String(value || "").trim();
-  if (!raw) return null;
-  const match = raw.match(/^(.*?)(\d+)$/);
-  if (!match) return null;
-  const [, prefix, numberPart] = match;
-  const numericValue = Number(numberPart);
-  if (!Number.isFinite(numericValue)) return null;
-  return {
-    code: raw,
-    prefix,
-    numericValue,
-    padLength: numberPart.length,
-  };
-};
 const normalizeAccreditationOptionValue = (value: string) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 const bulkEmptyLikeValues = new Set(["", "-", "na", "n/a", "none", "null", "not applicable", "not available"]);
 const isBulkEmptyLikeValue = (value: string) => bulkEmptyLikeValues.has(normalizeAccreditationOptionValue(value));
@@ -1228,6 +1215,7 @@ function BulkUploadDashboard({
   
   const [validationStatusText, setValidationStatusText] = useState("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
   const [showBulkLimitPopup, setShowBulkLimitPopup] = useState(false);
+  const [showZipLimitPopup, setShowZipLimitPopup] = useState(false);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [showFinishPopup, setShowFinishPopup] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
@@ -1277,41 +1265,6 @@ function BulkUploadDashboard({
       ),
     [existingColleges],
   );
-  const lastCollegeCodeInsight = useMemo(() => {
-    const parsedCodes = existingColleges
-      .map((college) => parseCollegeCodeSequence(String(college.collegeCode || "")))
-      .filter(Boolean) as Array<{
-      code: string;
-      prefix: string;
-      numericValue: number;
-      padLength: number;
-    }>;
-
-    if (parsedCodes.length) {
-      const highestCode = parsedCodes.reduce((best, current) => {
-        if (current.numericValue !== best.numericValue) {
-          return current.numericValue > best.numericValue ? current : best;
-        }
-        if (current.prefix !== best.prefix) {
-          return current.prefix.localeCompare(best.prefix) > 0 ? current : best;
-        }
-        return current.code.localeCompare(best.code) > 0 ? current : best;
-      });
-      return {
-        lastCode: highestCode.code,
-      };
-    }
-
-    const fallbackCode = existingColleges
-      .map((college) => String(college.collegeCode || "").trim())
-      .filter(Boolean)
-      .sort((left, right) => left.localeCompare(right))
-      .at(-1);
-
-    return {
-      lastCode: fallbackCode || "",
-    };
-  }, [existingColleges]);
   const bulkCollegeRowCount = previewRows.filter((row) => row.sheet === "colleges").length;
   const isBulkCollegeLimitExceeded = bulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
   const bulkCollegeLimitMessage = isBulkCollegeLimitExceeded ? getBulkCollegeLimitMessage() : "";
@@ -1393,17 +1346,36 @@ function BulkUploadDashboard({
         const compactToken = normalizeUploadKey(segment);
         if (compactToken) tokens.add(compactToken);
 
-        segment
+        const segmentParts = segment
           .split(/[^a-z0-9]+/i)
           .map((part) => normalizeUploadKey(part))
-          .filter(Boolean)
-          .forEach((partToken) => tokens.add(partToken));
+          .filter(Boolean);
+
+        segmentParts.forEach((partToken) => tokens.add(partToken));
+        if (segmentParts.length > 1) {
+          const joinedPartsToken = segmentParts.join("");
+          if (joinedPartsToken) tokens.add(joinedPartsToken);
+        }
 
         const alphaNumericGroups = segment.match(/[a-z]+|\d+/gi) || [];
-        alphaNumericGroups
+        const normalizedGroups = alphaNumericGroups
           .map((part) => normalizeUploadKey(part))
-          .filter(Boolean)
-          .forEach((partToken) => tokens.add(partToken));
+          .filter(Boolean);
+
+        normalizedGroups.forEach((partToken) => tokens.add(partToken));
+        for (let index = 0; index < normalizedGroups.length - 1; index += 1) {
+          const combinedGroupToken = `${normalizedGroups[index]}${normalizedGroups[index + 1]}`;
+          if (combinedGroupToken) tokens.add(combinedGroupToken);
+        }
+
+        ["logo", "cover", "banner", "brochure", "campus", "image", "photo", "img"].forEach((mediaToken) => {
+          if (compactToken.endsWith(mediaToken) && compactToken.length > mediaToken.length) {
+            tokens.add(compactToken.slice(0, -mediaToken.length));
+          }
+          if (compactToken.startsWith(mediaToken) && compactToken.length > mediaToken.length) {
+            tokens.add(compactToken.slice(mediaToken.length));
+          }
+        });
       });
 
     const fullPathToken = normalizeUploadKey(normalizedPath.replace(/\.[^.]+$/, ""));
@@ -1482,12 +1454,12 @@ function BulkUploadDashboard({
     }
 
     const requestedBaseToken = normalizeUploadKey(
-      normalizedName.replace(/\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i, ""),
+      normalizedName.replace(/\.(jpg|jpeg|jfif|png|webp|gif|svg|pdf)$/i, ""),
     );
     if (requestedBaseToken) {
       const looseMatches = [...zipAssetIndex.byPath.values()].filter((record) => {
         if (collegeToken && !record.matchTokens.has(collegeToken)) return false;
-        const recordBaseToken = normalizeUploadKey(record.normalizedName.replace(/\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i, ""));
+        const recordBaseToken = normalizeUploadKey(record.normalizedName.replace(/\.(jpg|jpeg|jfif|png|webp|gif|svg|pdf)$/i, ""));
         return recordBaseToken === requestedBaseToken || recordBaseToken.includes(requestedBaseToken);
       });
       if (looseMatches.length > 0) return looseMatches[0];
@@ -1500,7 +1472,7 @@ function BulkUploadDashboard({
     return candidates[0] || null;
   };
 
-  const zipImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+  const zipImageExtensions = new Set([".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"]);
   const supportedGalleryImageTypes = ["campus", "hostel", "classroom", "laboratory", "library", "sports", "placement", "hospital"] as const;
 
   const inferGalleryImageType = (fileName: string) => {
@@ -1537,21 +1509,21 @@ function BulkUploadDashboard({
 
     for (const record of records) {
       const extension = getFileExtension(record.normalizedName);
-      const normalizedBaseName = normalizeUploadKey(record.normalizedName.replace(/\.[^.]+$/, ""));
+      const normalizedPathBaseName = normalizeUploadKey(record.normalizedPath.replace(/\.[^.]+$/, ""));
 
-      if (!brochurePdf && (extension === ".pdf" || normalizedBaseName.includes("brochure"))) {
+      if (!brochurePdf && (extension === ".pdf" || normalizedPathBaseName.includes("brochure"))) {
         brochurePdf = record.normalizedPath;
         continue;
       }
 
       if (!zipImageExtensions.has(extension)) continue;
 
-      if (!logoImage && normalizedBaseName.includes("logo")) {
+      if (!logoImage && normalizedPathBaseName.includes("logo")) {
         logoImage = record.normalizedPath;
         continue;
       }
 
-      if (!coverImage && (normalizedBaseName.includes("cover") || normalizedBaseName.includes("banner"))) {
+      if (!coverImage && (normalizedPathBaseName.includes("cover") || normalizedPathBaseName.includes("banner"))) {
         coverImage = record.normalizedPath;
         continue;
       }
@@ -1597,10 +1569,45 @@ function BulkUploadDashboard({
         return `${code}|${imageName}`;
       }),
     );
+    const imageCountByCollege = collegeImages.reduce<Record<string, number>>((counts, row) => {
+      const code = String(row[collegeCodeKey] || "").trim().toLowerCase();
+      if (code) counts[code] = (counts[code] || 0) + 1;
+      return counts;
+    }, {});
 
     for (const collegeRow of colleges) {
       const collegeCode = String(collegeRow[collegeCodeKey] || "").trim();
       if (!collegeCode) continue;
+
+      const inferredMedia = inferZipMediaForCollege(zipAssetIndex, collegeCode, hasSingleCollege);
+      if (!String(collegeRow[logoImageKey] || "").trim() && inferredMedia.logoImage) {
+        collegeRow[logoImageKey] = inferredMedia.logoImage;
+      }
+      if (!String(collegeRow[coverImageKey] || "").trim() && inferredMedia.coverImage) {
+        collegeRow[coverImageKey] = inferredMedia.coverImage;
+      }
+      if (!String(collegeRow[brochurePdfKey] || "").trim() && inferredMedia.brochurePdf) {
+        collegeRow[brochurePdfKey] = inferredMedia.brochurePdf;
+      }
+
+      const codeKey = collegeCode.toLowerCase();
+      let currentImageCount = imageCountByCollege[codeKey] || 0;
+      for (const galleryImage of inferredMedia.galleryImages) {
+        if (currentImageCount >= 7) break;
+
+        const imageName = normalizeZipPath(galleryImage.imageName);
+        const existingKey = `${codeKey}|${imageName}`;
+        if (!imageName || existingImageKeys.has(existingKey)) continue;
+
+        collegeImages.push({
+          [collegeCodeKey]: collegeCode,
+          [imageTypeKey]: galleryImage.imageType,
+          [imageNameKey]: galleryImage.imageName,
+        });
+        existingImageKeys.add(existingKey);
+        currentImageCount += 1;
+      }
+      imageCountByCollege[codeKey] = currentImageCount;
     }
 
     nextSheets.set("colleges", colleges);
@@ -1845,6 +1852,7 @@ function BulkUploadDashboard({
   const getImageMimeType = (fileName: string) => {
     const extension = getFileExtension(fileName);
     if (extension === ".png") return "image/png";
+    if (extension === ".jfif") return "image/jpeg";
     if (extension === ".webp") return "image/webp";
     if (extension === ".gif") return "image/gif";
     if (extension === ".svg") return "image/svg+xml";
@@ -1858,7 +1866,7 @@ function BulkUploadDashboard({
     } catch {
       return {};
     }
-    const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+    const imageExtensions = new Set([".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"]);
     return Object.fromEntries(
       [...entries.entries()]
         .filter(([name]) => imageExtensions.has(getFileExtension(name)))
@@ -2050,6 +2058,12 @@ function BulkUploadDashboard({
   const hasDuplicateCollegeIssue = (row: BulkPreviewRow) =>
     row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"));
 
+  const isExistingRecordIssue = (message: string) => message.includes("already exists in the system");
+  const isImportableBulkRow = (row: BulkPreviewRow) =>
+    row.status === "Valid" || (row.errors.length > 0 && row.errors.every(isExistingRecordIssue));
+  const isImportableBulkGroup = (group: BulkPreviewRow[]) =>
+    group.length > 0 && group.every(isImportableBulkRow);
+
   const buildBulkCollegeGroups = (rows: BulkPreviewRow[]) => {
     const groups = new Map<string, BulkPreviewRow[]>();
     rows.forEach((row) => {
@@ -2064,19 +2078,19 @@ function BulkUploadDashboard({
   const getValidBulkCollegeGroupKeys = (rows: BulkPreviewRow[]) =>
     new Set(
       [...buildBulkCollegeGroups(rows).entries()]
-        .filter(([, group]) => group.every((row) => row.status === "Valid"))
+        .filter(([, group]) => isImportableBulkGroup(group))
         .map(([key]) => key),
     );
 
   const buildBulkValidationSummary = (rows: BulkPreviewRow[]) => {
     const collegeGroups = buildBulkCollegeGroups(rows);
     const groupedRows = [...collegeGroups.values()];
-    const hasInvalidRow = (group: BulkPreviewRow[]) => group.some((row) => row.status === "Invalid");
+    const hasInvalidRow = (group: BulkPreviewRow[]) => group.some((row) => row.status === "Invalid" && !isImportableBulkRow(row));
     const hasReviewRow = (group: BulkPreviewRow[]) => group.some((row) => row.status === "Review");
 
     return {
       totalRecords: groupedRows.length,
-      validRecords: groupedRows.filter((group) => group.every((row) => row.status === "Valid")).length,
+      validRecords: groupedRows.filter(isImportableBulkGroup).length,
       failedRecords: 0,
       invalidRecords: groupedRows.filter(hasInvalidRow).length,
       duplicates: groupedRows.filter((group) => group.some(hasDuplicateCollegeIssue)).length,
@@ -2098,29 +2112,60 @@ function BulkUploadDashboard({
       return counts;
     }, {});
     const collegeCodes = new Set(Object.keys(collegeCodeCounts));
-    const courseNames = new Set(courses.map((row) => String(row.data.courseName || "").trim().toLowerCase()).filter(Boolean));
-    const courseNameTokens = new Set(
-      courses.flatMap((row) =>
-        String(row.data.courseName || "")
-          .split(/[,\/|]/)
-          .map((item) => item.trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    );
+    const normalizeEntranceCourseMatchText = (value: string) =>
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const compactEntranceCourseMatchText = (value: string) => normalizeEntranceCourseMatchText(value).replace(/\s+/g, "");
+    const getCourseMatchVariants = (courseName: string, specialization = "", degreeType = "") => {
+      const values = [
+        courseName,
+        specialization,
+        degreeType,
+        [courseName, specialization].filter(Boolean).join(" "),
+        [courseName, specialization].filter(Boolean).join(" - "),
+      ];
+
+      return values
+        .flatMap((value) => {
+          const normalized = normalizeEntranceCourseMatchText(value);
+          const compact = compactEntranceCourseMatchText(value);
+          return [normalized, compact];
+        })
+        .filter(Boolean);
+    };
+    const getCourseMatchValuesForCollege = (collegeCode: string) =>
+      courses
+        .filter((row) => String(row.data.collegeCode || "").trim().toLowerCase() === collegeCode.trim().toLowerCase())
+        .flatMap((row) => {
+          const courseName = String(row.data.courseName || "").trim();
+          const specialization = String(row.data.specialization || "").trim();
+          const degreeType = String(row.data.degreeType || "").trim();
+          return getCourseMatchVariants(courseName, specialization, degreeType);
+        })
+        .filter(Boolean);
     const courseNameList = (value: string) =>
       String(value || "")
-        .split(/[,\/|]/)
+        .split(/[,|]/)
         .map((item) => item.trim())
         .filter(Boolean);
-    const isValidEntranceExamCourseName = (value: string) => {
+    const isValidEntranceExamCourseName = (value: string, collegeCode: string) => {
       const names = courseNameList(value);
       if (names.length === 0) return true;
+      const sameCollegeCourseNames = getCourseMatchValuesForCollege(collegeCode);
+      const sameCollegeCourseNameSet = new Set(sameCollegeCourseNames);
+
       return names.every((name) => {
-        const normalizedName = name.toLowerCase();
-        if (courseNames.has(normalizedName) || courseNameTokens.has(normalizedName)) return true;
-        return [...courseNames, ...courseNameTokens].some((courseName) => {
-          const courseTokens = courseName.split(/[,\/|]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
-          return courseTokens.includes(normalizedName) || normalizedName.includes(courseName);
+        const normalizedName = normalizeEntranceCourseMatchText(name);
+        const compactName = compactEntranceCourseMatchText(name);
+        if (!normalizedName && !compactName) return true;
+        if (sameCollegeCourseNameSet.has(normalizedName) || sameCollegeCourseNameSet.has(compactName)) return true;
+        return [...sameCollegeCourseNameSet].some((courseName) => {
+          return courseName.includes(normalizedName) || courseName.includes(compactName) || normalizedName.includes(courseName) || compactName.includes(courseName);
         });
       });
     };
@@ -2255,6 +2300,9 @@ function BulkUploadDashboard({
         });
         if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
           addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
+        }
+        if (isFilledCell("courseName") && !isValidEntranceExamCourseName(cell("courseName"), cell("collegeCode"))) {
+          addFieldIssue(fieldIssues, "courseName", "invalid", "courseName must match a Courses sheet row with the same collegeCode");
         }
         numeric.forEach((column) => {
           if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
@@ -2394,6 +2442,7 @@ function BulkUploadDashboard({
     setShowFullDetails(false);
     setShowFinishPopup(false);
     setShowBulkLimitPopup(false);
+    setShowZipLimitPopup(false);
   }, []);
 
   const selectUploadFile = (item: (typeof uploadCards)[number], file: File | null) => {
@@ -2407,6 +2456,9 @@ function BulkUploadDashboard({
       if (item.step === "3") {
         setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
         setUploadErrors((previous) => ({ ...previous, "3": error }));
+        setShowZipUploadStep(true);
+        setShowValidationSummaryStep(false);
+        setShowZipLimitPopup(true);
         setShowBulkLimitPopup(false);
         return;
       }
@@ -2418,6 +2470,7 @@ function BulkUploadDashboard({
       setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: null, [otherExcelStep]: null, "3": null }));
       setUploadErrors((previous) => ({ ...previous, [item.step]: error, [otherExcelStep]: "", "3": "" }));
       setShowBulkLimitPopup(false);
+      setShowZipLimitPopup(false);
       return;
     }
 
@@ -2426,6 +2479,7 @@ function BulkUploadDashboard({
       setUploadErrors((previous) => ({ ...previous, "3": "" }));
       setShowValidationSummaryStep(false);
       setShowFinishPopup(false);
+      setShowZipLimitPopup(false);
       return;
     }
 
@@ -2436,12 +2490,14 @@ function BulkUploadDashboard({
     setShowFullDetails(false);
     setShowFinishPopup(false);
     setShowBulkLimitPopup(false);
+    setShowZipLimitPopup(false);
     setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
     setUploadErrors((previous) => ({ ...previous, [item.step]: "", [otherExcelStep]: "", "3": "" }));
   };
 
   const activeExcelFile = activeUploadStep ? selectedUploadFiles[activeUploadStep] : null;
   const selectedZipFile = selectedUploadFiles["3"];
+  const hasZipUploadError = Boolean(uploadErrors["3"]);
   const workflowSteps = [
     "College Data",
     "College Images ZIP",
@@ -2453,7 +2509,7 @@ function BulkUploadDashboard({
     ? 3
     : showFinishPopup
       ? 4
-      : showValidationSummaryStep
+      : showValidationSummaryStep && !isBulkCollegeLimitExceeded && !hasZipUploadError
         ? 2
         : showZipUploadStep
           ? 1
@@ -2700,6 +2756,7 @@ function BulkUploadDashboard({
       const singleExcelFile = selectedUploadFiles["2"];
       const imageZipFile = selectedUploadFiles["3"];
       const excelFile = bulkExcelFile || singleExcelFile;
+      const hasBlockingZipUploadError = Boolean(uploadErrors["3"]) && !imageZipFile;
 
       if (!excelFile) {
         setPreviewRows([]);
@@ -2711,6 +2768,9 @@ function BulkUploadDashboard({
         setValidationSummary(buildBulkValidationSummary([]));
         setValidationStatusText("Upload bulk Excel or single college Excel, then upload one combined image ZIP to validate records.");
         setShowBulkLimitPopup(false);
+        if (!hasBlockingZipUploadError) {
+          setShowZipLimitPopup(false);
+        }
         return;
       }
 
@@ -2729,13 +2789,24 @@ function BulkUploadDashboard({
         if (!sheets.has("colleges") && sheets.size === 1) {
           sheets.set("colleges", [...sheets.values()][0] || []);
         }
-        const imageZipAssetIndex = imageZipFile ? await readZipAssetIndex(imageZipFile) : null;
-        const imagePreviewUrls = imageZipFile ? await readZipImagePreviewUrls(imageZipFile) : {};
+        let imageZipAssetIndex: ZipAssetIndex | null = null;
+        let imagePreviewUrls: Record<string, string> = {};
+        let hasReadableImageZip = Boolean(imageZipFile);
+        let zipValidationMessage = "";
+        if (imageZipFile) {
+          try {
+            imageZipAssetIndex = await readZipAssetIndex(imageZipFile);
+            imagePreviewUrls = await readZipImagePreviewUrls(imageZipFile);
+          } catch (error) {
+            hasReadableImageZip = false;
+            zipValidationMessage = error instanceof Error ? error.message : "Unable to read ZIP file.";
+          }
+        }
         const enrichedSheets = enrichSheetsWithZipAssets(sheets, imageZipAssetIndex);
         const nextPreviewRows = createBulkPreviewRows(
           enrichedSheets,
           imageZipAssetIndex,
-          Boolean(imageZipFile),
+          hasReadableImageZip,
           Boolean(singleExcelFile && !bulkExcelFile),
         );
         if (isCancelled) return;
@@ -2753,10 +2824,24 @@ function BulkUploadDashboard({
         const nextBulkLimitExceeded = nextBulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
         setValidationSummary(nextValidationSummary);
         setShowBulkLimitPopup(nextBulkLimitExceeded);
+        setShowZipLimitPopup(hasBlockingZipUploadError || Boolean(zipValidationMessage));
+        if (nextBulkLimitExceeded) {
+          setShowZipUploadStep(false);
+          setShowValidationSummaryStep(false);
+          if (imageZipFile) {
+            setSelectedUploadFiles((previous) => ({ ...previous, "3": null }));
+          }
+        } else if (zipValidationMessage) {
+          setShowZipUploadStep(true);
+          setShowValidationSummaryStep(false);
+          setUploadErrors((previous) => ({ ...previous, "3": zipValidationMessage }));
+        }
         setValidationStatusText(
           nextBulkLimitExceeded
             ? getBulkCollegeLimitMessage()
-            : imageZipFile
+            : zipValidationMessage
+              ? zipValidationMessage
+            : hasReadableImageZip
               ? "Excel and combined image ZIP validation completed."
               : "Excel validated. Upload one combined ZIP with logo, cover, and college images to verify media files.",
         );
@@ -2777,6 +2862,10 @@ function BulkUploadDashboard({
           pendingReview: 0,
         });
         setValidationStatusText(error instanceof Error ? error.message : "Unable to validate uploaded file.");
+        setShowBulkLimitPopup(false);
+        if (!hasBlockingZipUploadError) {
+          setShowZipLimitPopup(false);
+        }
       }
     };
 
@@ -3149,6 +3238,7 @@ function BulkUploadDashboard({
 
       setValidationStatusText(nextStatusText);
       showToast(nextStatusText, inferToastTypeFromMessage(nextStatusText));
+      await onImportComplete?.();
 
       setShowFullDetails(false);
       setShowFinishPopup(true);
@@ -3427,6 +3517,17 @@ function BulkUploadDashboard({
 
               {showZipUploadStep ? (
                 <div className="space-y-4">
+                  <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white px-4 py-3 shadow-[0_14px_30px_rgba(37,99,235,0.08)]">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                      <span className="text-sm font-black">i</span>
+                    </span>
+                    <div>
+                      <p className="text-sm font-extrabold leading-5 text-slate-950">Please note before uploading ZIP</p>
+                      <p className="mt-0.5 text-xs font-semibold leading-5 text-slate-600">
+                        Upload only one .zip file up to 100MB. It should contain logo, cover, brochure PDF, and college images for the same Excel upload.
+                      </p>
+                    </div>
+                  </div>
                   {renderUploadCard(uploadCards[2])}
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-blue-700">
                     {selectedZipFile ? "ZIP file selected. Validation results are updated automatically." : "Excel is ready. Upload one combined ZIP with logo, cover, brochure, and college images."}
@@ -3437,37 +3538,6 @@ function BulkUploadDashboard({
                 </div>
               ) : (
                 <div className="space-y-5">
-                  <div className="rounded-2xl border border-amber-200 bg-[linear-gradient(135deg,#fff8e7_0%,#eef4ff_100%)] px-4 py-3 shadow-[0_14px_30px_rgba(245,158,11,0.08)]">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2] text-[#b45309]">
-                          <KeyRound className="size-4" />
-                        </span>
-                        <div>
-                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#b45309]">College Code</p>
-                          <p className="text-xs font-semibold text-slate-600">Last college code in the system</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <div className="rounded-xl border border-white/80 bg-white/90 px-3 py-2">
-                          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Last</span>
-                          <p className="mt-1 text-lg font-black text-slate-950">{lastCollegeCodeInsight.lastCode || "No code yet"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-white px-4 py-3 shadow-[0_14px_30px_rgba(244,63,94,0.08)]">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                      <TriangleAlert className="size-5" />
-                    </span>
-                    <p className="text-sm font-semibold leading-6 text-rose-900">
-                      You can upload up to {MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.
-                    </p>
-                  </div>
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    {renderUploadCard(uploadCards[0])}
-                    {renderUploadCard(uploadCards[1])}
-                  </div>
                   <div className="rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-blue-50 p-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-3">
@@ -3495,6 +3565,21 @@ function BulkUploadDashboard({
                         Download Sample
                       </button>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white px-4 py-3 shadow-[0_14px_30px_rgba(37,99,235,0.08)]">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                      <span className="text-sm font-black">i</span>
+                    </span>
+                    <div>
+                      <p className="text-sm font-extrabold leading-5 text-slate-950">Please note before uploading</p>
+                      <p className="mt-0.5 text-xs font-semibold leading-5 text-slate-600">
+                        You can upload up to {MAX_BULK_COLLEGE_ROWS} colleges at a time. If your file contains more than {MAX_BULK_COLLEGE_ROWS} colleges, please split the data into multiple files and upload them separately.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {renderUploadCard(uploadCards[0])}
+                    {renderUploadCard(uploadCards[1])}
                   </div>
                 </div>
               )}
@@ -3527,11 +3612,21 @@ function BulkUploadDashboard({
                   <button
                     type="button"
                     onClick={() => {
+                      if (isBulkCollegeLimitExceeded) {
+                        setShowBulkLimitPopup(true);
+                        setShowZipUploadStep(false);
+                        setShowValidationSummaryStep(false);
+                        return;
+                      }
                       setShowZipUploadStep(true);
                       setShowValidationSummaryStep(false);
                     }}
                     disabled={!activeExcelFile}
-                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:from-purple-300 disabled:to-blue-300 disabled:shadow-none"
+                    className={`rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition disabled:cursor-not-allowed disabled:shadow-none ${
+                      isBulkCollegeLimitExceeded
+                        ? "bg-rose-600 hover:bg-rose-700"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-purple-300 disabled:to-blue-300"
+                    }`}
                   >
                     Next
                   </button>
@@ -3539,8 +3634,19 @@ function BulkUploadDashboard({
                 {showZipUploadStep ? (
                   <button
                     type="button"
-                    onClick={() => setShowValidationSummaryStep(true)}
-                    className="rounded-xl border border-blue-100 bg-white px-5 py-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50"
+                    onClick={() => {
+                      if (hasZipUploadError) {
+                        setShowZipLimitPopup(true);
+                        setShowValidationSummaryStep(false);
+                        return;
+                      }
+                      setShowValidationSummaryStep(true);
+                    }}
+                    className={`rounded-xl border px-5 py-2.5 text-xs font-bold transition ${
+                      hasZipUploadError
+                        ? "border-rose-100 bg-white text-rose-700 hover:bg-rose-50"
+                        : "border-blue-100 bg-white text-blue-700 hover:bg-blue-50"
+                    }`}
                   >
                     Skip
                   </button>
@@ -3548,8 +3654,15 @@ function BulkUploadDashboard({
                 {showZipUploadStep ? (
                   <button
                     type="button"
-                    onClick={() => setShowValidationSummaryStep(true)}
-                    disabled={!selectedZipFile}
+                    onClick={() => {
+                      if (hasZipUploadError) {
+                        setShowZipLimitPopup(true);
+                        setShowValidationSummaryStep(false);
+                        return;
+                      }
+                      setShowValidationSummaryStep(true);
+                    }}
+                    disabled={!selectedZipFile || hasZipUploadError}
                     className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(79,70,229,0.22)] transition hover:from-blue-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:from-purple-300 disabled:to-blue-300 disabled:shadow-none"
                   >
                     Next
@@ -3559,7 +3672,7 @@ function BulkUploadDashboard({
             </section>
           ) : null}
 
-          {showValidationSummaryStep ? (
+          {showValidationSummaryStep && !isBulkCollegeLimitExceeded && !hasZipUploadError ? (
             <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] sm:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -4341,11 +4454,51 @@ function BulkUploadDashboard({
                 type="button"
                 onClick={() => {
                   setShowBulkLimitPopup(false);
-                  setShowValidationSummaryStep(true);
+                  resetUploadSelection(activeUploadStep || "1");
                 }}
                 className="rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(244,63,94,0.22)] transition hover:from-rose-700 hover:to-orange-600"
               >
-                Review Data
+                Choose Another File
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showZipLimitPopup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-3xl border border-blue-100 bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]">
+            <div className="flex items-start gap-4">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                <FileClock className="size-8" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-700">ZIP Upload Restricted</p>
+                <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
+                  {uploadErrors["3"] || getBulkZipLimitMessage()}
+                </h2>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+                  Please upload one valid .zip file within 100MB. The ZIP should contain the logo, cover, brochure PDF, and college images for the selected Excel data.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowZipLimitPopup(false)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowZipLimitPopup(false);
+                  resetUploadSelection("3");
+                }}
+                className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:bg-blue-700"
+              >
+                Choose Another ZIP
               </button>
             </div>
           </div>
@@ -8988,16 +9141,29 @@ function AdminPageContent() {
               const range = formatFeeRange(college.feesStructure);
               const isExpanded = expandedCollegeIds.includes(college._id);
               const courseCount = adminState.courses.filter((course) => {
-                const directMatch = (course.colleges || []).some((courseCollege) =>
-                  String(courseCollege?._id || "").trim() === college._id ||
-                  String(courseCollege?.name || "").trim().toLowerCase() === String(college.name || "").trim().toLowerCase(),
-                );
+                const collegeIdentityValues = [
+                  college._id,
+                  college.collegeCode || "",
+                  college.name || "",
+                ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+                const directMatch = (course.colleges || []).some((courseCollege) => {
+                  const linkedValues =
+                    typeof courseCollege === "string"
+                      ? [courseCollege]
+                      : [courseCollege?._id || "", courseCollege?.collegeCode || "", courseCollege?.name || ""];
+                  return linkedValues.some((value) =>
+                    collegeIdentityValues.includes(String(value || "").trim().toLowerCase()),
+                  );
+                });
                 const detailMatch = (course.collegeDetails || []).some((detail) => {
                   const detailCollege = detail.college;
-                  return typeof detailCollege === "string"
-                    ? detailCollege === college._id
-                    : String(detailCollege?._id || "").trim() === college._id ||
-                        String(detailCollege?.name || "").trim().toLowerCase() === String(college.name || "").trim().toLowerCase();
+                  const linkedValues =
+                    typeof detailCollege === "string"
+                      ? [detailCollege, detail.collegeCode || ""]
+                      : [detailCollege?._id || "", detailCollege?.collegeCode || "", detailCollege?.name || "", detail.collegeCode || ""];
+                  return linkedValues.some((value) =>
+                    collegeIdentityValues.includes(String(value || "").trim().toLowerCase()),
+                  );
                 });
                 return directMatch || detailMatch;
               }).length;
@@ -9979,7 +10145,9 @@ function AdminPageContent() {
                     <button
                       type="button"
                       onClick={() => {
-                        const collegeIds = (course.colleges || []).map((item) => String(item._id || "")).filter(Boolean);
+                        const collegeIds = (course.colleges || [])
+                          .map((item) => (typeof item === "string" ? item : String(item._id || "")))
+                          .filter(Boolean);
                         const details: CourseForm["details"] = {};
                         (course.collegeDetails || []).forEach((item) => {
                           const collegeId = typeof item.college === "string" ? item.college : String(item.college?._id || "");

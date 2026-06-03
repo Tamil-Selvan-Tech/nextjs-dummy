@@ -1,5 +1,6 @@
 export type College = {
   id: string;
+  collegeCode?: string;
   name: string;
   university: string;
   description: string;
@@ -63,6 +64,7 @@ export type Course = {
   university: string;
   college: string;
   collegeId?: string;
+  collegeCode?: string;
   specialization: string;
   courseType: string;
   courseCategory: string;
@@ -80,6 +82,10 @@ export type Course = {
   description?: string;
   entranceExams?: Array<{
     examName?: string;
+    college?: string;
+    collegeId?: string;
+    collegeCode?: string;
+    courseName?: string;
     cutoffScoreOrRank?: string;
     cutoffByCategory?: Array<{
       category?: string;
@@ -91,6 +97,8 @@ export type Course = {
   }>;
   collegeDetails: Array<{
     college: string;
+    collegeId?: string;
+    collegeCode?: string;
     semesterFees?: number;
     totalFees?: number;
     hostelFees?: number;

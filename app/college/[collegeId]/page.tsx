@@ -83,16 +83,109 @@ export default async function CollegeDetailsPage({
     );
   }
 
+  const collegeIdentityValues = [
+    college.id,
+    (college as { collegeCode?: string }).collegeCode || "",
+    college.name,
+  ].map((value) => normalizeText(value)).filter(Boolean);
+
   const relatedCourses = panelData.courses.filter(
-    (course) =>
-      course.collegeId === college.id ||
-      normalizeText(course.college) === normalizeText(college.name),
+    (course) => {
+      const courseIdentityValues = [
+        course.collegeId || "",
+        course.collegeCode || "",
+        course.college || "",
+      ].map((value) => normalizeText(value)).filter(Boolean);
+
+      return (
+        courseIdentityValues.some((value) => collegeIdentityValues.includes(value)) ||
+        course.collegeDetails.some((detail) =>
+          [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
+            collegeIdentityValues.includes(normalizeText(value || "")),
+          ),
+        )
+      );
+    },
   );
+  const matchingRelatedCourses = relatedCourses.length
+    ? relatedCourses
+    : getCoursesForCollege(college.name);
+  const pickLatestRepeatedEntranceExam = (
+    exams: (typeof matchingRelatedCourses)[number]["entranceExams"],
+  ) => {
+    if (!Array.isArray(exams) || exams.length <= 1) return exams || [];
+
+    const counts = new Map<string, number>();
+    exams.forEach((exam) => {
+      const key = normalizeText(exam.examName);
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const repeatedExamName = [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .sort((first, second) => second[1] - first[1])[0]?.[0];
+
+    if (!repeatedExamName) return exams;
+
+    const repeatedExams = exams.filter(
+      (exam) => normalizeText(exam.examName) === repeatedExamName,
+    );
+    const latestRepeatedExamWithoutCutoff = [...repeatedExams]
+      .reverse()
+      .find(
+        (exam) =>
+          !normalizeText(exam.cutoffScoreOrRank) &&
+          (normalizeText(exam.paperOrSyllabus) || normalizeText(exam.preparationNotes)),
+      );
+    const latestRepeatedExam = latestRepeatedExamWithoutCutoff || [...repeatedExams]
+      .reverse()
+      .find(Boolean);
+
+    return latestRepeatedExam ? [latestRepeatedExam] : exams;
+  };
+
+  const collegeScopedCourses = matchingRelatedCourses.map((course) => {
+    const matchingCollegeDetail = course.collegeDetails.find(
+      (detail) =>
+        [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
+          collegeIdentityValues.includes(normalizeText(value || "")),
+        ),
+    );
+    const hasExamCollegeScope = course.entranceExams?.some(
+      (exam) =>
+        normalizeText(exam.collegeId) ||
+        normalizeText(exam.college) ||
+        normalizeText(exam.collegeCode),
+    );
+    const scopedEntranceExams = hasExamCollegeScope
+      ? course.entranceExams?.filter(
+          (exam) =>
+            normalizeText(exam.collegeId) === normalizeText(college.id) ||
+            normalizeText(exam.college) === normalizeText(college.name) ||
+            normalizeText(exam.collegeCode) === normalizeText((college as { collegeCode?: string }).collegeCode),
+        )
+      : pickLatestRepeatedEntranceExam(course.entranceExams);
+
+    return {
+      ...course,
+      college: course.college || college.name,
+      collegeId: course.collegeId || college.id,
+      semesterFees: matchingCollegeDetail?.semesterFees ?? course.semesterFees,
+      totalFees: matchingCollegeDetail?.totalFees ?? course.totalFees,
+      hostelFees: matchingCollegeDetail?.hostelFees ?? course.hostelFees,
+      cutoff: matchingCollegeDetail?.cutoff ?? course.cutoff,
+      cutoffText: matchingCollegeDetail?.cutoffText ?? course.cutoffText,
+      cutoffByCategory: matchingCollegeDetail?.cutoffByCategory ?? course.cutoffByCategory,
+      intake: matchingCollegeDetail?.intake ?? course.intake,
+      applicationFee: matchingCollegeDetail?.applicationFee ?? course.applicationFee,
+      entranceExams: scopedEntranceExams || [],
+    };
+  });
 
   return (
     <CollegeDetailsView
       college={college}
-      relatedCourses={relatedCourses.length ? relatedCourses : getCoursesForCollege(college.name)}
+      relatedCourses={collegeScopedCourses}
     />
   );
 }
