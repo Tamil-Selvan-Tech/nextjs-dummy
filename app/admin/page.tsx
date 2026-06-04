@@ -1212,6 +1212,8 @@ const bulkSheetNameAliases: Record<string, BulkSheetKey> = {
   courses: "courses",
   entranceexam: "entranceexams",
   entranceexams: "entranceexams",
+  enternceexam: "entranceexams",
+  enternceexams: "entranceexams",
   enteranceexam: "entranceexams",
   enteranceexams: "entranceexams",
   enterenceexam: "entranceexams",
@@ -1319,16 +1321,25 @@ function BulkUploadDashboard({
               hasLogo: Boolean(String(college.logo || "").trim()),
               hasCoverImage: Boolean(String(college.image || "").trim()),
               hasBrochure: Boolean(String(college.brochurePdfUrl || college.brochureUrl || "").trim()),
+              mediaNames: new Set(
+                [college.logo, college.image, college.brochurePdfUrl, college.brochureUrl, ...(Array.isArray(college.images) ? college.images : [])]
+                  .map((image) => normalizeMediaReference(String(image || "")))
+                  .filter(Boolean),
+              ),
               imageNames: new Set(
                 (Array.isArray(college.images) ? college.images : [])
                   .map((image) => normalizeMediaReference(String(image || "")))
                   .filter(Boolean),
               ),
+              hasAnyMedia: Boolean(
+                String(college.logo || college.image || college.brochurePdfUrl || college.brochureUrl || "").trim()
+                  || (Array.isArray(college.images) && college.images.some((image) => String(image || "").trim())),
+              ),
               hasGalleryImages: Array.isArray(college.images) && college.images.some((image) => String(image || "").trim()),
             },
           ] as const;
         })
-        .filter((entry): entry is readonly [string, { hasLogo: boolean; hasCoverImage: boolean; hasBrochure: boolean; imageNames: Set<string>; hasGalleryImages: boolean }] => Boolean(entry)),
+        .filter((entry): entry is readonly [string, { hasLogo: boolean; hasCoverImage: boolean; hasBrochure: boolean; mediaNames: Set<string>; imageNames: Set<string>; hasAnyMedia: boolean; hasGalleryImages: boolean }] => Boolean(entry)),
     );
   }, [existingColleges]);
   const bulkCollegeRowCount = previewRows.filter((row) => row.sheet === "colleges").length;
@@ -1384,6 +1395,18 @@ function BulkUploadDashboard({
   const getFileExtension = (fileName: string) => {
     const dotIndex = fileName.lastIndexOf(".");
     return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
+  };
+
+  const zipImageExtensions = new Set([".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"]);
+  const extensionlessImageTokens = ["logo", "cover", "coverimage", "banner", "campus", "image", "photo", "img", "gallery", "hostel", "classroom", "laboratory", "library", "sports", "placement", "hospital"];
+
+  const isZipImageLikeName = (fileName: string) => {
+    const extension = getFileExtension(fileName);
+    if (zipImageExtensions.has(extension)) return true;
+    if (extension === ".pdf") return false;
+    const normalizedName = normalizeUploadKey(normalizeZipName(fileName));
+    const normalizedBaseName = normalizeUploadKey(normalizeZipName(fileName).replace(/\.[^.]+$/, ""));
+    return extensionlessImageTokens.some((token) => normalizedName.includes(token) || normalizedBaseName.includes(token));
   };
 
   const decodeXml = (value: string) =>
@@ -1507,21 +1530,31 @@ function BulkUploadDashboard({
     const raw = String(fileName || "").trim();
     if (!raw || !zipAssetIndex) return null;
 
+    const collegeToken = normalizeUploadKey(collegeCode);
     const normalizedPath = normalizeZipPath(raw);
     if (normalizedPath && zipAssetIndex.byPath.has(normalizedPath)) {
-      return zipAssetIndex.byPath.get(normalizedPath) || null;
+      const pathRecord = zipAssetIndex.byPath.get(normalizedPath) || null;
+      if (pathRecord && collegeToken && !pathRecord.matchTokens.has(collegeToken)) {
+        return null;
+      }
+      return pathRecord;
     }
 
     const normalizedName = normalizeZipName(raw);
     if (!normalizedName) return null;
 
-    const collegeToken = normalizeUploadKey(collegeCode);
     const candidates = zipAssetIndex.byName.get(normalizedName) || [];
+    const codeScopedCandidates = collegeToken
+      ? candidates.filter((candidate) => candidate.matchTokens.has(collegeToken))
+      : candidates;
+    if (collegeToken && candidates.length > 0 && codeScopedCandidates.length === 0) {
+      return null;
+    }
     if (candidates.length <= 1) {
-      if (candidates[0]) return candidates[0];
+      if (codeScopedCandidates[0]) return codeScopedCandidates[0];
+      if (!collegeToken && candidates[0]) return candidates[0];
     } else if (collegeToken) {
-      const tokenMatches = candidates.filter((candidate) => candidate.matchTokens.has(collegeToken));
-      if (tokenMatches.length > 0) return tokenMatches[0];
+      if (codeScopedCandidates.length > 0) return codeScopedCandidates[0];
     }
 
     const requestedBaseToken = normalizeUploadKey(
@@ -1540,15 +1573,16 @@ function BulkUploadDashboard({
       return findBrochureZipAssetRecord(zipAssetIndex, collegeCode);
     }
 
-    return candidates[0] || null;
+    return codeScopedCandidates[0] || (!collegeToken ? candidates[0] : null) || null;
   };
 
-  const zipImageExtensions = new Set([".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"]);
   const supportedGalleryImageTypes = ["campus", "hostel", "classroom", "laboratory", "library", "sports", "placement", "hospital"] as const;
 
   const inferGalleryImageType = (fileName: string) => {
+    const normalizedFileName = normalizeUploadKey(normalizeZipName(fileName));
     const normalizedBaseName = normalizeUploadKey(normalizeZipName(fileName).replace(/\.[^.]+$/, ""));
-    return supportedGalleryImageTypes.find((type) => normalizedBaseName.includes(type)) || "campus";
+    const searchableName = `${normalizedFileName} ${normalizedBaseName}`;
+    return supportedGalleryImageTypes.find((type) => searchableName.includes(type)) || "campus";
   };
 
   const inferZipMediaForCollege = (
@@ -1566,10 +1600,10 @@ function BulkUploadDashboard({
     }
 
     const collegeToken = normalizeUploadKey(collegeCode);
-    let records = [...zipAssetIndex.byPath.values()].filter((record) => record.matchTokens.has(collegeToken));
-    if (records.length === 0 && allowLooseMatch) {
-      records = [...zipAssetIndex.byPath.values()];
-    }
+    const allRecords = [...zipAssetIndex.byPath.values()];
+    const records = allRecords.filter((record) =>
+      collegeToken ? record.matchTokens.has(collegeToken) : allowLooseMatch,
+    );
 
     records.sort((left, right) => left.normalizedPath.localeCompare(right.normalizedPath));
 
@@ -1581,20 +1615,22 @@ function BulkUploadDashboard({
     for (const record of records) {
       const extension = getFileExtension(record.normalizedName);
       const normalizedPathBaseName = normalizeUploadKey(record.normalizedPath.replace(/\.[^.]+$/, ""));
+      const normalizedPathName = normalizeUploadKey(record.normalizedPath);
+      const searchablePathName = `${normalizedPathName} ${normalizedPathBaseName}`;
 
       if (!brochurePdf && (extension === ".pdf" || normalizedPathBaseName.includes("brochure"))) {
         brochurePdf = record.normalizedPath;
         continue;
       }
 
-      if (!zipImageExtensions.has(extension)) continue;
+      if (!isZipImageLikeName(record.normalizedName)) continue;
 
-      if (!logoImage && normalizedPathBaseName.includes("logo")) {
+      if (!logoImage && searchablePathName.includes("logo")) {
         logoImage = record.normalizedPath;
         continue;
       }
 
-      if (!coverImage && (normalizedPathBaseName.includes("cover") || normalizedPathBaseName.includes("banner"))) {
+      if (!coverImage && (searchablePathName.includes("cover") || searchablePathName.includes("coverimage") || searchablePathName.includes("banner"))) {
         coverImage = record.normalizedPath;
         continue;
       }
@@ -1603,6 +1639,23 @@ function BulkUploadDashboard({
         imageName: record.normalizedPath,
         imageType: inferGalleryImageType(record.normalizedName),
       });
+    }
+
+    if (allowLooseMatch && collegeToken) {
+      const seenGalleryImages = new Set(galleryImages.map((image) => normalizeZipPath(image.imageName)));
+      const codeMatchedPaths = new Set(records.map((record) => record.normalizedPath));
+
+      allRecords
+        .filter((record) => !codeMatchedPaths.has(record.normalizedPath) && isZipImageLikeName(record.normalizedName))
+        .sort((left, right) => left.normalizedPath.localeCompare(right.normalizedPath))
+        .forEach((record) => {
+          if (seenGalleryImages.has(record.normalizedPath)) return;
+          galleryImages.push({
+            imageName: record.normalizedPath,
+            imageType: inferGalleryImageType(record.normalizedName),
+          });
+          seenGalleryImages.add(record.normalizedPath);
+        });
     }
 
     return {
@@ -1664,8 +1717,6 @@ function BulkUploadDashboard({
       const codeKey = collegeCode.toLowerCase();
       let currentImageCount = imageCountByCollege[codeKey] || 0;
       for (const galleryImage of inferredMedia.galleryImages) {
-        if (currentImageCount >= 7) break;
-
         const imageName = normalizeZipPath(galleryImage.imageName);
         const existingKey = `${codeKey}|${imageName}`;
         if (!imageName || existingImageKeys.has(existingKey)) continue;
@@ -1937,10 +1988,9 @@ function BulkUploadDashboard({
     } catch {
       return {};
     }
-    const imageExtensions = new Set([".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"]);
     return Object.fromEntries(
       [...entries.entries()]
-        .filter(([name]) => imageExtensions.has(getFileExtension(name)))
+        .filter(([name]) => isZipImageLikeName(name))
         .map(([name, bytes]) => {
           const normalizedName = normalizeZipPath(name);
           const blobPart = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
@@ -2055,7 +2105,12 @@ function BulkUploadDashboard({
         const single = String(rowData[`cutoff_${key}`] || "").trim();
         const min = String(rowData[`cutoff_${key}_min`] || "").trim();
         const max = String(rowData[`cutoff_${key}_max`] || "").trim();
-        const cutoff = formatCutoffForSave(single || (min || max ? `${min}-${max}` : ""));
+        const hasExplicitEmptyCutoff = [single, min, max].some(
+          (value) => Boolean(value) && isBulkEmptyLikeValue(value),
+        );
+        const cutoff =
+          formatCutoffForSave(single || (min || max ? `${min}-${max}` : "")) ||
+          (hasExplicitEmptyCutoff ? "N/A" : "");
         return cutoff ? { category, cutoff } : null;
       })
       .filter((item): item is CategoryCutoff => Boolean(item));
@@ -2148,9 +2203,9 @@ function BulkUploadDashboard({
     }
     const levelPriority: Record<BulkFieldIssueLevel, number> = {
       missing: 5,
-      invalid: 4,
+      exists: 4,
+      invalid: 3,
       duplicate: 3,
-      exists: 2,
       review: 1,
     };
     issues[column] = {
@@ -2160,6 +2215,16 @@ function BulkUploadDashboard({
   };
   const collectFieldIssues = (issues: Record<string, BulkFieldIssue>) =>
     Object.values(issues).flatMap((issue) => issue.messages);
+  const hasExistingFieldIssue = (issues: Record<string, BulkFieldIssue>) =>
+    Object.values(issues).some((issue) => issue.level === "exists");
+  const getBulkPreviewStatusLabel = (row: Pick<BulkPreviewRow, "status" | "fieldIssues">) =>
+    hasExistingFieldIssue(row.fieldIssues) ? "Already Exists" : row.status;
+  const getBulkPreviewStatusClassName = (row: Pick<BulkPreviewRow, "status" | "fieldIssues">) => {
+    if (hasExistingFieldIssue(row.fieldIssues)) return "bg-[#fff1f1] text-[#c81e1e]";
+    if (row.status === "Valid") return "bg-[#e8f8ee] text-[#16a34a]";
+    if (row.status === "Review") return "bg-[#fff7e6] text-[#e8790a]";
+    return "bg-[#ffe9e9] text-[#ef233c]";
+  };
   const validateBulkCutoffRanges = (
     rowData: Record<string, string>,
     { allowSingle = true }: { allowSingle?: boolean } = {},
@@ -2483,15 +2548,24 @@ function BulkUploadDashboard({
         if (imageType && !supportedImageTypes.has(imageType)) addFieldIssue(fieldIssues, "imageType", "invalid", "imageType is not supported");
         if (imageCountByCollege[cell("collegeCode").toLowerCase()] > 7) addFieldIssue(fieldIssues, "imageName", "invalid", "Maximum 7 college images allowed");
         const existingCollegeMedia = existingCollegeMediaByCode.get(cell("collegeCode").toLowerCase());
+        const normalizedImageName = normalizeZipName(imageName);
+        const isExistingCollegeImage =
+          Boolean(imageName && existingCollegeMedia) &&
+          Boolean(
+            existingCollegeMedia?.hasAnyMedia ||
+              existingCollegeMedia?.hasGalleryImages ||
+              existingCollegeMedia?.imageNames.has(normalizedImageName) ||
+              existingCollegeMedia?.mediaNames.has(normalizedImageName),
+          );
         if (
           imageName &&
           existingCollegeMedia &&
-          (existingCollegeMedia.hasGalleryImages || existingCollegeMedia.imageNames.has(normalizeZipName(imageName)))
+          isExistingCollegeImage
         ) {
           addFieldIssue(fieldIssues, "imageName", "exists", "imageName already exists for this college");
         }
         if (isRemoteAssetReference(imageName)) addFieldIssue(fieldIssues, "imageName", "invalid", getZipOnlyAssetError("imageName"));
-        if (hasImageZip && needsZipValidation && !resolveZipAssetRecord(zipAssetIndex, imageName, cell("collegeCode"))) {
+        if (hasImageZip && needsZipValidation && !isExistingCollegeImage && !resolveZipAssetRecord(zipAssetIndex, imageName, cell("collegeCode"))) {
           addFieldIssue(fieldIssues, "imageName", "invalid", `${imageName} not found in ZIP`);
         }
         if (!hasImageZip && needsZipValidation) addFieldIssue(fieldIssues, "imageName", "review", "Upload combined media ZIP to validate this image");
@@ -4255,11 +4329,9 @@ function BulkUploadDashboard({
                     })}
                     <td className="w-28 min-w-28 border-r border-[#edf2fb] bg-white px-3 py-3 align-top md:sticky md:right-20 md:z-20">
                       <span
-                        className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-sm px-2 py-1 text-[11px] font-extrabold ${
-                          row.status === "Valid" ? "bg-[#e8f8ee] text-[#16a34a]" : row.status === "Review" ? "bg-[#fff7e6] text-[#e8790a]" : "bg-[#ffe9e9] text-[#ef233c]"
-                        }`}
+                        className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-sm px-2 py-1 text-[11px] font-extrabold ${getBulkPreviewStatusClassName(row)}`}
                       >
-                        {row.status}
+                        {getBulkPreviewStatusLabel(row)}
                       </span>
                     </td>
                     <td className="w-24 min-w-24 bg-white px-3 py-3 align-top md:sticky md:right-0 md:z-20">
@@ -9357,8 +9429,8 @@ function AdminPageContent() {
               ).length;
 
               return (
-                <article key={college._id} className="relative flex min-h-[18.5rem] flex-col rounded-[1.35rem] border border-[#e9f0fb] bg-white p-5 shadow-[0_18px_40px_rgba(59,91,139,0.12)]">
-                  <div className="flex items-start gap-4">
+                <article key={college._id} className="relative flex min-h-[16.75rem] flex-col rounded-[1.35rem] border border-[#e9f0fb] bg-white p-5 shadow-[0_18px_40px_rgba(59,91,139,0.12)]">
+                  <div className="flex min-h-[6.75rem] items-start gap-4">
                     {college.logo ? (
                       <CollegeLogoBadge
                         src={college.logo}
@@ -9373,22 +9445,24 @@ function AdminPageContent() {
                     )}
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-lg font-black leading-6 text-[#061647]">{college.name || "College"}</h3>
-                      <p className="mt-2 break-words text-sm font-semibold leading-6 text-[#526995]">{college.university || "-"}</p>
+                      <h3 className="line-clamp-3 break-words text-lg font-black leading-6 text-[#061647]">{college.name || "College"}</h3>
+                      <p className="mt-2 line-clamp-1 break-words text-sm font-semibold leading-6 text-[#526995]">{college.university || "-"}</p>
                       <p className="mt-2 flex min-h-5 items-start gap-2 break-words text-sm font-semibold leading-5 text-[#526995]">
                         <MapPin className="mt-0.5 size-4 shrink-0 fill-[#2563eb] text-[#2563eb]" />
-                        <span>{[college.district, college.state].filter(Boolean).join(", ") || "-"}</span>
+                        <span className="line-clamp-2">{[college.district, college.state].filter(Boolean).join(", ") || "-"}</span>
                       </p>
                     </div>
                   </div>
 
-                  {college.isTopCollege || college.isBestCollege ? (
-                    <span className="mt-4 inline-flex w-max rounded-full bg-[#eff6ff] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2563eb]">
-                      Best College
-                    </span>
-                  ) : null}
+                  <div className="mt-2 flex min-h-[1.25rem] items-start">
+                    {college.isTopCollege || college.isBestCollege ? (
+                      <span className="inline-flex w-max rounded-full bg-[#eff6ff] px-3 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2563eb]">
+                        Best College
+                      </span>
+                    ) : null}
+                  </div>
 
-                  <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="mt-3 grid grid-cols-2 gap-3">
                     {[
                       { label: "Courses", value: courseCount || "-", icon: Users },
                       { label: "Type", value: college.ownershipType || "-", icon: Building2 },

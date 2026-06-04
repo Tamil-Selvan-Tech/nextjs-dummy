@@ -149,13 +149,15 @@ export function ExploreClient({
       : "home";
   const [viewMode, setViewMode] = useState<"home" | "colleges" | "courses">(safeInitialView);
   const [showBestOnly, setShowBestOnly] = useState(false);
-  const [showAllCourses, setShowAllCourses] = useState(false);
+  const [coursePage, setCoursePage] = useState(0);
   const [homeCollegePage, setHomeCollegePage] = useState(0);
   const [allCollegePage, setAllCollegePage] = useState(0);
 
+  
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash !== "#all-courses") return;
+    if (window.location.hash !== "#allF-courses") return;
     if (safeInitialView !== "courses") return;
 
     window.requestAnimationFrame(() => {
@@ -212,6 +214,23 @@ export function ExploreClient({
     });
     return [...grouped.entries()];
   }, [coursesData, hasStreamFilter, matchedStreamAliases, searchText]);
+
+  const coursesPerPage = 10;
+
+const totalCoursePages = Math.max(
+  1,
+  Math.ceil(groupedCourses.length / coursesPerPage)
+);
+
+const currentCoursePage = Math.min(
+  coursePage,
+  totalCoursePages - 1
+);
+
+const visibleCourses = groupedCourses.slice(
+  currentCoursePage * coursesPerPage,
+  currentCoursePage * coursesPerPage + coursesPerPage
+);
 
   const filteredColleges = useMemo(() => {
     let data = collegesData;
@@ -354,51 +373,86 @@ export function ExploreClient({
                 </button>
               </div>
 
-              <div className="overflow-x-auto rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-                <table className="w-full min-w-[36rem] text-left text-[13px] sm:min-w-[40rem]">
-                  <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
-                    <tr>
-                      <th className="px-3 py-2">Course</th>
-                      <th className="px-3 py-2 whitespace-nowrap">Total Fees</th>
-                      <th className="px-3 py-2 whitespace-nowrap">Cutoff</th>
-                      <th className="px-3 py-2 whitespace-nowrap">Duration</th>
-                      <th className="px-3 py-2 whitespace-nowrap">Top</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {featuredCourses.map(([courseName, rows]) => {
-                        const primaryCourse = rows[0];
-                        const displayCourseName = formatCourseDisplayName(
-                          courseName,
-                          primaryCourse?.stream || primaryCourse?.courseCategory,
-                          primaryCourse?.specialization,
-                        );
-                        const fees = rows.map((item) => item.totalFees);
-                        const cutoffs = rows.map((item) => item.cutoff);
-                        const durations = [...new Set(rows.map((item) => item.duration))];
-                        return (
-                          <tr
-                            key={courseName}
-                            className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
-                            onClick={() => router.push(`/explore/course/${encodeURIComponent(displayCourseName)}`)}
-                          >
-                            <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              Rs. {Math.min(...fees).toLocaleString()} - {Math.max(...fees).toLocaleString()}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{durations.join(", ")}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {rows.some((row) => row.isTopCourse) ? "Top" : "-"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
+             <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table className="w-full min-w-[650px] md:min-w-[900px]">
+    <thead>
+      <tr className=" bg-slate-50">
+        <th className="px-6 py-4 text-left text-sm font-bold text-blue-700">
+          COURSE
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-green-700">
+          TOTAL FEES
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-orange-600">
+          CUTOFF
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-purple-600">
+          DURATION
+        </th>
+        <th className="px-6 py-4 text-center text-sm font-bold text-red-600">
+          STATUS
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {featuredCourses.map(([courseName, rows]) => {
+        const primaryCourse = rows[0];
+
+        const displayCourseName = formatCourseDisplayName(
+          courseName,
+          primaryCourse?.stream || primaryCourse?.courseCategory,
+          primaryCourse?.specialization
+        );
+
+        const fees = rows.map((item) => item.totalFees);
+        const cutoffs = rows.map((item) => item.cutoff);
+        const durations = [...new Set(rows.map((item) => item.duration))];
+        const isTop = rows.some((row) => row.isTopCourse);
+
+        return (
+          <tr
+            key={courseName}
+            onClick={() =>
+              router.push(
+                `/explore/course/${encodeURIComponent(displayCourseName)}`
+              )
+            }
+            className="cursor-pointer border-b border-slate-200 hover:bg-slate-50 transition h-12"
+          >
+            <td className="px-4 py-2 font-semibold text-slate-800 max-w-[220px] md:max-w-none">
+  <div className="line-clamp-2 md:line-clamp-1">
+    {displayCourseName}
+  </div>
+</td>
+            <td className="px-4 py-2 text-slate-700 whitespace-nowrap">
+  ₹ {Math.min(...fees).toLocaleString()} -{" "}
+  {Math.max(...fees).toLocaleString()}
+</td>
+
+            <td className="px-4 py-2 text-slate-700">
+              {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
+            </td>
+
+            <td className="px-4 py-2 text-slate-700">
+              {durations.join(", ")}
+            </td>
+
+            <td className="px-4 py-2 text-center whitespace-nowrap">
+              {isTop ? (
+<span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">                  Top
+                </span>
+              ) : (
+<span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">                  Regular
+                </span>
+              )}
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
             </div>
 
             <div>
@@ -532,62 +586,125 @@ export function ExploreClient({
 
         {viewMode === "courses" ? (
           <div id="all-courses" className="scroll-mt-32">
-              <h2 className="mb-5 text-lg font-bold text-[color:var(--text-dark)] md:text-xl">All Courses</h2>
-            <div className="overflow-x-auto rounded-[1.1rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_14px_30px_rgba(22,50,79,0.05)]">
-              <table className="w-full min-w-[36rem] text-left text-[13px] sm:min-w-[40rem]">
-                <thead className="bg-[rgba(15,76,129,0.05)] text-[color:var(--text-dark)]">
-                  <tr>
-                    <th className="px-3 py-2">Course</th>
-                    <th className="px-3 py-2 whitespace-nowrap">Total Fees</th>
-                    <th className="px-3 py-2 whitespace-nowrap">Cutoff</th>
-                    <th className="px-3 py-2 whitespace-nowrap">Duration</th>
-                    <th className="px-3 py-2 whitespace-nowrap">Top</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(showAllCourses ? groupedCourses : groupedCourses.slice(0, 10)).map(([courseName, rows]) => {
-                    const primaryCourse = rows[0];
-                    const displayCourseName = formatCourseDisplayName(
-                      courseName,
-                      primaryCourse?.stream || primaryCourse?.courseCategory,
-                      primaryCourse?.specialization,
-                    );
-                    const fees = rows.map((item) => item.totalFees);
-                    const cutoffs = rows.map((item) => item.cutoff);
-                    const durations = [...new Set(rows.map((item) => item.duration))];
-                    const isTop = rows.some((item) => item.isTopCourse);
-                    return (
-                      <tr
-                        key={courseName}
-                        className="cursor-pointer border-t border-[rgba(15,76,129,0.08)] text-[color:var(--text-dark)] hover:bg-[rgba(15,76,129,0.03)]"
-                        onClick={() => router.push(`/explore/course/${encodeURIComponent(displayCourseName)}`)}
-                      >
-                        <td className="px-3 py-2 text-[13px] font-semibold">{displayCourseName}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          Rs. {Math.min(...fees).toLocaleString()} - {Math.max(...fees).toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">{durations.join(", ")}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">{isTop ? "Top" : "-"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {groupedCourses.length > 10 ? (
-              <div className="mt-5 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllCourses((prev) => !prev)}
-                  className="inline-flex items-center justify-center rounded-full border border-[rgba(15,76,129,0.14)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] shadow-[0_12px_28px_rgba(22,50,79,0.08)] transition hover:bg-[rgba(15,76,129,0.04)]"
-                >
-                  {showAllCourses ? "View Less" : "View Courses"}
-                </button>
-              </div>
-            ) : null}
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h2 className="text-lg font-bold text-[color:var(--text-dark)] md:text-xl">
+    All Courses
+  </h2>
+
+  <div className="flex items-center gap-2">
+    <span className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--brand-primary)]">
+      Courses: {groupedCourses.length}
+    </span>
+
+<div className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 py-1 text-[10px] md:text-xs font-medium text-[color:var(--brand-primary)]">      <span>Page</span>
+
+      <select
+        value={currentCoursePage}
+        onChange={(e) => setCoursePage(Number(e.target.value))}
+        className="bg-transparent text-xs font-semibold text-[color:var(--text-dark)] outline-none"
+      >
+        {Array.from({ length: totalCoursePages }, (_, index) => {
+          const start = index * coursesPerPage + 1;
+          const end = Math.min(
+            (index + 1) * coursesPerPage,
+            groupedCourses.length
+          );
+
+          return (
+            <option key={index} value={index}>
+              {start}-{end}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  </div>
+</div>
+           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table className="w-full min-w-[900px]">
+    <thead>
+      <tr className="bg-slate-50">
+        <th className="px-6 py-4 text-left text-sm font-bold text-blue-700">
+          COURSE
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-green-700">
+          TOTAL FEES
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-orange-600">
+          CUTOFF
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-bold text-purple-600">
+          DURATION
+        </th>
+        <th className="px-6 py-4 text-center text-sm font-bold text-red-600">
+          STATUS
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {visibleCourses.map(
+        ([courseName, rows]) => {
+          const primaryCourse = rows[0];
+
+          const displayCourseName = formatCourseDisplayName(
+            courseName,
+            primaryCourse?.stream || primaryCourse?.courseCategory,
+            primaryCourse?.specialization
+          );
+
+          const fees = rows.map((item) => item.totalFees);
+          const cutoffs = rows.map((item) => item.cutoff);
+          const durations = [...new Set(rows.map((item) => item.duration))];
+          const isTop = rows.some((row) => row.isTopCourse);
+
+          return (
+            <tr
+              key={courseName}
+              onClick={() =>
+                router.push(
+                  `/explore/course/${encodeURIComponent(displayCourseName)}`
+                )
+              }
+className="cursor-pointer border-b border-slate-200 hover:bg-slate-50 transition h-12"            >
+              <td className="px-4 py-2 font-semibold text-slate-800 max-w-[220px] md:max-w-none">
+  <div className="line-clamp-2 md:line-clamp-1">
+    {displayCourseName}
+  </div>
+</td>
+
+              <td className="px-4 py-2 text-slate-700">
+                ₹ {Math.min(...fees).toLocaleString()} -
+                {Math.max(...fees).toLocaleString()}
+              </td>
+
+              <td className="px-4 py-2 text-slate-700">
+                {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
+              </td>
+
+              <td className="px-4 py-2 text-slate-700">
+                {durations.join(", ")}
+              </td>
+
+              <td className="px-4 py-2 text-center">
+                {isTop ? (
+                  <span className="rounded-full border border-green-200 bg-green-50 px-4 py-1 text-xs font-semibold text-green-700">
+                    Top
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1 text-xs font-semibold text-blue-700">
+                    Regular
+                  </span>
+                )}
+              </td>
+            </tr>
+          );
+        }
+      )}
+    </tbody>
+  </table>
+</div>
+
           </div>
         ) : null}
         </div>
