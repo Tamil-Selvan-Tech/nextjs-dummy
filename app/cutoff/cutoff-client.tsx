@@ -1117,7 +1117,7 @@ export function CutoffClient({
           id: college.id,
           name: college.name,
           location: [college.district, college.state].filter(Boolean).join(", "),
-          image: college.image || "/cutoff-page-topImage.png",
+          image: college.image || "",
           href: `/college/${college.id}`,
           cutoffLabel: formatCutoffLabel(rawCutoff),
           matchScore,
@@ -1232,7 +1232,7 @@ export function CutoffClient({
           id: college.id,
           name: college.name,
           location: [college.district, college.state].filter(Boolean).join(", "),
-          image: college.image || "/cutoff-page-topImage.png",
+          image: college.image || "",
           href: `/college/${college.id}`,
           cutoffLabel: buildCutoffRangeLabel(minCutoff, maxCutoff),
           matchScore: Math.max(38, Math.min(98, Math.round(100 - Math.max(0, scaledTarget - predictorPercentage) * 1.6))),
@@ -1252,7 +1252,7 @@ export function CutoffClient({
         id: college.id,
         name: college.name,
         location: [college.district, college.state].filter(Boolean).join(", "),
-        image: college.image || "/cutoff-page-topImage.png",
+        image: college.image || "",
         href: `/college/${college.id}`,
         cutoffLabel: "Cutoff unavailable",
         matchScore: 55,
@@ -2340,16 +2340,22 @@ export function CutoffClient({
                       className="flex cursor-pointer items-center gap-4 rounded-[10px] p-2 transition hover:bg-[#f5f8ff]"
                     >
                       <div className="relative h-[58px] w-[92px] shrink-0 overflow-hidden rounded-[8px] border border-[#e5edf8] bg-[#f3f6fb]">
-                        <Image
-                          src={
-                            college.image ||
-                            "/cutoff-page-topImage.png"
-                          }
-                          alt={college.name}
-                          fill
-                          sizes="92px"
-                          className="object-cover transition duration-300 hover:scale-105"
-                        />
+                        {college.image ? (
+                          <Image
+                            src={college.image}
+                            alt={college.name}
+                            fill
+                            sizes="92px"
+                            className="object-cover transition duration-300 hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full flex-col items-center justify-center bg-[linear-gradient(135deg,#eef6ff_0%,#dfefff_100%)] px-2 text-center">
+                            <Building2 className="size-6 text-[#15528c]" />
+                            <span className="mt-1 text-[0.55rem] font-black leading-3 text-[#15528c]">
+                              Campus Visual
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="min-w-0">

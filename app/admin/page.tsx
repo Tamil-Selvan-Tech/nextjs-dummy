@@ -65,7 +65,7 @@ type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[]
 type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; collegeCode?: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; cutoffByCategory?: CategoryCutoff[]; cutoffCategory?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
-type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string; collegeCode?: string }; collegeCode?: string; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
+type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; college?: string; collegeId?: string; collegeCode?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string; collegeCode?: string }; collegeCode?: string; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
@@ -120,6 +120,37 @@ const getBulkZipLimitMessage = () =>
   "ZIP file must be 100MB or less. Please upload a smaller ZIP file.";
 
 const emptyState: AdminState = { colleges: [], courses: [], users: [], enquiries: [], collegeRequests: [], subAdmins: [] };
+const normalizeAdminIdentityValue = (value: unknown) => String(value || "").trim().toLowerCase();
+const getAdminCourseCollegeIdentityValues = (course: AdminCourse) =>
+  [
+    course.collegeId || "",
+    course.collegeCode || "",
+    course.college || "",
+    ...(course.colleges || []).flatMap((item) =>
+      typeof item === "string"
+        ? [item]
+        : [item?._id || "", item?.collegeCode || "", item?.name || ""],
+    ),
+    ...(course.collegeDetails || []).flatMap((detail) => {
+      const detailCollege = detail.college;
+      return typeof detailCollege === "string"
+        ? [detailCollege, detail.collegeCode || ""]
+        : [detailCollege?._id || "", detailCollege?.collegeCode || "", detailCollege?.name || "", detail.collegeCode || ""];
+    }),
+  ]
+    .map(normalizeAdminIdentityValue)
+    .filter(Boolean);
+const getAdminCollegeIdentityValues = (college: Pick<AdminCollege, "_id" | "collegeCode" | "name">) =>
+  [college._id, college.collegeCode || "", college.name || ""]
+    .map(normalizeAdminIdentityValue)
+    .filter(Boolean);
+const doesAdminCourseBelongToCollege = (
+  course: AdminCourse,
+  college: Pick<AdminCollege, "_id" | "collegeCode" | "name">,
+) => {
+  const collegeIdentityValues = new Set(getAdminCollegeIdentityValues(college));
+  return getAdminCourseCollegeIdentityValues(course).some((value) => collegeIdentityValues.has(value));
+};
 const emptyCollegeForm: CollegeForm = { name: "", establishedYear: "", ownershipType: "", university: "", country: "India", state: "", city: "", district: "", address: "", pincode: "", description: "", reviews: "", admissionProcess: "", applicationMode: "", ranking: "", placementRate: "", feeMin: "", feeMax: "", locationLink: "", website: "", contactEmail: "", contactPhone: "", alternatePhone: "", accreditation: "", awardsRecognitions: "", brochurePdfUrl: "", campusVideoUrl: "", isTopCollege: false, isBestCollege: false, logo: "", coverImage: "", images: [], courseTags: "", facilities: "", scholarships: "", highestPackage: "", averagePackage: "", companiesVisited: "", hostelAvailability: "not_available", hostelType: "", hostelFeeMin: "", hostelFeeMax: "", cctvAvailable: "", boysRoomsCount: "", girlsRoomsCount: "", hostelFacilityOptions: "", waterAvailability: "", powerBackup: "", wifiAvailable: "", wifiSpeed: "", wifiPricing: "", foodAvailability: "not_available", foodTimings: "", laundryService: "", roomCleaningFrequency: "", hostelRules: "", quotas: "" };
 const emptyCourseExam = (): CourseExamForm => ({ examName: "", cutoffScoreOrRank: "", cutoffByCategory: [], cutoffCategory: "OC", cutoffValue: "", weightage: "", paperOrSyllabus: "", preparationNotes: "" });
 const cutoffCategoryOptions = [
@@ -1218,6 +1249,7 @@ function BulkUploadDashboard({
   const [showZipLimitPopup, setShowZipLimitPopup] = useState(false);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [showFinishPopup, setShowFinishPopup] = useState(false);
+  const [bulkImportFinished, setBulkImportFinished] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [activeDetailSheet, setActiveDetailSheet] = useState<BulkSheetKey>("colleges");
   const [detailSearchText, setDetailSearchText] = useState("");
@@ -1244,6 +1276,7 @@ function BulkUploadDashboard({
   const [validatedZipAssetIndex, setValidatedZipAssetIndex] = useState<ZipAssetIndex | null>(null);
   const [mediaPreviewUrls, setMediaPreviewUrls] = useState<Record<string, string>>({});
   const [isImporting, setIsImporting] = useState(false);
+  const [bulkImportProgress, setBulkImportProgress] = useState({ completed: 0, total: 0 });
   const [currentDetailPage, setCurrentDetailPage] = useState(1);
   const editingFieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const itemsPerPage = 5;
@@ -1265,9 +1298,47 @@ function BulkUploadDashboard({
       ),
     [existingColleges],
   );
+  const existingCollegeMediaByCode = useMemo(() => {
+    const normalizeMediaReference = (value: string) =>
+      String(value || "")
+        .replace(/\\/g, "/")
+        .split("/")
+        .pop()
+        ?.trim()
+        .toLowerCase() || "";
+
+    return new Map(
+      existingColleges
+        .map((college) => {
+          const code = String(college.collegeCode || "").trim().toLowerCase();
+          if (!code) return null;
+
+          return [
+            code,
+            {
+              hasLogo: Boolean(String(college.logo || "").trim()),
+              hasCoverImage: Boolean(String(college.image || "").trim()),
+              hasBrochure: Boolean(String(college.brochurePdfUrl || college.brochureUrl || "").trim()),
+              imageNames: new Set(
+                (Array.isArray(college.images) ? college.images : [])
+                  .map((image) => normalizeMediaReference(String(image || "")))
+                  .filter(Boolean),
+              ),
+              hasGalleryImages: Array.isArray(college.images) && college.images.some((image) => String(image || "").trim()),
+            },
+          ] as const;
+        })
+        .filter((entry): entry is readonly [string, { hasLogo: boolean; hasCoverImage: boolean; hasBrochure: boolean; imageNames: Set<string>; hasGalleryImages: boolean }] => Boolean(entry)),
+    );
+  }, [existingColleges]);
   const bulkCollegeRowCount = previewRows.filter((row) => row.sheet === "colleges").length;
   const isBulkCollegeLimitExceeded = bulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
   const bulkCollegeLimitMessage = isBulkCollegeLimitExceeded ? getBulkCollegeLimitMessage() : "";
+  const bulkImportProgressTotal = bulkImportProgress.total || validationSummary.validRecords || 0;
+  const bulkImportProgressCompleted = Math.min(bulkImportProgress.completed, bulkImportProgressTotal);
+  const bulkImportProgressPercent = bulkImportProgressTotal
+    ? Math.round((bulkImportProgressCompleted / bulkImportProgressTotal) * 100)
+    : 0;
   const uploadCards = [
     {
       step: "1",
@@ -1977,6 +2048,77 @@ function BulkUploadDashboard({
     const normalized = String(value || "").trim().toLowerCase();
     return ["true", "yes", "y", "1", "available", "best", "top", "recommended", "popular", "featured", "main"].includes(normalized);
   };
+  const getBulkCutoffByCategoryForImport = (rowData: Record<string, string>) =>
+    bulkCutoffCategories
+      .map((category): CategoryCutoff | null => {
+        const key = bulkCutoffCategoryKeyMap[category];
+        const single = String(rowData[`cutoff_${key}`] || "").trim();
+        const min = String(rowData[`cutoff_${key}_min`] || "").trim();
+        const max = String(rowData[`cutoff_${key}_max`] || "").trim();
+        const cutoff = formatCutoffForSave(single || (min || max ? `${min}-${max}` : ""));
+        return cutoff ? { category, cutoff } : null;
+      })
+      .filter((item): item is CategoryCutoff => Boolean(item));
+  const enrichBulkImportRowData = (row: BulkPreviewRow) => {
+    const data = { ...row.data };
+
+    if (row.sheet === "courses") {
+      const baseCourseName = String(data.courseName || "").trim();
+      const normalizedStream = normalizeCourseStream(data.stream || data.courseCategory || "");
+      const specialization = String(data.specialization || baseCourseName || "").trim();
+      const cutoffByCategory = getBulkCutoffByCategoryForImport(data);
+
+      return {
+        ...data,
+        course: [baseCourseName, normalizedStream, specialization].filter(Boolean).join(" - "),
+        courseType: baseCourseName,
+        courseCategory: normalizedStream,
+        courseName: specialization,
+        stream: normalizedStream,
+        specialization,
+        lateralEntryAvailable: isCheckedPreviewBoolean(data.lateralEntry),
+        isTopCourse: isCheckedPreviewBoolean(data.bestCourse),
+        admissionProcess: data.admissionProcess || "",
+        description: data.courseDescription || data.description || "",
+        intake: data.allottedSeats || data.intake || "",
+        cutoffByCategory,
+        cutoff: cutoffByCategory[0]?.cutoff || "",
+        college: data.collegeCode || "",
+        collegeCode: data.collegeCode || "",
+      };
+    }
+
+    if (row.sheet === "entranceexams") {
+      const cutoffByCategory = getBulkCutoffByCategoryForImport(data);
+
+      return {
+        ...data,
+        weightage: data.examWeightage || "",
+        paperOrSyllabus: data.specifiedSubjects || "",
+        cutoffByCategory,
+        cutoffScoreOrRank: cutoffByCategory[0]?.cutoff || "",
+      };
+    }
+
+    if (row.sheet === "colleges") {
+      return {
+        ...data,
+        name: data.collegeName || data.name || "",
+        contactEmail: data.officialEmail || data.contactEmail || "",
+        contactPhone: data.phoneNumber || data.contactPhone || "",
+        website: data.websiteUrl || data.website || "",
+        locationLink: data.googleMapUrl || data.locationLink || "",
+        mapUrl: data.googleMapUrl || data.mapUrl || "",
+        logo: data.logoImage || data.logo || "",
+        image: data.coverImage || data.image || "",
+        coverImage: data.coverImage || "",
+        isBestCollege: isCheckedPreviewBoolean(data.isBestCollege),
+        isTopCollege: isCheckedPreviewBoolean(data.isBestCollege),
+      };
+    }
+
+    return data;
+  };
   const hasAnyBulkCutoffValue = (rowData: Record<string, string>, columns = bulkCutoffColumns) =>
     columns.some((column) => String(rowData[column] || "").trim());
   const getBulkPreviewColumns = (sheet: BulkSheetKey) =>
@@ -2058,9 +2200,7 @@ function BulkUploadDashboard({
   const hasDuplicateCollegeIssue = (row: BulkPreviewRow) =>
     row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"));
 
-  const isExistingRecordIssue = (message: string) => message.includes("already exists in the system");
-  const isImportableBulkRow = (row: BulkPreviewRow) =>
-    row.status === "Valid" || (row.errors.length > 0 && row.errors.every(isExistingRecordIssue));
+  const isImportableBulkRow = (row: BulkPreviewRow) => row.status === "Valid";
   const isImportableBulkGroup = (group: BulkPreviewRow[]) =>
     group.length > 0 && group.every(isImportableBulkRow);
 
@@ -2243,6 +2383,18 @@ function BulkUploadDashboard({
         if (cell("collegeName") && existingCollegeNameSet.has(cell("collegeName").toLowerCase())) {
           addFieldIssue(fieldIssues, "collegeName", "exists", "collegeName already exists in the system");
         }
+        const existingCollegeMedia = existingCollegeMediaByCode.get(cell("collegeCode").toLowerCase());
+        if (existingCollegeMedia) {
+          if (cell("logoImage") && existingCollegeMedia.hasLogo) {
+            addFieldIssue(fieldIssues, "logoImage", "exists", "logoImage already exists for this college");
+          }
+          if (cell("coverImage") && existingCollegeMedia.hasCoverImage) {
+            addFieldIssue(fieldIssues, "coverImage", "exists", "coverImage already exists for this college");
+          }
+          if (cell("brochurePdf") && existingCollegeMedia.hasBrochure) {
+            addFieldIssue(fieldIssues, "brochurePdf", "exists", "brochurePdf already exists for this college");
+          }
+        }
         ["logoImage", "coverImage"]
           .filter((column) => isRemoteAssetReference(cell(column)))
           .forEach((column) => addFieldIssue(fieldIssues, column, "invalid", getZipOnlyAssetError(column)));
@@ -2330,6 +2482,14 @@ function BulkUploadDashboard({
         }
         if (imageType && !supportedImageTypes.has(imageType)) addFieldIssue(fieldIssues, "imageType", "invalid", "imageType is not supported");
         if (imageCountByCollege[cell("collegeCode").toLowerCase()] > 7) addFieldIssue(fieldIssues, "imageName", "invalid", "Maximum 7 college images allowed");
+        const existingCollegeMedia = existingCollegeMediaByCode.get(cell("collegeCode").toLowerCase());
+        if (
+          imageName &&
+          existingCollegeMedia &&
+          (existingCollegeMedia.hasGalleryImages || existingCollegeMedia.imageNames.has(normalizeZipName(imageName)))
+        ) {
+          addFieldIssue(fieldIssues, "imageName", "exists", "imageName already exists for this college");
+        }
         if (isRemoteAssetReference(imageName)) addFieldIssue(fieldIssues, "imageName", "invalid", getZipOnlyAssetError("imageName"));
         if (hasImageZip && needsZipValidation && !resolveZipAssetRecord(zipAssetIndex, imageName, cell("collegeCode"))) {
           addFieldIssue(fieldIssues, "imageName", "invalid", `${imageName} not found in ZIP`);
@@ -2441,6 +2601,8 @@ function BulkUploadDashboard({
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
     setShowFinishPopup(false);
+    setBulkImportFinished(false);
+    setBulkImportProgress({ completed: 0, total: 0 });
     setShowBulkLimitPopup(false);
     setShowZipLimitPopup(false);
   }, []);
@@ -2458,6 +2620,7 @@ function BulkUploadDashboard({
         setUploadErrors((previous) => ({ ...previous, "3": error }));
         setShowZipUploadStep(true);
         setShowValidationSummaryStep(false);
+        setBulkImportFinished(false);
         setShowZipLimitPopup(true);
         setShowBulkLimitPopup(false);
         return;
@@ -2489,6 +2652,8 @@ function BulkUploadDashboard({
     setShowValidationSummaryStep(false);
     setShowFullDetails(false);
     setShowFinishPopup(false);
+    setBulkImportFinished(false);
+    setBulkImportProgress({ completed: 0, total: 0 });
     setShowBulkLimitPopup(false);
     setShowZipLimitPopup(false);
     setSelectedUploadFiles((previous) => ({ ...previous, [item.step]: file, [otherExcelStep]: null, "3": null }));
@@ -2677,15 +2842,6 @@ function BulkUploadDashboard({
           cutoff_st_max: "160",
           specifiedSubjects: "Physics, Chemistry, Mathematics",
           preparationNotes: "Practice previous year questions",
-        },
-      },
-      {
-        name: "CollegeImages",
-        headers: ["collegeCode", "imageType", "imageName"],
-        row: {
-          collegeCode: "CLG001",
-          imageType: "campus",
-          imageName: "clg001-campus-01.jpg",
         },
       },
     ];
@@ -3185,6 +3341,7 @@ function BulkUploadDashboard({
     };
     const backendPreviewRows = validPreviewRows.map((row) => ({
       ...row,
+      data: enrichBulkImportRowData(row),
       sheet: backendSheetNames[row.sheet] || row.sheet,
       sheetKey: row.sheet,
       status: "Valid",
@@ -3199,8 +3356,27 @@ function BulkUploadDashboard({
       formData.append("imageZip", imageZipFile);
     }
 
+    const validCollegeCount = validCollegeGroupKeys.size || validationSummary.validRecords || 0;
+    let progressTimer: number | null = null;
+    setBulkImportProgress({ completed: 0, total: validCollegeCount });
     setIsImporting(true);
     setValidationStatusText("");
+
+    if (validCollegeCount > 0) {
+      progressTimer = window.setInterval(() => {
+        setBulkImportProgress((current) => {
+          const total = current.total || validCollegeCount;
+          const maxBeforeFinish = Math.max(0, total - 1);
+          if (current.completed >= maxBeforeFinish) return current;
+
+          const step = total >= 40 ? Math.max(1, Math.ceil(total / 18)) : total >= 12 ? 2 : 1;
+          return {
+            total,
+            completed: Math.min(maxBeforeFinish, current.completed + step),
+          };
+        });
+      }, 420);
+    }
 
     try {
       const data = await request<{
@@ -3241,6 +3417,8 @@ function BulkUploadDashboard({
       await onImportComplete?.();
 
       setShowFullDetails(false);
+      setBulkImportProgress({ completed: validCollegeCount, total: validCollegeCount });
+      setBulkImportFinished(true);
       setShowFinishPopup(true);
     } catch (error) {
       const rawMessage = error instanceof Error ? error.message : "Bulk import failed.";
@@ -3249,10 +3427,12 @@ function BulkUploadDashboard({
           ? `Bulk import failed. Backend is not reachable at ${API_BASE_URL}.`
           : rawMessage;
       notifyImportStatus(message, "error");
+      setBulkImportProgress({ completed: 0, total: validCollegeCount });
     if (/100 colleges/i.test(message)) {
       setShowBulkLimitPopup(true);
     }
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer);
       setIsImporting(false);
     }
   };
@@ -4362,7 +4542,8 @@ function BulkUploadDashboard({
                 type="button"
                 disabled={validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded}
                 onClick={() => {
-                  void importValidData();
+                  setBulkImportFinished(false);
+                  setShowFinishPopup(true);
                 }}
                 className={`h-11 rounded-md px-8 text-xs font-extrabold shadow-[0_8px_18px_rgba(79,50,246,0.22)] ${
                   validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded
@@ -4398,27 +4579,66 @@ function BulkUploadDashboard({
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100 text-green-700">
               <BadgeCheck className="size-9" />
             </span>
-            <h2 className="mt-5 text-xl font-bold text-slate-950">All college data and images uploaded successfully</h2>
-            <p className="mt-2 text-sm font-medium text-slate-500">You can now proceed or go back to dashboard.</p>
+            <h2 className="mt-5 text-xl font-bold text-slate-950">
+              {bulkImportFinished ? "All college data and images uploaded successfully" : "Finish bulk college import"}
+            </h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+              {bulkImportFinished
+                ? "The valid college records have been imported. You can close this popup and review the updated college list."
+                : isImporting
+                  ? "Please wait while we import the valid college records. Keep this window open until the process completes."
+                : `Ready to import ${validationSummary.validRecords || 0} valid college record${validationSummary.validRecords === 1 ? "" : "s"}. Click Finish to complete the import.`}
+            </p>
+            {isImporting ? (
+              <div className="mt-6 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-blue-50 p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Importing Colleges</p>
+                    <p className="mt-1 text-sm font-bold text-slate-700">
+                      {bulkImportProgressCompleted}/{bulkImportProgressTotal} loading
+                    </p>
+                  </div>
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white text-base font-black text-emerald-700 shadow-[0_12px_28px_rgba(16,185,129,0.16)] ring-1 ring-emerald-100">
+                    {bulkImportProgressPercent}%
+                  </div>
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 transition-all duration-500"
+                    style={{ width: `${bulkImportProgressPercent}%` }}
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                  <span>Validating saved records</span>
+                  <span>{bulkImportProgressTotal - bulkImportProgressCompleted} remaining</span>
+                </div>
+              </div>
+            ) : null}
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
               <button
                 type="button"
-                onClick={() => setShowFinishPopup(false)}
+                onClick={() => {
+                  if (isImporting) return;
+                  setShowFinishPopup(false);
+                }}
+                disabled={isImporting}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
               >
-                Close
+                {bulkImportFinished ? "Close" : "Back"}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setShowFinishPopup(false);
-                  if (onImportComplete) {
-                    void onImportComplete();
+                  if (bulkImportFinished) {
+                    setShowFinishPopup(false);
+                    return;
                   }
+                  void importValidData();
                 }}
-                className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(22,163,74,0.22)] transition hover:from-green-700 hover:to-emerald-600"
+                disabled={isImporting}
+                className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_12px_24px_rgba(22,163,74,0.22)] transition hover:from-green-700 hover:to-emerald-600 disabled:cursor-not-allowed disabled:from-green-300 disabled:to-emerald-300"
               >
-                Finish Upload
+                {isImporting ? "Importing..." : bulkImportFinished ? "Done" : "Finish Upload"}
               </button>
             </div>
           </div>
@@ -5207,19 +5427,11 @@ function AdminPageContent() {
     });
   };
 
-  const buildEmbeddedCoursesForCollege = (collegeId: string) =>
+  const buildEmbeddedCoursesForCollege = (college: AdminCollege) =>
     dedupeEmbeddedCourses(
       adminState.courses
-        .filter((course) =>
-          (course.colleges || []).some((item) => {
-            const linkedCollegeId =
-              typeof item === "string" ? item : String(item?._id || "");
-            return linkedCollegeId === collegeId;
-          }) ||
-          (course.collegeDetails || []).some((item) =>
-            (typeof item.college === "string" ? item.college : String(item.college?._id || "")) === collegeId),
-        )
-        .map((course) => buildEmbeddedCourseDraft(course, collegeId)),
+        .filter((course) => doesAdminCourseBelongToCollege(course, college))
+        .map((course) => buildEmbeddedCourseDraft(course, college._id)),
     );
 
   const openCollegeEditor = (college: AdminCollege, targetStep = 0) => {
@@ -5242,7 +5454,7 @@ function AdminPageContent() {
     setShowCourseForm(false);
     setShowSavedCourseList(false);
     resetEmbeddedCourseEditor();
-    setEmbeddedCourses(buildEmbeddedCoursesForCollege(college._id));
+    setEmbeddedCourses(buildEmbeddedCoursesForCollege(college));
     setCollegeForm({
       name: college.name || "",
       establishedYear: stripTrailingZeroDecimal(college.establishedYear),
@@ -9140,33 +9352,9 @@ function AdminPageContent() {
             {visibleCollegeCards.map((college) => {
               const range = formatFeeRange(college.feesStructure);
               const isExpanded = expandedCollegeIds.includes(college._id);
-              const courseCount = adminState.courses.filter((course) => {
-                const collegeIdentityValues = [
-                  college._id,
-                  college.collegeCode || "",
-                  college.name || "",
-                ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
-                const directMatch = (course.colleges || []).some((courseCollege) => {
-                  const linkedValues =
-                    typeof courseCollege === "string"
-                      ? [courseCollege]
-                      : [courseCollege?._id || "", courseCollege?.collegeCode || "", courseCollege?.name || ""];
-                  return linkedValues.some((value) =>
-                    collegeIdentityValues.includes(String(value || "").trim().toLowerCase()),
-                  );
-                });
-                const detailMatch = (course.collegeDetails || []).some((detail) => {
-                  const detailCollege = detail.college;
-                  const linkedValues =
-                    typeof detailCollege === "string"
-                      ? [detailCollege, detail.collegeCode || ""]
-                      : [detailCollege?._id || "", detailCollege?.collegeCode || "", detailCollege?.name || "", detail.collegeCode || ""];
-                  return linkedValues.some((value) =>
-                    collegeIdentityValues.includes(String(value || "").trim().toLowerCase()),
-                  );
-                });
-                return directMatch || detailMatch;
-              }).length;
+              const courseCount = adminState.courses.filter((course) =>
+                doesAdminCourseBelongToCollege(course, college),
+              ).length;
 
               return (
                 <article key={college._id} className="relative flex min-h-[18.5rem] flex-col rounded-[1.35rem] border border-[#e9f0fb] bg-white p-5 shadow-[0_18px_40px_rgba(59,91,139,0.12)]">

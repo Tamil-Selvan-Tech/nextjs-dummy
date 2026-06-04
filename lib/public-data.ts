@@ -223,6 +223,7 @@ type BackendCourse = {
   college?: string;
   collegeId?: string;
   collegeCode?: string;
+  colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>;
   courseName?: string;
   courseType?: string;
   courseCategory?: string;
@@ -265,6 +266,33 @@ type BackendCourse = {
     applicationFee?: number | string;
   }>;
 };
+
+const getBackendCourseCollegeLinks = (item: BackendCourse) =>
+  Array.isArray(item.colleges) ? item.colleges : [];
+
+const getBackendCourseCollegeLinkValues = (item: BackendCourse) =>
+  getBackendCourseCollegeLinks(item)
+    .flatMap((college) =>
+      typeof college === "string"
+        ? [college]
+        : [college?._id || "", college?.collegeCode || "", college?.name || ""],
+    )
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+const getCourseCollegeIdentityValues = (course: Course) =>
+  [
+    course.collegeId || "",
+    course.collegeCode || "",
+    course.college || "",
+    ...course.collegeDetails.flatMap((detail) => [
+      detail.college || "",
+      detail.collegeId || "",
+      detail.collegeCode || "",
+    ]),
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
 
 type BackendSiteSettings = {
   settings?: {
@@ -321,6 +349,20 @@ const mapExamSchedules = (siteSettingsData?: BackendSiteSettings): PublicExamSch
 const mapCourses = (records: BackendCourse[]): Course[] => {
   const mappedCourses = records.map((item, index) => {
     const cutoffByCategory = mapCutoffByCategory(item.cutoffByCategory);
+    const linkedCollegeValues = getBackendCourseCollegeLinkValues(item);
+    const firstLinkedCollege = getBackendCourseCollegeLinks(item)[0];
+    const linkedCollegeId =
+      typeof firstLinkedCollege === "string"
+        ? firstLinkedCollege
+        : String(firstLinkedCollege?._id || "").trim();
+    const linkedCollegeCode =
+      typeof firstLinkedCollege === "string"
+        ? ""
+        : String(firstLinkedCollege?.collegeCode || "").trim();
+    const linkedCollegeName =
+      typeof firstLinkedCollege === "string"
+        ? ""
+        : String(firstLinkedCollege?.name || "").trim();
 
     const collegeDetails = Array.isArray(item.collegeDetails)
       ? item.collegeDetails
@@ -368,9 +410,9 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       cutoffByCategory,
       isTopCourse: Boolean(item.isTopCourse),
       university: String(item.university || ""),
-      college: String(item.college || ""),
-      collegeId: String(item.collegeId || ""),
-      collegeCode: String(item.collegeCode || ""),
+      college: String(item.college || linkedCollegeName || linkedCollegeValues[0] || ""),
+      collegeId: String(item.collegeId || linkedCollegeId || ""),
+      collegeCode: String(item.collegeCode || linkedCollegeCode || collegeDetails[0]?.collegeCode || ""),
       specialization: String(
         item.specialization || item.courseName || item.courseCategory || "General",
       ),
@@ -406,6 +448,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
   return mappedCourses.filter((course) => {
     const signature = [
       normalizeText(course.collegeId),
+      normalizeText(course.collegeCode),
       normalizeText(course.course),
       normalizeText(course.college),
       normalizeText(course.university),
@@ -414,6 +457,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       normalizeText(course.courseCategory),
       normalizeText(course.courseType),
       normalizeText(course.stream),
+      ...getCourseCollegeIdentityValues(course).map((value) => normalizeText(value)),
       String(course.totalFees || 0),
       String(course.cutoff || 0),
     ].join("|");
@@ -437,13 +481,8 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
     const normalizedCollegeIdentityValues = collegeIdentityValues.map((value) => normalizeText(value));
     const matchingCourseRows = courseRows.filter(
       (course) =>
-        normalizedCollegeIdentityValues.includes(normalizeText(course.collegeId || "")) ||
-        normalizedCollegeIdentityValues.includes(normalizeText(course.collegeCode || "")) ||
-        normalizedCollegeIdentityValues.includes(normalizeText(course.college || "")) ||
-        course.collegeDetails.some((detail) =>
-          [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
-            normalizedCollegeIdentityValues.includes(normalizeText(value || "")),
-          ),
+        getCourseCollegeIdentityValues(course).some((value) =>
+          normalizedCollegeIdentityValues.includes(normalizeText(value)),
         ),
     );
 
