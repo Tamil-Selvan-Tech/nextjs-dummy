@@ -307,6 +307,7 @@ type BackendSiteSettings = {
       lastDateForFeePayment?: string;
       admitCardRelease?: string;
       examDate?: string;
+      isTopExam?: boolean;
       resultDate?: string;
       updatedAt?: string;
     }>;
@@ -323,6 +324,7 @@ export type PublicExamSchedule = {
   lastDateForFeePayment: string;
   admitCardRelease: string;
   examDate: string;
+  isTopExam: boolean;
   resultDate: string;
   updatedAt: string;
 };
@@ -340,6 +342,7 @@ const mapExamSchedules = (siteSettingsData?: BackendSiteSettings): PublicExamSch
           lastDateForFeePayment: String(item?.lastDateForFeePayment || "").trim(),
           admitCardRelease: String(item?.admitCardRelease || "").trim(),
           examDate: String(item?.examDate || "").trim(),
+          isTopExam: Boolean(item?.isTopExam),
           resultDate: String(item?.resultDate || "").trim(),
           updatedAt: String(item?.updatedAt || "").trim(),
         }))

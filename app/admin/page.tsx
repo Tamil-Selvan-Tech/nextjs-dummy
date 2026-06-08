@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import {
   BadgeCheck,
   Bell,
+  BookOpen,
   Building2,
   ChevronRight,
   Download,
@@ -28,6 +29,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPortalShell } from "@/components/admin-portal-shell";
+import { AdminCutoffQuestions } from "@/components/admin-cutoff-questions";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { ResponsiveTableWrapper } from "@/components/responsive-table-wrapper";
 import {
@@ -78,7 +80,7 @@ type CourseExamForm = { examName: string; cutoffScoreOrRank: string; cutoffByCat
 type CourseCollegeDetailForm = { semesterFees: string; totalFees: string; cutoff: string; intake: string; applicationFee: string };
 type CourseForm = { courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; entranceExams: CourseExamForm[]; colleges: string[]; details: Record<string, CourseCollegeDetailForm> };
 type SubAdminForm = { email: string; password: string; permissions: string[] };
-type ExamScheduleForm = { examName: string; applicationFees: string; startDateToApply: string; lastDateToApply: string; correctionDate: string; lastDateForFeePayment: string; admitCardRelease: string; examDate: string; resultDate: string };
+type ExamScheduleForm = { examName: string; applicationFees: string; startDateToApply: string; lastDateToApply: string; correctionDate: string; lastDateForFeePayment: string; admitCardRelease: string; examDate: string; isTopExam: boolean; resultDate: string };
 type SavedExamSchedule = ExamScheduleForm & { id: string; updatedAt: string };
 type EmbeddedCourseDraft = { id?: string; courseType: string; degreeType: string; stream: string; specialization: string; duration: string; mode: string; lateralEntryAvailable: boolean; lateralEntryDetails: string; minimumQualification: string; university: string; admissionProcess: string; description: string; isTopCourse: boolean; entranceExamsEnabled: boolean; semesterFees: string; totalFees: string; cutoff: string; cutoffByCategory: CategoryCutoff[]; cutoffCategory: string; cutoffValue: string; intake: string; applicationFee: string; entranceExams: CourseExamForm[] };
 type CollegeValidation = { valid: boolean; step: number; field: string; message: string };
@@ -114,6 +116,7 @@ type DeleteExamDialogState = {
 
 const MAX_BULK_IMAGE_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
 const MAX_BULK_COLLEGE_ROWS = 100;
+const EXAM_SCHEDULES_PER_PAGE = 5;
 const getBulkCollegeLimitMessage = () =>
   `You can upload up to ${MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.`;
 const getBulkZipLimitMessage = () =>
@@ -429,6 +432,7 @@ const emptyExamScheduleForm: ExamScheduleForm = {
   lastDateForFeePayment: "",
   admitCardRelease: "",
   examDate: "",
+  isTopExam: false,
   resultDate: "",
 };
 const examScheduleNameOptions = ["JEE Main", "JEE Advanced", "CUET", "NEET"];
@@ -467,11 +471,16 @@ const resolveExamCutoffRangeConfig = (stream: string, examName: string): CutoffR
   return resolveCutoffRangeConfig("", "UG", stream, "12th");
 };
 const normalizeIndianPhoneInput = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length > 10 && digits.startsWith("91")) return digits.slice(2, 12);
-  return digits.slice(0, 10);
+  return String(value || "")
+    .replace(/[^\d+\-()\s]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .slice(0, 24);
 };
-const isValidIndianPhone = (value: string) => /^\d{10}$/.test(value);
+const isValidIndianPhone = (value: string) => {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  return digits.length >= 6 && digits.length <= 15 && /^[\d+\-()\s]+$/.test(raw);
+};
 const adminModuleLabels: Record<string, string> = {
   overview: "Overview",
   colleges: "Colleges",
@@ -482,6 +491,7 @@ const adminModuleLabels: Record<string, string> = {
   users: "Users",
   enquiries: "Enquiries",
   exams: "Exams",
+  "cutoff-questions": "Cutoff Questions",
 };
 const adminAccessSections = [
   { id: "overview", label: adminModuleLabels.overview, icon: LayoutDashboard },
@@ -491,6 +501,7 @@ const adminAccessSections = [
   { id: "users", label: adminModuleLabels.users, icon: UserRound },
   { id: "enquiries", label: adminModuleLabels.enquiries, icon: MailOpen },
   { id: "exams", label: adminModuleLabels.exams, icon: BadgeCheck },
+  { id: "cutoff-questions", label: adminModuleLabels["cutoff-questions"], icon: BookOpen },
 ] as const;
 const formatAdminPermissionSummary = (permissions?: string[]) => {
   const labels = Array.from(
@@ -2416,8 +2427,8 @@ function BulkUploadDashboard({
         });
         if (!isValidYearValue(cell("establishedYear"))) addFieldIssue(fieldIssues, "establishedYear", "invalid", "establishedYear must be a valid year");
         if (!isValidEmailValue(cell("officialEmail"))) addFieldIssue(fieldIssues, "officialEmail", "invalid", "officialEmail must be a valid email address");
-        if (!isValidPhoneValue(cell("phoneNumber"))) addFieldIssue(fieldIssues, "phoneNumber", "invalid", "phoneNumber must be a valid 10 digit phone number");
-        if (!isValidPhoneValue(cell("alternatePhone"))) addFieldIssue(fieldIssues, "alternatePhone", "invalid", "alternatePhone must be a valid 10 digit phone number");
+        if (!isValidPhoneValue(cell("phoneNumber"))) addFieldIssue(fieldIssues, "phoneNumber", "invalid", "phoneNumber must be a valid phone number");
+        if (!isValidPhoneValue(cell("alternatePhone"))) addFieldIssue(fieldIssues, "alternatePhone", "invalid", "alternatePhone must be a valid phone number");
         if (!isValidPincodeValue(cell("pincode"))) addFieldIssue(fieldIssues, "pincode", "invalid", "pincode must be a valid 6 digit code");
         if (!isValidUrlValue(cell("websiteUrl"))) addFieldIssue(fieldIssues, "websiteUrl", "invalid", "websiteUrl must be a valid URL");
         if (!isValidUrlValue(cell("googleMapUrl"))) addFieldIssue(fieldIssues, "googleMapUrl", "invalid", "googleMapUrl must be a valid URL");
@@ -4849,6 +4860,7 @@ function AdminPageContent() {
   const [examForm, setExamForm] = useState<ExamScheduleForm>(emptyExamScheduleForm);
   const [savedExams, setSavedExams] = useState<SavedExamSchedule[]>([]);
   const [editExamId, setEditExamId] = useState("");
+  const [examSchedulesPage, setExamSchedulesPage] = useState(1);
   const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
   const [deleteCollegeDialog, setDeleteCollegeDialog] = useState<DeleteCollegeDialogState>(null);
   const [isDeletingCollege, setIsDeletingCollege] = useState(false);
@@ -4878,6 +4890,8 @@ function AdminPageContent() {
   const lastSeenNotificationAtRef = useRef(0);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
+  const examFormRef = useRef<HTMLFormElement | null>(null);
+  const examNameInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!statusState.text.trim()) return;
     showToast(statusState.text, inferToastTypeFromMessage(statusState.text));
@@ -4926,6 +4940,33 @@ function AdminPageContent() {
         name: file.name,
       })),
     [imageFiles],
+  );
+  const examTableRows = useMemo(
+    () =>
+      savedExams.map((item) => ({
+        id: item.id,
+        examName: item.examName || "Exam",
+        applicationFees: item.applicationFees || "-",
+        startDateToApply: item.startDateToApply || "",
+        lastDateToApply: item.lastDateToApply || "",
+        correctionDate: item.correctionDate || "",
+        lastDateForFeePayment: item.lastDateForFeePayment || "",
+        admitCardRelease: item.admitCardRelease || "",
+        examDate: item.examDate || "",
+        resultDate: item.resultDate || "",
+        isTopExam: Boolean(item.isTopExam),
+        updatedAt: item.updatedAt || "",
+      })),
+    [savedExams],
+  );
+  const examSchedulesTotalPages = Math.max(1, Math.ceil(examTableRows.length / EXAM_SCHEDULES_PER_PAGE));
+  const visibleExamTableRows = useMemo(
+    () =>
+      examTableRows.slice(
+        (examSchedulesPage - 1) * EXAM_SCHEDULES_PER_PAGE,
+        examSchedulesPage * EXAM_SCHEDULES_PER_PAGE,
+      ),
+    [examSchedulesPage, examTableRows],
   );
   const totalCollegeImageCount = collegeForm.images.length + imageFiles.length;
   const firstCollegeImagePreviewUrl = collegeImagePreviews[0]?.url || collegeForm.images[0] || "";
@@ -5260,6 +5301,10 @@ function AdminPageContent() {
         : [],
     );
   }, [siteSettings.examSchedules]);
+
+  useEffect(() => {
+    setExamSchedulesPage((page) => Math.min(Math.max(page, 1), examSchedulesTotalPages));
+  }, [examSchedulesTotalPages]);
 
   useEffect(() => {
     const storedToken = readAuthToken();
@@ -6219,8 +6264,8 @@ function AdminPageContent() {
       { valid: Boolean(collegeForm.pincode.trim()), step: 0, field: "pincode", message: "Location: Pincode is required" },
       { valid: Boolean(collegeForm.contactEmail.trim()), step: 0, field: "contactEmail", message: "Contact: Official email is required" },
       { valid: Boolean(collegeForm.contactPhone.trim()), step: 0, field: "contactPhone", message: "Contact: Phone number is required" },
-      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 0, field: "contactPhone", message: "Contact: Enter a valid 10 digit phone number" },
-      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 0, field: "alternatePhone", message: "Contact: Enter a valid 10 digit alternate phone number" },
+      { valid: !collegeForm.contactPhone.trim() || isValidIndianPhone(collegeForm.contactPhone.trim()), step: 0, field: "contactPhone", message: "Contact: Enter a valid phone number" },
+      { valid: !collegeForm.alternatePhone.trim() || isValidIndianPhone(collegeForm.alternatePhone.trim()), step: 0, field: "alternatePhone", message: "Contact: Enter a valid alternate phone number" },
       { valid: Boolean(nextLogo.trim()), step: 1, field: "logo", message: "Media: College logo is required" },
       { valid: Boolean(nextCoverImage.trim()), step: 1, field: "coverImage", message: "Media: Cover image is required" },
       { valid: nextImages.length >= 2, step: 1, field: "images", message: "Media: At least 2 gallery images are required" },
@@ -6665,6 +6710,30 @@ function AdminPageContent() {
     setEditExamId("");
   };
 
+  const scrollToExamForm = () => {
+    window.requestAnimationFrame(() => {
+      examFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      examNameInputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const startExamEdit = (item: SavedExamSchedule) => {
+    setEditExamId(item.id);
+    setExamForm({
+      examName: item.examName || "",
+      applicationFees: item.applicationFees || "",
+      startDateToApply: item.startDateToApply || "",
+      lastDateToApply: item.lastDateToApply || "",
+      correctionDate: item.correctionDate || "",
+      lastDateForFeePayment: item.lastDateForFeePayment || "",
+      admitCardRelease: item.admitCardRelease || "",
+      examDate: item.examDate || "",
+      isTopExam: Boolean(item.isTopExam),
+      resultDate: item.resultDate || "",
+    });
+    scrollToExamForm();
+  };
+
   const persistExamSchedules = async (nextSchedules: SavedExamSchedule[]) => {
     if (!token) {
       throw new Error("Admin session not found");
@@ -6706,10 +6775,6 @@ function AdminPageContent() {
     const normalizedExamName = examForm.examName.trim();
     if (!normalizedExamName) {
       setStatusText("Exams: Exam name is required");
-      return;
-    }
-    if (!examScheduleNameOptions.includes(normalizedExamName)) {
-      setStatusText("Exams: Select a valid exam name");
       return;
     }
 
@@ -6780,6 +6845,7 @@ function AdminPageContent() {
       lastDateForFeePayment: examForm.lastDateForFeePayment,
       admitCardRelease: examForm.admitCardRelease,
       examDate: examForm.examDate,
+      isTopExam: Boolean(examForm.isTopExam),
       resultDate: examForm.resultDate,
     };
 
@@ -6795,6 +6861,7 @@ function AdminPageContent() {
         (data as { message?: string })?.message ||
           (editExamId || matchingExamId ? "Exam schedule updated" : "Exam schedule saved"),
       );
+      setExamSchedulesPage(1);
       resetExamForm();
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to save exam schedule");
@@ -7888,12 +7955,12 @@ function AdminPageContent() {
                 </label>
                 <label>
                   <span className={labelClass}>Phone Number<span className={requiredMarkClass}>*</span></span>
-                  <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit phone number" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
+                  <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="tel" maxLength={24} placeholder="Phone number or landline" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
                   {collegeFieldErrors.contactPhone ? <span className={errorTextClass}>{collegeFieldErrors.contactPhone}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Alternate Phone</span>
-                  <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="numeric" maxLength={10} placeholder="10 digit alternate phone number" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
+                  <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="tel" maxLength={24} placeholder="Alternate phone or landline" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
                   {collegeFieldErrors.alternatePhone ? <span className={errorTextClass}>{collegeFieldErrors.alternatePhone}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
@@ -10816,7 +10883,7 @@ function AdminPageContent() {
 
       {!loading && activeTab === "exams" ? (
         <div className="space-y-4">
-          <form onSubmit={saveExamSchedule} className="luxe-card space-y-5 p-5">
+          <form ref={examFormRef} onSubmit={saveExamSchedule} className="luxe-card space-y-5 p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
@@ -10841,8 +10908,11 @@ function AdminPageContent() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <label className="md:col-span-2 xl:col-span-2">
                 <span className={labelClass}>Exam Name<span className={requiredMarkClass}>*</span></span>
-                <select
+                <input
+                  ref={examNameInputRef}
                   className={inputClass}
+                  list="exam-schedule-name-options"
+                  placeholder="Type or choose an exam name"
                   value={examForm.examName}
                   onChange={(event) =>
                     setExamForm((prev) => ({
@@ -10851,17 +10921,15 @@ function AdminPageContent() {
                     }))
                   }
                   required
-                >
-                  <option value="">Select exam name</option>
+                />
+                <datalist id="exam-schedule-name-options">
                   {examScheduleNameOptions.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
+                    <option key={item} value={item} />
                   ))}
-                  {examForm.examName && !examScheduleNameOptions.includes(examForm.examName) ? (
-                    <option value={examForm.examName}>{examForm.examName}</option>
-                  ) : null}
-                </select>
+                </datalist>
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Pick a suggestion or type a new exam name to create a fresh exam entry.
+                </span>
               </label>
               <label>
                 <span className={labelClass}>Application Fees</span>
@@ -10942,6 +11010,20 @@ function AdminPageContent() {
                 />
                 <span className="mt-1 block text-[11px] text-slate-500">dd-mm-yyyy</span>
               </label>
+              <label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2 xl:col-span-3">
+                <input
+                  type="checkbox"
+                  checked={examForm.isTopExam}
+                  onChange={(event) => setExamForm((prev) => ({ ...prev, isTopExam: event.target.checked }))}
+                  className="size-4 rounded border-slate-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"
+                />
+                <div className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-800">Top Exam</span>
+                  <span className="block text-[11px] text-slate-500">
+                    Tick this to show the exam on the homepage top section.
+                  </span>
+                </div>
+              </label>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -10960,90 +11042,125 @@ function AdminPageContent() {
             </div>
           </form>
 
-          <div className="space-y-3">
-            {savedExams.length > 0 ? savedExams.map((item) => (
-              <article key={item.id} className="luxe-card space-y-4 p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">{item.examName || "Exam"}</h3>
-                    <p className="text-sm text-slate-500">
-                      Last updated {formatDate(item.updatedAt)}
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditExamId(item.id);
-                        setExamForm({
-                          examName: item.examName || "",
-                          applicationFees: item.applicationFees || "",
-                          startDateToApply: item.startDateToApply || "",
-                          lastDateToApply: item.lastDateToApply || "",
-                          correctionDate: item.correctionDate || "",
-                          lastDateForFeePayment: item.lastDateForFeePayment || "",
-                          admitCardRelease: item.admitCardRelease || "",
-                          examDate: item.examDate || "",
-                          resultDate: item.resultDate || "",
-                        });
-                      }}
-                      className={solidBlueButtonClass}
-                    >
-                      <PencilLine className="size-4" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openDeleteExamDialog(item)}
-                      className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Application Fees</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{item.applicationFees || "-"}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Start Date to Apply</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.startDateToApply)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date to Apply</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.lastDateToApply)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Correction Date</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatCorrectionDateRange(item.correctionDate)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Last Date for Fee Payment</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.lastDateForFeePayment)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Admit Card Release</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.admitCardRelease)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Exam Date</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.examDate)}</p>
-                  </div>
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Result Date</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatDate(item.resultDate)}</p>
-                  </div>
-                </div>
-              </article>
-            )) : (
-              <div className="rounded-[1rem] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                No exam schedules added yet.
+          {savedExams.length > 0 ? (
+            <div className="overflow-hidden rounded-[0.65rem] border border-[#dbe3ee] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-col gap-2 border-b border-[#dbe3ee] bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[12px] font-semibold text-[#60708f]">
+                  {savedExams.length} exam schedules
+                </p>
+                <p className="text-[12px] font-semibold text-[#60708f]">
+                  Top exam works on the homepage rail
+                </p>
               </div>
-            )}
-          </div>
+
+              <div className="admin-users-table-scroll overflow-x-auto pb-2">
+                <table className="w-full min-w-[1120px] table-fixed text-left text-[13px] text-[#40557a]">
+                  <thead className="border-b border-[#dbe3ee] bg-[linear-gradient(90deg,#f0f7ff_0%,#f8fbff_50%,#fff7ed_100%)] text-[11px] font-bold uppercase">
+                    <tr>
+                      {[
+                        { label: "Exam Name", width: "w-[24%]", align: "text-left", tone: "bg-[#eaf3ff] text-[#0f4c81]" },
+                        { label: "Application Fees", width: "w-[14%]", align: "text-left", tone: "bg-[#eef8ff] text-[#2563eb]" },
+                        { label: "Exam Date", width: "w-[14%]", align: "text-left", tone: "bg-[#ecfdf5] text-[#0f766e]" },
+                        { label: "Top Exam", width: "w-[12%]", align: "text-center", tone: "bg-[#f0fdf4] text-[#15803d]" },
+                        { label: "Updated", width: "w-[13%]", align: "text-left", tone: "bg-[#fff7ed] text-[#b45309]" },
+                        { label: "Action", width: "w-[23%]", align: "text-right", tone: "bg-[#fff1f2] text-[#be123c]" },
+                      ].map((column) => (
+                        <th key={column.label} className={`${column.width} px-4 py-2 ${column.align}`}>
+                          <span className={`inline-flex items-center rounded-md px-2 py-1 ${column.tone} ${column.align === "text-right" ? "justify-end" : ""}`}>
+                            {column.label}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#dbe3ee]">
+                    {visibleExamTableRows.map((row) => {
+                      const exam = row as SavedExamSchedule;
+                      return (
+                        <tr key={row.id} className="bg-white transition hover:bg-[#f8fbff]">
+                          <td className="px-4 py-2.5 align-top">
+                            <div className="min-w-0">
+                              <p className="truncate font-bold leading-5 text-[#15213a]">{row.examName}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-[#60708f]">
+                                {formatDate(row.startDateToApply)} to {formatDate(row.lastDateToApply)}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 font-medium leading-5 text-[#40557a]">
+                            {row.applicationFees || "-"}
+                          </td>
+                          <td className="px-4 py-2.5 font-medium leading-5 text-[#2f4366]">
+                            {formatDate(row.examDate)}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`inline-flex min-w-[4.4rem] items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold ${row.isTopExam ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                              {row.isTopExam ? "Featured" : "Standard"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 font-medium leading-5 text-[#2f4366]">
+                            {formatDate(row.updatedAt)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startExamEdit(exam)}
+                                className="inline-flex min-w-20 items-center justify-center whitespace-nowrap rounded-md bg-[#eef0ff] px-3 py-1.5 text-[11px] font-bold text-[#4f46e5] transition hover:bg-[#e0e7ff]"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openDeleteExamDialog(exam)}
+                                className="inline-flex min-w-20 items-center justify-center whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-600 hover:text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-col gap-2 border-t border-[#dbe3ee] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[12px] font-semibold text-[#60708f]">
+                  Showing {(examSchedulesPage - 1) * EXAM_SCHEDULES_PER_PAGE + 1}-{Math.min(examSchedulesPage * EXAM_SCHEDULES_PER_PAGE, examTableRows.length)} of {examTableRows.length}
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExamSchedulesPage((page) => Math.max(1, page - 1))}
+                    disabled={examSchedulesPage <= 1}
+                    className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Previous
+                  </button>
+                  <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-[#4f46e5] px-3 py-1.5 text-[12px] font-bold text-white">
+                    {examSchedulesPage}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setExamSchedulesPage((page) => Math.min(examSchedulesTotalPages, page + 1))}
+                    disabled={examSchedulesPage >= examSchedulesTotalPages}
+                    className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[1rem] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+              No exam schedules added yet.
+            </div>
+          )}
         </div>
+      ) : null}
+
+      {!loading && activeTab === "cutoff-questions" ? (
+        <AdminCutoffQuestions />
       ) : null}
 
       {!loading && activeTab === "admin-access" ? (
@@ -11159,7 +11276,7 @@ function AdminPageContent() {
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-500">Delete Exam</p>
                 <h3 className="mt-1 text-base font-bold text-slate-950">
-                  Are you sure you want to delete this exam schedule?
+                  Are you delete this exam?
                 </h3>
                 <p className="mt-1.5 break-words text-xs leading-5 text-slate-500">
                   {deleteExamDialog.name} will be removed from the exams list.

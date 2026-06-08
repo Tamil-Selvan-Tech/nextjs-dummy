@@ -175,6 +175,7 @@ export function Navbar() {
   const isServicesRoute = pathname?.startsWith("/services") ?? false;
   const hideBackButton =
     pathname === "/" ||
+    pathname === "/exams" ||
     pathname.startsWith("/explore") ||
     pathname.startsWith("/compare") ||
     pathname.startsWith("/college/") ||
@@ -184,9 +185,9 @@ export function Navbar() {
     isServicesRoute ||
     BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname);
   const showBackUnderNav =
+    pathname === "/exams" ||
     pathname?.startsWith("/explore") ||
     pathname?.startsWith("/college/") ||
-    pathname?.startsWith("/exams/") ||
     pathname?.startsWith("/compare") ||
     isServicesRoute ||
     (pathname !== "/find" && BACK_BUTTON_UNDER_NAV_ROUTES.has(pathname));

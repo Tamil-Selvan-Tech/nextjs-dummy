@@ -33,6 +33,7 @@ import {
 } from "@/lib/site-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 import { getRankedSearchResults, normalizeSearchText, type SearchCity } from "@/lib/search-utils";
+import { TopExamCard } from "@/components/top-exam-card";
 
 // Custom hook for scroll animations
 function useScrollAnimation() {
@@ -76,6 +77,8 @@ const TOP_EXAM_CARDS = [
     participatingColleges: "2031",
     examDate: "April 02, 2026",
     examLevel: "National",
+    summary: "A fast-track route for engineering aspirants targeting NITs, IIITs, and JEE Advanced eligibility.",
+    highlights: ["Engineering admissions", "JEE Advanced eligibility", "High competition"],
   },
   {
     id: "jee-advanced",
@@ -87,6 +90,8 @@ const TOP_EXAM_CARDS = [
     participatingColleges: "73",
     examDate: "May 17, 2026",
     examLevel: "National",
+    summary: "The IIT gateway for top scorers who want a deeper, concept-heavy challenge.",
+    highlights: ["IIT admissions", "Concept-first paper", "Elite shortlist"],
   },
   {
     id: "cuet",
@@ -98,6 +103,8 @@ const TOP_EXAM_CARDS = [
     participatingColleges: "584",
     examDate: "May 11, 2026",
     examLevel: "National",
+    summary: "A common admission route for central universities and many participating colleges.",
+    highlights: ["Central universities", "Subject flexibility", "Multi-domain options"],
   },
   {
     id: "neet",
@@ -109,27 +116,84 @@ const TOP_EXAM_CARDS = [
     participatingColleges: "612",
     examDate: "May 05, 2026",
     examLevel: "National",
+    summary: "The medical entrance path for students aiming at MBBS, BDS, and allied health programs.",
+    highlights: ["Medical admissions", "Physics/Chemistry/Biology", "High-stakes entrance"],
   },
 ];
-const EXAM_SUBTITLE_MAP: Record<string, string> = {
-  "JEE Main": "Joint Entrance Exam",
-  "JEE Advanced": "IIT Admissions",
-  CUET: "Central Universities",
-  NEET: "Medical Entrance",
-};
-const EXAM_SHORT_LABEL_MAP: Record<string, string> = {
-  "JEE Main": "JEE",
-  "JEE Advanced": "ADV",
-  CUET: "CUET",
-  NEET: "NEET",
-};
-const formatExamDateLabel = (value: string) => {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  const day = `${parsed.getDate()}`.padStart(2, "0");
-  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
-  const year = parsed.getFullYear();
-  return `${day}-${month}-${year}`;
+
+const normalizeExamCardName = (value: string) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const buildTopExamCards = (
+  examSchedules: HomePageProps["examSchedules"],
+) => {
+  const schedules = (Array.isArray(examSchedules) ? examSchedules : [])
+    .map((item, index) => ({
+      id: String(item?.id || `${index}`),
+      examName: String(item?.examName || "").trim(),
+      examDate: String(item?.examDate || "").trim(),
+      isTopExam: Boolean(item?.isTopExam),
+      updatedAt: String(item?.updatedAt || "").trim(),
+    }))
+    .filter((item) => item.examName)
+    .sort(
+      (left, right) =>
+        new Date(right.updatedAt || 0).getTime() -
+        new Date(left.updatedAt || 0).getTime(),
+    );
+
+  const topSchedules = schedules.filter((item) => item.isTopExam);
+  const staticCardsByName = new Map(
+    TOP_EXAM_CARDS.map((item) => [normalizeExamCardName(item.name), item]),
+  );
+  const matchedDates = new Map(
+    schedules.map((item) => [normalizeExamCardName(item.examName), item.examDate]),
+  );
+  const usedCardNames = new Set<string>();
+
+  const derivedCards = topSchedules.map((schedule) => {
+    const matchedStaticCard = staticCardsByName.get(normalizeExamCardName(schedule.examName));
+    if (matchedStaticCard) {
+      usedCardNames.add(normalizeExamCardName(matchedStaticCard.name));
+      return {
+        ...matchedStaticCard,
+        examDate: schedule.examDate || matchedStaticCard.examDate,
+      };
+    }
+
+    usedCardNames.add(normalizeExamCardName(schedule.examName));
+    return {
+      id: schedule.id,
+      name: schedule.examName,
+      href: "/exams",
+      mode: "Exam Schedule",
+      participatingColleges: "Updated",
+      examDate: schedule.examDate || "To be announced",
+      examLevel: "National",
+      summary: "Live dates, fees, and application milestones are updated from admin.",
+      highlights: ["Homepage featured", "Live schedule update", "Open exam hub for details"],
+    };
+  });
+
+  const fallbackCards = TOP_EXAM_CARDS.filter(
+    (item) => !usedCardNames.has(normalizeExamCardName(item.name)),
+  ).map((item) => ({
+    ...item,
+    examDate: matchedDates.get(normalizeExamCardName(item.name)) || item.examDate,
+  }));
+
+  if (topSchedules.length > 0) {
+    return [...derivedCards, ...fallbackCards].slice(0, 5);
+  }
+
+  return TOP_EXAM_CARDS.map((item) => ({
+    ...item,
+    examDate: matchedDates.get(normalizeExamCardName(item.name)) || item.examDate,
+  }));
 };
 
 type HomePageProps = {
@@ -146,6 +210,7 @@ type HomePageProps = {
     lastDateForFeePayment?: string;
     admitCardRelease?: string;
     examDate?: string;
+    isTopExam?: boolean;
     resultDate?: string;
     updatedAt?: string;
   }>;
@@ -633,39 +698,7 @@ export function HomePage({
   }, [topCourseChips]);
 
   // Derived cards and lists used across the home page
-  const topExamCards = useMemo(() => {
-    const normalizeExamName = (value: string) =>
-      String(value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim();
-
-    const scheduleMap = new Map(
-      (Array.isArray(examSchedules) ? examSchedules : [])
-        .map((item, index) => ({
-          id: String(item?.id || `${index}`),
-          examName: String(item?.examName || "").trim(),
-          examDate: String(item?.examDate || "").trim(),
-          updatedAt: String(item?.updatedAt || "").trim(),
-        }))
-        .filter((item) => item.examName)
-        .sort(
-          (left, right) =>
-            new Date(right.updatedAt || 0).getTime() -
-            new Date(left.updatedAt || 0).getTime(),
-        )
-        .map((item) => [normalizeExamName(item.examName), item]),
-    );
-
-    return TOP_EXAM_CARDS.map((item) => {
-      const matchedSchedule = scheduleMap.get(normalizeExamName(item.name));
-      return {
-        ...item,
-        examDate: matchedSchedule?.examDate || item.examDate,
-      };
-    });
-  }, [examSchedules]);
+  const topExamCards = buildTopExamCards(examSchedules);
   // Search suggestion data for course, college, and location fields
   const locationSuggestions = useMemo(() => {
     const query = locationSearchInput.trim();
@@ -894,23 +927,11 @@ export function HomePage({
   }, []);
 
   const updateTopExamsScrollState = useCallback(() => {
-    syncScrollIndicators(
-      topExamsScrollRef.current,
-      setShowLeftArrowTopExams,
-      setShowRightArrowTopExams,
-    );
+    syncScrollIndicators(topExamsScrollRef.current, setShowLeftArrowTopExams, setShowRightArrowTopExams);
   }, []);
 
   const scrollTrendingCoursesByCard = (direction: "left" | "right") => {
     const element = trendingCoursesScrollRef.current;
-    if (!element) return;
-    const firstCard = element.firstElementChild as HTMLElement | null;
-    const step = firstCard ? firstCard.offsetWidth + 16 : 320;
-    element.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
-  };
-
-  const scrollTopExamsByCard = (direction: "left" | "right") => {
-    const element = topExamsScrollRef.current;
     if (!element) return;
     const firstCard = element.firstElementChild as HTMLElement | null;
     const step = firstCard ? firstCard.offsetWidth + 16 : 320;
@@ -926,6 +947,14 @@ export function HomePage({
     element.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
   };
 
+  const scrollTopExamsByCard = (direction: "left" | "right") => {
+    const element = topExamsScrollRef.current;
+    if (!element) return;
+    const firstCard = element.firstElementChild as HTMLElement | null;
+    const step = firstCard ? firstCard.offsetWidth + 16 : 320;
+    element.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
+  };
+
   useEffect(() => {
     syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow);
     const animationFrame = window.requestAnimationFrame(() => {
@@ -937,6 +966,7 @@ export function HomePage({
       setShowLeftArrowColleges,
       setShowRightArrowColleges,
     );
+    syncScrollIndicators(topExamsScrollRef.current, setShowLeftArrowTopExams, setShowRightArrowTopExams);
     return () => window.cancelAnimationFrame(animationFrame);
   }, [updateTopExamsScrollState, updateTrendingCoursesScrollState]);
 
@@ -950,6 +980,7 @@ export function HomePage({
         setShowLeftArrowColleges,
         setShowRightArrowColleges,
       );
+      syncScrollIndicators(topExamsScrollRef.current, setShowLeftArrowTopExams, setShowRightArrowTopExams);
     };
 
     window.addEventListener("resize", handleResize);
@@ -1239,63 +1270,6 @@ export function HomePage({
     </div>
   );
 
-  // Top exams card
-  const renderTopExamCard = (exam: (typeof topExamCards)[number]) => (
-    <button
-      type="button"
-      onClick={() => router.push(exam.href)}
-      className="group flex h-full min-h-[16.5rem] w-[min(17.5rem,calc(100vw-2.25rem))] shrink-0 flex-col rounded-[1.4rem] border border-[rgba(20,42,99,0.08)] bg-white px-4 py-4 text-left shadow-[0_8px_20px_rgba(20,42,99,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(20,42,99,0.09)] sm:w-[15.35rem] lg:min-h-[15.25rem] lg:w-full"
-    >
-      <div className="flex justify-end">
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${exam.mode.toLowerCase().includes("online")
-          ? "bg-[rgba(34,197,94,0.12)] text-[#15803d]"
-          : "bg-[rgba(15,23,42,0.08)] text-[#1e3a8a]"
-          }`}>
-          {exam.mode}
-        </span>
-      </div>
-
-      <div className="mt-3 flex min-w-0 items-start gap-3">
-        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border border-[rgba(37,99,235,0.16)] bg-[linear-gradient(180deg,#f3f6ff,#eef2ff)] text-[0.82rem] font-bold tracking-[0.04em] text-[#1f2f5d]">
-          {EXAM_SHORT_LABEL_MAP[exam.name] || exam.name.slice(0, 4).toUpperCase()}
-        </span>
-        <div className="min-w-0 pt-0.5">
-          <h3 className="type-title-medium text-[#0f1738]">
-            {exam.name}
-          </h3>
-          <p className="type-caption-small mt-1 uppercase tracking-[0.12em] text-[#7a86a8]">
-            {EXAM_SUBTITLE_MAP[exam.name] || exam.examLevel}
-          </p>
-        </div>
-      </div>
-
-      <div className="type-body-small mt-5 space-y-2.5 text-[color:var(--text-muted)]">
-        <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
-          <span>Colleges</span>
-          <span className="type-label-bold text-[color:var(--text-dark)]">{exam.participatingColleges}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-b border-[rgba(15,76,129,0.08)] pb-2.5">
-          <span>Exam Date</span>
-          <span className="type-label-bold text-[color:var(--text-dark)]">{formatExamDateLabel(exam.examDate)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span>Level</span>
-          <span className="type-label-bold text-[color:var(--text-dark)]">{exam.examLevel}</span>
-        </div>
-      </div>
-
-      <div className="mt-auto space-y-0.5 pt-5">
-        <div className="type-label-bold flex items-center justify-between border-t border-[rgba(15,76,129,0.08)] pt-3 text-[#0f1738]">
-          <span>Application Process</span>
-          <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
-        </div>
-        <div className="type-label-bold flex items-center justify-between pt-2 text-[#0f1738]">
-          <span>Exam Info</span>
-          <ArrowRight className="size-4 text-[#1d4ed8] transition group-hover:translate-x-0.5" />
-        </div>
-      </div>
-    </button>
-  );
   return (
     <div className="home-theme bg-[color:var(--page-bg)]" style={homeThemeStyles}>
       {/* Hero section */}
@@ -1749,8 +1723,9 @@ export function HomePage({
 
                     {/* Top exams overview */}
                     <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1 lg:col-span-2 2xl:max-w-[84rem]" data-scroll-animate>
-                      <div className="relative w-full">
-                        <div className="mb-4 flex items-center gap-3">
+                      <div className="relative overflow-hidden rounded-[2rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,255,0.98))] px-4 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] sm:px-5 sm:py-5">
+                        <div className="absolute right-[-5rem] top-[-4rem] h-32 w-32 rounded-full bg-[rgba(37,99,235,0.07)] blur-3xl" />
+                        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
@@ -1759,25 +1734,29 @@ export function HomePage({
                               Master Your Entry Strategy
                             </p>
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={() => router.push("/exams")}
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-0 py-0 text-sm font-semibold text-[#1d4ed8] transition hover:opacity-80"
+                          >
+                            View more
+                            <ArrowRight className="size-4" />
+                          </button>
                         </div>
 
-                        <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-                          {topExamCards.map((exam) => (
-                            <div key={exam.id}>
-                              {renderTopExamCard(exam)}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="relative lg:hidden">
+                        <div className="relative mt-5">
                           <div
                             ref={topExamsScrollRef}
                             onScroll={updateTopExamsScrollState}
                             className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible pb-4 scroll-smooth scrollbar-hide"
                           >
                             {topExamCards.map((exam) => (
-                              <div key={exam.id} className="shrink-0 snap-start">
-                                {renderTopExamCard(exam)}
+                              <div
+                                key={exam.id}
+                                className="w-[min(17.5rem,calc(100vw-2.25rem))] shrink-0 snap-start sm:w-[17rem] lg:w-[17.25rem]"
+                              >
+                                <TopExamCard exam={exam} />
                               </div>
                             ))}
                           </div>
@@ -1786,10 +1765,10 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTopExamsByCard("left")}
-                              className="absolute -left-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
+                              className="absolute left-[-1.35rem] top-1/2 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex"
                               aria-label="Scroll top exams left"
                             >
-                              <ChevronLeft className="size-5" />
+                              <ChevronLeft className="size-6" />
                             </button>
                           ) : null}
 
@@ -1797,10 +1776,10 @@ export function HomePage({
                             <button
                               type="button"
                               onClick={() => scrollTopExamsByCard("right")}
-                              className="absolute -right-3 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex lg:hidden"
+                              className="absolute right-[-1.35rem] top-1/2 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(220,230,248,0.95)] bg-white text-[#132a6b] shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition hover:bg-slate-50 md:inline-flex"
                               aria-label="Scroll top exams right"
                             >
-                              <ChevronRight className="size-5" />
+                              <ChevronRight className="size-6" />
                             </button>
                           ) : null}
                         </div>
