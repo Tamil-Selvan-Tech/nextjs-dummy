@@ -2,23 +2,41 @@
 import { useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowRight,
+  Brain,
   Check,
+  CalendarDays,
   CircleAlert,
   BarChart3,
   BookOpen,
   Building2,
   Calculator,
+  ChevronDown,
+  Clock,
   FlaskConical,
+  GraduationCap,
+  Landmark,
+  LayoutGrid,
+  List,
   MapPin,
+  RotateCcw,
   Phone,
   Search,
   School,
+  Scale,
+  Sprout,
+  Stethoscope,
+  Trophy,
   User,
   Users,
   X,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { CutoffClient } from "@/app/cutoff/cutoff-client";
+import { readAuthToken } from "@/lib/auth-storage";
+import { request, withAuth } from "@/lib/api";
+import { parseCutoffValue } from "@/lib/cutoff-utils";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import {
   degreeOptions,
@@ -38,6 +56,22 @@ const categoryOptions = [
   { value: "SCA", label: "SCA" },
   { value: "ST", label: "ST" },
 ];
+
+const normalizeCategorySelection = (value: string) => {
+  const normalized = normalizeText(value).replace(/[^a-z0-9]/g, "");
+  if (!normalized) return "";
+  if (["oc", "general", "open", "opencompetition", "ews"].includes(normalized)) return "OC";
+  if (["bc", "obc", "backwardclass"].includes(normalized)) return "BC";
+  if (["bcm", "backwardclassmuslim"].includes(normalized)) return "BCM";
+  if (["mbc", "dnc", "mbcdnc", "mostbackwardclass"].includes(normalized)) return "MBC";
+  if (["sca", "scheduledcastearunthathiyar"].includes(normalized)) return "SCA";
+  if (["sc", "scheduledcaste"].includes(normalized)) return "SC";
+  if (["st", "scheduledtribe"].includes(normalized)) return "ST";
+  return normalized.toUpperCase();
+};
+
+const levelOptions = ["6", "7", "8", "9", "10", "11", "12"];
+const assessmentLevelOptions = new Set(["6", "7", "8", "9", "10"]);
 
 const stateOptions = [
   "Tamil Nadu",
@@ -100,6 +134,7 @@ const artsScienceAdmissionTypeOptions = [
 const VALIDATION_FIELD_ORDER = [
   "name",
   "phone",
+  "level",
   "category",
   "degree",
   "course",
@@ -125,6 +160,7 @@ const VALIDATION_FIELD_ORDER = [
 ] as const;
 
 const FIND_FORM_STORAGE_KEY = "collegeedwiser-find-form-state";
+const SUGGESTIONS_PER_PAGE = 6;
 const DETAIL_PARAM_KEYS = [
   "phone",
   "physics",
@@ -149,6 +185,7 @@ const DETAIL_PARAM_KEYS = [
 ] as const;
 
 type PersistedFindFormState = {
+  selectedLevel: string;
   selectedState: string;
   name: string;
   phone: string;
@@ -177,6 +214,27 @@ type PersistedFindFormState = {
   agricultureBiologyMarks: string;
   agriculturePhysicsMarks: string;
   agricultureChemistryMarks: string;
+};
+
+type JuniorQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer?: string;
+  subject: string;
+};
+
+type JuniorQuestionSet = {
+  id: string;
+  degree: string;
+  level: string;
+  subjects: string[];
+  questionsBySubject: Record<string, JuniorQuestion[]>;
+  savedAt: string;
+};
+
+type JuniorQuestionSetResponse = {
+  sets?: JuniorQuestionSet[];
 };
 
 const degreeAliases: Record<string, string[]> = {
@@ -271,22 +329,96 @@ const validateNumericRange = (
     errors[errorKey] = message || `Please enter a valid number between ${min} and ${max}.`;
   }
 };
+
+const getJuniorQuestionLevelGroup = (level: string) => {
+  if (["6", "7", "8"].includes(level)) return "6th - 8th";
+  if (["9", "10"].includes(level)) return "9th - 10th";
+  return "";
+};
+
+const JUNIOR_TEST_DURATION_SECONDS = 30 * 60;
+
+const formatTimer = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const formatDurationLabel = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+};
+
+const getAssessmentScale = (degree: string) => {
+  const normalizedDegree = normalizeText(degree);
+  if (normalizedDegree === "medical") return 720;
+  if (normalizedDegree === "law") return 300;
+  if (["engineering", "paramedical", "agriculture", "barch", "b arch"].includes(normalizedDegree)) return 200;
+  return 100;
+};
+
+const getAssessmentTone = (percentage: number) => {
+  if (percentage >= 80) return { label: "Excellent", color: "#10a85a", bg: "#eefbf4" };
+  if (percentage >= 60) return { label: "Good", color: "#f59e0b", bg: "#fff8e8" };
+  return { label: "Keep Practicing", color: "#ef4444", bg: "#fff1f2" };
+};
+
+const formatScoreNumber = (value: number) =>
+  Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+type JuniorCollegeSuggestion = {
+  id: string;
+  collegeId: string;
+  collegeName: string;
+  location: string;
+  courseName: string;
+  logo: string;
+  cutoff: number;
+  cutoffLabel: string;
+  ranking: string;
+  ownershipType: string;
+  accreditation: string;
+  establishedYear: string;
+  placementRate: number;
+  href: string;
+};
+
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const searchParams = useSearchParams();
   const hasHydratedPersistedForm = useRef(false);
   const inlineMatchResultsRef = useRef<HTMLDivElement | null>(null);
+  const suggestedCollegesListRef = useRef<HTMLDivElement | null>(null);
   const [colleges, setColleges] = useState<College[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [juniorQuestionSets, setJuniorQuestionSets] = useState<JuniorQuestionSet[]>([]);
+  const [juniorQuestionsLoading, setJuniorQuestionsLoading] = useState(false);
+  const [juniorQuestionsStatus, setJuniorQuestionsStatus] = useState("");
+  const [activeJuniorQuestionIndex, setActiveJuniorQuestionIndex] = useState(0);
+  const [juniorAnswers, setJuniorAnswers] = useState<Record<string, string>>({});
+  const [juniorTimerSeconds, setJuniorTimerSeconds] = useState(0);
+  const [hasStartedJuniorTest, setHasStartedJuniorTest] = useState(false);
+  const [hasSubmittedJuniorTest, setHasSubmittedJuniorTest] = useState(false);
+  const [activeJuniorResultSubject, setActiveJuniorResultSubject] = useState("");
+  const [suggestionSort, setSuggestionSort] = useState<"alphabetical" | "newest" | "oldest">("alphabetical");
+  const [isSuggestionSortOpen, setIsSuggestionSortOpen] = useState(false);
+  const [suggestionView, setSuggestionView] = useState<"grid" | "list">("grid");
+  const [suggestionPage, setSuggestionPage] = useState(1);
   const [inlineMatchQueryString, setInlineMatchQueryString] = useState("");
   const [selectedState, setSelectedState] = useState("Tamil Nadu");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [validationStep, setValidationStep] = useState<number | null>(null);
   const [hasCalculatedPreview, setHasCalculatedPreview] = useState(false);
   const [showValidationPopup, setShowValidationPopup] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
-  const [selectedLevel] = useState("12");
+  const [activeStep, setActiveStep] = useState(1);
+  const [hasClientMounted, setHasClientMounted] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDreamCollege, setSelectedDreamCollege] = useState("");
   const [targetCollegeSearch, setTargetCollegeSearch] = useState("");
@@ -327,6 +459,46 @@ export default function FindPage() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadJuniorQuestionSets = async () => {
+      const token = readAuthToken();
+      if (!token) {
+        setJuniorQuestionsStatus("Login as admin to preview saved assessment questions.");
+        return;
+      }
+
+      setJuniorQuestionsLoading(true);
+      setJuniorQuestionsStatus("");
+
+      try {
+        const data = await request<JuniorQuestionSetResponse>(
+          "/api/admin/cutoff-question-sets",
+          withAuth(token),
+        );
+        if (!isMounted) return;
+
+        setJuniorQuestionSets(Array.isArray(data?.sets) ? data.sets : []);
+      } catch (error) {
+        if (!isMounted) return;
+        setJuniorQuestionsStatus(
+          error instanceof Error ? error.message : "Unable to load assessment questions.",
+        );
+      } finally {
+        if (isMounted) {
+          setJuniorQuestionsLoading(false);
+        }
+      }
+    };
+
+    void loadJuniorQuestionSets();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
@@ -337,15 +509,12 @@ export default function FindPage() {
       }
 
       const savedState = JSON.parse(rawValue) as Partial<PersistedFindFormState>;
+      setSelectedLevel(String(savedState.selectedLevel || ""));
       setSelectedState(String(savedState.selectedState || "Tamil Nadu"));
       setName(String(savedState.name || ""));
       setPhone(String(savedState.phone || ""));
-      setTouchedFields(
-        savedState.touchedFields && typeof savedState.touchedFields === "object"
-          ? savedState.touchedFields
-          : {},
-      );
-      setSelectedCategory(String(savedState.selectedCategory || ""));
+      setTouchedFields({});
+      setSelectedCategory(normalizeCategorySelection(String(savedState.selectedCategory || "")));
       setSelectedDreamCollege(String(savedState.selectedDreamCollege || ""));
       setTargetCollegeSearch(String(savedState.targetCollegeSearch || ""));
       setSelectedDegree(String(savedState.selectedDegree || ""));
@@ -380,6 +549,7 @@ export default function FindPage() {
     const hasQueryState = [
       "name",
       "phone",
+      "level",
       "state",
       "degree",
       "category",
@@ -409,8 +579,19 @@ export default function FindPage() {
       return Boolean(value && value.trim());
     });
 
-    if (!hasQueryState) return;
+    if (!hasQueryState) {
+      setHasSubmitted(false);
+      setValidationStep(null);
+      setHasCalculatedPreview(false);
+      setShowValidationPopup(false);
+      setInlineMatchQueryString("");
+      return;
+    }
 
+    const queryLevel = searchParams.get("level") || searchParams.get("standard") || searchParams.get("class") || "";
+    const queryDegree = searchParams.get("degree") || "";
+
+    setSelectedLevel(queryLevel);
     setSelectedState(searchParams.get("state") || "Tamil Nadu");
     setName(searchParams.get("name") || "");
     setPhone(searchParams.get("phone") || "");
@@ -418,10 +599,10 @@ export default function FindPage() {
     setHasCalculatedPreview(false);
     setShowValidationPopup(false);
     setTouchedFields({});
-    setSelectedCategory(searchParams.get("category") || "");
+    setSelectedCategory(normalizeCategorySelection(searchParams.get("category") || ""));
     setSelectedDreamCollege(searchParams.get("dreamCollege") || "");
     setTargetCollegeSearch("");
-    setSelectedDegree(searchParams.get("degree") || "");
+    setSelectedDegree(queryDegree);
     setSelectedCourse(searchParams.get("course") || "");
     setPhysicsMarks(searchParams.get("physics") || "");
     setChemistryMarks(searchParams.get("chemistry") || "");
@@ -443,13 +624,25 @@ export default function FindPage() {
     setAgriculturePhysicsMarks(searchParams.get("agriculturePhysics") || "");
     setAgricultureChemistryMarks(searchParams.get("agricultureChemistry") || "");
 
-    if (searchParams.get("cutoff")) {
+    if (assessmentLevelOptions.has(queryLevel) && queryDegree) {
+      setActiveStep(4);
+      setInlineMatchQueryString("");
+    } else if (queryLevel && queryDegree) {
+      setActiveStep(4);
+    }
+
+    if (searchParams.get("cutoff") && !assessmentLevelOptions.has(queryLevel)) {
       setInlineMatchQueryString(searchParams.toString());
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setHasClientMounted(true);
+  }, []);
+
   const persistedFindFormState = useMemo<PersistedFindFormState>(
     () => ({
+      selectedLevel,
       selectedState,
       name,
       phone,
@@ -500,6 +693,7 @@ export default function FindPage() {
       paramedicalPhysicsMarks,
       phone,
       physicsMarks,
+      selectedLevel,
       selectedAdmissionType,
       selectedCategory,
       selectedCourse,
@@ -621,6 +815,8 @@ export default function FindPage() {
     setSelectedState("Tamil Nadu");
     setName("");
     setPhone("");
+    setActiveStep(1);
+    setSelectedLevel("");
     setHasSubmitted(false);
     setHasCalculatedPreview(false);
     setShowValidationPopup(false);
@@ -836,17 +1032,11 @@ export default function FindPage() {
     } else if (phone.length !== 10) {
       errors.phone = "Enter a valid 10 digit mobile number";
     }
-    if (showCategoryField && isBlank(selectedCategory)) errors.category = "This field is required";
+    if (isBlank(selectedLevel)) errors.level = "Please pick your level";
     if (isBlank(selectedDegree)) errors.degree = "This field is required";
 
-    if (showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields) {
-      if (isBlank(selectedCourse)) errors.course = "This field is required";
-    }
-
     if (showEngineeringFields) {
-      if (isBlank(selectedAdmissionType)) {
-        errors.admissionType = "This field is required";
-      } else if (showEngineeringPcmFields) {
+      if (showEngineeringPcmFields) {
         if (isBlank(physicsMarks)) errors.physics = "This field is required";
         if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
         if (isBlank(mathsMarks)) errors.maths = "This field is required";
@@ -864,10 +1054,6 @@ export default function FindPage() {
       if (showBArchNataField && isBlank(nataScore)) errors.nata = "This field is required";
     }
 
-    if (showLawFields && isBlank(selectedAdmissionType)) {
-      errors.admissionType = "This field is required";
-    }
-
     if (showLawClatFields && isBlank(clatMarks)) {
       errors.clat = "This field is required";
     }
@@ -876,10 +1062,6 @@ export default function FindPage() {
       if (isBlank(lawBestSubjectOne)) errors.bestSubject1 = "This field is required";
       if (isBlank(lawBestSubjectTwo)) errors.bestSubject2 = "This field is required";
       if (isBlank(lawBestSubjectThree)) errors.bestSubject3 = "This field is required";
-    }
-
-    if (showArtsScienceAdmissionTypeField && isBlank(selectedAdmissionType)) {
-      errors.admissionType = "This field is required";
     }
 
     if (showArtsScienceCuetField && isBlank(artsScienceCuetMarks)) {
@@ -943,23 +1125,17 @@ export default function FindPage() {
     paramedicalPhysicsMarks,
     phone,
     physicsMarks,
-    selectedAdmissionType,
-    selectedCategory,
-    selectedCourse,
     selectedDegree,
-    showCategoryField,
+    selectedLevel,
     showAgricultureFields,
     showBArchFields,
     showBArchNataField,
     showEngineeringFields,
     showEngineeringJeeAdvancedFields,
     showEngineeringPcmFields,
-    showArtsScienceAdmissionTypeField,
     showArtsScienceBoardMarksField,
     showArtsScienceCuetField,
-    showArtsScienceFields,
     showLawClatFields,
-    showLawFields,
     showLawMarksFields,
     showMedicalFields,
     showParamedicalFields,
@@ -969,9 +1145,20 @@ export default function FindPage() {
   const hasValidationErrors = validationErrorCount > 0;
   const clearSubmittedValidation = () => {
     if (hasSubmitted) setHasSubmitted(false);
+    if (validationStep !== null) setValidationStep(null);
     if (hasCalculatedPreview) setHasCalculatedPreview(false);
     if (showValidationPopup) setShowValidationPopup(false);
     if (inlineMatchQueryString) setInlineMatchQueryString("");
+  };
+  const updateAcademicValue = (fieldId: string, updateValue: () => void) => {
+    clearSubmittedValidation();
+    setTouchedFields((previous) => {
+      if (!previous[fieldId]) return previous;
+      const nextTouchedFields = { ...previous };
+      delete nextTouchedFields[fieldId];
+      return nextTouchedFields;
+    });
+    updateValue();
   };
   const markFieldTouched = (fieldId: string) => {
     setTouchedFields((previous) => (previous[fieldId] ? previous : { ...previous, [fieldId]: true }));
@@ -1036,6 +1223,15 @@ export default function FindPage() {
 
     return () => window.cancelAnimationFrame(frame);
   }, [inlineMatchQueryString]);
+
+  useEffect(() => {
+    setHasSubmitted(false);
+    setValidationStep(null);
+    setHasCalculatedPreview(false);
+    setShowValidationPopup(false);
+    setTouchedFields({});
+  }, [activeStep]);
+
   const scrollToFirstInvalidField = () => {
     const firstInvalidField = VALIDATION_FIELD_ORDER.find((field) => validationErrors[field]);
     if (!firstInvalidField) return;
@@ -1051,9 +1247,440 @@ export default function FindPage() {
       control?.focus();
     });
   };
+  const isJuniorLevel = assessmentLevelOptions.has(selectedLevel);
+  const juniorQuestionLevelGroup = getJuniorQuestionLevelGroup(selectedLevel);
+  const selectedJuniorQuestionSet = useMemo(
+    () =>
+      juniorQuestionSets
+        .filter(
+          (set) =>
+            normalizeText(set.degree) === normalizeText(selectedDegree) &&
+            normalizeText(set.level) === normalizeText(juniorQuestionLevelGroup),
+        )
+        .sort((left, right) => new Date(right.savedAt || 0).getTime() - new Date(left.savedAt || 0).getTime())[0] ||
+      null,
+    [juniorQuestionLevelGroup, juniorQuestionSets, selectedDegree],
+  );
+  const juniorQuestionSubjectRows = useMemo(() => {
+    if (!selectedJuniorQuestionSet) return [];
+
+    const subjects =
+      selectedJuniorQuestionSet.subjects.length > 0
+        ? selectedJuniorQuestionSet.subjects
+        : Object.keys(selectedJuniorQuestionSet.questionsBySubject);
+
+    return subjects.map((subject) => ({
+      subject,
+      questions: selectedJuniorQuestionSet.questionsBySubject[subject] || [],
+    }));
+  }, [selectedJuniorQuestionSet]);
+  const juniorQuestionTotal = juniorQuestionSubjectRows.reduce(
+    (total, row) => total + row.questions.length,
+    0,
+  );
+  const juniorQuestions = useMemo(
+    () =>
+      juniorQuestionSubjectRows.flatMap(({ subject, questions }) =>
+        questions.map((question) => ({ ...question, subject })),
+      ),
+    [juniorQuestionSubjectRows],
+  );
+  const activeJuniorQuestion =
+    juniorQuestions[Math.min(activeJuniorQuestionIndex, Math.max(juniorQuestions.length - 1, 0))] || null;
+  const activeJuniorQuestionKey = activeJuniorQuestion
+    ? `${activeJuniorQuestion.subject}-${activeJuniorQuestion.id}-${activeJuniorQuestionIndex}`
+    : "";
+  const selectedJuniorAnswer = activeJuniorQuestionKey ? juniorAnswers[activeJuniorQuestionKey] || "" : "";
+  const juniorResultDate = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date()),
+    [],
+  );
+  const juniorAssessmentScale = getAssessmentScale(selectedDegree);
+  const juniorResultRows = useMemo(
+    () =>
+      juniorQuestions.map((question, index) => {
+        const questionKey = `${question.subject}-${question.id}-${index}`;
+        const selectedAnswer = juniorAnswers[questionKey] || "";
+        const selectedAnswerIndex = selectedAnswer ? selectedAnswer.charCodeAt(0) - 65 : -1;
+        const selectedAnswerText =
+          selectedAnswerIndex >= 0 ? question.options[selectedAnswerIndex] || "" : "";
+        const correctAnswer = (question.correctAnswer || "").trim();
+        const correctAnswerIndex = /^[A-D]$/i.test(correctAnswer)
+          ? correctAnswer.toUpperCase().charCodeAt(0) - 65
+          : -1;
+        const correctAnswerLabel = correctAnswerIndex >= 0 ? correctAnswer.toUpperCase() : "";
+        const correctAnswerText =
+          correctAnswerIndex >= 0 ? question.options[correctAnswerIndex] || correctAnswer : correctAnswer;
+        const isCorrect =
+          Boolean(selectedAnswer) &&
+          (selectedAnswer.toUpperCase() === correctAnswer.toUpperCase() ||
+            normalizeText(selectedAnswerText) === normalizeText(correctAnswer));
+
+        return {
+          ...question,
+          correctAnswer: correctAnswerLabel,
+          correctAnswerText,
+          isCorrect,
+          selectedAnswer,
+          selectedAnswerText,
+        };
+      }),
+    [juniorAnswers, juniorQuestions],
+  );
+  const juniorCorrectCount = juniorResultRows.filter((row) => row.isCorrect).length;
+  const juniorPercentage = juniorQuestionTotal > 0 ? (juniorCorrectCount / juniorQuestionTotal) * 100 : 0;
+  const juniorOverallScore = (juniorPercentage / 100) * juniorAssessmentScale;
+  const juniorResultTone = getAssessmentTone(juniorPercentage);
+  const juniorSubjectResults = useMemo(
+    () =>
+      juniorQuestionSubjectRows.map(({ subject }) => {
+        const rows = juniorResultRows.filter((row) => row.subject === subject);
+        const correct = rows.filter((row) => row.isCorrect).length;
+        const total = rows.length;
+        const percentage = total > 0 ? (correct / total) * 100 : 0;
+        return {
+          subject,
+          correct,
+          total,
+          percentage,
+          rows,
+          tone: getAssessmentTone(percentage),
+        };
+      }),
+    [juniorQuestionSubjectRows, juniorResultRows],
+  );
+  const activeJuniorSubjectResult =
+    juniorSubjectResults.find((row) => row.subject === activeJuniorResultSubject) ||
+    juniorSubjectResults[0] ||
+    null;
+  const juniorCollegeSuggestions = useMemo<JuniorCollegeSuggestion[]>(() => {
+    if (!hasSubmittedJuniorTest || juniorOverallScore <= 0 || !selectedDegree) return [];
+
+    const mappedSuggestions = new Map<string, JuniorCollegeSuggestion>();
+
+    eligibleCourses.forEach((course) => {
+      if (!courseMatchesDegree(course, selectedDegree)) return;
+
+      const courseName = [course.courseName || course.course, course.specialization]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .join(" - ");
+      const details =
+        Array.isArray(course.collegeDetails) && course.collegeDetails.length
+          ? course.collegeDetails
+          : [
+              {
+                college: course.collegeId || course.college,
+                cutoff: course.cutoff,
+                cutoffText: course.cutoffText,
+              },
+            ];
+
+      details.forEach((detail) => {
+        const rawCollegeKey = normalizeText(String(detail.college || ""));
+        const college = colleges.find(
+          (item) =>
+            normalizeText(item.id) === rawCollegeKey ||
+            normalizeText(item.name) === rawCollegeKey ||
+            normalizeText(item.collegeCode || "") === rawCollegeKey,
+        );
+
+        if (!college || !collegeMatchesDegree(college, selectedDegree)) return;
+
+        const rawCutoff = detail.cutoffText || course.cutoffText || detail.cutoff || course.cutoff;
+        const parsedCutoff = parseCutoffValue(rawCutoff);
+        if (!parsedCutoff) return;
+
+        const requiredCutoff = Math.max(parsedCutoff.start, parsedCutoff.end);
+        if (requiredCutoff > juniorOverallScore) return;
+
+        const suggestionKey = college.id;
+        const existing = mappedSuggestions.get(suggestionKey);
+        const nextSuggestion: JuniorCollegeSuggestion = {
+          id: suggestionKey,
+          collegeId: college.id,
+          collegeName: college.name,
+          location: [college.district, college.state].filter(Boolean).join(", "),
+          courseName,
+          logo: String(college.logo || college.image || ""),
+          cutoff: requiredCutoff,
+          cutoffLabel:
+            parsedCutoff.start === parsedCutoff.end
+              ? formatScoreNumber(requiredCutoff)
+              : `${formatScoreNumber(parsedCutoff.start)} - ${formatScoreNumber(parsedCutoff.end)}`,
+          ranking: String(college.ranking || "Not ranked"),
+          ownershipType: String(college.ownershipType || "Private"),
+          accreditation: String(college.accreditation || "NAAC A"),
+          establishedYear: String(college.establishedYear || "Est. --"),
+          placementRate: Number(college.placementRate || 0),
+          href: `/college/${college.id}`,
+        };
+
+        if (!existing || nextSuggestion.cutoff > existing.cutoff) {
+          mappedSuggestions.set(suggestionKey, nextSuggestion);
+        }
+      });
+    });
+
+    const sortedSuggestions = Array.from(mappedSuggestions.values()).sort((left, right) => {
+      if (right.cutoff !== left.cutoff) return right.cutoff - left.cutoff;
+      if (right.placementRate !== left.placementRate) return right.placementRate - left.placementRate;
+      return left.collegeName.localeCompare(right.collegeName);
+    });
+    const stateMatchedSuggestions = sortedSuggestions.filter(
+      (suggestion) => normalizeText(suggestion.location).includes(normalizeText(selectedState)),
+    );
+
+    return (stateMatchedSuggestions.length ? stateMatchedSuggestions : sortedSuggestions).slice(0, 12);
+  }, [
+    colleges,
+    eligibleCourses,
+    hasSubmittedJuniorTest,
+    juniorOverallScore,
+    selectedDegree,
+    selectedState,
+  ]);
+  const sortedJuniorCollegeSuggestions = useMemo(() => {
+    const suggestions = [...juniorCollegeSuggestions];
+    const getYear = (suggestion: JuniorCollegeSuggestion) => {
+      const parsedYear = Number.parseInt(suggestion.establishedYear, 10);
+      return Number.isFinite(parsedYear) ? parsedYear : 0;
+    };
+
+    if (suggestionSort === "newest") {
+      return suggestions.sort((left, right) => getYear(right) - getYear(left));
+    }
+    if (suggestionSort === "oldest") {
+      return suggestions.sort((left, right) => getYear(left) - getYear(right));
+    }
+    return suggestions.sort((left, right) => left.collegeName.localeCompare(right.collegeName));
+  }, [juniorCollegeSuggestions, suggestionSort]);
+  const suggestionSortLabel =
+    suggestionSort === "newest" ? "Newest first" : suggestionSort === "oldest" ? "Oldest first" : "Alphabetical";
+  const suggestionPageCount = Math.max(1, Math.ceil(sortedJuniorCollegeSuggestions.length / SUGGESTIONS_PER_PAGE));
+  const visibleJuniorCollegeSuggestions = useMemo(() => {
+    const startIndex = (suggestionPage - 1) * SUGGESTIONS_PER_PAGE;
+    return sortedJuniorCollegeSuggestions.slice(startIndex, startIndex + SUGGESTIONS_PER_PAGE);
+  }, [sortedJuniorCollegeSuggestions, suggestionPage]);
+  const suggestionStartNumber = sortedJuniorCollegeSuggestions.length
+    ? (suggestionPage - 1) * SUGGESTIONS_PER_PAGE + 1
+    : 0;
+  const suggestionEndNumber = Math.min(
+    suggestionPage * SUGGESTIONS_PER_PAGE,
+    sortedJuniorCollegeSuggestions.length,
+  );
+  const visibleSuggestionPageNumbers = useMemo(() => {
+    const visibleCount = Math.min(5, suggestionPageCount);
+    const halfWindow = Math.floor(visibleCount / 2);
+    let startPage = Math.max(1, suggestionPage - halfWindow);
+    const endPage = Math.min(suggestionPageCount, startPage + visibleCount - 1);
+    startPage = Math.max(1, endPage - visibleCount + 1);
+
+    return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
+  }, [suggestionPage, suggestionPageCount]);
+
+  useEffect(() => {
+    setSuggestionPage(1);
+  }, [suggestionSort, suggestionView, sortedJuniorCollegeSuggestions.length]);
+
+  useEffect(() => {
+    setSuggestionPage((page) => Math.min(page, suggestionPageCount));
+  }, [suggestionPageCount]);
+
+  const goToSuggestionPage = (page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), suggestionPageCount);
+    setSuggestionPage(nextPage);
+    window.requestAnimationFrame(() => {
+      suggestedCollegesListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  useEffect(() => {
+    setActiveJuniorQuestionIndex(0);
+    setJuniorAnswers({});
+    setJuniorTimerSeconds(0);
+    setHasStartedJuniorTest(false);
+    setHasSubmittedJuniorTest(false);
+    setActiveJuniorResultSubject("");
+  }, [selectedJuniorQuestionSet?.id]);
+
+  useEffect(() => {
+    if (!hasStartedJuniorTest || !activeJuniorQuestion || hasSubmittedJuniorTest || juniorTimerSeconds >= JUNIOR_TEST_DURATION_SECONDS) return;
+
+    const timerId = window.setInterval(() => {
+      setJuniorTimerSeconds((seconds) => Math.min(JUNIOR_TEST_DURATION_SECONDS, seconds + 1));
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [activeJuniorQuestion, hasStartedJuniorTest, hasSubmittedJuniorTest, juniorTimerSeconds]);
+
+  const selectJuniorAnswer = (optionIndex: number) => {
+    if (!hasStartedJuniorTest || !activeJuniorQuestionKey) return;
+    setJuniorAnswers((previous) => ({
+      ...previous,
+      [activeJuniorQuestionKey]: String.fromCharCode(65 + optionIndex),
+    }));
+  };
+
+  const goToNextJuniorQuestion = () => {
+    setActiveJuniorQuestionIndex((index) => Math.min(index + 1, Math.max(juniorQuestions.length - 1, 0)));
+  };
+
+  const goToPreviousJuniorQuestion = () => {
+    setActiveJuniorQuestionIndex((index) => Math.max(index - 1, 0));
+  };
+
+  const submitJuniorTest = () => {
+    if (!selectedJuniorAnswer) return;
+    setActiveJuniorResultSubject(juniorSubjectResults[0]?.subject || "");
+    setHasSubmittedJuniorTest(true);
+    setActiveStep(5);
+  };
+
+  const resetJuniorAssessment = () => {
+    setActiveJuniorQuestionIndex(0);
+    setJuniorAnswers({});
+    setJuniorTimerSeconds(0);
+    setHasStartedJuniorTest(false);
+    setHasSubmittedJuniorTest(false);
+    setActiveJuniorResultSubject("");
+    if (isJuniorLevel) {
+      setActiveStep(4);
+    }
+  };
+
+  const stepLabels = [
+    "Basic Details",
+    "Pick Your Level",
+    "Pick Your Degree Stream",
+    isSeniorSecondaryLevel ? "Academic Details" : "Assessment Test",
+    "Results",
+  ];
+  const progressLabels = stepLabels;
+  const visibleStep = inlineMatchQueryString ? 5 : activeStep;
+  const submittedForCurrentStep = hasClientMounted && hasSubmitted && validationStep === activeStep;
+  const currentStepFields =
+    activeStep === 1
+      ? ["name", "phone"]
+      : activeStep === 2
+        ? ["level"]
+      : activeStep === 3
+        ? ["degree"]
+        : activeStep === 4 && isSeniorSecondaryLevel
+          ? VALIDATION_FIELD_ORDER.filter((field) => !["name", "phone", "degree"].includes(field))
+          : [];
+  const currentStepHasErrors = currentStepFields.some((field) => validationErrors[field]);
+  const goToNextStep = () => {
+    if (currentStepHasErrors) {
+      setHasSubmitted(true);
+      setValidationStep(activeStep);
+      setShowValidationPopup(false);
+      scrollToFirstInvalidField();
+      return;
+    }
+    setShowValidationPopup(false);
+    setHasSubmitted(false);
+    setValidationStep(null);
+    setTouchedFields({});
+    setInlineMatchQueryString("");
+    if (activeStep === 3 && assessmentLevelOptions.has(selectedLevel)) {
+      resetJuniorAssessment();
+    }
+    setActiveStep((step) => Math.min(step + 1, 4));
+  };
+  const goToPreviousStep = () => {
+    setShowValidationPopup(false);
+    setHasSubmitted(false);
+    setValidationStep(null);
+    setInlineMatchQueryString("");
+    if (activeStep === 5 && isJuniorLevel) {
+      setHasSubmittedJuniorTest(false);
+    }
+    setActiveStep((step) => Math.max(step - 1, 1));
+  };
+  const goBackFromInlineResults = () => {
+    setShowValidationPopup(false);
+    setHasSubmitted(false);
+    setValidationStep(null);
+    setInlineMatchQueryString("");
+    setActiveStep(4);
+  };
+  const handleCalculate = () => {
+    setHasSubmitted(true);
+    if (hasValidationErrors) {
+      setValidationStep(activeStep);
+      setHasCalculatedPreview(false);
+      setShowValidationPopup(false);
+      scrollToFirstInvalidField();
+      return;
+    }
+    setShowValidationPopup(false);
+    setValidationStep(null);
+    setHasCalculatedPreview(true);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(
+        FIND_FORM_STORAGE_KEY,
+        JSON.stringify(persistedFindFormState),
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("name", name);
+    params.set("phone", phone);
+    params.set("level", selectedLevel);
+    params.set("state", selectedState);
+    params.set("degree", selectedDegree);
+    if (selectedCategory) params.set("category", normalizeCategorySelection(selectedCategory));
+    if (selectedDreamCollege) params.set("dreamCollege", selectedDreamCollege);
+    if (selectedCourse) params.set("course", selectedCourse);
+    if (
+      selectedAdmissionType &&
+      (showEngineeringFields || showLawFields || showArtsScienceAdmissionTypeField)
+    ) {
+      params.set("admissionType", selectedAdmissionType);
+    }
+    if (showEngineeringPcmFields && physicsMarks) params.set("physics", physicsMarks);
+    if (showEngineeringPcmFields && chemistryMarks) params.set("chemistry", chemistryMarks);
+    if (showEngineeringPcmFields && mathsMarks) params.set("maths", mathsMarks);
+    if ((showEngineeringJeeMainFields || showEngineeringJeeAdvancedFields) && engineeringEntranceMarks) {
+      params.set("engineeringScore", engineeringEntranceMarks);
+    }
+    if (showMedicalFields && neetMarks) params.set("neet", neetMarks);
+    if (showBArchFields && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
+    if (showBArchNataField && nataScore) params.set("nata", nataScore);
+    if (bArchConvertedScore) params.set("converted12th", bArchConvertedScore);
+    if (showLawClatFields && clatMarks) params.set("clat", clatMarks);
+    if (showLawMarksFields && lawBestSubjectOne) params.set("bestSubject1", lawBestSubjectOne);
+    if (showLawMarksFields && lawBestSubjectTwo) params.set("bestSubject2", lawBestSubjectTwo);
+    if (showLawMarksFields && lawBestSubjectThree) params.set("bestSubject3", lawBestSubjectThree);
+    if (showArtsScienceBoardMarksField && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
+    if (showArtsScienceCuetField && artsScienceCuetMarks) params.set("artsScienceCuet", artsScienceCuetMarks);
+    if (showParamedicalFields && paramedicalBiologyMarks) params.set("paramedicalBiology", paramedicalBiologyMarks);
+    if (showParamedicalFields && paramedicalPhysicsMarks) params.set("paramedicalPhysics", paramedicalPhysicsMarks);
+    if (showParamedicalFields && paramedicalChemistryMarks) params.set("paramedicalChemistry", paramedicalChemistryMarks);
+    if (showAgricultureFields && agricultureBiologyMarks) params.set("agricultureBiology", agricultureBiologyMarks);
+    if (showAgricultureFields && agriculturePhysicsMarks) params.set("agriculturePhysics", agriculturePhysicsMarks);
+    if (showAgricultureFields && agricultureChemistryMarks) params.set("agricultureChemistry", agricultureChemistryMarks);
+    if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
+    if (typeof window !== "undefined") {
+      const findUrl = `/find?${params.toString()}`;
+      window.history.replaceState(window.history.state, "", findUrl);
+    }
+    if (isJuniorLevel) {
+      setActiveStep(4);
+      setInlineMatchQueryString("");
+      return;
+    }
+    setActiveStep(5);
+    setInlineMatchQueryString(params.toString());
+  };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#eef2fb_0%,#f7f9ff_52%,#fbfcff_100%)] text-slate-900">
+    <main className="find-theme min-h-screen overflow-x-hidden bg-white text-[#0F1B25]">
       <Navbar />
       {showValidationPopup ? (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-[#071333]/35 px-4 pt-24 backdrop-blur-[2px] sm:pt-28">
@@ -1104,15 +1731,67 @@ export default function FindPage() {
           </div>
         </div>
       ) : null}
-      <div className="px-3 pb-6 pt-4 sm:px-5 md:px-7">
+      <div className="px-3 pb-8 pt-2 sm:px-5 md:px-7">
         <div className="mx-auto w-full max-w-[1280px]">
-          <div className="rounded-[16px] bg-[#142a63] px-6 py-3 text-center shadow-[0_18px_34px_rgba(20,42,99,0.22)]">
-            <h1 className="text-[1.35rem] font-bold tracking-[-0.04em] text-white sm:text-[1.6rem]">
-              Cutoff Calculator
-            </h1>
-          </div>
+          <div className="space-y-4">
+            <nav
+              aria-label="Find college progress"
+              className="sticky top-0 z-40 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-white/95 px-3 py-1.5 shadow-[0_8px_22px_rgba(15,27,37,0.08)] backdrop-blur md:px-4"
+            >
+              <div className="grid grid-cols-1 gap-1.5 md:grid-cols-[repeat(9,minmax(0,1fr))] md:items-start">
+                {progressLabels.map((label, index) => {
+                  const stepNumber = index + 1;
+                  const isCompleted = stepNumber < visibleStep;
+                  const isCurrent = stepNumber === visibleStep;
+                  const StepIcon =
+                    stepNumber === 1
+                      ? User
+                      : stepNumber === 2
+                        ? School
+                        : stepNumber === 3
+                          ? Building2
+                          : stepNumber === 4
+                            ? Brain
+                            : Trophy;
+                  return (
+                    <div key={label} className="contents">
+                      <div
+                        className={`relative flex min-w-0 items-center gap-2 pb-1 md:flex-col md:justify-start md:gap-0.5 md:text-center ${
+                          isCurrent ? "text-[#0F1B25]" : isCompleted ? "text-[#0F1B25]" : "text-[#5F6B76]"
+                        }`}
+                        aria-current={isCurrent ? "step" : undefined}
+                      >
+                        <span
+                          className={`flex size-6 shrink-0 items-center justify-center rounded-full border text-[0.72rem] font-semibold ${
+                            isCompleted
+                              ? "border-[#0F1B25] bg-[#0F1B25] text-white"
+                              : isCurrent
+                                ? "border-[#0F1B25] bg-[#0F1B25] text-white shadow-[0_8px_16px_rgba(15,27,37,0.14)]"
+                                : "border-[#D7DCE2] bg-white text-[#0F1B25]"
+                          }`}
+                        >
+                          {isCompleted ? <Check className="size-4" /> : stepNumber}
+                        </span>
+                        <StepIcon
+                          className={`size-4 stroke-[1.9] md:size-5 ${
+                            isCompleted || isCurrent ? "text-[#F4B400]" : "text-[#7C8793]"
+                          }`}
+                        />
+                        <span className="min-w-0 text-[12px] font-semibold leading-4">{label}</span>
+                        {isCurrent ? (
+                          <span className="absolute bottom-0 left-8 h-0.5 w-24 rounded-full bg-[#F4B400] md:left-1/2 md:w-[66%] md:-translate-x-1/2" />
+                        ) : null}
+                      </div>
+                      {index < progressLabels.length - 1 ? (
+                        <div className="hidden h-px self-center bg-[#B9C0C8] md:block" aria-hidden="true" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </nav>
 
-          <section className="mt-4 w-full rounded-[18px] border border-[#d8dff2] bg-white px-5 py-5 shadow-[0_14px_30px_rgba(20,42,99,0.1)] sm:px-6 md:px-7 md:py-6">
+          <section className="w-full rounded-[8px] border border-[#E6E6E6] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)] sm:px-5 md:px-6 md:py-5">
             <div className="flex flex-col gap-4">
             <form
               noValidate
@@ -1120,118 +1799,212 @@ export default function FindPage() {
               onChangeCapture={clearSubmittedValidation}
               onSubmit={(event) => {
                 event.preventDefault();
-                setHasSubmitted(true);
-                if (hasValidationErrors) {
-                  setHasCalculatedPreview(false);
-                  setShowValidationPopup(true);
-                  scrollToFirstInvalidField();
+                if (activeStep < 4) {
+                  goToNextStep();
                   return;
                 }
-                setShowValidationPopup(false);
-                setHasCalculatedPreview(true);
-                if (typeof window !== "undefined") {
-                  window.sessionStorage.setItem(
-                    FIND_FORM_STORAGE_KEY,
-                    JSON.stringify(persistedFindFormState),
-                  );
-                }
-                const params = new URLSearchParams();
-                params.set("name", name);
-                params.set("phone", phone);
-                params.set("level", selectedLevel);
-                params.set("state", selectedState);
-                params.set("degree", selectedDegree);
-                if (selectedCategory) params.set("category", selectedCategory);
-                if (selectedDreamCollege) params.set("dreamCollege", selectedDreamCollege);
-                if (selectedCourse) params.set("course", selectedCourse);
-                if (
-                  selectedAdmissionType &&
-                  (showEngineeringFields || showLawFields || showArtsScienceAdmissionTypeField)
-                ) {
-                  params.set("admissionType", selectedAdmissionType);
-                }
-                if (showEngineeringPcmFields && physicsMarks) params.set("physics", physicsMarks);
-                if (showEngineeringPcmFields && chemistryMarks) params.set("chemistry", chemistryMarks);
-                if (showEngineeringPcmFields && mathsMarks) params.set("maths", mathsMarks);
-                if ((showEngineeringJeeMainFields || showEngineeringJeeAdvancedFields) && engineeringEntranceMarks) {
-                  params.set("engineeringScore", engineeringEntranceMarks);
-                }
-                if (showMedicalFields && neetMarks) params.set("neet", neetMarks);
-                if (showBArchFields && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
-                if (showBArchNataField && nataScore) params.set("nata", nataScore);
-                if (bArchConvertedScore) params.set("converted12th", bArchConvertedScore);
-                if (showLawClatFields && clatMarks) params.set("clat", clatMarks);
-                if (showLawMarksFields && lawBestSubjectOne) params.set("bestSubject1", lawBestSubjectOne);
-                if (showLawMarksFields && lawBestSubjectTwo) params.set("bestSubject2", lawBestSubjectTwo);
-                if (showLawMarksFields && lawBestSubjectThree) params.set("bestSubject3", lawBestSubjectThree);
-                if (showArtsScienceBoardMarksField && boardMarksTotal) params.set("boardTotal", boardMarksTotal);
-                if (showArtsScienceCuetField && artsScienceCuetMarks) params.set("artsScienceCuet", artsScienceCuetMarks);
-                if (showParamedicalFields && paramedicalBiologyMarks) params.set("paramedicalBiology", paramedicalBiologyMarks);
-                if (showParamedicalFields && paramedicalPhysicsMarks) params.set("paramedicalPhysics", paramedicalPhysicsMarks);
-                if (showParamedicalFields && paramedicalChemistryMarks) params.set("paramedicalChemistry", paramedicalChemistryMarks);
-                if (showAgricultureFields && agricultureBiologyMarks) params.set("agricultureBiology", agricultureBiologyMarks);
-                if (showAgricultureFields && agriculturePhysicsMarks) params.set("agriculturePhysics", agriculturePhysicsMarks);
-                if (showAgricultureFields && agricultureChemistryMarks) params.set("agricultureChemistry", agricultureChemistryMarks);
-                if (finalCutoffValue) params.set("cutoff", finalCutoffValue);
-                if (typeof window !== "undefined") {
-                  const findUrl = `/find?${params.toString()}`;
-                  window.history.replaceState(window.history.state, "", findUrl);
-                }
-                setInlineMatchQueryString(params.toString());
+                handleCalculate();
               }}
               className="p-0"
             >
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <FieldShell icon={MapPin} label="Select your State">
-                  <select
-                    value={selectedState}
-                    onChange={(event) => setSelectedState(event.target.value)}
-                    className={inputClassName}
-                  >
-                    {stateOptions.map((state) => (
-                      <option key={state} value={state}>
-                        {state}
-                      </option>
-                    ))}
-                  </select>
-                </FieldShell>
+                {activeStep === 1 ? (
+                  <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.95fr)]">
+                    <div className="min-w-0 lg:pl-10 xl:pl-14">
+                      <div className="mb-5">
+                        <h3 className="text-[24px] font-semibold text-[#0F1B25]">Basic Details</h3>
+                        <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
+                          Please enter your basic details to continue
+                        </div>
+                      </div>
 
-                <FieldShell fieldId="name" icon={User} label="Full Name" invalid={Boolean(hasSubmitted && validationErrors.name)} error={hasSubmitted ? validationErrors.name : undefined}>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Enter your full name"
-                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.name))}
-                    aria-invalid={Boolean(hasSubmitted && validationErrors.name)}
-                    required
-                  />
-                </FieldShell>
+                      <div className="grid w-full max-w-[520px] grid-cols-1 gap-4">
+                        <div data-field-id="name">
+                          <label htmlFor="find-name" className="mb-2 block text-[14px] !font-semibold !text-[#0F1B25]">
+                            Full Name
+                          </label>
+                          <div
+                            className={`flex h-12 items-center gap-3 rounded-[6px] border bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] ${
+                              submittedForCurrentStep && validationErrors.name ? "border-[#ff4d5e]" : "border-[#DDE2E7]"
+                            }`}
+                          >
+                            <User className="size-4 shrink-0 text-[#5F6B76]" />
+                            <input
+                              id="find-name"
+                              type="text"
+                              value={name}
+                              onChange={(event) => setName(event.target.value)}
+                              placeholder="Enter your full name"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]"
+                              aria-invalid={Boolean(submittedForCurrentStep && validationErrors.name)}
+                              required
+                            />
+                          </div>
+                          {submittedForCurrentStep && validationErrors.name ? (
+                            <div className="mt-2 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                              <CircleAlert className="size-4 shrink-0" />
+                              <span>{validationErrors.name}</span>
+                            </div>
+                          ) : null}
+                        </div>
 
-                <FieldShell fieldId="phone" icon={Phone} label="Phone Number" invalid={Boolean(hasSubmitted && validationErrors.phone)} error={hasSubmitted ? validationErrors.phone : undefined}>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
-                    placeholder="Enter 10 digit mobile number"
-                    className={getInputClassName(inputClassName, Boolean(hasSubmitted && validationErrors.phone))}
-                    aria-invalid={Boolean(hasSubmitted && validationErrors.phone)}
-                    inputMode="numeric"
-                    pattern="[0-9]{10}"
-                    maxLength={10}
-                    minLength={10}
-                    required
-                  />
-                </FieldShell>
+                        <div data-field-id="phone">
+                          <label htmlFor="find-phone" className="mb-2 block text-[14px] !font-semibold !text-[#0F1B25]">
+                            Phone Number
+                          </label>
+                          <div
+                            className={`flex h-12 items-center gap-3 rounded-[6px] border bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] ${
+                              submittedForCurrentStep && validationErrors.phone ? "border-[#ff4d5e]" : "border-[#DDE2E7]"
+                            }`}
+                          >
+                            <Phone className="size-4 shrink-0 text-[#5F6B76]" />
+                            <input
+                              id="find-phone"
+                              type="tel"
+                              value={phone}
+                              onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
+                              placeholder="Enter 10 digit mobile number"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]"
+                              aria-invalid={Boolean(submittedForCurrentStep && validationErrors.phone)}
+                              inputMode="numeric"
+                              pattern="[0-9]{10}"
+                              maxLength={10}
+                              minLength={10}
+                              required
+                            />
+                          </div>
+                          {submittedForCurrentStep && validationErrors.phone ? (
+                            <div className="mt-2 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                              <CircleAlert className="size-4 shrink-0" />
+                              <span>{validationErrors.phone}</span>
+                            </div>
+                          ) : null}
+                        </div>
 
-                {showCategoryField ? (
-                  <FieldShell fieldId="category" icon={Users} label="Category" invalid={Boolean(hasSubmitted && validationErrors.category)} error={hasSubmitted ? validationErrors.category : undefined}>
+                        <div className="mt-1 grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={resetFormFields}
+                            className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
+                          >
+                            Reset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={goToNextStep}
+                            className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                          >
+                            Next
+                            <ArrowRight className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative mx-auto hidden min-h-[360px] w-full max-w-[520px] overflow-hidden lg:block" aria-hidden="true">
+                      <div className="absolute inset-0 bg-[url('/find-step-basic-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                    </div>
+                  </div>
+                ) : null}
+
+              {activeStep === 2 ? (
+                <div data-field-id="level" className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(380px,1fr)]">
+                  <div className="min-w-0 lg:pl-10 xl:pl-14">
+                    <div className="mb-5">
+                      <h3 className="text-[24px] font-semibold text-[#0F1B25]">Pick Your Level</h3>
+                      <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
+                        Select your current class / grade
+                      </div>
+                    </div>
+
+                    <div className="grid w-full max-w-[500px] grid-cols-3 gap-4">
+                      {levelOptions.map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => {
+                            setHasSubmitted(false);
+                            setValidationStep(null);
+                            setShowValidationPopup(false);
+                            setInlineMatchQueryString("");
+                            setSelectedLevel(level);
+                            setSelectedCategory("");
+                            setSelectedDreamCollege("");
+                            setTargetCollegeSearch("");
+                            resetAcademicFields();
+                          }}
+                          className={`h-12 rounded-[6px] border text-[16px] font-medium transition ${
+                            selectedLevel === level
+                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                              : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
+                          }`}
+                          style={level === "12" ? { gridColumnStart: 2 } : undefined}
+                          aria-pressed={selectedLevel === level}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+
+                    {submittedForCurrentStep && validationErrors.level ? (
+                      <div className="mt-3 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                        <CircleAlert className="size-4" />
+                        <span>{validationErrors.level}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={goToPreviousStep}
+                        className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goToNextStep}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                      >
+                        Next
+                        <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative mx-auto hidden min-h-[380px] w-full max-w-[560px] overflow-hidden lg:block" aria-hidden="true">
+                    <div className="absolute inset-0 bg-[url('/find-step-level-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                  </div>
+                </div>
+              ) : null}
+
+              {activeStep !== 1 && activeStep !== 2 ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+                {activeStep === 4 && isSeniorSecondaryLevel ? (
+                  <FieldShell icon={MapPin} label="Select your State">
+                    <select
+                      value={selectedState}
+                      onChange={(event) => setSelectedState(event.target.value)}
+                      className={inputClassName}
+                    >
+                      {stateOptions.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldShell>
+                ) : null}
+
+                {activeStep === 4 && showCategoryField ? (
+                  <FieldShell fieldId="category" icon={Users} label="Category">
                     <select
                       value={selectedCategory}
-                      onChange={(event) => setSelectedCategory(event.target.value)}
-                      className={getSelectClassName(inputClassName, Boolean(hasSubmitted && validationErrors.category))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.category)}
-                      required
+                      onChange={(event) => {
+                        clearSubmittedValidation();
+                        setSelectedCategory(normalizeCategorySelection(event.target.value));
+                      }}
+                      className={inputClassName}
                     >
                       <option value="">Select your category</option>
                       {categoryOptions.map((option) => (
@@ -1260,38 +2033,89 @@ export default function FindPage() {
                   </FieldShell>
                 ) : null} */}
 
-                <div>
-                  <FieldShell fieldId="degree" icon={School} label="Select Degree" invalid={Boolean(hasSubmitted && validationErrors.degree)} error={hasSubmitted ? validationErrors.degree : undefined}>
-                    <select
-                      value={selectedDegree}
-                      onChange={(event) => {
-                        setSelectedDegree(event.target.value);
-                        setSelectedDreamCollege("");
-                        setTargetCollegeSearch("");
-                        resetAcademicFields();
-                      }}
-                      className={getSelectClassName(inputClassName, Boolean(hasSubmitted && validationErrors.degree))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.degree)}
-                      required
-                    >
-                      <option value="">Choose your preferred degree</option>
+                {activeStep === 3 ? (
+                <div data-field-id="degree" className="col-span-full grid items-center gap-7 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,1fr)]">
+                  <div className="min-w-0 lg:pl-10 xl:pl-14">
+                    <div className="mb-5">
+                      <h3 className="text-[24px] font-semibold text-[#0F1B25]">Pick Your Degree Stream</h3>
+                      <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
+                        Choose the stream you are interested in
+                      </div>
+                    </div>
+                    <div className="grid max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-4">
                       {degreeOptions.map((degree) => (
-                        <option key={degree} value={degree}>
+                        <button
+                          key={degree}
+                          type="button"
+                          onClick={() => {
+                            setHasSubmitted(false);
+                            setValidationStep(null);
+                            setShowValidationPopup(false);
+                            setInlineMatchQueryString("");
+                            setSelectedDegree(degree);
+                            setSelectedDreamCollege("");
+                            setTargetCollegeSearch("");
+                            resetAcademicFields();
+                          }}
+                          className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center text-[13px] font-semibold leading-4 transition ${
+                            selectedDegree === degree
+                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                              : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
+                          }`}
+                          aria-pressed={selectedDegree === degree}
+                        >
+                          {degree === "Engineering" ? <Calculator className="size-6" /> : null}
+                          {degree === "Medical" ? <Stethoscope className="size-6" /> : null}
+                          {degree === "Arts & Science" ? <GraduationCap className="size-6" /> : null}
+                          {degree === "Law" ? <Scale className="size-6" /> : null}
+                          {degree === "B.Arch" ? <Landmark className="size-6" /> : null}
+                          {degree === "Agriculture" ? <Sprout className="size-6" /> : null}
+                          {degree === "Paramedical" ? <FlaskConical className="size-6" /> : null}
                           {degree}
-                        </option>
+                        </button>
                       ))}
-                    </select>
-                  </FieldShell>
+                    </div>
+                    {submittedForCurrentStep && validationErrors.degree ? (
+                      <div className="mt-3 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                        <CircleAlert className="size-4" />
+                        <span>{validationErrors.degree}</span>
+                      </div>
+                    ) : null}
+                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3 sm:ml-[190px]">
+                      <button
+                        type="button"
+                        onClick={goToPreviousStep}
+                        className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goToNextStep}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                      >
+                        Next
+                        <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative mx-auto hidden min-h-[380px] w-full max-w-[560px] overflow-hidden lg:block" aria-hidden="true">
+                    <div className="absolute inset-0 bg-[url('/find-step-stream-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                  </div>
                 </div>
+                ) : null}
 
- {showDreamCollegeField ? (
+ {activeStep === 4 && showDreamCollegeField ? (
                   <FieldShell icon={Building2} label="Select Your Target College">
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-[#7a87ad]" />
                       <input
                       type="search"
                       value={targetCollegeSearch}
-                      onChange={(event) => selectTargetCollegeByName(event.target.value)}
+                      onChange={(event) => {
+                        clearSubmittedValidation();
+                        selectTargetCollegeByName(event.target.value);
+                      }}
                       onBlur={() => {
                         if (!targetCollegeSearch.trim()) {
                           setSelectedDreamCollege("");
@@ -1317,16 +2141,15 @@ export default function FindPage() {
                   </FieldShell>
                 ) : null}
 
-                {showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields ? (
-                  <AcademicShell fieldId="course" icon={BookOpen} label="Select Course" invalid={Boolean(hasSubmitted && validationErrors.course)} error={hasSubmitted ? validationErrors.course : undefined}>
+                {activeStep === 4 && (showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields) ? (
+                  <AcademicShell fieldId="course" icon={BookOpen} label="Select Course">
                     <select
                       value={selectedCourse}
                       onChange={(event) => {
+                        clearSubmittedValidation();
                         setSelectedCourse(event.target.value);
                       }}
-                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.course))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.course)}
-                      required={showEngineeringFields || showMedicalFields || showLawFields || showArtsScienceFields}
+                      className={academicInputClassName}
                     >
                       <option value="">Choose course</option>
                       {(
@@ -1346,20 +2169,19 @@ export default function FindPage() {
                   </AcademicShell>
                 ) : null}
 
-                {showEngineeringFields ? (
-                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                {activeStep === 4 && showEngineeringFields ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type">
                     <select
                       value={selectedAdmissionType}
                       onChange={(event) => {
+                        clearSubmittedValidation();
                         setSelectedAdmissionType(event.target.value);
                         setPhysicsMarks("");
                         setChemistryMarks("");
                         setMathsMarks("");
                         setEngineeringEntranceMarks("");
                       }}
-                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                      required={showEngineeringFields}
+                      className={academicInputClassName}
                     >
                       <option value="">Select admission type</option>
                       {availableEngineeringAdmissionTypeOptions.map((option) => (
@@ -1371,38 +2193,41 @@ export default function FindPage() {
                   </AcademicShell>
                 ) : null}
 
-                {showMedicalFields ? (
-                  <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet)} valid={Boolean(touchedFields.neet && !validationErrors.neet && neetMarks.trim())} error={hasSubmitted || touchedFields.neet ? validationErrors.neet : undefined}>
+                {activeStep === 4 && showMedicalFields ? (
+                  <AcademicShell fieldId="neet" icon={Calculator} label="NEET Mark" hint="Out of 720" invalid={Boolean((submittedForCurrentStep || touchedFields.neet) && validationErrors.neet)} valid={Boolean(touchedFields.neet && !validationErrors.neet && neetMarks.trim())} error={submittedForCurrentStep || touchedFields.neet ? validationErrors.neet : undefined}>
                     <input
                       type="number"
                       min="0"
                       max="720"
                       step="0.01"
                       value={neetMarks}
-                      onChange={(event) => setNeetMarks(getNonNegativeNumberValue(event.target.value))}
+                      onChange={(event) =>
+                        updateAcademicValue("neet", () =>
+                          setNeetMarks(getNonNegativeNumberValue(event.target.value)),
+                        )
+                      }
                       onBlur={() => markFieldTouched("neet")}
                       placeholder="Enter your NEET mark"
-                      className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet))}
-                      aria-invalid={Boolean((hasSubmitted || touchedFields.neet) && validationErrors.neet)}
+                      className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.neet) && validationErrors.neet))}
+                      aria-invalid={Boolean((submittedForCurrentStep || touchedFields.neet) && validationErrors.neet)}
                       required={showMedicalFields}
                     />
                   </AcademicShell>
                 ) : null}
 
-                {showLawFields ? (
-                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                {activeStep === 4 && showLawFields ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type">
                     <select
                       value={selectedAdmissionType}
                       onChange={(event) => {
+                        clearSubmittedValidation();
                         setSelectedAdmissionType(event.target.value);
                         setClatMarks("");
                         setLawBestSubjectOne("");
                         setLawBestSubjectTwo("");
                         setLawBestSubjectThree("");
                       }}
-                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                      required={showLawFields}
+                      className={academicInputClassName}
                     >
                       <option value="">Select admission type</option>
                       {availableLawAdmissionTypeOptions.map((option) => (
@@ -1414,18 +2239,17 @@ export default function FindPage() {
                   </AcademicShell>
                 ) : null}
 
-                {showArtsScienceAdmissionTypeField ? (
-                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type" invalid={Boolean(hasSubmitted && validationErrors.admissionType)} error={hasSubmitted ? validationErrors.admissionType : undefined}>
+                {activeStep === 4 && showArtsScienceAdmissionTypeField ? (
+                  <AcademicShell fieldId="admissionType" icon={BarChart3} label="Admission Type">
                     <select
                       value={selectedAdmissionType}
                       onChange={(event) => {
+                        clearSubmittedValidation();
                         setSelectedAdmissionType(event.target.value);
                         setArtsScienceCuetMarks("");
                         setBoardMarksTotal("");
                       }}
-                      className={getSelectClassName(academicInputClassName, Boolean(hasSubmitted && validationErrors.admissionType))}
-                      aria-invalid={Boolean(hasSubmitted && validationErrors.admissionType)}
-                      required={showArtsScienceAdmissionTypeField}
+                      className={academicInputClassName}
                     >
                       <option value="">Select admission type</option>
                       {artsScienceAdmissionTypeOptions.map((option) => (
@@ -1437,56 +2261,69 @@ export default function FindPage() {
                   </AcademicShell>
                 ) : null}
               </div>
+              ) : null}
 
-              {showEngineeringFields ? (
+              {activeStep === 4 && showEngineeringFields ? (
                 <div className="mt-4 space-y-2.5">
                   {showEngineeringPcmFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-3">
-                        <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics)} valid={Boolean(touchedFields.physics && !validationErrors.physics && physicsMarks.trim())} error={hasSubmitted || touchedFields.physics ? validationErrors.physics : undefined}>
+                        <AcademicShell fieldId="physics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.physics) && validationErrors.physics)} valid={Boolean(touchedFields.physics && !validationErrors.physics && physicsMarks.trim())} error={submittedForCurrentStep || touchedFields.physics ? validationErrors.physics : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={physicsMarks}
-                            onChange={(event) => setPhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("physics", () =>
+                                setPhysicsMarks(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("physics")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.physics) && validationErrors.physics)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.physics) && validationErrors.physics))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.physics) && validationErrors.physics)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="chemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry)} valid={Boolean(touchedFields.chemistry && !validationErrors.chemistry && chemistryMarks.trim())} error={hasSubmitted || touchedFields.chemistry ? validationErrors.chemistry : undefined}>
+                        <AcademicShell fieldId="chemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.chemistry) && validationErrors.chemistry)} valid={Boolean(touchedFields.chemistry && !validationErrors.chemistry && chemistryMarks.trim())} error={submittedForCurrentStep || touchedFields.chemistry ? validationErrors.chemistry : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={chemistryMarks}
-                            onChange={(event) => setChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("chemistry", () =>
+                                setChemistryMarks(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("chemistry")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.chemistry) && validationErrors.chemistry)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.chemistry) && validationErrors.chemistry))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.chemistry) && validationErrors.chemistry)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="maths" icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths)} valid={Boolean(touchedFields.maths && !validationErrors.maths && mathsMarks.trim())} error={hasSubmitted || touchedFields.maths ? validationErrors.maths : undefined}>
+                        <AcademicShell fieldId="maths" icon={Calculator} label="Maths" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.maths) && validationErrors.maths)} valid={Boolean(touchedFields.maths && !validationErrors.maths && mathsMarks.trim())} error={submittedForCurrentStep || touchedFields.maths ? validationErrors.maths : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={mathsMarks}
-                            onChange={(event) => setMathsMarks(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("maths", () =>
+                                setMathsMarks(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("maths")}
                             placeholder="Enter your marks"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.maths) && validationErrors.maths)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.maths) && validationErrors.maths))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.maths) && validationErrors.maths)}
                             required={showEngineeringPcmFields}
                           />
                         </AcademicShell>
@@ -1506,18 +2343,22 @@ export default function FindPage() {
                   {showEngineeringJeeMainFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-2">
-                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={hasSubmitted || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
+                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Main Mark" hint="Out of 300" invalid={Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={submittedForCurrentStep || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="300"
                             step="0.01"
                             value={engineeringEntranceMarks}
-                            onChange={(event) => setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("engineeringEntranceMarks", () =>
+                                setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("engineeringEntranceMarks")}
                             placeholder="Enter your JEE Main mark"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
                             required={showEngineeringJeeMainFields}
                           />
                         </AcademicShell>
@@ -1537,18 +2378,22 @@ export default function FindPage() {
                   {showEngineeringJeeAdvancedFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-2">
-                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={hasSubmitted || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
+                      <AcademicShell fieldId="engineeringEntranceMarks" icon={Calculator} label="JEE Advanced Mark" hint="Out of 360" invalid={Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)} valid={Boolean(touchedFields.engineeringEntranceMarks && !validationErrors.engineeringEntranceMarks && engineeringEntranceMarks.trim())} error={submittedForCurrentStep || touchedFields.engineeringEntranceMarks ? validationErrors.engineeringEntranceMarks : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="360"
                             step="0.01"
                             value={engineeringEntranceMarks}
-                            onChange={(event) => setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("engineeringEntranceMarks", () =>
+                                setEngineeringEntranceMarks(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("engineeringEntranceMarks")}
                             placeholder="Enter your JEE Advanced mark"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.engineeringEntranceMarks) && validationErrors.engineeringEntranceMarks)}
                             required={showEngineeringJeeAdvancedFields}
                           />
                         </AcademicShell>
@@ -1567,7 +2412,7 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showMedicalFields ? (
+              {activeStep === 4 && showMedicalFields ? (
                 <div className="mt-4 space-y-3">
                   {showCalculatedScorePreview && neetMarksReady ? (
                     <ScoreHighlight
@@ -1580,38 +2425,46 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showBArchFields ? (
+              {activeStep === 4 && showBArchFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
-                    <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={hasSubmitted || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
+                    <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={submittedForCurrentStep || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="600"
                         step="0.01"
                         value={boardMarksTotal}
-                        onChange={(event) => setBoardMarksTotal(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("boardTotal", () =>
+                            setBoardMarksTotal(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("boardTotal")}
                         placeholder="Enter your 11th/12th total"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal)}
                         required={showBArchFields}
                       />
                     </AcademicShell>
 
                     {showBArchNataField ? (
-                      <AcademicShell fieldId="nata" icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata)} valid={Boolean(touchedFields.nata && !validationErrors.nata && nataScore.trim())} error={hasSubmitted || touchedFields.nata ? validationErrors.nata : undefined}>
+                      <AcademicShell fieldId="nata" icon={Calculator} label="NATA Score (Out of 200)" invalid={Boolean((submittedForCurrentStep || touchedFields.nata) && validationErrors.nata)} valid={Boolean(touchedFields.nata && !validationErrors.nata && nataScore.trim())} error={submittedForCurrentStep || touchedFields.nata ? validationErrors.nata : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="200"
                           step="0.01"
                           value={nataScore}
-                          onChange={(event) => setNataScore(getNonNegativeNumberValue(event.target.value))}
+                          onChange={(event) =>
+                            updateAcademicValue("nata", () =>
+                              setNataScore(getNonNegativeNumberValue(event.target.value)),
+                            )
+                          }
                           onBlur={() => markFieldTouched("nata")}
                           placeholder="Enter your NATA score"
-                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata))}
-                          aria-invalid={Boolean((hasSubmitted || touchedFields.nata) && validationErrors.nata)}
+                          className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.nata) && validationErrors.nata))}
+                          aria-invalid={Boolean((submittedForCurrentStep || touchedFields.nata) && validationErrors.nata)}
                           required={showBArchNataField}
                         />
                       </AcademicShell>
@@ -1639,22 +2492,26 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showLawFields ? (
+              {activeStep === 4 && showLawFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
                     {showLawClatFields ? (
-                      <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat)} valid={Boolean(touchedFields.clat && !validationErrors.clat && clatMarks.trim())} error={hasSubmitted || touchedFields.clat ? validationErrors.clat : undefined}>
+                      <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean((submittedForCurrentStep || touchedFields.clat) && validationErrors.clat)} valid={Boolean(touchedFields.clat && !validationErrors.clat && clatMarks.trim())} error={submittedForCurrentStep || touchedFields.clat ? validationErrors.clat : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="120"
                           step="0.01"
                           value={clatMarks}
-                          onChange={(event) => setClatMarks(getNonNegativeNumberValue(event.target.value))}
+                          onChange={(event) =>
+                            updateAcademicValue("clat", () =>
+                              setClatMarks(getNonNegativeNumberValue(event.target.value)),
+                            )
+                          }
                           onBlur={() => markFieldTouched("clat")}
                           placeholder="Enter your CLAT mark"
-                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat))}
-                          aria-invalid={Boolean((hasSubmitted || touchedFields.clat) && validationErrors.clat)}
+                          className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.clat) && validationErrors.clat))}
+                          aria-invalid={Boolean((submittedForCurrentStep || touchedFields.clat) && validationErrors.clat)}
                           required={showLawClatFields}
                         />
                       </AcademicShell>
@@ -1664,50 +2521,62 @@ export default function FindPage() {
                   {showLawMarksFields ? (
                     <div className="space-y-3">
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1)} valid={Boolean(touchedFields.bestSubject1 && !validationErrors.bestSubject1 && lawBestSubjectOne.trim())} error={hasSubmitted || touchedFields.bestSubject1 ? validationErrors.bestSubject1 : undefined}>
+                        <AcademicShell fieldId="bestSubject1" icon={BookOpen} label="Best Subject 1" hint="Eg: Tamil | Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject1) && validationErrors.bestSubject1)} valid={Boolean(touchedFields.bestSubject1 && !validationErrors.bestSubject1 && lawBestSubjectOne.trim())} error={submittedForCurrentStep || touchedFields.bestSubject1 ? validationErrors.bestSubject1 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectOne}
-                            onChange={(event) => setLawBestSubjectOne(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("bestSubject1", () =>
+                                setLawBestSubjectOne(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("bestSubject1")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject1) && validationErrors.bestSubject1)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.bestSubject1) && validationErrors.bestSubject1))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject1) && validationErrors.bestSubject1)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="bestSubject2" icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2)} valid={Boolean(touchedFields.bestSubject2 && !validationErrors.bestSubject2 && lawBestSubjectTwo.trim())} error={hasSubmitted || touchedFields.bestSubject2 ? validationErrors.bestSubject2 : undefined}>
+                        <AcademicShell fieldId="bestSubject2" icon={BookOpen} label="Best Subject 2" hint="Eg: English | Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject2) && validationErrors.bestSubject2)} valid={Boolean(touchedFields.bestSubject2 && !validationErrors.bestSubject2 && lawBestSubjectTwo.trim())} error={submittedForCurrentStep || touchedFields.bestSubject2 ? validationErrors.bestSubject2 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectTwo}
-                            onChange={(event) => setLawBestSubjectTwo(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("bestSubject2", () =>
+                                setLawBestSubjectTwo(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("bestSubject2")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject2) && validationErrors.bestSubject2)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.bestSubject2) && validationErrors.bestSubject2))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject2) && validationErrors.bestSubject2)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
 
-                        <AcademicShell fieldId="bestSubject3" icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3)} valid={Boolean(touchedFields.bestSubject3 && !validationErrors.bestSubject3 && lawBestSubjectThree.trim())} error={hasSubmitted || touchedFields.bestSubject3 ? validationErrors.bestSubject3 : undefined}>
+                        <AcademicShell fieldId="bestSubject3" icon={BookOpen} label="Best Subject 3" hint="Eg: History / Commerce | Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject3) && validationErrors.bestSubject3)} valid={Boolean(touchedFields.bestSubject3 && !validationErrors.bestSubject3 && lawBestSubjectThree.trim())} error={submittedForCurrentStep || touchedFields.bestSubject3 ? validationErrors.bestSubject3 : undefined}>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             value={lawBestSubjectThree}
-                            onChange={(event) => setLawBestSubjectThree(getNonNegativeNumberValue(event.target.value))}
+                            onChange={(event) =>
+                              updateAcademicValue("bestSubject3", () =>
+                                setLawBestSubjectThree(getNonNegativeNumberValue(event.target.value)),
+                              )
+                            }
                             onBlur={() => markFieldTouched("bestSubject3")}
                             placeholder="Enter mark"
-                            className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3))}
-                            aria-invalid={Boolean((hasSubmitted || touchedFields.bestSubject3) && validationErrors.bestSubject3)}
+                            className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.bestSubject3) && validationErrors.bestSubject3))}
+                            aria-invalid={Boolean((submittedForCurrentStep || touchedFields.bestSubject3) && validationErrors.bestSubject3)}
                             required={showLawMarksFields}
                           />
                         </AcademicShell>
@@ -1735,40 +2604,48 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showArtsScienceFields ? (
+              {activeStep === 4 && showArtsScienceFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
                     {showArtsScienceCuetField ? (
-                      <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)} valid={Boolean(touchedFields.artsScienceCuet && !validationErrors.artsScienceCuet && artsScienceCuetMarks.trim())} error={hasSubmitted || touchedFields.artsScienceCuet ? validationErrors.artsScienceCuet : undefined}>
+                      <AcademicShell fieldId="artsScienceCuet" icon={Calculator} label="Enter Cutemark (Out of 600)" invalid={Boolean((submittedForCurrentStep || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)} valid={Boolean(touchedFields.artsScienceCuet && !validationErrors.artsScienceCuet && artsScienceCuetMarks.trim())} error={submittedForCurrentStep || touchedFields.artsScienceCuet ? validationErrors.artsScienceCuet : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="600"
                           step="0.01"
                           value={artsScienceCuetMarks}
-                          onChange={(event) => setArtsScienceCuetMarks(getNonNegativeNumberValue(event.target.value))}
+                          onChange={(event) =>
+                            updateAcademicValue("artsScienceCuet", () =>
+                              setArtsScienceCuetMarks(getNonNegativeNumberValue(event.target.value)),
+                            )
+                          }
                           onBlur={() => markFieldTouched("artsScienceCuet")}
                           placeholder="Enter your CUET mark"
-                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet))}
-                          aria-invalid={Boolean((hasSubmitted || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)}
+                          className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet))}
+                          aria-invalid={Boolean((submittedForCurrentStep || touchedFields.artsScienceCuet) && validationErrors.artsScienceCuet)}
                           required={showArtsScienceCuetField}
                         />
                       </AcademicShell>
                     ) : null}
 
                     {showArtsScienceBoardMarksField ? (
-                      <AcademicShell fieldId="boardTotal" icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={hasSubmitted || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
+                      <AcademicShell fieldId="boardTotal" icon={BookOpen} label="12th Marks (Out of 600)" invalid={Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={submittedForCurrentStep || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
                         <input
                           type="number"
                           min="0"
                           max="600"
                           step="0.01"
                           value={boardMarksTotal}
-                          onChange={(event) => setBoardMarksTotal(getNonNegativeNumberValue(event.target.value))}
+                          onChange={(event) =>
+                            updateAcademicValue("boardTotal", () =>
+                              setBoardMarksTotal(getNonNegativeNumberValue(event.target.value)),
+                            )
+                          }
                           onBlur={() => markFieldTouched("boardTotal")}
                           placeholder="Enter your 12th total"
-                          className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal))}
-                          aria-invalid={Boolean((hasSubmitted || touchedFields.boardTotal) && validationErrors.boardTotal)}
+                          className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal))}
+                          aria-invalid={Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal)}
                           required={showArtsScienceBoardMarksField}
                         />
                       </AcademicShell>
@@ -1794,53 +2671,65 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showParamedicalFields ? (
+              {activeStep === 4 && showParamedicalFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)} valid={Boolean(touchedFields.paramedicalBiology && !validationErrors.paramedicalBiology && paramedicalBiologyMarks.trim())} error={hasSubmitted || touchedFields.paramedicalBiology ? validationErrors.paramedicalBiology : undefined}>
+                    <AcademicShell fieldId="paramedicalBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)} valid={Boolean(touchedFields.paramedicalBiology && !validationErrors.paramedicalBiology && paramedicalBiologyMarks.trim())} error={submittedForCurrentStep || touchedFields.paramedicalBiology ? validationErrors.paramedicalBiology : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalBiologyMarks}
-                        onChange={(event) => setParamedicalBiologyMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("paramedicalBiology", () =>
+                            setParamedicalBiologyMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("paramedicalBiology")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalBiology) && validationErrors.paramedicalBiology)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="paramedicalPhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)} valid={Boolean(touchedFields.paramedicalPhysics && !validationErrors.paramedicalPhysics && paramedicalPhysicsMarks.trim())} error={hasSubmitted || touchedFields.paramedicalPhysics ? validationErrors.paramedicalPhysics : undefined}>
+                    <AcademicShell fieldId="paramedicalPhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)} valid={Boolean(touchedFields.paramedicalPhysics && !validationErrors.paramedicalPhysics && paramedicalPhysicsMarks.trim())} error={submittedForCurrentStep || touchedFields.paramedicalPhysics ? validationErrors.paramedicalPhysics : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalPhysicsMarks}
-                        onChange={(event) => setParamedicalPhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("paramedicalPhysics", () =>
+                            setParamedicalPhysicsMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("paramedicalPhysics")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalPhysics) && validationErrors.paramedicalPhysics)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="paramedicalChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)} valid={Boolean(touchedFields.paramedicalChemistry && !validationErrors.paramedicalChemistry && paramedicalChemistryMarks.trim())} error={hasSubmitted || touchedFields.paramedicalChemistry ? validationErrors.paramedicalChemistry : undefined}>
+                    <AcademicShell fieldId="paramedicalChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)} valid={Boolean(touchedFields.paramedicalChemistry && !validationErrors.paramedicalChemistry && paramedicalChemistryMarks.trim())} error={submittedForCurrentStep || touchedFields.paramedicalChemistry ? validationErrors.paramedicalChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={paramedicalChemistryMarks}
-                        onChange={(event) => setParamedicalChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("paramedicalChemistry", () =>
+                            setParamedicalChemistryMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("paramedicalChemistry")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.paramedicalChemistry) && validationErrors.paramedicalChemistry)}
                         required={showParamedicalFields}
                       />
                     </AcademicShell>
@@ -1859,53 +2748,65 @@ export default function FindPage() {
                 </div>
               ) : null}
 
-              {showAgricultureFields ? (
+              {activeStep === 4 && showAgricultureFields ? (
                 <div className="mt-4 space-y-3">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)} valid={Boolean(touchedFields.agricultureBiology && !validationErrors.agricultureBiology && agricultureBiologyMarks.trim())} error={hasSubmitted || touchedFields.agricultureBiology ? validationErrors.agricultureBiology : undefined}>
+                    <AcademicShell fieldId="agricultureBiology" icon={BookOpen} label="Biology" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)} valid={Boolean(touchedFields.agricultureBiology && !validationErrors.agricultureBiology && agricultureBiologyMarks.trim())} error={submittedForCurrentStep || touchedFields.agricultureBiology ? validationErrors.agricultureBiology : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agricultureBiologyMarks}
-                        onChange={(event) => setAgricultureBiologyMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("agricultureBiology", () =>
+                            setAgricultureBiologyMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("agricultureBiology")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.agricultureBiology) && validationErrors.agricultureBiology))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.agricultureBiology) && validationErrors.agricultureBiology)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="agriculturePhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)} valid={Boolean(touchedFields.agriculturePhysics && !validationErrors.agriculturePhysics && agriculturePhysicsMarks.trim())} error={hasSubmitted || touchedFields.agriculturePhysics ? validationErrors.agriculturePhysics : undefined}>
+                    <AcademicShell fieldId="agriculturePhysics" icon={FlaskConical} label="Physics" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)} valid={Boolean(touchedFields.agriculturePhysics && !validationErrors.agriculturePhysics && agriculturePhysicsMarks.trim())} error={submittedForCurrentStep || touchedFields.agriculturePhysics ? validationErrors.agriculturePhysics : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agriculturePhysicsMarks}
-                        onChange={(event) => setAgriculturePhysicsMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("agriculturePhysics", () =>
+                            setAgriculturePhysicsMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("agriculturePhysics")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.agriculturePhysics) && validationErrors.agriculturePhysics)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
 
-                    <AcademicShell fieldId="agricultureChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)} valid={Boolean(touchedFields.agricultureChemistry && !validationErrors.agricultureChemistry && agricultureChemistryMarks.trim())} error={hasSubmitted || touchedFields.agricultureChemistry ? validationErrors.agricultureChemistry : undefined}>
+                    <AcademicShell fieldId="agricultureChemistry" icon={FlaskConical} label="Chemistry" hint="Out of 100" invalid={Boolean((submittedForCurrentStep || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)} valid={Boolean(touchedFields.agricultureChemistry && !validationErrors.agricultureChemistry && agricultureChemistryMarks.trim())} error={submittedForCurrentStep || touchedFields.agricultureChemistry ? validationErrors.agricultureChemistry : undefined}>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="0.01"
                         value={agricultureChemistryMarks}
-                        onChange={(event) => setAgricultureChemistryMarks(getNonNegativeNumberValue(event.target.value))}
+                        onChange={(event) =>
+                          updateAcademicValue("agricultureChemistry", () =>
+                            setAgricultureChemistryMarks(getNonNegativeNumberValue(event.target.value)),
+                          )
+                        }
                         onBlur={() => markFieldTouched("agricultureChemistry")}
                         placeholder="Enter your marks"
-                        className={getInputClassName(academicInputClassName, Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry))}
-                        aria-invalid={Boolean((hasSubmitted || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)}
+                        className={getInputClassName(academicInputClassName, Boolean((submittedForCurrentStep || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry))}
+                        aria-invalid={Boolean((submittedForCurrentStep || touchedFields.agricultureChemistry) && validationErrors.agricultureChemistry)}
                         required={showAgricultureFields}
                       />
                     </AcademicShell>
@@ -1924,54 +2825,936 @@ export default function FindPage() {
                 </div>
               ) : null}
 
+              {activeStep === 4 && isJuniorLevel ? (
+                <div className="mt-4">
+                  <div className="mb-5 text-center">
+                    <h3 className="text-[28px] font-semibold text-[#0F1B25]">
+                      Assessment Test <span className="font-[family:Outfit] text-[24px] italic text-[#D99A00]">(Preview)</span>
+                    </h3>
+                    <div className="mt-2 text-[16px] font-normal text-[#5F6B76]">This is how your test will look</div>
+                  </div>
+
+                  {juniorQuestionsLoading ? (
+                    <div className="rounded-[8px] border border-[#E6E6E6] bg-white px-4 py-5 text-center text-[14px] font-medium text-[#5F6B76]">
+                      Loading saved questions...
+                    </div>
+                  ) : activeJuniorQuestion ? (
+                    <>
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+                        <div className="grid min-h-[310px] gap-4 rounded-[8px] border border-[#E6E6E6] bg-white p-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)] xl:grid-cols-[minmax(0,1fr)_340px]">
+                          <div className="min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="text-[16px] font-semibold text-[#0F1B25]">
+                                Question {activeJuniorQuestionIndex + 1} of {juniorQuestions.length}
+                              </div>
+                              <div className="inline-flex items-center gap-2 text-[20px] font-semibold text-[#0F1B25] xl:hidden">
+                                <Clock className="size-5" />
+                                {formatTimer(juniorTimerSeconds)}
+                              </div>
+                            </div>
+                            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#F4B400] bg-[#FFF4CC] px-3 py-1.5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.12)]">
+                              <Calculator className="size-4" />
+                              {activeJuniorQuestion.subject || "Mathematics"}
+                            </div>
+                            <div className="mt-3 min-h-[42px] border-b border-[#E6E6E6] pb-3 text-[17px] font-semibold leading-6 text-[#0F1B25]">
+                              {activeJuniorQuestion.question}
+                            </div>
+                            <div className="mt-3 grid gap-2">
+                              {activeJuniorQuestion.options.map((option, optionIndex) => {
+                                const optionLetter = String.fromCharCode(65 + optionIndex);
+                                const isSelected = selectedJuniorAnswer === optionLetter;
+                                return (
+                                  <button
+                                    key={`${activeJuniorQuestion.id}-${optionIndex}`}
+                                    type="button"
+                                    onClick={() => selectJuniorAnswer(optionIndex)}
+                                    disabled={!hasStartedJuniorTest || hasSubmittedJuniorTest}
+                                    className={`grid min-h-11 grid-cols-[34px_minmax(0,1fr)] items-center gap-3 rounded-[8px] border px-3 py-2 text-left transition ${
+                                      isSelected
+                                        ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                                        : hasStartedJuniorTest && !hasSubmittedJuniorTest
+                                          ? "border-[#F3D98B] bg-[#FFFDF7] text-[#0F1B25] hover:border-[#F4B400] hover:bg-[#FFF4CC]"
+                                          : "cursor-not-allowed border-[#F3D98B] bg-[#FFFDF7] text-[#5F6B76]"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`flex size-8 items-center justify-center rounded-full text-[15px] font-semibold ${
+                                        isSelected ? "bg-[#F4B400] text-white" : "bg-[#FFF4CC] text-[#D99A00]"
+                                      }`}
+                                    >
+                                      {optionLetter}
+                                    </span>
+                                    <span className="min-w-0 break-words text-[16px] font-normal">{option}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="relative hidden min-h-[300px] overflow-hidden xl:block" aria-hidden="true">
+                            <div className="absolute right-0 top-0 inline-flex items-center gap-2 text-[20px] font-semibold text-[#0F1B25]">
+                              <Clock className="size-5" />
+                              {formatTimer(juniorTimerSeconds)}
+                            </div>
+                            <div className="absolute inset-x-[-18px] bottom-[-10px] top-8 bg-[url('/find-step-assessment-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                          </div>
+                        </div>
+
+                        <div className="rounded-[8px] border border-[#E6E6E6] bg-white p-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)]">
+                          <div className="text-[18px] font-semibold text-[#0F1B25]">Questions</div>
+                          <div className="mt-4 grid grid-cols-5 gap-2.5">
+                            {Array.from({ length: juniorQuestions.length }).map((_, index) => {
+                              const question = juniorQuestions[index];
+                              const questionKey = question ? `${question.subject}-${question.id}-${index}` : "";
+                              const isAnswered = Boolean(questionKey && juniorAnswers[questionKey]);
+                              const isActive = index === activeJuniorQuestionIndex;
+                              return (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => question && setActiveJuniorQuestionIndex(index)}
+                                  disabled={!hasStartedJuniorTest || !question}
+                                  className={`flex size-8 items-center justify-center rounded-full border text-[14px] font-medium transition ${
+                                    isActive
+                                      ? "border-[#F4B400] bg-[#F4B400] text-white"
+                                      : isAnswered
+                                        ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25]"
+                                        : hasStartedJuniorTest && question
+                                          ? "border-[#E6E6E6] bg-white text-[#0F1B25] hover:border-[#F4B400] hover:bg-[#FFF4CC]"
+                                          : "cursor-not-allowed border-[#E6E6E6] bg-[#F8F9FB] text-[#B8C0C8]"
+                                  }`}
+                                  aria-label={`Go to question ${index + 1}`}
+                                >
+                                  {index + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-5 space-y-2 text-[14px] text-[#5F6B76]">
+                            <div className="flex items-center gap-2">
+                              <span className="size-3 rounded-full bg-[#F4B400]" />
+                              Answered
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="size-3 rounded-full bg-[#DDE2E7]" />
+                              Not Answered
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col items-center gap-3">
+                        {!hasStartedJuniorTest ? (
+                        <div className="flex w-full max-w-[430px] gap-4">
+                          <button
+                            type="button"
+                            onClick={goToPreviousStep}
+                            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-6 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                          >
+                            <ArrowRight className="size-4 rotate-180" />
+                            Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setHasStartedJuniorTest(true)}
+                            className="inline-flex h-12 flex-[1.6] items-center justify-center gap-3 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                          >
+                            Start Assessment
+                            <ArrowRight className="size-5" />
+                          </button>
+                        </div>
+                        ) : (
+                        <div className="flex w-full max-w-[560px] flex-wrap justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={goToPreviousStep}
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                          >
+                            <ArrowRight className="size-4 rotate-180" />
+                            Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={goToPreviousJuniorQuestion}
+                            disabled={activeJuniorQuestionIndex === 0}
+                            className="inline-flex h-11 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-5 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB] disabled:cursor-not-allowed disabled:text-[#B8C0C8]"
+                          >
+                            Previous
+                          </button>
+                          {activeJuniorQuestionIndex >= juniorQuestions.length - 1 ? (
+                          <button
+                            type="button"
+                            onClick={submitJuniorTest}
+                            disabled={!selectedJuniorAnswer || hasSubmittedJuniorTest}
+                              className="inline-flex h-11 items-center justify-center rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-semibold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white disabled:cursor-not-allowed disabled:bg-[#B8C0C8] disabled:text-white"
+                            >
+                              {hasSubmittedJuniorTest ? "Submitted" : "Submit"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={goToNextJuniorQuestion}
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            >
+                              Next
+                              <ArrowRight className="size-4" />
+                            </button>
+                          )}
+                        </div>
+                        )}
+                        <div className="text-center text-[14px] text-[#5F6B76]">
+                          This is just a preview. Actual test may vary.
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-[8px] border border-[#E6E6E6] bg-white px-4 py-5 text-center text-[14px] font-medium text-[#5F6B76]">
+                      {juniorQuestionsStatus ||
+                        `No saved questions found for ${selectedDegree || "this degree"} ${juniorQuestionLevelGroup || selectedLevel}.`}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {activeStep === 5 && isJuniorLevel ? (
+                <div className="mt-4 rounded-[10px] border border-[#dce5fb] bg-white p-4 shadow-[0_14px_28px_rgba(20,42,99,0.08)]">
+                  <div className="mb-4 flex items-center justify-center gap-3">
+                    <div className="relative flex size-12 items-center justify-center text-[#F4B400]">
+                      <Trophy className="size-9 fill-[#F4B400]/20" />
+                      <span className="absolute -left-2 top-0 text-[12px] text-[#F4B400]">+</span>
+                      <span className="absolute -right-1 -top-1 text-[12px] text-[#F4B400]">+</span>
+                    </div>
+                    <div>
+                      <h3 className="text-[28px] font-semibold leading-8 text-[#0F1B25]">Assessment Result</h3>
+                      <div className="mt-1 text-[14px] text-[#5F6B76]">Your score is calculated from saved admin answers</div>
+                    </div>
+                  </div>
+
+                  {juniorQuestionsLoading ? (
+                    <div className="mt-4 rounded-[8px] border border-[#dce5fb] bg-[#fbfdff] px-4 py-5 text-center text-[0.82rem] font-semibold text-[#52618a]">
+                      Loading saved questions...
+                    </div>
+                  ) : activeJuniorQuestion ? (
+                    <div className="mt-4">
+                      {activeStep === 5 && hasSubmittedJuniorTest ? (
+                        <div className="space-y-4">
+                          <div className="grid gap-4 rounded-[8px] border border-[#E6E6E6] bg-white p-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)] lg:grid-cols-[minmax(0,1fr)_300px]">
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <User className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Full Name</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    {name || "Student"}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 lg:border-r lg:pb-0 lg:pr-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <Phone className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Phone Number</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    {phone || "Not added"}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3 lg:border-r-0 lg:pr-0">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <GraduationCap className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Level</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    Class {selectedLevel}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 lg:border-r lg:pb-0 lg:pr-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <School className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Degree Stream</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    {selectedDegree}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <CalendarDays className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Test Date</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    {juniorResultDate}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[76px] items-center gap-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                  <Clock className="size-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Time Taken</div>
+                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                    {formatDurationLabel(juniorTimerSeconds)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="rounded-[8px] border border-[#F4B400] bg-white p-4 text-center shadow-[0_12px_24px_rgba(244,180,0,0.12)]">
+                              <div className="text-[12px] font-semibold uppercase text-[#0F1B25]">Overall Score</div>
+                              <div className="mt-2 text-[42px] font-semibold leading-none text-[#F4B400]">
+                                {formatScoreNumber(juniorOverallScore)}
+                                <span className="text-[16px] font-semibold text-[#0F1B25]"> / {juniorAssessmentScale}</span>
+                              </div>
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#FFF4CC]">
+                                <div
+                                  className="h-full rounded-full bg-[#F4B400]"
+                                  style={{ width: `${Math.min(100, juniorPercentage)}%` }}
+                                />
+                              </div>
+                              <div className="mt-1 text-right text-[12px] font-semibold text-[#0F1B25]">
+                                {Math.round(juniorPercentage)}%
+                              </div>
+                              <div className="mt-3 rounded-[8px] border border-[#DCEEDB] bg-[#F5FFF4] px-3 py-3 text-left">
+                                <div className="flex items-center gap-2 text-[14px] font-semibold text-[#16A34A]">
+                                  <Check className="size-4" />
+                                  {juniorResultTone.label} Performance
+                                </div>
+                                <div className="mt-1 text-[13px] font-medium text-[#5F6B76]">
+                                  {juniorCorrectCount} correct out of {juniorQuestionTotal} questions
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-[8px] bg-white">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <div className="text-[16px] font-semibold uppercase text-[#0F1B25]">Subject Wise Marks</div>
+                                <div className="mt-1 text-[13px] font-normal text-[#5F6B76]">Out of 100. Click a subject to view answers.</div>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={goToPreviousStep}
+                                  className="inline-flex h-9 items-center justify-center rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                                >
+                                  Back
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={resetJuniorAssessment}
+                                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                                >
+                                  <RotateCcw className="size-4" />
+                                  Retake
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                              {juniorSubjectResults.map((subjectResult) => {
+                                const isActiveSubject = activeJuniorSubjectResult?.subject === subjectResult.subject;
+                                const SubjectIcon = normalizeText(subjectResult.subject).includes("math")
+                                  ? Calculator
+                                  : normalizeText(subjectResult.subject).includes("chem")
+                                    ? FlaskConical
+                                    : BookOpen;
+
+                                return (
+                                  <button
+                                    key={subjectResult.subject}
+                                    type="button"
+                                    onClick={() => setActiveJuniorResultSubject(subjectResult.subject)}
+                                    className={`rounded-[8px] border bg-white p-4 text-left transition shadow-[0_8px_18px_rgba(15,27,37,0.05)] ${
+                                      isActiveSubject
+                                        ? "border-[#F4B400]"
+                                        : "border-[#E6E6E6] hover:border-[#F4B400]"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                        <SubjectIcon className="size-5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="truncate text-[14px] font-semibold text-[#0F1B25]">{subjectResult.subject}</div>
+                                        <div className="mt-1 text-[24px] font-semibold leading-none text-[#16A34A]">
+                                          {Math.round(subjectResult.percentage)}
+                                          <span className="text-[13px] font-semibold text-[#0F1B25]"> / 100</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#E6E6E6]">
+                                      <div
+                                        className="h-full rounded-full bg-[#16A34A]"
+                                        style={{ width: `${Math.min(100, subjectResult.percentage)}%` }}
+                                      />
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between text-[12px] font-semibold">
+                                      <span className="text-[#16A34A]">
+                                        {subjectResult.tone.label}
+                                      </span>
+                                      <span className="text-[#5F6B76]">{subjectResult.correct}/{subjectResult.total} correct</span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="rounded-[8px] bg-white py-6">
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div>
+                                <div className="text-[28px] font-semibold leading-tight text-[#0F1B25]">
+                                  Suggested Colleges
+                                </div>
+                                <div className="mt-4 text-[16px] font-normal text-[#354150]">
+                                  Based on {selectedDegree} cutoff {formatScoreNumber(juniorOverallScore)} / {juniorAssessmentScale}
+                                </div>
+                              </div>
+                              <div className="inline-flex h-14 items-center gap-3 rounded-[10px] border border-[#DDE2E7] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_8px_18px_rgba(15,27,37,0.04)]">
+                                <Users className="size-5" />
+                                {sortedJuniorCollegeSuggestions.length} matches
+                              </div>
+                            </div>
+                            <div className="mt-7 border-t border-[#E6E6E6] pt-7">
+                              <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="text-[16px] font-normal text-[#354150]">
+                                  Showing <span className="font-semibold text-[#0F1B25]">{suggestionStartNumber}</span>-<span className="font-semibold text-[#0F1B25]">{suggestionEndNumber}</span> of <span className="font-semibold text-[#0F1B25]">{sortedJuniorCollegeSuggestions.length}</span> colleges
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsSuggestionSortOpen((isOpen) => !isOpen)}
+                                      className="inline-flex h-12 min-w-[190px] items-center justify-between gap-4 rounded-[8px] border border-[#DDE2E7] bg-white px-5 text-[16px] font-normal text-[#0F1B25]"
+                                      aria-expanded={isSuggestionSortOpen}
+                                    >
+                                      {suggestionSortLabel}
+                                      <ChevronDown className="size-4 text-[#5F6B76]" />
+                                    </button>
+                                    {isSuggestionSortOpen ? (
+                                      <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[220px] overflow-hidden rounded-[12px] border border-[#E6E6E6] bg-white p-2 shadow-[0_18px_34px_rgba(15,27,37,0.16)]">
+                                        {[
+                                          { value: "alphabetical" as const, label: "Alphabetical" },
+                                          { value: "newest" as const, label: "Newest first" },
+                                          { value: "oldest" as const, label: "Oldest first" },
+                                        ].map((option) => {
+                                          const isSelected = suggestionSort === option.value;
+                                          return (
+                                            <button
+                                              key={option.value}
+                                              type="button"
+                                              onClick={() => {
+                                                setSuggestionSort(option.value);
+                                                setIsSuggestionSortOpen(false);
+                                              }}
+                                              className={`flex h-12 w-full items-center gap-3 rounded-[10px] px-4 text-left text-[16px] font-normal transition ${
+                                                isSelected ? "bg-[#ECFFF2] text-[#16A34A]" : "text-[#354150] hover:bg-[#F8F9FB]"
+                                              }`}
+                                            >
+                                              <Check className={`size-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                              {option.label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <div className="inline-flex overflow-hidden rounded-[8px] border border-[#DDE2E7] bg-white">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSuggestionView("grid")}
+                                      className={`inline-flex h-12 items-center gap-2 px-5 text-[16px] font-medium ${
+                                        suggestionView === "grid" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
+                                      }`}
+                                    >
+                                      <LayoutGrid className="size-4" />
+                                      Grid
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSuggestionView("list")}
+                                      className={`inline-flex h-12 items-center gap-2 px-5 text-[16px] font-medium ${
+                                        suggestionView === "list" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
+                                      }`}
+                                    >
+                                      <List className="size-4" />
+                                      List
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {sortedJuniorCollegeSuggestions.length ? (
+                              <>
+                              <div
+                                ref={suggestedCollegesListRef}
+                                className={suggestionView === "grid" ? "mt-8 scroll-mt-24 grid gap-6 lg:grid-cols-3" : "mt-8 scroll-mt-24 grid gap-4"}
+                              >
+                                {visibleJuniorCollegeSuggestions.map((suggestion, suggestionIndex) => {
+                                  const absoluteSuggestionIndex = (suggestionPage - 1) * SUGGESTIONS_PER_PAGE + suggestionIndex;
+                                  const cardTheme =
+                                    absoluteSuggestionIndex % 3 === 0
+                                      ? {
+                                          band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_32%),linear-gradient(135deg,#5BBDA7,#168A7C)]",
+                                          label: "Best Match",
+                                          labelIcon: <Trophy className="size-4 fill-[#F4B400]/30" />,
+                                          pill: "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00]",
+                                          metric: "text-[#008C46]",
+                                          cta: "bg-[#FFF8E5] text-[#D99A00]",
+                                        }
+                                      : absoluteSuggestionIndex % 3 === 1
+                                        ? {
+                                            band: "bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.25),transparent_35%),linear-gradient(135deg,#7182F4,#C4B5FD)]",
+                                            label: "High Match",
+                                            labelIcon: <Check className="size-4" />,
+                                            pill: "border-[#CDEFD8] bg-[#ECFFF2] text-[#008C46]",
+                                            metric: "text-[#008C46]",
+                                            cta: "bg-[#ECFFF2] text-[#008C46]",
+                                          }
+                                        : {
+                                            band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.34),transparent_32%),linear-gradient(135deg,#FF6F61,#FFD0A3)]",
+                                            label: "Top Match",
+                                            labelIcon: <Trophy className="size-4 fill-[#D99A00]/30" />,
+                                            pill: "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00]",
+                                            metric: "text-[#D94E00]",
+                                            cta: "bg-[#FFF8E5] text-[#D99A00]",
+                                          };
+
+                                  if (suggestionView === "list") {
+                                    return (
+                                      <a
+                                        key={suggestion.id}
+                                        href={suggestion.href}
+                                        className="group grid min-h-[108px] grid-cols-[72px_minmax(0,1fr)_86px_86px_32px] items-center gap-5 rounded-[18px] border border-[#E6E6E6] bg-white px-5 py-4 shadow-[0_8px_18px_rgba(15,27,37,0.04)] transition hover:border-[#F4B400] hover:shadow-[0_14px_26px_rgba(15,27,37,0.08)]"
+                                      >
+                                        <CollegeLogoBadge
+                                          src={suggestion.logo}
+                                          alt={suggestion.collegeName}
+                                          className="size-[68px] rounded-full"
+                                          imageClassName="rounded-full"
+                                          fallback={<Building2 className="size-7" />}
+                                        />
+                                        <div className="min-w-0">
+                                          <div className="truncate text-[20px] font-semibold text-[#0F1B25]">
+                                            {suggestion.collegeName}
+                                          </div>
+                                          <div className="mt-2 flex min-w-0 items-center gap-2 text-[16px] text-[#5F6B76]">
+                                            <span className="truncate font-medium">{suggestion.ownershipType}</span>
+                                            <span aria-hidden="true">.</span>
+                                            <span className="truncate">{suggestion.location || selectedState}</span>
+                                          </div>
+                                        </div>
+                                        <div className="text-center">
+                                          <div className="text-[14px] font-normal text-[#8A949F]">Est.</div>
+                                          <div className="mt-1 text-[18px] font-semibold text-[#0F1B25]">{suggestion.establishedYear}</div>
+                                        </div>
+                                        <div className="text-center">
+                                          <div className="text-[14px] font-normal text-[#8A949F]">Ranking</div>
+                                          <div className="mt-1 text-[18px] font-semibold text-[#0F1B25]">{suggestion.ranking}</div>
+                                        </div>
+                                        <ArrowRight className="size-5 text-[#B8C0C8] transition group-hover:translate-x-1 group-hover:text-[#D99A00]" />
+                                      </a>
+                                    );
+                                  }
+
+                                  return (
+                                  <a
+                                    key={suggestion.id}
+                                    href={suggestion.href}
+                                    className="group overflow-hidden rounded-[14px] border border-[#E6E6E6] bg-white shadow-[0_18px_34px_rgba(15,27,37,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,27,37,0.12)]"
+                                  >
+                                    <div className={`relative min-h-[205px] overflow-hidden p-5 text-white ${cardTheme.band}`}>
+                                      <span className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium ${cardTheme.pill}`}>
+                                        {cardTheme.labelIcon}
+                                        {cardTheme.label}
+                                      </span>
+                                      <span className="absolute right-5 top-5 flex size-10 items-center justify-center rounded-[10px] bg-white text-[#0F1B25] shadow-[0_10px_18px_rgba(15,27,37,0.16)]">
+                                        <BookOpen className="size-5" />
+                                      </span>
+                                      <div className="mt-12 flex items-center gap-5">
+                                        <CollegeLogoBadge
+                                          src={suggestion.logo}
+                                          alt={suggestion.collegeName}
+                                          className="size-[74px] shrink-0 rounded-full border-4 border-white/70 shadow-[0_12px_20px_rgba(15,27,37,0.16)]"
+                                          imageClassName="rounded-full"
+                                          fallback={<Building2 className="size-8" />}
+                                        />
+                                        <div className="min-w-0">
+                                          <div className="line-clamp-2 text-[22px] font-semibold leading-7 text-white">
+                                            {suggestion.collegeName}
+                                          </div>
+                                          <div className="mt-2.5 flex min-w-0 items-center gap-2 text-[17px] font-normal text-white/95">
+                                            <MapPin className="size-4.5 shrink-0" />
+                                            <span className="truncate">{suggestion.location || selectedState}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="p-4">
+                                      <div className="grid grid-cols-2 overflow-hidden rounded-[10px] bg-[#F8F9FB]">
+                                        <div className="border-r border-[#DDE2E7] px-3 py-3 text-center">
+                                          <div className="text-[13px] font-medium uppercase text-[#354150]">Cut Off</div>
+                                          <div className={`mt-1.5 text-[20px] font-semibold ${cardTheme.metric}`}>
+                                          {suggestion.cutoffLabel}
+                                          </div>
+                                        </div>
+                                        <div className="px-3 py-3 text-center">
+                                          <div className="text-[13px] font-medium uppercase text-[#354150]">Ranking</div>
+                                          <div className="mt-1.5 text-[20px] font-semibold text-[#0F1B25]">
+                                            {suggestion.ranking}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[14px] leading-5 text-[#0F1B25]">
+                                        <span className="inline-flex min-w-0 items-center gap-2">
+                                          <GraduationCap className="size-4 shrink-0" />
+                                          <span>{suggestion.ownershipType}</span>
+                                        </span>
+                                        <span className="text-[#8A949F]">.</span>
+                                        <span>{suggestion.accreditation}</span>
+                                        <span className="text-[#8A949F]">.</span>
+                                        <span className="inline-flex min-w-0 items-center gap-2">
+                                          <CalendarDays className="size-4 shrink-0" />
+                                          <span>{suggestion.establishedYear}</span>
+                                        </span>
+                                      </div>
+
+                                      <div className={`mt-5 inline-flex h-12 w-full items-center justify-center gap-3 rounded-[10px] text-[17px] font-semibold transition group-hover:brightness-95 ${cardTheme.cta}`}>
+                                        View College Details
+                                        <ArrowRight className="size-5 transition group-hover:translate-x-0.5" />
+                                      </div>
+                                    </div>
+                                  </a>
+                                  );
+                                })}
+                              </div>
+                              {suggestionPageCount > 1 ? (
+                                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                                  {visibleSuggestionPageNumbers[0] > 1 ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => goToSuggestionPage(1)}
+                                        className="inline-flex size-12 items-center justify-center rounded-[12px] border border-[#E6E6E6] bg-white text-[16px] font-semibold text-[#008C46] shadow-[0_6px_14px_rgba(15,27,37,0.08)] transition hover:border-[#F4B400] hover:bg-[#FFF4CC]"
+                                        aria-label="Go to page 1"
+                                      >
+                                        1
+                                      </button>
+                                      <span className="inline-flex size-12 items-center justify-center text-[18px] font-semibold text-[#0F1B25]">
+                                        ...
+                                      </span>
+                                    </>
+                                  ) : null}
+                                  {visibleSuggestionPageNumbers.map((pageNumber) => {
+                                    const isCurrentPage = suggestionPage === pageNumber;
+                                    return (
+                                      <button
+                                        key={pageNumber}
+                                        type="button"
+                                        onClick={() => goToSuggestionPage(pageNumber)}
+                                        className={`inline-flex size-12 items-center justify-center rounded-[12px] text-[16px] font-semibold transition ${
+                                          isCurrentPage
+                                            ? "bg-[#F4B400] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.24)]"
+                                            : "bg-white text-[#008C46] hover:bg-[#FFF4CC]"
+                                        } ${isCurrentPage ? "" : "border border-transparent"}`}
+                                        aria-current={isCurrentPage ? "page" : undefined}
+                                        aria-label={`Go to page ${pageNumber}`}
+                                      >
+                                        {pageNumber}
+                                      </button>
+                                    );
+                                  })}
+                                  {visibleSuggestionPageNumbers[visibleSuggestionPageNumbers.length - 1] < suggestionPageCount ? (
+                                    <>
+                                      <span className="inline-flex size-12 items-center justify-center text-[18px] font-semibold text-[#0F1B25]">
+                                        ...
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => goToSuggestionPage(suggestionPageCount)}
+                                        className="inline-flex size-12 items-center justify-center rounded-[12px] bg-white text-[16px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC]"
+                                        aria-label={`Go to page ${suggestionPageCount}`}
+                                      >
+                                        {suggestionPageCount}
+                                      </button>
+                                    </>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={() => goToSuggestionPage(suggestionPage + 1)}
+                                    disabled={suggestionPage >= suggestionPageCount}
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] px-4 text-[17px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] disabled:cursor-not-allowed disabled:text-[#B8C0C8] disabled:hover:bg-transparent"
+                                  >
+                                    Next
+                                    <ArrowRight className="size-4" />
+                                  </button>
+                                </div>
+                              ) : null}
+                              </>
+                            ) : (
+                              <div className="mt-3 rounded-[8px] border border-[#dce5fb] bg-[#fbfdff] px-4 py-5 text-center">
+                                <div className="text-[0.78rem] font-extrabold text-[#052a82]">
+                                  No cutoff-matched colleges found yet.
+                                </div>
+                                <div className="mt-1 text-[0.68rem] font-semibold text-[#52618a]">
+                                  Add {selectedDegree || "degree"} courses with cutoff details in admin to show suggestions here.
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                        </div>
+                      ) : (
+                      <>
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
+                        <div className="rounded-[8px] border border-[#dce5fb] bg-[#fbfdff] p-3">
+                          <div className="flex items-center justify-between gap-3 text-[0.74rem] font-bold text-[#52618a]">
+                            <span>
+                              Question {activeJuniorQuestionIndex + 1} of {juniorQuestionTotal}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-[#0856dc]">
+                              <Clock className="size-4" />
+                              <span className="text-[1.05rem] font-extrabold leading-5">
+                                {formatTimer(juniorTimerSeconds)}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="mt-2 inline-flex rounded-full bg-[#eef4ff] px-2.5 py-1 text-[0.68rem] font-bold text-[#0856dc]">
+                            {activeJuniorQuestion.subject}
+                          </div>
+                          <p className="mt-3 min-h-[54px] text-[0.82rem] font-semibold leading-5 text-[#17356f]">
+                            {activeJuniorQuestion.question}
+                          </p>
+                          <div className="mt-4 grid gap-2">
+                            {activeJuniorQuestion.options.map((option, optionIndex) => {
+                              const optionLetter = String.fromCharCode(65 + optionIndex);
+                              const isSelected = selectedJuniorAnswer === optionLetter;
+                              return (
+                                <button
+                                  key={`${activeJuniorQuestion.id}-${optionIndex}`}
+                                  type="button"
+                                  onClick={() => selectJuniorAnswer(optionIndex)}
+                                  disabled={!hasStartedJuniorTest || hasSubmittedJuniorTest}
+                                  className={`grid min-h-12 grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 rounded-[8px] border px-3 py-2 text-left text-[0.82rem] font-bold transition ${
+                                    isSelected
+                                      ? "border-[#0856dc] bg-[#eef4ff] text-[#0856dc] shadow-[0_8px_16px_rgba(8,86,220,0.12)]"
+                                      : hasStartedJuniorTest && !hasSubmittedJuniorTest
+                                        ? "border-[#dce5fb] bg-white text-[#17356f] hover:border-[#0856dc] hover:bg-[#f8fbff]"
+                                        : "cursor-not-allowed border-[#dce5fb] bg-white text-[#9aa8c7]"
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex size-7 items-center justify-center rounded-full text-[0.78rem] ${
+                                      isSelected ? "bg-[#0856dc] text-white" : "bg-[#f3f6ff] text-[#0856dc]"
+                                    }`}
+                                  >
+                                    {optionLetter}
+                                  </span>
+                                  <span className="min-w-0 break-words">{option}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="rounded-[8px] border border-[#dce5fb] bg-white p-3">
+                          <div className="text-[0.74rem] font-bold text-[#052a82]">Questions</div>
+                          <div className="mt-3 grid grid-cols-5 gap-2">
+                            {juniorQuestions.map((question, index) => {
+                              const questionKey = `${question.subject}-${question.id}-${index}`;
+                              const isAnswered = Boolean(juniorAnswers[questionKey]);
+                              const isActive = index === activeJuniorQuestionIndex;
+                              return (
+                                <button
+                                  key={questionKey}
+                                  type="button"
+                                  onClick={() => setActiveJuniorQuestionIndex(index)}
+                                  disabled={!hasStartedJuniorTest}
+                                  className={`flex size-7 items-center justify-center rounded-full text-[0.68rem] font-bold transition ${
+                                    isActive
+                                      ? "bg-[#0856dc] text-white"
+                                      : isAnswered
+                                        ? "bg-[#10a85a] text-white"
+                                        : hasStartedJuniorTest
+                                          ? "bg-[#eef4ff] text-[#052a82] hover:bg-[#dce8ff]"
+                                          : "cursor-not-allowed bg-[#f3f6ff] text-[#9aa8c7]"
+                                  }`}
+                                  aria-label={`Go to question ${index + 1}`}
+                                >
+                                  {index + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {!hasStartedJuniorTest ? (
+                        <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={goToPreviousStep}
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0F1B25] bg-[#0F1B25] px-6 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                          >
+                            Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setHasStartedJuniorTest(true)}
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                          >
+                            Start Assessment
+                          </button>
+                        </div>
+                      ) : (
+                      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            onClick={goToPreviousStep}
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                          >
+                            Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={goToPreviousJuniorQuestion}
+                            disabled={activeJuniorQuestionIndex === 0}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border border-[#dce5fb] bg-white px-5 text-[0.82rem] font-bold text-[#052a82] shadow-[0_8px_16px_rgba(20,42,99,0.06)] transition hover:bg-[#f4f7ff] disabled:cursor-not-allowed disabled:text-[#9aa8c7] disabled:hover:bg-white"
+                          >
+                            Previous
+                          </button>
+                        </div>
+                        {activeJuniorQuestionIndex >= juniorQuestions.length - 1 ? (
+                          <button
+                            type="button"
+                            onClick={submitJuniorTest}
+                            disabled={!selectedJuniorAnswer || hasSubmittedJuniorTest}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white disabled:cursor-not-allowed disabled:bg-[#9db8ed] disabled:text-white"
+                          >
+                            {hasSubmittedJuniorTest ? "Submitted" : "Submit"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={goToNextJuniorQuestion}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                          >
+                            Next
+                            <ArrowRight className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                      )}
+                      </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-[8px] border border-[#dce5fb] bg-[#fbfdff] px-4 py-5 text-center text-[0.82rem] font-semibold text-[#52618a]">
+                      {juniorQuestionsStatus ||
+                        `No saved questions found for ${selectedDegree || "this degree"} ${juniorQuestionLevelGroup || selectedLevel}.`}
+                    </div>
+                  )}
+                  {!activeJuniorQuestion ? (
+                    <div className="mt-4 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={goToPreviousStep}
+                        className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#dce5fb] bg-white px-6 text-[0.82rem] font-bold text-[#052a82] shadow-[0_8px_16px_rgba(20,42,99,0.06)] transition hover:bg-[#f4f7ff]"
+                      >
+                        Back
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {inlineMatchQueryString ? (
+                <div ref={inlineMatchResultsRef} className="mt-6 scroll-mt-6 overflow-hidden rounded-[18px]">
+                  <div className="mb-4 flex justify-start">
+                    <button
+                      type="button"
+                      onClick={goBackFromInlineResults}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                    >
+                      <ArrowRight className="size-4 rotate-180" />
+                      Back
+                    </button>
+                  </div>
+                  <CutoffClient
+                    embedded
+                    selectedLevel={
+                      pickInlineMatchParam("level") ||
+                      pickInlineMatchParam("standard") ||
+                      pickInlineMatchParam("class")
+                    }
+                    selectedState={pickInlineMatchParam("state") || "Tamil Nadu"}
+                    selectedDegree={pickInlineMatchParam("degree")}
+                    selectedCourse={pickInlineMatchParam("course")}
+                    selectedSpecialization={pickInlineMatchParam("specialization")}
+                    selectedCategory={pickInlineMatchParam("category")}
+                    selectedDreamCollege={pickInlineMatchParam("dreamCollege")}
+                    selectedCollegeType={pickInlineMatchParam("collegeType")}
+                    selectedAdmissionType={pickInlineMatchParam("admissionType")}
+                    enteredCutoff={inlineEnteredScore}
+                    studentName={
+                      pickInlineMatchParam("name") ||
+                      pickInlineMatchParam("studentName") ||
+                      pickInlineMatchParam("fullName") ||
+                      pickInlineMatchParam("username")
+                    }
+                    submittedDetails={inlineSubmittedDetails}
+                    colleges={colleges}
+                    courses={courses}
+                  />
+                </div>
+              ) : null}
+
+              {activeStep <= 3 || ((activeStep === 4 || activeStep === 5) && isJuniorLevel) ? null : inlineMatchQueryString ? null : (
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                {activeStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={goToPreviousStep}
+                    className="inline-flex h-11 items-center justify-center rounded-[8px] border border-[#dce5fb] bg-white px-6 text-[0.9rem] font-bold text-[#052a82] shadow-[0_10px_18px_rgba(20,42,99,0.06)] transition hover:bg-[#f4f7ff] sm:min-w-[120px]"
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={resetFormFields}
+                    className="inline-flex h-11 items-center justify-center rounded-[8px] border border-[#dce5fb] bg-white px-6 text-[0.9rem] font-bold text-[#052a82] shadow-[0_10px_18px_rgba(20,42,99,0.06)] transition hover:bg-[#f4f7ff] sm:min-w-[120px]"
+                  >
+                    Reset
+                  </button>
+                )}
                 <button
-                  type="button"
-                  onClick={resetFormFields}
-                  className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#142a63] bg-white px-6 text-[0.95rem] font-semibold text-[#142a63] shadow-[0_10px_18px_rgba(20,42,99,0.08)] transition hover:bg-[#f4f7ff] sm:min-w-[140px]"
+                  type={activeStep < 4 ? "button" : "submit"}
+                  onClick={activeStep < 4 ? goToNextStep : undefined}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.9rem] font-bold text-[#0F1B25] shadow-[0_12px_22px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white sm:min-w-[140px]"
                 >
-                  Reset
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[#142a63] px-6 text-[0.95rem] font-semibold text-white shadow-[0_12px_22px_rgba(20,42,99,0.2)] transition hover:bg-[#0f1f4a] sm:min-w-[140px]"
-                >
-                  Calculate
+                  {activeStep < 4 ? "Next" : isJuniorLevel ? "View Results" : "Calculate"}
+                  <ArrowRight className="size-4" />
                 </button>
               </div>
+              )}
             </form>
           </div>
         </section>
-        {inlineMatchQueryString ? (
-          <div ref={inlineMatchResultsRef} className="mt-8 scroll-mt-6 overflow-hidden rounded-[18px]">
-            <CutoffClient
-              embedded
-              selectedLevel={
-                pickInlineMatchParam("level") ||
-                pickInlineMatchParam("standard") ||
-                pickInlineMatchParam("class")
-              }
-              selectedState={pickInlineMatchParam("state") || "Tamil Nadu"}
-              selectedDegree={pickInlineMatchParam("degree")}
-              selectedCourse={pickInlineMatchParam("course")}
-              selectedSpecialization={pickInlineMatchParam("specialization")}
-              selectedCategory={pickInlineMatchParam("category")}
-              selectedDreamCollege={pickInlineMatchParam("dreamCollege")}
-              selectedCollegeType={pickInlineMatchParam("collegeType")}
-              selectedAdmissionType={pickInlineMatchParam("admissionType")}
-              enteredCutoff={inlineEnteredScore}
-              studentName={
-                pickInlineMatchParam("name") ||
-                pickInlineMatchParam("studentName") ||
-                pickInlineMatchParam("fullName") ||
-                pickInlineMatchParam("username")
-              }
-              submittedDetails={inlineSubmittedDetails}
-              colleges={colleges}
-              courses={courses}
-            />
           </div>
-        ) : null}
         </div>
       </div>
     </main>
@@ -1996,7 +3779,7 @@ function FieldShell({
   error?: string;
 }) {
   return (
-    <label
+    <div
       data-field-id={fieldId}
       className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
         invalid
@@ -2036,7 +3819,7 @@ function FieldShell({
           <span>{error}</span>
         </div>
       ) : null}
-    </label>
+    </div>
   );
 }
 
@@ -2060,7 +3843,7 @@ function AcademicShell({
   error?: string;
 }) {
   return (
-    <label
+    <div
       data-field-id={fieldId}
       className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
         invalid
@@ -2101,7 +3884,7 @@ function AcademicShell({
           <span>{error}</span>
         </div>
       ) : null}
-    </label>
+    </div>
   );
 }
 
@@ -2151,7 +3934,6 @@ const academicInputClassName =
   "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#142a63] outline-none transition placeholder:text-[#7a87ad]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
-const getSelectClassName = (baseClassName: string, invalid: boolean) =>
-  `${baseClassName}${invalid ? " text-[#142a63]" : ""}`;
+
 
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -1667,11 +1667,16 @@ export function CutoffClient({
   const suggestedCollegeRows = matchingColleges
     .filter((college) => !matchesSelectedCollegeKey(college.id) && !matchesSelectedCollegeKey(college.name))
     .slice(0, 5);
+
+  if (isJuniorLevel) {
+    return null;
+  }
+
   if (!isJuniorLevel) {
     return (
       <>
         {!embedded ? <Navbar /> : null}
-        <main className="min-h-screen bg-[#f5f5f5] px-4 py-4 text-slate-900 sm:px-6">
+        <main className="cutoff-result-theme min-h-screen bg-[#FFFFFF] px-4 py-4 text-[#0F1B25] sm:px-6">
           <div className="mx-auto w-full max-w-[1180px]">
             
 
@@ -1902,9 +1907,9 @@ export function CutoffClient({
 
               <aside className="space-y-4">
                 <article className="overflow-hidden rounded-[20px] border border-[#dce6fb] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98)_0%,rgba(244,248,255,0.97)_52%,rgba(237,244,255,0.99)_100%)] p-4 shadow-[0_20px_44px_rgba(20,42,99,0.09)]">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
                     <div className="min-w-0">
-                      <h2 className="whitespace-nowrap text-[1rem] font-black tracking-[-0.04em] text-[#17337c] sm:text-[1.08rem]">
+                      <h2 className="text-[1rem] font-black tracking-[-0.04em] text-[#17337c] sm:text-[1.08rem]">
                         Cutoff Comparison
                       </h2>
                       <p className="mt-0.5 text-[0.8rem] font-medium text-[#7a87b6]">
@@ -1913,7 +1918,7 @@ export function CutoffClient({
                     </div>
 
                     <div
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.72rem] font-black shadow-[0_8px_18px_rgba(16,163,127,0.10)] ${
+                      className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-2.5 py-1.5 text-[0.72rem] font-black shadow-[0_8px_18px_rgba(16,163,127,0.10)] sm:self-auto ${
                         hasPositiveCollegeMatch
                           ? "border-[#bff2df] bg-[linear-gradient(180deg,#f2fff9_0%,#ecfff6_100%)] text-[#149b74]"
                           : "border-[#ffd7d7] bg-[linear-gradient(180deg,#fff8f8_0%,#fff1f1_100%)] text-[#d14343]"
@@ -1931,9 +1936,9 @@ export function CutoffClient({
                   </div>
 
                   <div className="relative mt-5 rounded-[20px] border border-[#e4ecff] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,249,255,0.98)_100%)] px-3.5 pb-4.5 pt-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                    <div className="pointer-events-none absolute inset-x-5 top-4 h-32 rounded-full bg-[radial-gradient(circle,rgba(51,119,255,0.14)_0%,rgba(255,255,255,0)_72%)] blur-2xl" />
+                    <div className="pointer-events-none absolute inset-x-5 top-4 h-24 rounded-full bg-[radial-gradient(circle,rgba(244,180,0,0.16)_0%,rgba(255,255,255,0)_72%)] blur-2xl" />
                     <div className="relative mx-auto w-full max-w-[250px]">
-                      <div className="relative mx-auto h-[228px] w-[228px]">
+                      <div className="relative mx-auto h-[210px] w-[218px]">
                         <svg viewBox={`0 0 ${gaugeSize} ${gaugeSize}`} className="h-full w-full overflow-visible">
                           <circle
                             cx={gaugeCenter}
@@ -1959,9 +1964,9 @@ export function CutoffClient({
                           />
                           <defs>
                             <linearGradient id="compactScoreGaugeGradient" x1="58" y1="230" x2="246" y2="70" gradientUnits="userSpaceOnUse">
-                              <stop offset="0%" stopColor="#15a5f6" />
-                              <stop offset="52%" stopColor="#1e74ff" />
-                              <stop offset="100%" stopColor="#173dff" />
+                              <stop offset="0%" stopColor="#F4B400" />
+                              <stop offset="52%" stopColor="#F4B400" />
+                              <stop offset="100%" stopColor="#D99A00" />
                             </linearGradient>
                           </defs>
                           <circle
@@ -1985,7 +1990,7 @@ export function CutoffClient({
                             strokeDasharray={`${scoreGaugeStrokeLength} ${gaugeCircumference}`}
                             strokeLinecap="round"
                             transform={`rotate(${gaugeStartAngle} ${gaugeCenter} ${gaugeCenter})`}
-                            style={{ filter: "drop-shadow(0 10px 14px rgba(24,97,255,0.22))" }}
+                            style={{ filter: "drop-shadow(0 10px 14px rgba(244,180,0,0.22))" }}
                           />
                           <circle
                             cx={scoreMarkerX}
@@ -1994,31 +1999,31 @@ export function CutoffClient({
                             fill="#ffffff"
                             stroke="#1758f4"
                             strokeWidth="5"
-                            style={{ filter: "drop-shadow(0 8px 14px rgba(24,97,255,0.18))" }}
+                            style={{ filter: "drop-shadow(0 8px 14px rgba(244,180,0,0.18))" }}
                           />
                         </svg>
 
-                        <div className="absolute inset-x-0 top-[52px] flex justify-center">
-                          <div className="flex h-[126px] w-[126px] flex-col items-center justify-center rounded-full bg-white/95 shadow-[0_18px_38px_rgba(31,80,173,0.08)] ring-1 ring-[#edf3ff]">
+                        <div className="absolute inset-x-0 top-[50px] flex justify-center">
+                          <div className="flex h-[116px] w-[116px] flex-col items-center justify-center rounded-full bg-white/95 shadow-[0_18px_38px_rgba(31,80,173,0.08)] ring-1 ring-[#edf3ff]">
                             <div className={`${compactGaugeScoreClass} font-black leading-none tracking-[-0.08em] text-[#1758f4]`}>
                               {enteredScoreLabel}
                             </div>
                             <div className="mt-1.5 text-[0.88rem] font-black text-[#17337c]">Your Score</div>
-                            <div className="mt-2.5 h-1 w-12 rounded-full bg-[linear-gradient(90deg,#1a73ff,#1848f3)]" />
+                            <div className="mt-2.5 h-1 w-12 rounded-full bg-[#F4B400]" />
                           </div>
                         </div>
 
-                        <div className="absolute bottom-[18px] left-0 text-center">
+                        <div className="absolute bottom-[8px] left-0 text-center">
                           <div className="text-[0.96rem] font-black text-[#2563eb]">0</div>
                           <div className="mt-1 text-[0.72rem] font-medium text-[#7384b9]">Minimum</div>
                         </div>
-                        <div className="absolute bottom-[34px] left-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
+                        <div className="absolute bottom-[24px] left-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
 
-                        <div className="absolute bottom-[18px] right-0 text-center">
+                        <div className="absolute bottom-[8px] right-0 text-center">
                           <div className="text-[0.96rem] font-black text-[#2563eb]">{resultMaximumCutoff}</div>
                           <div className="mt-1 text-[0.72rem] font-medium text-[#7384b9]">Maximum</div>
                         </div>
-                        <div className="absolute bottom-[34px] right-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
+                        <div className="absolute bottom-[24px] right-[50px] h-px w-[42px] border-t-2 border-dashed border-[#cddcff]" />
                       </div>
 
                       <div
@@ -2060,7 +2065,7 @@ export function CutoffClient({
                         <div className="h-3.5 overflow-hidden rounded-full border border-[#dbe6fb] bg-[repeating-linear-gradient(135deg,#eef3ff_0px,#eef3ff_4px,#f9fbff_4px,#f9fbff_8px)]">
                           {hasCollegeCutoff ? (
                             <div
-                              className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,#2f9ef5_0%,#1757f4_100%)] shadow-[0_8px_14px_rgba(23,88,244,0.18)]"
+                              className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-[#F4B400] shadow-[0_8px_14px_rgba(244,180,0,0.18)]"
                               style={{
                                 left: `${collegeGaugeRangeStartPercent}%`,
                                 width: `${Math.max(collegeGaugeRangeLength, 0)}%`,
@@ -2073,17 +2078,17 @@ export function CutoffClient({
                           className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
                           style={{ left: `${rangeBarMarkerPercent}%` }}
                         >
-                          <div className="rounded-[0.7rem] bg-[#1f6dff] px-1.5 py-0.5 text-[0.58rem] font-black leading-none text-white shadow-[0_10px_18px_rgba(23,88,244,0.2)]">
+                          <div className="rounded-[0.7rem] bg-[#F4B400] px-1.5 py-0.5 text-[0.58rem] font-black leading-none text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.2)]">
                             {enteredScoreLabel}
                           </div>
-                          <div className="-mt-0.5 h-2 w-2 rotate-45 bg-[#1f6dff]" />
+                          <div className="-mt-0.5 h-2 w-2 rotate-45 bg-[#F4B400]" />
                         </div>
 
                         <div
-                          className="absolute top-1/2 flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-[#1f6dff] bg-white shadow-[0_8px_16px_rgba(23,88,244,0.14)]"
+                          className="absolute top-1/2 flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-[#F4B400] bg-white shadow-[0_8px_16px_rgba(244,180,0,0.14)]"
                           style={{ left: `${rangeBarMarkerPercent}%` }}
                         >
-                          <span className="size-1.5 rounded-full bg-[#1f6dff]" />
+                          <span className="size-1.5 rounded-full bg-[#F4B400]" />
                         </div>
                       </div>
 
@@ -2102,7 +2107,7 @@ export function CutoffClient({
 
                   <div className="mt-4 rounded-[18px] border border-[#cfddfb] bg-[linear-gradient(135deg,#eef4ff_0%,#ffffff_85%)] p-3.5 shadow-[0_14px_28px_rgba(20,42,99,0.05)]">
                     <div className="flex items-start gap-2.5">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#276dff_0%,#1551ee_100%)] text-white shadow-[0_12px_24px_rgba(37,99,235,0.2)]">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F4B400] text-white shadow-[0_12px_24px_rgba(244,180,0,0.24)]">
                         <CircleAlert className="size-5" />
                       </div>
                       <div className="min-w-0">
@@ -2220,53 +2225,54 @@ export function CutoffClient({
             {showSuggestedColleges ? (
   <section
     ref={suggestedCollegesSectionRef}
-    className="mt-5 overflow-hidden rounded-[12px] bg-white shadow-[0_16px_36px_rgba(20,42,99,0.10)]"
+    className="mt-8 overflow-hidden rounded-[18px] border border-[#E6E6E6] bg-white px-6 py-7 shadow-[0_16px_36px_rgba(15,27,37,0.08)]"
   >
-    <div className="flex items-start gap-3 px-5 py-4">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] text-[#1264d8]">
-        <Building2 className="size-8" />
+    <div className="flex items-start gap-5">
+      <div className="flex size-12 shrink-0 items-center justify-center rounded-[10px] text-[#F4B400]">
+        <Building2 className="size-10" />
       </div>
 
       <div>
-        <h2 className="text-[1.12rem] font-black text-[#1264d8]">
-          Suggested Colleges for You
-        </h2>
+        <h1 className="font-[family:Gambarino] text-[35.2px] font-semibold leading-tight text-[#0F1B25]">
+          Suggested Colleges for <span className="font-[family:Outfit] text-[31.2px] italic font-semibold text-[#F4B400]">You</span>
+        </h1>
 
-        <p className="mt-1 text-[0.82rem] font-medium text-[#53617f]">
+        <p className="mt-3 text-[16px] font-normal text-[#5F6B76]">
           Colleges suggested based on your score and preferences.
         </p>
       </div>
     </div>
 
-    <div className="overflow-x-auto px-3 pb-5 [scrollbar-color:#1766f2_#e8eef8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1766f2] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e8eef8]">
-      <table className="w-full min-w-[1080px] border-collapse overflow-hidden rounded-[8px] text-left">
+    <div className="mt-7 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-white">
+    <div className="overflow-x-auto [scrollbar-color:#F4B400_#F8F9FB] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#F4B400] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F8F9FB]">
+      <table className="w-full min-w-[1360px] border-collapse text-left">
         <thead>
-          <tr className="bg-[linear-gradient(90deg,#1264d8_0%,#0756cf_100%)] text-white">
-            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+          <tr className="bg-[#0F1B25] text-white">
+            <th className="w-[90px] px-6 py-5 text-center text-[16px] font-medium uppercase">
               S.NO
             </th>
 
-            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+            <th className="w-[520px] px-6 py-5 text-[16px] font-medium uppercase">
               College
             </th>
 
-            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+            <th className="w-[300px] px-6 py-5 text-[16px] font-medium uppercase">
               Course
             </th>
 
-            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
-              Admission Type
+            <th className="px-6 py-5 text-center text-[16px] font-medium uppercase">
+              Admission<br />Type
             </th>
 
-            <th className="whitespace-nowrap px-5 py-3 text-center text-[0.78rem] font-black uppercase">
+            <th className="whitespace-nowrap px-6 py-5 text-center text-[16px] font-medium uppercase">
               Cut Off
             </th>
 
-            <th className="px-5 py-3 text-center text-[0.78rem] font-black uppercase">
-              Your Score
+            <th className="px-6 py-5 text-center text-[16px] font-medium uppercase">
+              Your<br />Score
             </th>
 
-            <th className="px-5 py-3 text-[0.78rem] font-black uppercase">
+            <th className="px-6 py-5 text-center text-[16px] font-medium uppercase">
               Match Status
             </th>
           </tr>
@@ -2296,15 +2302,6 @@ export function CutoffClient({
                   ? "close"
                   : "low";
 
-              const statusTheme =
-                status === "great"
-                  ? "bg-[#eaf8ef] text-[#11914a]"
-                  : status === "above"
-                  ? "bg-[#eaf8ef] text-[#11914a]"
-                  : status === "close"
-                  ? "bg-[#fff7e6] text-[#d88700]"
-                  : "bg-[#ffecec] text-[#e11d27]";
-
               const statusTitle =
                 status === "great"
                   ? "Great Match!"
@@ -2326,47 +2323,47 @@ export function CutoffClient({
               return (
                 <tr
                   key={`${college.id}-${index}`}
-                  className="border-b border-[#edf1f7] last:border-b-0"
+                  className="border-b border-[#E6E6E6] last:border-b-0"
                 >
-                  <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                  <td className="px-6 py-9 text-center text-[16px] font-normal text-[#0F1B25]">
                     {index + 1}
                   </td>
 
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-7">
                     <div
                       onClick={() =>
                         router.push(`/college/${college.id}`)
                       }
-                      className="flex cursor-pointer items-center gap-4 rounded-[10px] p-2 transition hover:bg-[#f5f8ff]"
+                      className="flex cursor-pointer flex-col items-start gap-4 rounded-[10px] p-2 transition hover:bg-[#F8F9FB]"
                     >
-                      <div className="relative h-[58px] w-[92px] shrink-0 overflow-hidden rounded-[8px] border border-[#e5edf8] bg-[#f3f6fb]">
+                      <div className="relative h-[76px] w-[128px] shrink-0 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-[#F8F9FB]">
                         {college.image ? (
                           <Image
                             src={college.image}
                             alt={college.name}
                             fill
-                            sizes="92px"
+                            sizes="128px"
                             className="object-cover transition duration-300 hover:scale-105"
                           />
                         ) : (
-                          <div className="flex h-full w-full flex-col items-center justify-center bg-[linear-gradient(135deg,#eef6ff_0%,#dfefff_100%)] px-2 text-center">
-                            <Building2 className="size-6 text-[#15528c]" />
-                            <span className="mt-1 text-[0.55rem] font-black leading-3 text-[#15528c]">
-                              Campus Visual
+                          <div className="flex h-full w-full flex-col items-center justify-center bg-white px-2 text-center text-[#F4B400]">
+                            <Building2 className="size-8" />
+                            <span className="mt-1 text-[16px] font-medium leading-5">
+                              Campus<br />Visual
                             </span>
                           </div>
                         )}
                       </div>
 
                       <div className="min-w-0">
-                        <p className="max-w-[230px] text-[0.9rem] font-black leading-5 text-[#142a63] hover:text-[#1264d8]">
+                        <p className="max-w-[440px] text-[20px] font-semibold leading-7 text-[#0F1B25] hover:text-[#D99A00]">
                           {college.name}
                         </p>
 
-                        <p className="mt-1 flex items-center gap-1 text-[0.78rem] font-medium text-[#53617f]">
-                          <MapPin className="size-3.5 shrink-0" />
+                        <p className="mt-3 flex max-w-[440px] items-center gap-2 text-[16px] font-normal text-[#5F6B76]">
+                          <MapPin className="size-5 shrink-0" />
 
-                          <span className="truncate">
+                          <span>
                             {college.location ||
                               selectedState ||
                               "Tamil Nadu"}
@@ -2376,15 +2373,15 @@ export function CutoffClient({
                     </div>
                   </td>
 
-                  <td className="px-5 py-4 text-[0.88rem] font-semibold leading-6 text-[#142a63]">
+                  <td className="px-6 py-7 text-[16px] font-normal leading-7 text-[#0F1B25]">
                     {selectedCourse || "-"}
                   </td>
 
-                  <td className="px-5 py-4 text-center text-[0.88rem] font-black text-[#142a63]">
+                  <td className="px-6 py-7 text-center text-[16px] font-normal text-[#0F1B25]">
                     {selectedAdmissionType || "-"}
                   </td>
 
-                  <td className="whitespace-nowrap px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                  <td className="whitespace-nowrap px-6 py-7 text-center text-[16px] font-normal text-[#0F1B25]">
                     {college.cutoffLabel ||
                       (collegeCutoff !== null
                         ? formatResultValue(
@@ -2393,22 +2390,20 @@ export function CutoffClient({
                         : "-")}
                   </td>
 
-                  <td className="px-5 py-4 text-center text-[0.9rem] font-black text-[#142a63]">
+                  <td className="px-6 py-7 text-center text-[16px] font-normal text-[#0F1B25]">
                     {enteredScoreLabel}
                   </td>
 
-                  <td className="px-5 py-4">
-                    <div
-                      className={`inline-flex min-w-[190px] items-center gap-3 rounded-[8px] px-4 py-3 ${statusTheme}`}
-                    >
-                      <CheckCircle2 className="size-6 shrink-0" />
+                  <td className="px-6 py-7">
+                    <div className="ml-auto flex min-h-[150px] w-[170px] items-center gap-4 rounded-[8px] bg-[#FFF4CC] px-5 py-5 text-[#0F1B25]">
+                      <CheckCircle2 className="size-7 shrink-0 text-[#F4B400]" />
 
                       <div>
-                        <p className="text-[0.86rem] font-black">
+                        <p className="text-[24px] font-semibold leading-7 text-[#0F1B25]">
                           {statusTitle}
                         </p>
 
-                        <p className="mt-0.5 text-[0.74rem] font-semibold text-[#142a63]">
+                        <p className="mt-3 text-[16px] font-normal leading-6 text-[#0F1B25]">
                           {statusText}
                         </p>
                       </div>
@@ -2421,7 +2416,7 @@ export function CutoffClient({
             <tr>
               <td
                 colSpan={7}
-                className="px-5 py-8 text-center text-sm font-semibold text-[#53617f]"
+                className="px-6 py-10 text-center text-[16px] font-normal text-[#5F6B76]"
               >
                 Suggested colleges are not available for this selection yet.
               </td>
@@ -2430,6 +2425,12 @@ export function CutoffClient({
         </tbody>
       </table>
     </div>
+    </div>
+
+    <p className="mt-6 flex items-center justify-center gap-2 text-[16px] font-normal text-[#5F6B76]">
+      <CircleAlert className="size-5 text-[#F4B400]" />
+      Cutoff ranges may vary each year. Please verify with official college sources.
+    </p>
   </section>
 ) : null}
           </div>
@@ -2438,903 +2439,7 @@ export function CutoffClient({
     );
   }
 
-  return (
-    <>
-      {!embedded ? <Navbar /> : null}
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(191,219,254,0.38),transparent_28%),radial-gradient(circle_at_top_right,rgba(196,181,253,0.24),transparent_24%),#f8fbff] text-slate-800">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
-        {/* Header Welcome Section */}
-        <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_24px_80px_rgba(59,130,246,0.12)] backdrop-blur-xl">
-          <div className="px-5 py-5 sm:px-7 sm:py-6 lg:px-8 xl:px-10">
-            <div className="flex flex-col gap-4 rounded-[1.6rem] border border-slate-100 bg-white/90 px-4 py-4 shadow-[0_16px_48px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
-                  Premium Cutoff Intelligence
-                </p>
-                <h1 className="mt-2 text-[1.8rem] font-black tracking-[-0.05em] text-[#1e3a8a] sm:text-[2rem]">
-                  Hello, {safeStudentName}!
-                </h1>
-                <p className="mt-1.5 max-w-3xl text-sm text-slate-600">
-                  {isJuniorLevel
-                    ? "Let’s analyze your cutoff and plan your future with a cleaner view of school performance, strengths, and early college prediction."
-                    : "Let’s analyze your cutoff and plan your future with entrance-focused clarity, eligibility direction, and smarter college prediction."}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 self-start sm:self-center">
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-                  {topStandardLabel}
-                  <ChevronDown className="size-4 text-slate-500" />
-                </div>
-                <div className="relative h-12 w-12 overflow-hidden rounded-full border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#dbeafe)] shadow-[0_12px_24px_rgba(37,99,235,0.18)]">
-                  <Image
-                    src="/boy.png"
-                    alt="Student avatar"
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {!isJuniorLevel ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-[1.4rem] border border-sky-100 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(14,165,233,0.08)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">
-                      Current Standard
-                    </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#1d4ed8]">
-                      {topStandardLabel}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.4rem] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(99,102,241,0.08)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">
-                      Selected Degree
-                    </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#4338ca]">
-                      {selectedDegree || "Engineering"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.4rem] border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(16,185,129,0.08)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">
-                      Cutoff / Score
-                    </p>
-                    <p className="mt-1.5 text-[1.45rem] font-black tracking-[-0.04em] text-[#0f766e]">
-                      {enteredCutoff || "Pending"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.4rem] border border-violet-100 bg-[linear-gradient(180deg,rgba(245,243,255,0.95),rgba(255,255,255,0.96))] p-3.5 shadow-[0_14px_40px_rgba(139,92,246,0.08)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">
-                          Prediction Strength
-                        </p>
-                        <p className="mt-1.5 text-sm font-semibold text-[#312e81]">
-                          Smarter analysis. Clearer choices.
-                        </p>
-                      </div>
-                      <div className="rounded-full bg-[linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)] px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.28)]">
-                        {Math.max(48, predictorPercentage)}%
-                      </div>
-                    </div>
-                  </div>
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        {isJuniorLevel ? (
-          <>
-            {/* Enter Your Marks */}
-            <section className="rounded-[2.2rem] border border-[#dce8ff] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(241,246,255,0.92)_56%,rgba(255,255,255,0.98))] p-4 shadow-[0_32px_90px_rgba(59,130,246,0.1)] sm:p-6 xl:p-7">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h2 className="text-[2rem] font-black tracking-[-0.05em] text-slate-950 sm:text-[2.4rem]">
-                    Enter your marks
-                  </h2>
-                  <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-                    Fill in your marks for each subject to get accurate performance analysis.
-                  </p>
-                </div>
-
-                <div className="rounded-[1.45rem] border border-[#e3ecff] bg-white/90 px-4 py-4 shadow-[0_18px_44px_rgba(59,130,246,0.08)] sm:px-5">
-                  <div className="flex items-center gap-4">
-                    <div className="inline-flex size-14 items-center justify-center rounded-[1rem] bg-[#eef5ff] text-[#2d6cff]">
-                      <LineChart className="size-7" />
-                    </div>
-                    <div>
-                      <p className="text-[1.1rem] font-semibold text-[#3254ff]">Track. Analyze. Improve.</p>
-                      <p className="mt-1 text-sm text-slate-500">Your performance journey starts here!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`mt-8 grid gap-5 ${juniorCardsGridClass(visibleJuniorStandards.length)}`}>
-                {visibleJuniorStandards.map((standard) => {
-                  const isActive = activeStandard === standard.id;
-                  const marks = marksByStandard[standard.id];
-
-                  return (
-                    <article
-                      key={standard.id}
-                      className={`rounded-[1.9rem] border border-[#dfe7fb] bg-white/90 p-5 shadow-[0_22px_60px_rgba(15,23,42,0.06)] transition ${
-                        juniorCardSpanClass(visibleJuniorStandards.length)
-                      } ${
-                        isActive
-                          ? `${standard.borderTone} shadow-[0_24px_70px_rgba(59,130,246,0.12)]`
-                          : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setActiveStandard(standard.id)}
-                          className={`inline-flex rounded-[1rem] bg-gradient-to-r px-6 py-3 text-[0.95rem] font-bold text-white shadow-[0_16px_28px_rgba(37,99,235,0.16)] ${standard.chipTone}`}
-                        >
-                          {standard.label}
-                        </button>
-                        <GraduationCap className={`size-7 ${standard.id === "6" ? "text-sky-500" : standard.id === "7" ? "text-emerald-500" : standard.id === "8" ? "text-violet-500" : standard.id === "9" ? "text-pink-500" : "text-orange-500"}`} />
-                      </div>
-
-                      <div className="mt-6 space-y-5">
-                        {juniorSubjectMeta.map((subject) => (
-                          <div
-                            key={`${standard.id}-${subject.key}`}
-                            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
-                          >
-                            <div className={`inline-flex size-14 shrink-0 items-center justify-center rounded-[1rem] ${subject.soft}`}>
-                              <subject.icon className={`size-7 ${subject.accent}`} />
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-2 text-[1.05rem] font-semibold text-slate-900">
-                                {subject.label}
-                              </div>
-                              <div
-                                className={`flex min-w-0 items-center gap-3 rounded-[1rem] border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition ${
-                                  marks[subject.key] > 0
-                                    ? "border-[#2563eb] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
-                                    : "border-[#93c5fd] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-[0_8px_18px_rgba(37,99,235,0.08)]"
-                                }`}
-                              >
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={marks[subject.key] || ""}
-                                  onChange={(event) =>
-                                    handleMarkChange(standard.id, subject.key, event.target.value)
-                                  }
-                                  placeholder="Enter marks"
-                                  className="h-10 flex-1 bg-transparent text-[1rem] font-medium text-slate-900 outline-none placeholder:text-[#b5c0e3]"
-                                  aria-label={`${standard.label} ${subject.label} marks`}
-                                />
-                                <span className="shrink-0 text-[1rem] font-semibold text-slate-800">/100</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-                  );
-                })}
-
-                {!showJuniorInlineCta(visibleJuniorStandards.length) ? (
-                <aside className={`flex flex-col ${juniorAsideSpanClass(visibleJuniorStandards.length)}`}>
-                  <div className="rounded-[1.9rem] bg-transparent p-2">
-                    <div className={`relative mx-auto w-full ${juniorIllustrationHeightClass(visibleJuniorStandards.length)}`}>
-                      <div className="absolute right-0 top-2 rounded-[1.6rem] border border-[#d9d7ff] bg-white/95 px-6 py-5 text-[1.1rem] leading-9 text-slate-900 shadow-[0_20px_48px_rgba(99,102,241,0.08)]">
-                        <div>Enter your marks,</div>
-                        <div>I&apos;ll help you <span className="font-bold text-[#3f51ff]">analyze!</span></div>
-                      </div>
-
-                      <div
-                        className={`absolute inset-x-0 bottom-0 ${
-                          visibleJuniorStandards.length === 1
-                            ? "top-4 scale-[1.08]"
-                            : visibleJuniorStandards.length === 3
-                              ? "top-20"
-                              : "top-16"
-                        }`}
-                      >
-                        <Image
-                          src="/boy.png"
-                          alt="Boy illustration"
-                          fill
-                          priority
-                          sizes="380px"
-                          className="object-contain object-bottom"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </aside>
-                ) : null}
-              </div>
-
-              {showJuniorInlineCta(visibleJuniorStandards.length) ? (
-                <div className="mt-6 grid gap-5 xl:grid-cols-12">
-                  <div className="rounded-[1.9rem] border border-[#dbe6ff] bg-white/80 px-5 py-5 shadow-[0_18px_44px_rgba(59,130,246,0.05)] xl:col-span-8">
-                    <div className="flex items-center gap-4 text-[#3556b8]">
-                      <div className="inline-flex size-12 items-center justify-center rounded-full bg-[#2f6dff] text-white shadow-[0_14px_28px_rgba(47,109,255,0.2)]">
-                        <CircleAlert className="size-5" />
-                      </div>
-                      <p className="text-lg font-medium">
-                        Please enter your marks for all subjects to get accurate performance analysis.
-                      </p>
-                    </div>
-                    <div className="mt-7 flex justify-center xl:justify-start">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!allVisibleJuniorMarksFilled) return;
-                          setAnalyzedStandard(activeStandard);
-                          setHasAnalyzedJunior(true);
-                        }}
-                        disabled={!allVisibleJuniorMarksFilled}
-                        className={`inline-flex min-h-16 w-full items-center justify-center gap-4 rounded-[1.3rem] px-6 py-4 text-base font-semibold text-white shadow-[0_28px_54px_rgba(63,81,255,0.28)] transition sm:w-auto sm:px-8 sm:text-lg sm:min-w-[20rem] ${
-                          allVisibleJuniorMarksFilled
-                            ? "bg-[linear-gradient(135deg,#4f63ff,#3158ff)] hover:-translate-y-0.5"
-                            : "cursor-not-allowed bg-[linear-gradient(135deg,#aab7ff,#8599ff)] opacity-70"
-                        }`}
-                      >
-                        <span className="inline-flex size-11 items-center justify-center rounded-full bg-white/12">
-                          <TrendingUp className="size-5" />
-                        </span>
-                        Analyze My Performance
-                        <ArrowUpRight className="size-6" />
-                      </button>
-                    </div>
-                  </div>
-                  <aside className="flex flex-col xl:col-span-4">
-                    <div className="rounded-[1.9rem] bg-transparent p-2">
-                      <div className={`relative mx-auto w-full ${juniorIllustrationHeightClass(visibleJuniorStandards.length)}`}>
-                        <div className="absolute right-0 top-2 rounded-[1.6rem] border border-[#d9d7ff] bg-white/95 px-6 py-5 text-[1.1rem] leading-9 text-slate-900 shadow-[0_20px_48px_rgba(99,102,241,0.08)]">
-                          <div>Enter your marks,</div>
-                          <div>I&apos;ll help you <span className="font-bold text-[#3f51ff]">analyze!</span></div>
-                        </div>
-                        <div className="absolute inset-x-0 bottom-0 top-20">
-                          <Image
-                            src="/boy.png"
-                            alt="Boy illustration"
-                            fill
-                            priority
-                            sizes="380px"
-                            className="object-contain object-bottom"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </aside>
-                </div>
-              ) : (
-                <>
-                  <div className="mt-6 rounded-[1.6rem] border border-[#dbe6ff] bg-white/80 px-5 py-5 shadow-[0_18px_44px_rgba(59,130,246,0.05)]">
-                    <div className="flex items-center gap-4 text-[#3556b8]">
-                      <div className="inline-flex size-12 items-center justify-center rounded-full bg-[#2f6dff] text-white shadow-[0_14px_28px_rgba(47,109,255,0.2)]">
-                        <CircleAlert className="size-5" />
-                      </div>
-                      <p className="text-lg font-medium">
-                        Please enter your marks for all subjects to get accurate performance analysis.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-7 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!allVisibleJuniorMarksFilled) return;
-                        setAnalyzedStandard(activeStandard);
-                        setHasAnalyzedJunior(true);
-                      }}
-                      disabled={!allVisibleJuniorMarksFilled}
-                      className={`inline-flex min-h-16 w-full items-center justify-center gap-4 rounded-[1.3rem] px-6 py-4 text-base font-semibold text-white shadow-[0_28px_54px_rgba(63,81,255,0.28)] transition sm:w-auto sm:px-8 sm:text-lg sm:min-w-[20rem] ${
-                        allVisibleJuniorMarksFilled
-                          ? "bg-[linear-gradient(135deg,#4f63ff,#3158ff)] hover:-translate-y-0.5"
-                          : "cursor-not-allowed bg-[linear-gradient(135deg,#aab7ff,#8599ff)] opacity-70"
-                      }`}
-                    >
-                      <span className="inline-flex size-11 items-center justify-center rounded-full bg-white/12">
-                        <TrendingUp className="size-5" />
-                      </span>
-                      Analyze My Performance
-                      <ArrowUpRight className="size-6" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-
-            {showJuniorAnalysis ? (
-            <>
-            {/* Performance Analysis Section - Full Width Row */}
-            <section ref={juniorAnalysisRef} className="w-full">
-              <article className="w-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                      Performance Analysis
-                    </div>
-                    <h3 className="mt-4 text-2xl font-black tracking-[-0.04em] text-slate-950">
-                      {labelForLevel(analyzedStandard)} performance snapshot
-                    </h3>
-                  </div>
-                  <div className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                    Average {analyzedAverage}%
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-[1.65rem] border border-[#dde7fb] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_14px_32px_rgba(15,23,42,0.04)] sm:p-5">
-                  <div className="mb-4 flex flex-wrap gap-4 text-xs font-semibold text-slate-700">
-                    {juniorSubjectMeta.map((subject) => (
-                      <div key={subject.key} className="inline-flex items-center gap-2">
-                        <span className={`inline-flex size-3 rounded-full ${subject.dotTone}`} />
-                        {subject.label}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-[1.35rem] border border-[#e4ebfb] bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)]">
-                      <div className="text-sm font-semibold text-slate-800">Subject Performance</div>
-                      <JuniorPerformanceBars
-                        standards={visibleJuniorStandards.map((option) => ({
-                          id: option.id,
-                          label: compactLevelLabel(option.label),
-                          marks: marksByStandard[option.id],
-                        }))}
-                        subjects={juniorSubjectMeta}
-                      />
-                    </div>
-
-                    <div className="rounded-[1.35rem] border border-[#e4ebfb] bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)]">
-                      <div className="text-sm font-semibold text-slate-800">Year-wise Improvement</div>
-                      <JuniorImprovementLines
-                        standards={visibleJuniorStandards.map((option) => ({
-                          id: option.id,
-                          label: compactLevelLabel(option.label),
-                          marks: marksByStandard[option.id],
-                        }))}
-                        subjects={juniorSubjectMeta}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </section>
-
-            {/* Strength, Weakness & Improvement Section - Separate Row */}
-            <section className="grid items-stretch gap-5 lg:grid-cols-2">
-                <article className="h-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                    Strength, Weakness & Improvement
-                  </div>
-
-                  <div className="mt-5 space-y-3">
-                    <div className="rounded-[1.35rem] border border-emerald-100 bg-[linear-gradient(180deg,#f0fdf4,#ffffff)] p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="inline-flex size-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-                          <Trophy className="size-5" />
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">
-                            Strong Subject
-                          </p>
-
-                          <h4 className="mt-1 text-lg font-black text-slate-950">
-                            {juniorSubjectMeta.find((item) => item.key === performanceSummary.strong[0])?.label}
-                          </h4>
-
-                          <p className="mt-1 text-sm text-slate-600">
-                            You scored {performanceSummary.strong[1]} marks in this subject. This is your strongest area.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.35rem] border border-rose-100 bg-[linear-gradient(180deg,#fff1f2,#ffffff)] p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="inline-flex size-11 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
-                          <Target className="size-5" />
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">
-                            Weak Subject
-                          </p>
-
-                          <h4 className="mt-1 text-lg font-black text-slate-950">
-                            {juniorSubjectMeta.find((item) => item.key === performanceSummary.weak[0])?.label}
-                          </h4>
-
-                          <p className="mt-1 text-sm text-slate-600">
-                            This subject needs more revision and regular practice to improve your score.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.35rem] border border-blue-100 bg-[linear-gradient(180deg,#eff6ff,#ffffff)] p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="inline-flex size-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-                          <TrendingUp className="size-5" />
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-                            Improve Subject
-                          </p>
-
-                          <h4 className="mt-1 text-lg font-black text-slate-950">
-                            {juniorSubjectMeta.find((item) => item.key === performanceSummary.improve[0])?.label}
-                          </h4>
-
-                          <p className="mt-1 text-sm text-slate-600">
-                            Improving this subject every week will help you achieve better results quickly.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-
-                <article className="h-full rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                    Recommended Group for {juniorRecommendationLabel()}
-                  </div>
-                  <div className="mt-5 rounded-[1.6rem] border border-[#dce5ff] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="inline-flex size-16 items-center justify-center rounded-full bg-[linear-gradient(180deg,#eef4ff_0%,#ffffff_100%)] text-[#2f63ff] shadow-[0_12px_28px_rgba(47,99,255,0.14)]">
-                        <groupRecommendation.icon className="size-8" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[#506aa3]">Recommended Group</p>
-                        <h4 className="mt-1 text-[2rem] font-black tracking-[-0.04em] text-[#1c46d7]">{groupRecommendation.title}</h4>
-                      </div>
-                    </div>
-                    <div className="mt-5 space-y-3">
-                      {groupRecommendation.points.map((point) => (
-                        <div key={point} className="flex items-start gap-3 text-[1rem] text-slate-800">
-                          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-500" />
-                          <span>{point}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              </section>
-              </>
-            ) : null}
-          </>
-        ) : (
-          <>
-            {/* Senior Cutoff Overview */}
-            <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-              <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0f766e,#14b8a6)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(20,184,166,0.2)]">
-                  Cutoff Overview
-                </div>
-
-                <h2 className="mt-4 text-2xl font-black tracking-[-0.04em] text-[#1e40af]">
-                  {selectedDegree || "Career"} cutoff summary
-                </h2>
-
-                <p className="mt-2 text-sm text-slate-600">
-                  This section includes cutoff prediction, eligibility guidance, and
-                  college matching features for 11th and 12th standard students in a
-                  new premium design.
-                </p>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1.25rem] border border-slate-100 bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Course
-                    </p>
-                    <p className="mt-2 text-lg font-black text-[#1d4ed8]">
-                      {selectedCourse || selectedDegree || "Not selected"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.25rem] border border-slate-100 bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Category
-                    </p>
-                    <p className="mt-2 text-lg font-black text-[#4338ca]">
-                      {selectedCategory || "Open Category"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.25rem] border border-slate-100 bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Admission Type
-                    </p>
-                    <p className="mt-2 text-lg font-black text-[#0f766e]">
-                      {selectedAdmissionType || "General Admission"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1.25rem] border border-slate-100 bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Entered Score
-                    </p>
-                    <p className="mt-2 text-lg font-black text-[#c2410c]">
-                      {enteredCutoff || "Pending"}
-                    </p>
-                  </div>
-                </div>
-
-                {showBArchResultBreakdown ? (
-                  <div className="mt-5 rounded-[1.5rem] border border-amber-100 bg-[linear-gradient(180deg,#fffaf0,#ffffff)] p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
-                      <PenTool className="size-4" />
-                      B.Arch Score Breakdown
-                    </div>
-
-                    <div className={`mt-4 grid gap-3 ${bArchSubmittedNataScore ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                      <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          {resolvedLevel === "11" ? "11th Marks Total" : "12th Marks Total"}
-                        </p>
-                        <p className="mt-2 text-lg font-black text-slate-900">
-                          {bArchSubmittedBoardTotal} / 600
-                        </p>
-                      </div>
-
-                      <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Converted Score
-                        </p>
-                        <p className="mt-2 text-lg font-black text-[#b45309]">
-                          {bArchSubmittedConvertedScore || "Pending"} / {resolvedLevel === "11" ? "400" : "200"}
-                        </p>
-                      </div>
-
-                      {bArchSubmittedNataScore ? (
-                        <div className="rounded-[1.1rem] border border-amber-100 bg-white p-3.5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            NATA Score
-                          </p>
-                          <p className="mt-2 text-lg font-black text-[#b45309]">
-                            {bArchSubmittedNataScore} / 200
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="mt-5 rounded-[1.5rem] border border-sky-100 bg-[linear-gradient(180deg,#eff6ff,#ffffff)] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
-                        Prediction Strength
-                      </p>
-                      <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-[#1e3a8a]">
-                        {predictorPercentage}%
-                      </p>
-                    </div>
-
-                    <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-[0_12px_24px_rgba(59,130,246,0.12)]">
-                      <Target className="size-6" />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 h-3 rounded-full bg-slate-100">
-                    <div
-                      className="h-3 rounded-full bg-[linear-gradient(90deg,#2563eb,#60a5fa)]"
-                      style={{ width: `${Math.max(18, predictorPercentage)}%` }}
-                    />
-                  </div>
-                </div>
-              </article>
-
-              <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.2)]">
-                  Eligibility & Exam Direction
-                </div>
-                <h3 className="mt-4 text-2xl font-black tracking-[-0.04em] text-[#1e40af]">{seniorGuide.title}</h3>
-                <p className="mt-2 text-sm text-slate-600">{seniorGuide.subtitle}</p>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-                  <div className="rounded-[1.45rem] border border-slate-100 bg-white p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <FileText className="size-4 text-sky-600" />
-                      Exams to Track
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {seniorGuide.exams.map((exam) => (
-                        <span key={exam} className="rounded-full border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
-                          {exam}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      {seniorGuide.strategy.map((point) => (
-                        <div key={point} className="flex items-center gap-2 rounded-[1rem] bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
-                          <Sparkles className="size-4 text-indigo-500" />
-                          {point}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1.45rem] border border-slate-100 bg-white p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <BookOpen className="size-4 text-indigo-600" />
-                      Current Checklist
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      {seniorGuide.checklist.map((point) => (
-                        <div key={point} className="flex items-start gap-3 rounded-[1rem] border border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] px-4 py-3 text-sm text-slate-700">
-                          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                          <span>{point}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </section>
-          </>
-        )}
-
-        {(!isJuniorLevel || showJuniorAnalysis) ? (
-          usesFocusedMatchFlow ? (
-            <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6 lg:p-7">
-              <div className="flex flex-wrap items-center gap-3 text-slate-800">
-                <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-[#1e40af]">
-                  College Predictor
-                </h2>
-              </div>
-
-              <div className="mt-6">
-                {matchingColleges.length === 0 ? (
-                  <div className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-500">
-                    No colleges found
-                  </div>
-                ) : hasExamBasedCutoffFlow ? (
-                  renderMatchedCollegeCards(matchingColleges)
-                ) : (
-                  <div className="space-y-5">
-                    <article className="rounded-[1.35rem] border border-emerald-100 bg-[linear-gradient(180deg,#f8fffb_0%,#ffffff_100%)] p-4 shadow-[0_14px_32px_rgba(16,185,129,0.06)]">
-                      <h3 className="text-[1.2rem] font-black tracking-[-0.04em] text-emerald-700">
-                        Premier Campus Picks
-                      </h3>
-                      <div className="mt-4">
-                        {twelfthBestColleges.length ? (
-                          renderMatchedCollegeCards(twelfthBestColleges, { horizontalScroll: true })
-                        ) : (
-                          <div className="rounded-[1rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                            No colleges found
-                          </div>
-                        )}
-                      </div>
-                    </article>
-
-                    <article className="rounded-[1.35rem] border border-sky-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 shadow-[0_14px_32px_rgba(59,130,246,0.06)]">
-                      <h3 className="text-[1.2rem] font-black tracking-[-0.04em] text-sky-700">
-                        More Matching Campuses
-                      </h3>
-                      <div className="mt-4">
-                        {twelfthOtherColleges.length ? (
-                          renderMatchedCollegeCards(twelfthOtherColleges, { horizontalScroll: true })
-                        ) : (
-                          <div className="rounded-[1rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                            No colleges found
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  </div>
-                )}
-              </div>
-            </section>
-          ) : (
-            <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6 lg:p-7">
-              <div className="flex flex-wrap items-center gap-3 text-slate-800">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <h2 className="text-[1.45rem] font-black tracking-[-0.04em] text-[#1e40af]">
-                    College Predictor
-                  </h2>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-5 lg:grid-cols-3">
-                {predictorTiers.map((tier) => (
-                  (() => {
-                    const theme = predictorTierTheme(tier.id);
-
-                    return (
-                  <article
-                    key={tier.id}
-                    className={`rounded-[1.25rem] border-2 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-5 ${theme.cardTone}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`inline-flex size-10 items-center justify-center rounded-full ${theme.iconWrap}`}>
-                        {tier.id === "tier1" ? <Trophy className="size-5" /> : tier.id === "tier2" ? <Medal className="size-5" /> : <Trophy className="size-5" />}
-                      </div>
-                      <div>
-                        <h3 className={`text-[1.45rem] font-black tracking-[-0.04em] ${theme.titleColor}`}>
-                          {tier.title}
-                        </h3>
-                        <p className={`mt-1 text-sm font-semibold ${theme.subtitleColor}`}>
-                          {tier.subtitle}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5">
-                      {tier.previewCards.length ? (
-                        <div className="overflow-x-auto pb-2">
-                          <div className="flex gap-3">
-                          {tier.previewCards.map((college) => (
-                            <Link
-                              key={`${tier.id}-${college.id}`}
-                              href={college.href}
-                              className="group box-border w-[min(11rem,calc(50vw-1rem))] max-w-full shrink-0 rounded-[1rem] border-2 border-[#d8e3ff] bg-white p-3 text-center shadow-[0_12px_28px_rgba(52,86,255,0.08)] transition-[border-color,box-shadow] duration-200 hover:border-[#8fb0ff] hover:shadow-[0_16px_30px_rgba(52,86,255,0.14)] sm:w-[calc(50%-0.375rem)]"
-                            >
-                              <div className="relative mx-auto h-[78px] w-full overflow-hidden rounded-[0.9rem] border-2 border-[#dfe7ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                                {college.isBestCollege ? (
-                                  <div className="absolute left-2 top-2 z-10 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.16em] text-white shadow-[0_8px_20px_rgba(249,115,22,0.24)]">
-                                    Best
-                                  </div>
-                                ) : null}
-                                <Image
-                                  src={college.image}
-                                  alt={college.name}
-                                  fill
-                                  sizes="(min-width: 1024px) 180px, 50vw"
-                                  className="object-cover transition duration-300 group-hover:scale-105"
-                                />
-                              </div>
-                              <p className="mt-3 line-clamp-2 text-[11px] font-semibold leading-4 text-slate-700">
-                                {college.name}
-                              </p>
-                              <p className="mt-2 text-[11px] font-bold text-sky-700">
-                                {college.cutoffLabel} cutoff
-                              </p>
-                            </Link>
-                          ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="rounded-[1rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                          Matching college data is still building for this combination.
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                    );
-                  })()
-                ))}
-              </div>
-            </section>
-          )
-        ) : null}
-
-        {!isJuniorLevel ? (
-          <section className={`grid gap-5 ${usesFocusedMatchFlow ? "" : "xl:grid-cols-[0.92fr_1.08fr]"}`}>
-            <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                Best Picks For You
-              </div>
-              <div className="mt-5 space-y-3">
-                {seniorBestPicks.length ? (
-                  seniorBestPicks.map((college) => (
-                    <Link key={college.id} href={college.href} className="flex items-center gap-3 rounded-[1.25rem] border border-slate-100 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5">
-                      <div className="relative h-16 w-16 overflow-hidden rounded-[1rem] bg-slate-100">
-                        <Image src={college.image} alt={college.name} fill sizes="64px" className="object-cover" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">{college.name}</p>
-                            {college.isBestCollege ? (
-                              <span className="mt-1 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
-                                Best College
-                              </span>
-                            ) : null}
-                          </div>
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                            {college.matchScore}%
-                          </span>
-                        </div>
-                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-slate-500">
-                          <MapPin className="size-3" />
-                          {college.location || "Tamil Nadu"}
-                        </p>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    No colleges found
-                  </div>
-                )}
-              </div>
-            </article>
-
-            {!usesFocusedMatchFlow ? (
-            <article className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                Aim Higher & More Options
-              </div>
-              <div className="mt-5">
-                {seniorOpportunityCards.length ? (
-                  <div className="overflow-x-auto px-1 py-1">
-                    <div className="flex gap-4">
-                      {seniorOpportunityCards.map((college) => (
-                        <Link
-                          key={`${college.id}-opportunity`}
-                          href={college.href}
-                          className="group box-border w-[min(20rem,calc(100vw-2rem))] max-w-full shrink-0 rounded-[1.4rem] border border-[#f5b5b5] bg-[linear-gradient(180deg,#ffffff,#fff7f7)] p-3 shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[#ef4444] hover:shadow-[0_18px_34px_rgba(239,68,68,0.12)] sm:w-[48%] lg:w-[calc((100%-2rem)/3)]"
-                        >
-                          <div className="relative h-40 w-full overflow-hidden rounded-[1.1rem] bg-slate-100">
-                            {college.isBestCollege ? (
-                              <div className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
-                                Best College
-                              </div>
-                            ) : null}
-                            <Image
-                              src={college.image}
-                              alt={college.name}
-                              fill
-                              sizes="(min-width: 1024px) 320px, (min-width: 640px) 48vw, 84vw"
-                              className="object-cover transition duration-300 group-hover:scale-105"
-                            />
-                          </div>
-
-                          <div className="mt-4 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="line-clamp-2 text-sm font-bold text-slate-900">
-                                {college.name}
-                              </p>
-                              <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                                <MapPin className="size-3 shrink-0" />
-                                <span className="truncate">{college.location || "Tamil Nadu"}</span>
-                              </p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700">
-                              {college.matchScore}% fit
-                            </span>
-                          </div>
-
-                          <p className="mt-3 text-sm font-semibold text-slate-700">
-                            {college.cutoffLabel} target cutoff
-                          </p>
-
-                          <div className="mt-4 flex items-center justify-between gap-3 text-xs">
-                            <span className="rounded-full bg-sky-50 px-2.5 py-1 font-semibold text-sky-700">
-                              {college.need}
-                            </span>
-                            <span className="font-semibold text-sky-700">
-                              View <ArrowUpRight className="ml-1 inline size-3" />
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    More stretch colleges are not available for this cutoff yet.
-                  </div>
-                )}
-              </div>
-            </article>
-            ) : null}
-          </section>
-        ) : null}
-      </div>
-      </main>
-    </>
-  );
+  return null;
 }
 
 function JuniorPerformanceBars({
