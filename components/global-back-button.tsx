@@ -18,10 +18,28 @@ export function PageBackButton({ className = "" }: PageBackButtonProps) {
     const query = searchParams.toString();
     return query ? `${pathname}?${query}` : pathname;
   }, [pathname, searchParams]);
+  const fromRoute = searchParams.get("from") || "";
+  const safeFromRoute =
+    fromRoute.startsWith("/") && !fromRoute.startsWith("//") ? fromRoute : "";
 
   if (!pathname || pathname === "/") return null;
 
   const handleBack = () => {
+    if (safeFromRoute) {
+      router.replace(safeFromRoute);
+      return;
+    }
+    if (pathname.startsWith("/college/")) {
+      const savedReturnRoute = window.sessionStorage.getItem("collegeedwiser-college-return-url") || "";
+      const safeSavedReturnRoute =
+        savedReturnRoute.startsWith("/") && !savedReturnRoute.startsWith("//")
+          ? savedReturnRoute
+          : "";
+      if (safeSavedReturnRoute) {
+        router.replace(safeSavedReturnRoute);
+        return;
+      }
+    }
     navigateToSafeBack(router, currentRoute, "/");
   };
 

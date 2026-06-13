@@ -166,6 +166,7 @@ function LoginPageContent() {
   const [isGoogleScriptReady, setIsGoogleScriptReady] = useState(false);
   const [googleButtonWidth, setGoogleButtonWidth] = useState(0);
   const [status, setStatus] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [otpDeliveryError, setOtpDeliveryError] = useState("");
   const googleButtonShellRef = useRef<HTMLDivElement | null>(null);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   useStatusToast(status);
@@ -197,11 +198,12 @@ function LoginPageContent() {
     router.replace("/account");
   }, [router]);
 
-  const redirectToOtpStep = (otpEmail: string, role: string) => {
+  const redirectToOtpStep = (otpEmail: string, role: string, devOtp?: string) => {
     persistPendingOtpLogin({
       email: otpEmail,
       role,
       accountType,
+      ...(devOtp ? { devOtp } : {}),
     });
     const params = new URLSearchParams();
     params.set("type", accountType);
@@ -235,6 +237,7 @@ function LoginPageContent() {
           requiresOtp?: boolean;
           email?: string;
           role?: string;
+          devOtp?: string;
         }>("/api/users/login/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -242,7 +245,7 @@ function LoginPageContent() {
         });
 
         if (data.requiresOtp && data.email && data.role) {
-          redirectToOtpStep(data.email, data.role);
+          redirectToOtpStep(data.email, data.role, data.devOtp);
           return;
         }
 
@@ -320,6 +323,7 @@ function LoginPageContent() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus(null);
+    setOtpDeliveryError("");
     setIsLoading(true);
 
     try {
@@ -327,7 +331,15 @@ function LoginPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, accountType }),
-      });
+      }) as {
+        message?: string;
+        requiresOtp?: boolean;
+        email?: string;
+        role?: string;
+        devOtp?: string;
+        token?: string;
+        user?: SafeAuthUser;
+      };
 
       if (data?.token && data?.user?.role === "admin") {
         persistAuth(data.token, {
@@ -347,7 +359,7 @@ function LoginPageContent() {
       }
 
       if (data.requiresOtp) {
-        redirectToOtpStep(data.email, data.role);
+        redirectToOtpStep(String(data.email || email.trim()), String(data.role || ""), data.devOtp);
         return;
       }
 
@@ -367,9 +379,18 @@ function LoginPageContent() {
       });
       router.push(accountType === "college" ? "/college-dashboard" : "/account");
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed.";
+      const isOtpSendFailure = /otp/i.test(errorMessage) && /sent|send|mail|email/i.test(errorMessage);
+      if (isOtpSendFailure) {
+        setOtpDeliveryError(
+          "Password verified, but the OTP email could not be sent. Please try again in a moment.",
+        );
+      }
       setStatus({
         type: "error",
-        text: error instanceof Error ? error.message : "Login failed.",
+        text: isOtpSendFailure
+          ? "OTP email could not be sent. Please try again."
+          : errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -529,10 +550,17 @@ function LoginPageContent() {
                   disabled={isLoading}
                   className={`shine-button flex w-full items-center justify-center gap-2 rounded-[1.1rem] bg-gradient-to-r ${mode.accentClass} px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60`}
                 >
-                  {isLoading ? "Signing in..." : "Login"}
+                  {isLoading ? "Signing in..." : otpDeliveryError ? "Try sending OTP again" : "Login"}
                   <ArrowRight className="size-4" />
                 </button>
               </form>
+
+              {otpDeliveryError ? (
+                <div className="mt-4 rounded-[1.1rem] border border-red-100 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+                  <p className="font-semibold">OTP delivery issue</p>
+                  <p className="mt-1">{otpDeliveryError}</p>
+                </div>
+              ) : null}
 
               <p className="mt-6 text-center text-sm text-[color:var(--text-muted)]">
                 Don&apos;t have an account?{" "}

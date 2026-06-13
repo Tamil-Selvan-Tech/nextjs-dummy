@@ -176,7 +176,7 @@ function LoginOtpPageContent() {
           email: emailParam,
           accountType,
         }),
-      });
+      }) as { message?: string; devOtp?: string };
 
       setIsResending(false);
       setOtpDigits(Array(OTP_LENGTH).fill(""));

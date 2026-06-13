@@ -1177,6 +1177,10 @@ const bulkSheetColumnAliases: Partial<Record<BulkSheetKey, Record<string, string
     rankmax: "rankingMax",
     rankingminimum: "rankingMin",
     rankingmaximum: "rankingMax",
+    awardsrecognitions: "awards",
+    awardsandrecognitions: "awards",
+    awardrecognitions: "awards",
+    awardandrecognitions: "awards",
   },
   courses: {
     course: "courseName",
@@ -3416,20 +3420,36 @@ function BulkUploadDashboard({
       return;
     }
 
+    const importableCollegeRows = previewRows.filter((row) => row.sheet === "colleges" && isImportableBulkRow(row));
+    const importableCollegeCodes = new Set(
+      importableCollegeRows
+        .map((row) => String(row.data.collegeCode || "").trim().toLowerCase())
+        .filter(Boolean),
+    );
     const validCollegeGroupKeys = getValidBulkCollegeGroupKeys(previewRows);
-    const validPreviewRows = previewRows.filter((row) => validCollegeGroupKeys.has(getBulkCollegeGroupKey(row)));
+    const validPreviewRows = previewRows.filter((row) => {
+      if (row.sheet === "colleges") return importableCollegeRows.some((collegeRow) => collegeRow.id === row.id);
+      const rowCollegeCode = String(row.data.collegeCode || "").trim().toLowerCase();
+      return rowCollegeCode && importableCollegeCodes.has(rowCollegeCode) && isImportableBulkRow(row);
+    });
     const backendSheetNames: Record<BulkSheetKey, string> = {
       colleges: "College",
       courses: "Courses",
       entranceexams: "EntranceExams",
       collegeimages: "CollegeImages",
     };
+    const validCollegeRows = validPreviewRows.filter((row) => row.sheet === "colleges");
+    if (validCollegeRows.length === 0) {
+      notifyImportStatus("At least one valid college row is required to import.", "error");
+      return;
+    }
     const backendPreviewRows = validPreviewRows.map((row) => ({
       ...row,
       data: enrichBulkImportRowData(row),
-      sheet: backendSheetNames[row.sheet] || row.sheet,
+      sheet: row.sheet,
       sheetKey: row.sheet,
-      status: "Valid",
+      sheetName: backendSheetNames[row.sheet] || row.sheet,
+      status: "valid",
       statusKey: "valid",
       displayStatus: "Valid",
       isValid: true,
@@ -3441,7 +3461,7 @@ function BulkUploadDashboard({
       formData.append("imageZip", imageZipFile);
     }
 
-    const validCollegeCount = validCollegeGroupKeys.size || validationSummary.validRecords || 0;
+    const validCollegeCount = validCollegeRows.length || validCollegeGroupKeys.size || validationSummary.validRecords || 0;
     let progressTimer: number | null = null;
     setBulkImportProgress({ completed: 0, total: validCollegeCount });
     setIsImporting(true);

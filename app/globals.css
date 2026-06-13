@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Outfit:ital,wght@0,400;0,500;0,600;1,600&display=swap");
-@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&f[]=gambarino@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:ital,wght@0,400;0,500;1,500&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600&f[]=gambarino@400&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -23,8 +23,8 @@
   --shadow-soft: 0 20px 44px rgba(8, 18, 38, 0.12);
   --shadow-rich: 0 32px 76px rgba(4, 12, 26, 0.2);
   --space-section-y: 4rem;
-  --container-max: 1180px;
-  --container-max-wide: 1320px;
+  --container-max: 1440px;
+  --container-max-wide: 1600px;
   --font-body: "Poppins", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-display: "Montserrat", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-inter: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -72,80 +72,130 @@ body {
   background: var(--find-bg);
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), "Segoe UI", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 .find-theme h1 {
   color: var(--find-text);
   font-family: "Gambarino", "General Sans", var(--font-display), serif;
-  font-size: 35.2px;
-  font-weight: 600;
+  font-size: 32px !important;
+  font-weight: 500 !important;
   line-height: 1.16;
-  letter-spacing: 0;
+  letter-spacing: 0 !important;
 }
 
 .find-theme h1 em,
 .find-theme h1 span {
   font-family: "Outfit", "General Sans", var(--font-inter), sans-serif;
-  font-size: 31.2px;
-  font-style: italic;
-  font-weight: 600;
+  font-size: 28px !important;
+  font-style: italic !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
 }
 
 .find-theme h2 {
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 28px !important;
-  font-weight: 600 !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
   line-height: 1.22;
-  letter-spacing: 0;
+  letter-spacing: 0 !important;
 }
 
 .find-theme h3 {
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 24px !important;
-  font-weight: 600 !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
   line-height: 1.25;
-  letter-spacing: 0;
+  letter-spacing: 0 !important;
 }
 
 .find-theme h4 {
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 20px !important;
-  font-weight: 600 !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
   line-height: 1.3;
-  letter-spacing: 0;
+  letter-spacing: 0 !important;
 }
 
 .find-theme p,
 .find-theme label,
 .find-theme li,
+.find-theme td,
 .find-theme select,
 .find-theme textarea {
   color: var(--find-muted);
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: 0;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
 }
 
 .find-theme input {
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 16px !important;
+  font-size: 14px !important;
   font-weight: 400 !important;
   letter-spacing: 0;
 }
 
 .find-theme button {
   font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [class*="text-[2rem]"],
+.find-theme [class*="text-[28px]"],
+.find-theme [class*="text-[34px]"],
+.find-theme [class*="text-[44px]"],
+.find-theme [class*="text-[50px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [class*="text-[1.25rem]"],
+.find-theme [class*="text-[20px]"],
+.find-theme [class*="text-[21px]"],
+.find-theme [class*="text-[23px]"],
+.find-theme [class*="text-[24px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [class*="text-[18px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [class*="text-[1rem]"],
+.find-theme [class*="text-[1.05rem]"],
+.find-theme [class*="text-[1.08rem]"],
+.find-theme [class*="text-[14px]"],
+.find-theme [class*="text-[15px]"],
+.find-theme [class*="text-[16px]"],
+.find-theme [class*="text-[17px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
 }
 
 .find-theme small,
+.find-theme th,
+.find-theme [class*="text-[11px]"],
+.find-theme [class*="text-[12px]"],
 .find-theme [class*="text-[0.58rem]"],
 .find-theme [class*="text-[0.68rem]"],
 .find-theme [class*="text-[0.72rem]"],
@@ -158,9 +208,40 @@ body {
 .find-theme [class*="text-[0.9rem]"],
 .find-theme [class*="text-[0.92rem]"],
 .find-theme [class*="text-[0.95rem]"] {
-  font-family: "General Sans", var(--font-inter), sans-serif;
-  font-size: 14px;
-  letter-spacing: 0;
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme button [class*="text-"],
+.find-theme button[class*="text-"],
+.find-theme button span {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [data-field-id] > div:first-child,
+.find-theme [data-field-id] > div:first-child > div:first-child {
+  color: var(--find-text) !important;
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.find-theme [data-field-id] input,
+.find-theme [data-field-id] select,
+.find-theme [data-field-id] textarea {
+  color: var(--find-text) !important;
+  font-weight: 500 !important;
+}
+
+.find-theme [data-field-id] ::placeholder {
+  color: #52606d !important;
+  opacity: 1 !important;
 }
 
 .find-theme [class*="text-[#052a82]"],
@@ -237,8 +318,8 @@ body {
 .cutoff-result-theme h1 {
   color: var(--cutoff-text) !important;
   font-family: "Gambarino", "General Sans", var(--font-display), serif !important;
-  font-size: 35.2px !important;
-  font-weight: 600 !important;
+  font-size: 32px !important;
+  font-weight: 500 !important;
   line-height: 1.16 !important;
   letter-spacing: 0 !important;
 }
@@ -247,17 +328,17 @@ body {
 .cutoff-result-theme h1 em {
   color: var(--cutoff-yellow) !important;
   font-family: "Outfit", "General Sans", var(--font-inter), sans-serif !important;
-  font-size: 31.2px !important;
+  font-size: 28px !important;
   font-style: italic !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   letter-spacing: 0 !important;
 }
 
 .cutoff-result-theme h2 {
   color: var(--cutoff-text) !important;
   font-family: "General Sans", var(--font-inter), sans-serif !important;
-  font-size: 28px !important;
-  font-weight: 600 !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
   line-height: 1.22 !important;
   letter-spacing: 0 !important;
 }
@@ -265,8 +346,8 @@ body {
 .cutoff-result-theme h3 {
   color: var(--cutoff-text) !important;
   font-family: "General Sans", var(--font-inter), sans-serif !important;
-  font-size: 24px !important;
-  font-weight: 600 !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
   line-height: 1.25 !important;
   letter-spacing: 0 !important;
 }
@@ -276,8 +357,8 @@ body {
 .cutoff-result-theme tbody p:first-child {
   color: var(--cutoff-text) !important;
   font-family: "General Sans", var(--font-inter), sans-serif !important;
-  font-size: 20px !important;
-  font-weight: 600 !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
   line-height: 1.3 !important;
   letter-spacing: 0 !important;
 }
@@ -295,15 +376,24 @@ body {
 .cutoff-result-theme li,
 .cutoff-result-theme td {
   color: var(--cutoff-muted) !important;
-  font-size: 16px !important;
+  font-size: 14px !important;
   font-weight: 400 !important;
+}
+
+.cutoff-result-theme input,
+.cutoff-result-theme select,
+.cutoff-result-theme textarea {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
 }
 
 .cutoff-result-theme button,
 .cutoff-result-theme a[role="button"] {
   font-family: "General Sans", var(--font-inter), sans-serif !important;
-  font-size: 16px !important;
-  font-weight: 500 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
   letter-spacing: 0 !important;
 }
 
@@ -326,6 +416,59 @@ body {
 .cutoff-result-theme [class*="text-[0.95rem]"],
 .cutoff-result-theme [class*="text-[0.96rem]"],
 .cutoff-result-theme [class*="text-[0.98rem]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.cutoff-result-theme [class*="text-[2rem]"],
+.cutoff-result-theme [class*="text-[2.45rem]"],
+.cutoff-result-theme [class*="text-[28px]"],
+.cutoff-result-theme [class*="text-[34px]"],
+.cutoff-result-theme [class*="text-[44px]"],
+.cutoff-result-theme [class*="text-[50px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.cutoff-result-theme [class*="text-[1.25rem]"],
+.cutoff-result-theme [class*="text-[21px]"],
+.cutoff-result-theme [class*="text-[23px]"],
+.cutoff-result-theme [class*="text-[24px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.cutoff-result-theme [class*="text-[18px]"],
+.cutoff-result-theme [class*="text-[20px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.cutoff-result-theme [class*="text-[0.9rem]"],
+.cutoff-result-theme [class*="text-[0.95rem]"],
+.cutoff-result-theme [class*="text-[1rem]"],
+.cutoff-result-theme [class*="text-[1.08rem]"],
+.cutoff-result-theme [class*="text-[16px]"],
+.cutoff-result-theme [class*="text-[17px]"] {
+  font-family: "General Sans", var(--font-inter), sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.cutoff-result-theme button[class*="text-"],
+.cutoff-result-theme button [class*="text-"],
+.cutoff-result-theme button span,
+.cutoff-result-theme a[role="button"][class*="text-"],
+.cutoff-result-theme a[role="button"] span {
   font-family: "General Sans", var(--font-inter), sans-serif !important;
   font-size: 14px !important;
   font-weight: 400 !important;
@@ -401,6 +544,29 @@ body {
   border-color: var(--cutoff-yellow-hover) !important;
   background-color: var(--cutoff-yellow-hover) !important;
   color: #ffffff !important;
+}
+
+.cutoff-result-theme .cutoff-sort-trigger:not(:disabled),
+.cutoff-result-theme .cutoff-sort-option:not(:disabled),
+.cutoff-result-theme .cutoff-view-toggle:not(:disabled) {
+  border-color: #d8dee8 !important;
+  background-color: #ffffff !important;
+  color: #0f1b25 !important;
+}
+
+.cutoff-result-theme .cutoff-sort-trigger:not(:disabled):hover,
+.cutoff-result-theme .cutoff-sort-option:not(:disabled):hover,
+.cutoff-result-theme .cutoff-view-toggle:not(:disabled):hover {
+  border-color: #f4b400 !important;
+  background-color: #fff8e5 !important;
+  color: #0f1b25 !important;
+}
+
+.cutoff-result-theme .cutoff-view-toggle-active:not(:disabled),
+.cutoff-result-theme .cutoff-view-toggle-active:not(:disabled):hover {
+  border-color: #f4b400 !important;
+  background-color: #f4b400 !important;
+  color: #0f1b25 !important;
 }
 
 .cutoff-result-theme thead tr {
@@ -521,15 +687,16 @@ body {
 .cutoff-result-theme section.mt-5.grid > article > div:first-child h2,
 .cutoff-result-theme aside > article h2 {
   color: var(--cutoff-text) !important;
-  font-size: 28px !important;
-  font-weight: 600 !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
   letter-spacing: 0 !important;
 }
 
 .cutoff-result-theme section.mt-5.grid > article > div:first-child p,
 .cutoff-result-theme aside > article > div:first-child p {
   color: var(--cutoff-muted) !important;
-  font-size: 16px !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
   line-height: 1.5 !important;
 }
 
@@ -541,7 +708,8 @@ body {
 
 .cutoff-result-theme section.mt-5.grid > article > div:nth-child(2) h3 {
   color: var(--cutoff-text) !important;
-  font-size: 24px !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
   line-height: 1.22 !important;
 }
 
@@ -596,6 +764,7 @@ body {
 .cutoff-result-theme aside > article > div:first-child h2 {
   white-space: normal !important;
   font-size: 24px !important;
+  font-weight: 500 !important;
   line-height: 1.15 !important;
 }
 
@@ -662,7 +831,8 @@ body {
 
 .cutoff-result-theme aside > article > div:nth-child(4) h3 {
   color: var(--cutoff-text) !important;
-  font-size: 22px !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
   line-height: 1.18 !important;
 }
 
@@ -1130,15 +1300,15 @@ button,
 .page-container {
   margin-inline: auto;
   width: 100%;
-  max-width: 80rem;
-  padding-inline: 1rem;
+  max-width: min(var(--container-max), 100%);
+  padding-inline: clamp(0.875rem, 2.5vw, 2rem);
 }
 
 .page-container-full {
   margin-inline: auto;
   width: 100%;
-  max-width: 80rem;
-  padding-inline: 1rem;
+  max-width: min(var(--container-max-wide), 100%);
+  padding-inline: clamp(0.875rem, 2.5vw, 2rem);
 }
 
 .page-section {
@@ -1248,16 +1418,16 @@ button,
 .breaking-news-shell {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.85rem;
   overflow: hidden;
-  min-height: 3.05rem;
+  min-height: 2.5rem;
   border: 1px solid rgba(177, 202, 244, 0.78);
   border-radius: 1.25rem;
   background: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
     0 10px 24px rgba(30, 78, 121, 0.07);
-  padding: 0.72rem 1.15rem;
+  padding: 0.48rem 0.95rem;
 }
 
 .breaking-news-label {
@@ -1266,7 +1436,7 @@ button,
   gap: 0.38rem;
   flex-shrink: 0;
   color: #1f63ff;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   padding-right: 0.1rem;
@@ -1274,8 +1444,8 @@ button,
 }
 
 .breaking-news-label-icon {
-  height: 0.95rem;
-  width: 0.95rem;
+  height: 0.85rem;
+  width: 0.85rem;
   stroke-width: 2.35;
 }
 
@@ -1348,7 +1518,7 @@ button,
   align-items: center;
   gap: 0.33rem;
   flex-shrink: 0;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.01em;
   padding: 0;
@@ -1380,14 +1550,14 @@ button,
 
 .breaking-news-dash {
   color: #243b65;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
 .breaking-news-headline {
   white-space: nowrap;
   color: #243b65;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -1958,11 +2128,11 @@ button,
 
 @media (min-width: 768px) {
   .page-container {
-    padding-inline: 1.5rem;
+    padding-inline: clamp(1rem, 2.25vw, 2.25rem);
   }
 
   .page-container-full {
-    padding-inline: 1.5rem;
+    padding-inline: clamp(1rem, 2.25vw, 2.25rem);
   }
 
   .responsive-topbar {
@@ -1977,11 +2147,11 @@ button,
 
 @media (min-width: 1280px) {
   .page-container {
-    padding-inline: 2rem;
+    padding-inline: clamp(1.5rem, 2vw, 2.5rem);
   }
 
   .page-container-full {
-    padding-inline: 2rem;
+    padding-inline: clamp(1.5rem, 2vw, 2.5rem);
   }
 }
 
@@ -2056,8 +2226,9 @@ button,
   .breaking-news-shell {
     align-items: flex-start;
     flex-direction: column;
-    gap: 0.55rem;
-    padding: 0.72rem 0.8rem;
+    gap: 0.42rem;
+    min-height: 2.6rem;
+    padding: 0.5rem 0.72rem;
   }
 
   .breaking-news-label {

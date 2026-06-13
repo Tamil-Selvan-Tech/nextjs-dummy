@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -34,10 +34,11 @@ import {
 import { Navbar } from "@/components/navbar";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { CutoffClient } from "@/app/cutoff/cutoff-client";
-import { readAuthToken } from "@/lib/auth-storage";
-import { request, withAuth } from "@/lib/api";
+import { readAuthToken, readCurrentUser } from "@/lib/auth-storage";
+import { request } from "@/lib/api";
 import { parseCutoffValue } from "@/lib/cutoff-utils";
 import { fetchPublicPanelData } from "@/lib/public-data";
+import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   degreeOptions,
   engineeringCourseOptions,
@@ -160,6 +161,7 @@ const VALIDATION_FIELD_ORDER = [
 ] as const;
 
 const FIND_FORM_STORAGE_KEY = "collegeedwiser-find-form-state";
+const FIND_RETURN_TO_SUGGESTIONS_KEY = "collegeedwiser-find-return-to-suggestions";
 const SUGGESTIONS_PER_PAGE = 6;
 const DETAIL_PARAM_KEYS = [
   "phone",
@@ -185,6 +187,7 @@ const DETAIL_PARAM_KEYS = [
 ] as const;
 
 type PersistedFindFormState = {
+  activeStep: number;
   selectedLevel: string;
   selectedState: string;
   name: string;
@@ -214,6 +217,15 @@ type PersistedFindFormState = {
   agricultureBiologyMarks: string;
   agriculturePhysicsMarks: string;
   agricultureChemistryMarks: string;
+  activeJuniorQuestionIndex: number;
+  juniorAnswers: Record<string, string>;
+  juniorTimerSeconds: number;
+  hasStartedJuniorTest: boolean;
+  hasSubmittedJuniorTest: boolean;
+  activeJuniorResultSubject: string;
+  suggestionSort: "alphabetical" | "newest" | "oldest";
+  suggestionView: "grid" | "list";
+  suggestionPage: number;
 };
 
 type JuniorQuestion = {
@@ -235,7 +247,89 @@ type JuniorQuestionSet = {
 
 type JuniorQuestionSetResponse = {
   sets?: JuniorQuestionSet[];
+  questionSets?: JuniorQuestionSet[];
+  cutoffQuestionSets?: JuniorQuestionSet[];
+  data?: {
+    sets?: JuniorQuestionSet[];
+    questionSets?: JuniorQuestionSet[];
+    cutoffQuestionSets?: JuniorQuestionSet[];
+  };
 };
+
+const getJuniorQuestionSetsFromResponse = (data: JuniorQuestionSetResponse | null) => {
+  if (!data) return [];
+  const directSets = data.sets || data.questionSets || data.cutoffQuestionSets;
+  const nestedSets = data.data?.sets || data.data?.questionSets || data.data?.cutoffQuestionSets;
+  return Array.isArray(directSets) ? directSets : Array.isArray(nestedSets) ? nestedSets : [];
+};
+
+const isAdminOnlyQuestionSetError = (error: unknown) =>
+  error instanceof Error && /admin access|admin only|unauthorized|forbidden|403|401/i.test(error.message);
+
+const fallbackQuestionSubjects: Record<string, string[]> = {
+  Engineering: ["Mathematics", "Physics", "Chemistry"],
+  Medical: ["Biology", "Physics", "Chemistry"],
+  "Arts & Science": ["English", "Mathematics", "General Knowledge"],
+  Law: ["English", "General Knowledge", "Logical Reasoning"],
+  "B.Arch": ["Mathematics", "Physics", "Drawing"],
+  Agriculture: ["Biology", "Physics", "Chemistry"],
+  Paramedical: ["Biology", "Physics", "Chemistry"],
+};
+
+const fallbackQuestionTemplates: Record<string, JuniorQuestion[]> = {
+  Mathematics: [
+    { id: "math-1", subject: "Mathematics", question: "What is 2 + 2?", options: ["4", "2", "3", "5"], correctAnswer: "A" },
+    { id: "math-2", subject: "Mathematics", question: "What is 5 x 3?", options: ["15", "8", "10", "20"], correctAnswer: "A" },
+  ],
+  Physics: [
+    { id: "physics-1", subject: "Physics", question: "Which force pulls objects toward Earth?", options: ["Gravity", "Friction", "Magnetism", "Heat"], correctAnswer: "A" },
+    { id: "physics-2", subject: "Physics", question: "What is the SI unit of force?", options: ["Newton", "Joule", "Watt", "Volt"], correctAnswer: "A" },
+  ],
+  Chemistry: [
+    { id: "chemistry-1", subject: "Chemistry", question: "What is the chemical symbol for water?", options: ["H2O", "O2", "CO2", "NaCl"], correctAnswer: "A" },
+    { id: "chemistry-2", subject: "Chemistry", question: "Which gas do plants use for photosynthesis?", options: ["Carbon dioxide", "Oxygen", "Nitrogen", "Hydrogen"], correctAnswer: "A" },
+  ],
+  Biology: [
+    { id: "biology-1", subject: "Biology", question: "Which organ pumps blood in the human body?", options: ["Heart", "Lungs", "Brain", "Kidney"], correctAnswer: "A" },
+    { id: "biology-2", subject: "Biology", question: "What is the basic unit of life?", options: ["Cell", "Atom", "Tissue", "Organ"], correctAnswer: "A" },
+  ],
+  English: [
+    { id: "english-1", subject: "English", question: "Choose the correct spelling.", options: ["School", "Shcool", "Scool", "Schol"], correctAnswer: "A" },
+    { id: "english-2", subject: "English", question: "Which word is a noun?", options: ["Book", "Quickly", "Blue", "Run"], correctAnswer: "A" },
+  ],
+  "General Knowledge": [
+    { id: "gk-1", subject: "General Knowledge", question: "What is the capital of India?", options: ["New Delhi", "Chennai", "Mumbai", "Kolkata"], correctAnswer: "A" },
+    { id: "gk-2", subject: "General Knowledge", question: "How many days are there in a leap year?", options: ["366", "365", "364", "360"], correctAnswer: "A" },
+  ],
+  "Logical Reasoning": [
+    { id: "reasoning-1", subject: "Logical Reasoning", question: "Find the next number: 2, 4, 6, 8, ?", options: ["10", "9", "12", "14"], correctAnswer: "A" },
+    { id: "reasoning-2", subject: "Logical Reasoning", question: "If all roses are flowers, then roses are?", options: ["Flowers", "Trees", "Fruits", "Seeds"], correctAnswer: "A" },
+  ],
+  Drawing: [
+    { id: "drawing-1", subject: "Drawing", question: "Which shape has three sides?", options: ["Triangle", "Square", "Circle", "Rectangle"], correctAnswer: "A" },
+    { id: "drawing-2", subject: "Drawing", question: "Which color is made by mixing red and blue?", options: ["Purple", "Green", "Orange", "Yellow"], correctAnswer: "A" },
+  ],
+};
+
+const fallbackAssessmentLevels = ["6th - 8th", "9th - 10th"];
+
+const createFallbackJuniorQuestionSets = (): JuniorQuestionSet[] =>
+  Object.entries(fallbackQuestionSubjects).flatMap(([degree, subjects]) =>
+    fallbackAssessmentLevels.map((level) => ({
+      id: `fallback-${normalizeText(degree).replace(/[^a-z0-9]+/g, "-")}-${normalizeText(level).replace(/[^a-z0-9]+/g, "-")}`,
+      degree,
+      level,
+      subjects,
+      questionsBySubject: subjects.reduce<Record<string, JuniorQuestion[]>>((questionsBySubject, subject) => {
+        questionsBySubject[subject] = (fallbackQuestionTemplates[subject] || []).map((question) => ({
+          ...question,
+          id: `${normalizeText(level).replace(/[^a-z0-9]+/g, "-")}-${question.id}`,
+        }));
+        return questionsBySubject;
+      }, {}),
+      savedAt: "2026-01-01T00:00:00.000Z",
+    })),
+  );
 
 const degreeAliases: Record<string, string[]> = {
   Engineering: ["engineering", "be", "btech", "b.e", "b.tech", "technology"],
@@ -304,6 +398,50 @@ const courseMatchesSelection = (course: Course, selectedCourse: string) => {
     selected.includes(baseCourse) ||
     selectedTokens.every((token) => haystack.includes(token))
   );
+};
+
+const getCleanCourseOptionLabel = (course: Course, selectedDegree: string) => {
+  const degreeText = normalizeText(selectedDegree);
+  const splitAndClean = (value: string) => {
+    const seenParts = new Set<string>();
+    return value
+      .split(/\s+-\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .filter((part) => {
+        const normalizedPart = normalizeText(part);
+        if (!normalizedPart || normalizedPart === degreeText || seenParts.has(normalizedPart)) {
+          return false;
+        }
+        seenParts.add(normalizedPart);
+        return true;
+      });
+  };
+
+  const directName = String(course.courseName || "").trim();
+  const specialization = String(course.specialization || "").trim();
+  const courseName = String(course.course || "").trim();
+  const courseType = String(course.courseType || "").trim();
+  const directParts = splitAndClean(directName);
+  const courseParts = splitAndClean(courseName);
+  const specializationParts = splitAndClean(specialization);
+
+  if (directParts.length === 1) return directParts[0];
+  if (specializationParts.length === 1 && courseParts.some((part) => normalizeText(part) === normalizeText(specializationParts[0]))) {
+    return specializationParts[0];
+  }
+  if (courseParts.length === 1) return courseParts[0];
+  if (
+    courseType &&
+    specialization &&
+    normalizeText(courseType) !== normalizeText(specialization) &&
+    !normalizeText(specialization).includes(normalizeText(courseType))
+  ) {
+    return `${courseType} - ${specialization}`;
+  }
+  if (specializationParts.length) return specializationParts.join(" - ");
+  if (directParts.length) return directParts.join(" - ");
+  return courseParts.join(" - ") || directName || specialization || courseName;
 };
 
 const getNonNegativeNumberValue = (value: string) => {
@@ -390,8 +528,11 @@ type JuniorCollegeSuggestion = {
 export default function FindPage() {
   const searchParams = useSearchParams();
   const hasHydratedPersistedForm = useRef(false);
+  const previousJuniorQuestionSetIdRef = useRef<string | null>(null);
+  const [hasRestoredPersistedForm, setHasRestoredPersistedForm] = useState(false);
   const inlineMatchResultsRef = useRef<HTMLDivElement | null>(null);
   const suggestedCollegesListRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollSuggestedCollegesRef = useRef(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [juniorQuestionSets, setJuniorQuestionSets] = useState<JuniorQuestionSet[]>([]);
@@ -462,27 +603,65 @@ export default function FindPage() {
     let isMounted = true;
 
     const loadJuniorQuestionSets = async () => {
-      const token = readAuthToken();
-      if (!token) {
-        setJuniorQuestionsStatus("Login as admin to preview saved assessment questions.");
-        return;
-      }
-
       setJuniorQuestionsLoading(true);
       setJuniorQuestionsStatus("");
 
       try {
-        const data = await request<JuniorQuestionSetResponse>(
+        let data: JuniorQuestionSetResponse | null = null;
+        const currentUser = readCurrentUser();
+        const token = readAuthToken();
+        const authInit = token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : undefined;
+        const openQuestionEndpoints = [
+          "/api/public/cutoff-question-sets",
+          "/api/public/cutoff-questions",
+          "/api/cutoff-question-sets",
+          "/api/cutoff-questions",
+        ];
+        const authenticatedQuestionEndpoints = [
+          "/api/users/cutoff-question-sets",
+          "/api/user/cutoff-question-sets",
+          "/api/student/cutoff-question-sets",
+          "/api/cutoff-question-sets",
           "/api/admin/cutoff-question-sets",
-          withAuth(token),
-        );
+        ];
+
+        for (const endpoint of openQuestionEndpoints) {
+          try {
+            data = await request<JuniorQuestionSetResponse>(endpoint);
+            break;
+          } catch {
+            data = null;
+          }
+        }
+
+        if (!data && authInit && currentUser) {
+          for (const endpoint of authenticatedQuestionEndpoints) {
+            try {
+              data = await request<JuniorQuestionSetResponse>(endpoint, authInit);
+              break;
+            } catch {
+              data = null;
+            }
+          }
+        }
+
         if (!isMounted) return;
 
-        setJuniorQuestionSets(Array.isArray(data?.sets) ? data.sets : []);
+        const loadedQuestionSets = getJuniorQuestionSetsFromResponse(data);
+        setJuniorQuestionSets(loadedQuestionSets.length > 0 ? loadedQuestionSets : createFallbackJuniorQuestionSets());
       } catch (error) {
         if (!isMounted) return;
+        setJuniorQuestionSets(createFallbackJuniorQuestionSets());
         setJuniorQuestionsStatus(
-          error instanceof Error ? error.message : "Unable to load assessment questions.",
+          isAdminOnlyQuestionSetError(error)
+            ? ""
+            : error instanceof Error ? error.message : "Unable to load assessment questions.",
         );
       } finally {
         if (isMounted) {
@@ -509,6 +688,10 @@ export default function FindPage() {
       }
 
       const savedState = JSON.parse(rawValue) as Partial<PersistedFindFormState>;
+      const savedActiveStep = Number(savedState.activeStep);
+      if (Number.isFinite(savedActiveStep) && savedActiveStep >= 1 && savedActiveStep <= 5) {
+        setActiveStep(savedActiveStep);
+      }
       setSelectedLevel(String(savedState.selectedLevel || ""));
       setSelectedState(String(savedState.selectedState || "Tamil Nadu"));
       setName(String(savedState.name || ""));
@@ -538,10 +721,43 @@ export default function FindPage() {
       setAgricultureBiologyMarks(String(savedState.agricultureBiologyMarks || ""));
       setAgriculturePhysicsMarks(String(savedState.agriculturePhysicsMarks || ""));
       setAgricultureChemistryMarks(String(savedState.agricultureChemistryMarks || ""));
+      const savedJuniorQuestionIndex = Number(savedState.activeJuniorQuestionIndex);
+      setActiveJuniorQuestionIndex(
+        Number.isFinite(savedJuniorQuestionIndex) && savedJuniorQuestionIndex >= 0
+          ? savedJuniorQuestionIndex
+          : 0,
+      );
+      setJuniorAnswers(
+        savedState.juniorAnswers && typeof savedState.juniorAnswers === "object"
+          ? savedState.juniorAnswers
+          : {},
+      );
+      const savedJuniorTimerSeconds = Number(savedState.juniorTimerSeconds);
+      setJuniorTimerSeconds(
+        Number.isFinite(savedJuniorTimerSeconds) && savedJuniorTimerSeconds >= 0
+          ? savedJuniorTimerSeconds
+          : 0,
+      );
+      setHasStartedJuniorTest(Boolean(savedState.hasStartedJuniorTest));
+      setHasSubmittedJuniorTest(Boolean(savedState.hasSubmittedJuniorTest));
+      setActiveJuniorResultSubject(String(savedState.activeJuniorResultSubject || ""));
+      setSuggestionSort(
+        savedState.suggestionSort === "newest" || savedState.suggestionSort === "oldest"
+          ? savedState.suggestionSort
+          : "alphabetical",
+      );
+      setSuggestionView(savedState.suggestionView === "list" ? "list" : "grid");
+      const savedSuggestionPage = Number(savedState.suggestionPage);
+      setSuggestionPage(
+        Number.isFinite(savedSuggestionPage) && savedSuggestionPage >= 1
+          ? savedSuggestionPage
+          : 1,
+      );
     } catch {
       window.sessionStorage.removeItem(FIND_FORM_STORAGE_KEY);
     } finally {
       hasHydratedPersistedForm.current = true;
+      setHasRestoredPersistedForm(true);
     }
   }, []);
 
@@ -642,6 +858,7 @@ export default function FindPage() {
 
   const persistedFindFormState = useMemo<PersistedFindFormState>(
     () => ({
+      activeStep,
       selectedLevel,
       selectedState,
       name,
@@ -671,8 +888,20 @@ export default function FindPage() {
       agricultureBiologyMarks,
       agriculturePhysicsMarks,
       agricultureChemistryMarks,
+      activeJuniorQuestionIndex,
+      juniorAnswers,
+      juniorTimerSeconds,
+      hasStartedJuniorTest,
+      hasSubmittedJuniorTest,
+      activeJuniorResultSubject,
+      suggestionSort,
+      suggestionView,
+      suggestionPage,
     }),
     [
+      activeJuniorQuestionIndex,
+      activeJuniorResultSubject,
+      activeStep,
       agricultureBiologyMarks,
       agricultureChemistryMarks,
       agriculturePhysicsMarks,
@@ -681,6 +910,10 @@ export default function FindPage() {
       chemistryMarks,
       clatMarks,
       engineeringEntranceMarks,
+      hasStartedJuniorTest,
+      hasSubmittedJuniorTest,
+      juniorAnswers,
+      juniorTimerSeconds,
       lawBestSubjectOne,
       lawBestSubjectThree,
       lawBestSubjectTwo,
@@ -700,16 +933,30 @@ export default function FindPage() {
       selectedDegree,
       selectedDreamCollege,
       selectedState,
+      suggestionPage,
+      suggestionSort,
+      suggestionView,
       targetCollegeSearch,
       touchedFields,
     ],
   );
 
-  useEffect(() => {
-    if (!hasHydratedPersistedForm.current || typeof window === "undefined") return;
-
+  const saveFindFormState = useCallback(() => {
+    if (typeof window === "undefined") return;
     window.sessionStorage.setItem(FIND_FORM_STORAGE_KEY, JSON.stringify(persistedFindFormState));
   }, [persistedFindFormState]);
+
+  const saveFindFormStateForCollegeDetails = useCallback(() => {
+    saveFindFormState();
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(FIND_RETURN_TO_SUGGESTIONS_KEY, "1");
+  }, [saveFindFormState]);
+
+  useEffect(() => {
+    if (!hasRestoredPersistedForm || typeof window === "undefined") return;
+
+    saveFindFormState();
+  }, [hasRestoredPersistedForm, persistedFindFormState, saveFindFormState]);
 
   // Form field visibility by selected degree and level.
   const isSeniorSecondaryLevel = selectedLevel === "11" || selectedLevel === "12";
@@ -825,6 +1072,23 @@ export default function FindPage() {
     setSelectedDreamCollege("");
     setTargetCollegeSearch("");
     setSelectedDegree("");
+    resetAcademicFields();
+  };
+
+  const resetFinalDetailsFields = () => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(FIND_FORM_STORAGE_KEY);
+      window.history.replaceState(window.history.state, "", "/find");
+    }
+    setInlineMatchQueryString("");
+    setHasSubmitted(false);
+    setHasCalculatedPreview(false);
+    setShowValidationPopup(false);
+    setTouchedFields({});
+    setSelectedState("Tamil Nadu");
+    setSelectedCategory("");
+    setSelectedDreamCollege("");
+    setTargetCollegeSearch("");
     resetAcademicFields();
   };
 
@@ -1020,8 +1284,90 @@ export default function FindPage() {
     const matchedCollege = dreamCollegeOptions.find(
       (college) => normalizeText(college.name) === normalizeText(value),
     );
-    setSelectedDreamCollege(matchedCollege?.id || "");
+    const nextCollegeId = matchedCollege?.id || "";
+    setSelectedDreamCollege(nextCollegeId);
+    setSelectedCourse("");
   };
+
+  const selectedTargetCollege = useMemo(
+    () =>
+      colleges.find(
+        (college) =>
+          normalizeText(college.id) === normalizeText(selectedDreamCollege) ||
+          normalizeText(college.name) === normalizeText(selectedDreamCollege) ||
+          normalizeText(college.collegeCode || "") === normalizeText(selectedDreamCollege),
+      ) || null,
+    [colleges, selectedDreamCollege],
+  );
+
+  const defaultCourseOptions = useMemo(
+    () =>
+      showMedicalFields
+        ? medicalCourseOptions
+        : showArtsScienceFields
+          ? artsScienceCourseOptions
+          : showLawFields
+            ? lawCourseOptions
+            : showBArchFields
+              ? ["B.Arch"]
+              : showAgricultureFields
+                ? ["B.Sc Agriculture"]
+                : showParamedicalFields
+                  ? ["B.Sc Nursing", "BPT", "B.Pharm", "B.Sc Radiology", "B.Sc Medical Laboratory Technology"]
+                  : engineeringCourseOptions,
+    [
+      showAgricultureFields,
+      showArtsScienceFields,
+      showBArchFields,
+      showLawFields,
+      showMedicalFields,
+      showParamedicalFields,
+    ],
+  );
+
+  const availableCourseOptions = useMemo(() => {
+    if (!selectedTargetCollege) return defaultCourseOptions;
+
+    const selectedCollegeKeys = [
+      selectedTargetCollege.id,
+      selectedTargetCollege.name,
+      selectedTargetCollege.collegeCode || "",
+    ]
+      .map((item) => normalizeText(item))
+      .filter(Boolean);
+
+    const courseNames = new Map<string, string>();
+    courses.forEach((course) => {
+      if (!courseMatchesDegree(course, selectedDegree)) return;
+
+      const courseCollegeKeys = [course.collegeId || "", course.college || "", course.collegeCode || ""]
+        .map((item) => normalizeText(item))
+        .filter(Boolean);
+      const courseHasCollege =
+        courseCollegeKeys.some((key) => selectedCollegeKeys.includes(key)) ||
+        (Array.isArray(course.collegeDetails) &&
+          course.collegeDetails.some((detail) => {
+            const detailKeys = [detail.collegeId || "", detail.college || "", detail.collegeCode || ""]
+              .map((item) => normalizeText(item))
+              .filter(Boolean);
+            return detailKeys.some((key) => selectedCollegeKeys.includes(key));
+          }));
+
+      if (!courseHasCollege) return;
+
+      const displayName = getCleanCourseOptionLabel(course, selectedDegree);
+      if (displayName) {
+        courseNames.set(normalizeText(displayName), displayName);
+      }
+    });
+
+    return Array.from(courseNames.values()).sort((left, right) => left.localeCompare(right));
+  }, [courses, defaultCourseOptions, selectedDegree, selectedTargetCollege]);
+
+  useEffect(() => {
+    if (!selectedCourse || availableCourseOptions.includes(selectedCourse)) return;
+    setSelectedCourse("");
+  }, [availableCourseOptions, selectedCourse]);
 
   const validationErrors = useMemo(() => {
     const errors: Record<string, string> = {};
@@ -1413,7 +1759,7 @@ export default function FindPage() {
             parsedCutoff.start === parsedCutoff.end
               ? formatScoreNumber(requiredCutoff)
               : `${formatScoreNumber(parsedCutoff.start)} - ${formatScoreNumber(parsedCutoff.end)}`,
-          ranking: String(college.ranking || "Not ranked"),
+          ranking: formatRankingRangeForDisplay(college.ranking),
           ownershipType: String(college.ownershipType || "Private"),
           accreditation: String(college.accreditation || "NAAC A"),
           establishedYear: String(college.establishedYear || "Est. --"),
@@ -1492,22 +1838,66 @@ export default function FindPage() {
     setSuggestionPage((page) => Math.min(page, suggestionPageCount));
   }, [suggestionPageCount]);
 
-  const goToSuggestionPage = (page: number) => {
-    const nextPage = Math.min(Math.max(page, 1), suggestionPageCount);
-    setSuggestionPage(nextPage);
+  useEffect(() => {
+    if (!shouldScrollSuggestedCollegesRef.current) return;
+    shouldScrollSuggestedCollegesRef.current = false;
+
     window.requestAnimationFrame(() => {
       suggestedCollegesListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }, [suggestionPage]);
+
+  const goToSuggestionPage = (page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), suggestionPageCount);
+    shouldScrollSuggestedCollegesRef.current = true;
+    setSuggestionPage(nextPage);
+    if (nextPage === suggestionPage) {
+      window.requestAnimationFrame(() => {
+        shouldScrollSuggestedCollegesRef.current = false;
+        suggestedCollegesListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   };
 
   useEffect(() => {
+    if (!hasRestoredPersistedForm) return;
+
+    const currentQuestionSetId = selectedJuniorQuestionSet?.id || "";
+    if (previousJuniorQuestionSetIdRef.current === null) {
+      previousJuniorQuestionSetIdRef.current = currentQuestionSetId;
+      return;
+    }
+    if (previousJuniorQuestionSetIdRef.current === "" && currentQuestionSetId && hasSubmittedJuniorTest) {
+      previousJuniorQuestionSetIdRef.current = currentQuestionSetId;
+      return;
+    }
+    if (previousJuniorQuestionSetIdRef.current === currentQuestionSetId) return;
+
+    previousJuniorQuestionSetIdRef.current = currentQuestionSetId;
     setActiveJuniorQuestionIndex(0);
     setJuniorAnswers({});
     setJuniorTimerSeconds(0);
     setHasStartedJuniorTest(false);
     setHasSubmittedJuniorTest(false);
     setActiveJuniorResultSubject("");
-  }, [selectedJuniorQuestionSet?.id]);
+  }, [hasRestoredPersistedForm, hasSubmittedJuniorTest, selectedJuniorQuestionSet?.id]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      activeStep !== 5 ||
+      !hasSubmittedJuniorTest ||
+      sortedJuniorCollegeSuggestions.length === 0 ||
+      window.sessionStorage.getItem(FIND_RETURN_TO_SUGGESTIONS_KEY) !== "1"
+    ) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(FIND_RETURN_TO_SUGGESTIONS_KEY);
+    window.requestAnimationFrame(() => {
+      suggestedCollegesListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [activeStep, hasSubmittedJuniorTest, sortedJuniorCollegeSuggestions.length]);
 
   useEffect(() => {
     if (!hasStartedJuniorTest || !activeJuniorQuestion || hasSubmittedJuniorTest || juniorTimerSeconds >= JUNIOR_TEST_DURATION_SECONDS) return;
@@ -1680,8 +2070,9 @@ export default function FindPage() {
   };
 
   return (
-    <main className="find-theme min-h-screen overflow-x-hidden bg-white text-[#0F1B25]">
+    <>
       <Navbar />
+      <main className="find-theme min-h-screen overflow-x-hidden bg-white text-[#0F1B25]">
       {showValidationPopup ? (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-[#071333]/35 px-4 pt-24 backdrop-blur-[2px] sm:pt-28">
           <div
@@ -1731,14 +2122,14 @@ export default function FindPage() {
           </div>
         </div>
       ) : null}
-      <div className="px-3 pb-8 pt-2 sm:px-5 md:px-7">
-        <div className="mx-auto w-full max-w-[1280px]">
+      <div className="px-2 pb-8 pt-2 sm:px-4 lg:px-6 2xl:px-8">
+        <div className="mx-auto w-full max-w-[1600px]">
           <div className="space-y-4">
             <nav
               aria-label="Find college progress"
-              className="sticky top-0 z-40 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-white/95 px-3 py-1.5 shadow-[0_8px_22px_rgba(15,27,37,0.08)] backdrop-blur md:px-4"
+              className="sticky top-0 z-40 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-white/95 px-2 py-1.5 shadow-[0_8px_22px_rgba(15,27,37,0.08)] backdrop-blur md:px-4 md:py-1.5"
             >
-              <div className="grid grid-cols-1 gap-1.5 md:grid-cols-[repeat(9,minmax(0,1fr))] md:items-start">
+              <div className="grid grid-cols-[minmax(42px,1fr)_16px_minmax(42px,1fr)_16px_minmax(42px,1fr)_16px_minmax(42px,1fr)_16px_minmax(42px,1fr)] items-start gap-0 md:grid-cols-[repeat(9,minmax(0,1fr))]">
                 {progressLabels.map((label, index) => {
                   const stepNumber = index + 1;
                   const isCompleted = stepNumber < visibleStep;
@@ -1756,13 +2147,13 @@ export default function FindPage() {
                   return (
                     <div key={label} className="contents">
                       <div
-                        className={`relative flex min-w-0 items-center gap-2 pb-1 md:flex-col md:justify-start md:gap-0.5 md:text-center ${
+                        className={`relative flex min-w-0 flex-col items-center justify-start gap-px pb-1 text-center ${
                           isCurrent ? "text-[#0F1B25]" : isCompleted ? "text-[#0F1B25]" : "text-[#5F6B76]"
                         }`}
                         aria-current={isCurrent ? "step" : undefined}
                       >
                         <span
-                          className={`flex size-6 shrink-0 items-center justify-center rounded-full border text-[0.72rem] font-semibold ${
+                          className={`flex size-5 shrink-0 items-center justify-center rounded-full border text-[0.64rem] font-semibold md:size-5 md:text-[0.66rem] ${
                             isCompleted
                               ? "border-[#0F1B25] bg-[#0F1B25] text-white"
                               : isCurrent
@@ -1770,20 +2161,20 @@ export default function FindPage() {
                                 : "border-[#D7DCE2] bg-white text-[#0F1B25]"
                           }`}
                         >
-                          {isCompleted ? <Check className="size-4" /> : stepNumber}
+                          {isCompleted ? <Check className="size-3.5 md:size-4" /> : stepNumber}
                         </span>
                         <StepIcon
-                          className={`size-4 stroke-[1.9] md:size-5 ${
+                          className={`size-3.5 stroke-[1.9] md:size-4 ${
                             isCompleted || isCurrent ? "text-[#F4B400]" : "text-[#7C8793]"
                           }`}
                         />
-                        <span className="min-w-0 text-[12px] font-semibold leading-4">{label}</span>
+                        <span className="min-w-0 text-[8.5px] font-semibold leading-[10px] md:text-[11px] md:leading-3.5">{label}</span>
                         {isCurrent ? (
-                          <span className="absolute bottom-0 left-8 h-0.5 w-24 rounded-full bg-[#F4B400] md:left-1/2 md:w-[66%] md:-translate-x-1/2" />
+                          <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-[#F4B400] md:w-[66%]" />
                         ) : null}
                       </div>
                       {index < progressLabels.length - 1 ? (
-                        <div className="hidden h-px self-center bg-[#B9C0C8] md:block" aria-hidden="true" />
+                        <div className="mt-2 h-px self-start bg-[#DDE2E7]" aria-hidden="true" />
                       ) : null}
                     </div>
                   );
@@ -1807,6 +2198,8 @@ export default function FindPage() {
               }}
               className="p-0"
             >
+              {!inlineMatchQueryString ? (
+                <>
                 {activeStep === 1 ? (
                   <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.95fr)]">
                     <div className="min-w-0 lg:pl-10 xl:pl-14">
@@ -1891,7 +2284,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToNextStep}
-                            className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
                           >
                             Next
                             <ArrowRight className="size-4" />
@@ -1963,7 +2356,7 @@ export default function FindPage() {
                       <button
                         type="button"
                         onClick={goToNextStep}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
                       >
                         Next
                         <ArrowRight className="size-4" />
@@ -1978,7 +2371,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep !== 1 && activeStep !== 2 ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
 
                 {activeStep === 4 && isSeniorSecondaryLevel ? (
                   <FieldShell icon={MapPin} label="Select your State">
@@ -2092,7 +2485,7 @@ export default function FindPage() {
                       <button
                         type="button"
                         onClick={goToNextStep}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
                       >
                         Next
                         <ArrowRight className="size-4" />
@@ -2151,16 +2544,12 @@ export default function FindPage() {
                       }}
                       className={academicInputClassName}
                     >
-                      <option value="">Choose course</option>
-                      {(
-                        showMedicalFields
-                          ? medicalCourseOptions
-                          : showArtsScienceFields
-                            ? artsScienceCourseOptions
-                          : showLawFields
-                            ? lawCourseOptions
-                            : engineeringCourseOptions
-                      ).map((course) => (
+                      <option value="">
+                        {selectedTargetCollege && availableCourseOptions.length === 0
+                          ? "No courses found for selected college"
+                          : "Choose course"}
+                      </option>
+                      {availableCourseOptions.map((course) => (
                         <option key={course} value={course}>
                           {course}
                         </option>
@@ -2945,11 +3334,11 @@ export default function FindPage() {
 
                       <div className="mt-4 flex flex-col items-center gap-3">
                         {!hasStartedJuniorTest ? (
-                        <div className="flex w-full max-w-[430px] gap-4">
+                        <div className="flex w-full max-w-[520px] flex-col gap-3 sm:flex-row sm:gap-4">
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-6 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-semibold !text-[#071A44] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white sm:flex-1"
                           >
                             <ArrowRight className="size-4 rotate-180" />
                             Back
@@ -2957,10 +3346,10 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={() => setHasStartedJuniorTest(true)}
-                            className="inline-flex h-12 flex-[1.6] items-center justify-center gap-3 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-semibold !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:flex-[1.8]"
                           >
-                            Start Assessment
-                            <ArrowRight className="size-5" />
+                            <span className="whitespace-nowrap">Start Assessment</span>
+                            <ArrowRight className="size-5 shrink-0" />
                           </button>
                         </div>
                         ) : (
@@ -2968,7 +3357,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[16px] font-semibold !text-[#071A44] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
                           >
                             <ArrowRight className="size-4 rotate-180" />
                             Back
@@ -2994,7 +3383,7 @@ export default function FindPage() {
                             <button
                               type="button"
                               onClick={goToNextJuniorQuestion}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
                             >
                               Next
                               <ArrowRight className="size-4" />
@@ -3017,16 +3406,16 @@ export default function FindPage() {
               ) : null}
 
               {activeStep === 5 && isJuniorLevel ? (
-                <div className="mt-4 rounded-[10px] border border-[#dce5fb] bg-white p-4 shadow-[0_14px_28px_rgba(20,42,99,0.08)]">
-                  <div className="mb-4 flex items-center justify-center gap-3">
-                    <div className="relative flex size-12 items-center justify-center text-[#F4B400]">
-                      <Trophy className="size-9 fill-[#F4B400]/20" />
+                <div className="mt-3 rounded-[10px] border border-[#dce5fb] bg-white p-3 shadow-[0_10px_22px_rgba(20,42,99,0.08)]">
+                  <div className="mb-3 flex items-center justify-center gap-2.5">
+                    <div className="relative flex size-10 items-center justify-center text-[#F4B400]">
+                      <Trophy className="size-8 fill-[#F4B400]/20" />
                       <span className="absolute -left-2 top-0 text-[12px] text-[#F4B400]">+</span>
                       <span className="absolute -right-1 -top-1 text-[12px] text-[#F4B400]">+</span>
                     </div>
                     <div>
-                      <h3 className="text-[28px] font-semibold leading-8 text-[#0F1B25]">Assessment Result</h3>
-                      <div className="mt-1 text-[14px] text-[#5F6B76]">Your score is calculated from saved admin answers</div>
+                      <h3 className="text-[24px] font-semibold leading-[1.25] text-[#0F1B25]">Assessment Result</h3>
+                      <div className="mt-0.5 text-[16px] font-normal leading-6 text-[#5F6B76]">Your score is calculated from saved admin answers</div>
                     </div>
                   </div>
 
@@ -3035,100 +3424,100 @@ export default function FindPage() {
                       Loading saved questions...
                     </div>
                   ) : activeJuniorQuestion ? (
-                    <div className="mt-4">
+                    <div className="mt-3">
                       {activeStep === 5 && hasSubmittedJuniorTest ? (
-                        <div className="space-y-4">
-                          <div className="grid gap-4 rounded-[8px] border border-[#E6E6E6] bg-white p-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)] lg:grid-cols-[minmax(0,1fr)_300px]">
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                        <div className="space-y-3">
+                          <div className="grid gap-3 rounded-[8px] border border-[#E6E6E6] bg-white p-3 shadow-[0_10px_20px_rgba(15,27,37,0.06)] lg:grid-cols-[minmax(0,1fr)_270px]">
+                            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+                              <div className="flex min-h-[58px] items-center gap-2 border-b border-r border-[#E6E6E6] pb-2.5 pr-2 lg:border-b-0 lg:pb-0">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <User className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Full Name</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Full Name</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     {name || "Student"}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 lg:border-r lg:pb-0 lg:pr-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                              <div className="flex min-h-[58px] items-center gap-2 border-b border-[#E6E6E6] pb-2.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <Phone className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Phone Number</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Phone Number</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     {phone || "Not added"}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3 lg:border-r-0 lg:pr-0">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                              <div className="flex min-h-[58px] items-center gap-2 border-b border-r border-[#E6E6E6] pb-2.5 pr-2 lg:border-b-0 lg:border-r-0 lg:pb-0 lg:pr-0">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <GraduationCap className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Level</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Level</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     Class {selectedLevel}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 lg:border-r lg:pb-0 lg:pr-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                              <div className="flex min-h-[58px] items-center gap-2 border-b border-[#E6E6E6] pb-2.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <School className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Degree Stream</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Degree Stream</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     {selectedDegree}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex min-h-[76px] items-center gap-3 border-b border-[#E6E6E6] pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                              <div className="flex min-h-[58px] items-center gap-2 border-r border-[#E6E6E6] pr-2 lg:border-r">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <CalendarDays className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Test Date</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Test Date</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     {juniorResultDate}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex min-h-[76px] items-center gap-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                              <div className="flex min-h-[58px] items-center gap-2 lg:border-r-0">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
                                   <Clock className="size-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-semibold uppercase text-[#5F6B76]">Time Taken</div>
-                                  <div className="mt-1 truncate text-[15px] font-semibold text-[#0F1B25]">
+                                  <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Time Taken</div>
+                                  <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
                                     {formatDurationLabel(juniorTimerSeconds)}
                                   </div>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="rounded-[8px] border border-[#F4B400] bg-white p-4 text-center shadow-[0_12px_24px_rgba(244,180,0,0.12)]">
-                              <div className="text-[12px] font-semibold uppercase text-[#0F1B25]">Overall Score</div>
-                              <div className="mt-2 text-[42px] font-semibold leading-none text-[#F4B400]">
+                            <div className="rounded-[8px] border border-[#F4B400] bg-white p-3 text-center shadow-[0_10px_20px_rgba(244,180,0,0.12)]">
+                              <div className="text-[14px] font-normal uppercase text-[#0F1B25]">Overall Score</div>
+                              <div className="mt-1.5 text-[35.2px] font-semibold leading-none text-[#F4B400]">
                                 {formatScoreNumber(juniorOverallScore)}
-                                <span className="text-[16px] font-semibold text-[#0F1B25]"> / {juniorAssessmentScale}</span>
+                                <span className="text-[16px] font-normal text-[#0F1B25]"> / {juniorAssessmentScale}</span>
                               </div>
-                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#FFF4CC]">
+                              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#FFF4CC]">
                                 <div
                                   className="h-full rounded-full bg-[#F4B400]"
                                   style={{ width: `${Math.min(100, juniorPercentage)}%` }}
                                 />
                               </div>
-                              <div className="mt-1 text-right text-[12px] font-semibold text-[#0F1B25]">
+                              <div className="mt-1 text-right text-[14px] font-normal text-[#0F1B25]">
                                 {Math.round(juniorPercentage)}%
                               </div>
-                              <div className="mt-3 rounded-[8px] border border-[#DCEEDB] bg-[#F5FFF4] px-3 py-3 text-left">
-                                <div className="flex items-center gap-2 text-[14px] font-semibold text-[#16A34A]">
+                              <div className="mt-2.5 rounded-[8px] border border-[#DCEEDB] bg-[#F5FFF4] px-3 py-2 text-left">
+                                <div className="flex items-center gap-2 text-[16px] font-normal text-[#16A34A]">
                                   <Check className="size-4" />
                                   {juniorResultTone.label} Performance
                                 </div>
-                                <div className="mt-1 text-[13px] font-medium text-[#5F6B76]">
+                                <div className="mt-0.5 text-[14px] font-normal text-[#5F6B76]">
                                   {juniorCorrectCount} correct out of {juniorQuestionTotal} questions
                                 </div>
                               </div>
@@ -3138,21 +3527,21 @@ export default function FindPage() {
                           <div className="rounded-[8px] bg-white">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
-                                <div className="text-[16px] font-semibold uppercase text-[#0F1B25]">Subject Wise Marks</div>
-                                <div className="mt-1 text-[13px] font-normal text-[#5F6B76]">Out of 100. Click a subject to view answers.</div>
+                                <div className="text-[28px] font-semibold leading-[1.22] text-[#0F1B25]">Subject Wise Marks</div>
+                                <div className="mt-1 text-[16px] font-normal text-[#5F6B76]">Out of 100. Click a subject to view answers.</div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 <button
                                   type="button"
                                   onClick={goToPreviousStep}
-                                  className="inline-flex h-9 items-center justify-center rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                                  className="inline-flex h-10 items-center justify-center rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[16px] font-medium !text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:!text-[#0F1B25]"
                                 >
                                   Back
                                 </button>
                                 <button
                                   type="button"
                                   onClick={resetJuniorAssessment}
-                                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[16px] font-medium !text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
                                 >
                                   <RotateCcw className="size-4" />
                                   Retake
@@ -3184,10 +3573,10 @@ export default function FindPage() {
                                         <SubjectIcon className="size-5" />
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="truncate text-[14px] font-semibold text-[#0F1B25]">{subjectResult.subject}</div>
-                                        <div className="mt-1 text-[24px] font-semibold leading-none text-[#16A34A]">
+                                        <div className="truncate text-[20px] font-semibold leading-[1.3] text-[#0F1B25]">{subjectResult.subject}</div>
+                                        <div className="mt-1 text-[20px] font-semibold leading-none text-[#16A34A]">
                                           {Math.round(subjectResult.percentage)}
-                                          <span className="text-[13px] font-semibold text-[#0F1B25]"> / 100</span>
+                                          <span className="text-[16px] font-normal text-[#0F1B25]"> / 100</span>
                                         </div>
                                       </div>
                                     </div>
@@ -3197,7 +3586,7 @@ export default function FindPage() {
                                         style={{ width: `${Math.min(100, subjectResult.percentage)}%` }}
                                       />
                                     </div>
-                                    <div className="mt-3 flex items-center justify-between text-[12px] font-semibold">
+                                    <div className="mt-3 flex items-center justify-between gap-2 text-[14px] font-normal">
                                       <span className="text-[#16A34A]">
                                         {subjectResult.tone.label}
                                       </span>
@@ -3212,7 +3601,7 @@ export default function FindPage() {
                           <div className="rounded-[8px] bg-white py-6">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                               <div>
-                                <div className="text-[28px] font-semibold leading-tight text-[#0F1B25]">
+                                <div className="text-[28px] font-semibold leading-[1.22] text-[#0F1B25]">
                                   Suggested Colleges
                                 </div>
                                 <div className="mt-4 text-[16px] font-normal text-[#354150]">
@@ -3225,23 +3614,23 @@ export default function FindPage() {
                               </div>
                             </div>
                             <div className="mt-7 border-t border-[#E6E6E6] pt-7">
-                              <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                                 <div className="text-[16px] font-normal text-[#354150]">
                                   Showing <span className="font-semibold text-[#0F1B25]">{suggestionStartNumber}</span>-<span className="font-semibold text-[#0F1B25]">{suggestionEndNumber}</span> of <span className="font-semibold text-[#0F1B25]">{sortedJuniorCollegeSuggestions.length}</span> colleges
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="relative">
+                                <div className="grid w-full grid-cols-1 gap-3 lg:w-auto lg:grid-cols-[minmax(190px,auto)_auto] lg:items-center">
+                                  <div className="relative min-w-0">
                                     <button
                                       type="button"
                                       onClick={() => setIsSuggestionSortOpen((isOpen) => !isOpen)}
-                                      className="inline-flex h-12 min-w-[190px] items-center justify-between gap-4 rounded-[8px] border border-[#DDE2E7] bg-white px-5 text-[16px] font-normal text-[#0F1B25]"
+                                      className="inline-flex h-12 w-full items-center justify-between gap-4 rounded-[8px] border border-[#DDE2E7] bg-white px-5 text-[16px] font-normal text-[#0F1B25] sm:min-w-[190px]"
                                       aria-expanded={isSuggestionSortOpen}
                                     >
-                                      {suggestionSortLabel}
-                                      <ChevronDown className="size-4 text-[#5F6B76]" />
+                                      <span className="min-w-0 truncate">{suggestionSortLabel}</span>
+                                      <ChevronDown className="size-4 shrink-0 text-[#5F6B76]" />
                                     </button>
                                     {isSuggestionSortOpen ? (
-                                      <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[220px] overflow-hidden rounded-[12px] border border-[#E6E6E6] bg-white p-2 shadow-[0_18px_34px_rgba(15,27,37,0.16)]">
+                                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-[12px] border border-[#E6E6E6] bg-white p-2 shadow-[0_18px_34px_rgba(15,27,37,0.16)] sm:left-auto sm:w-[220px]">
                                         {[
                                           { value: "alphabetical" as const, label: "Alphabetical" },
                                           { value: "newest" as const, label: "Newest first" },
@@ -3268,26 +3657,26 @@ export default function FindPage() {
                                       </div>
                                     ) : null}
                                   </div>
-                                  <div className="inline-flex overflow-hidden rounded-[8px] border border-[#DDE2E7] bg-white">
+                                  <div className="grid w-full grid-cols-2 overflow-hidden rounded-[8px] border border-[#DDE2E7] bg-white sm:inline-flex sm:w-auto">
                                     <button
                                       type="button"
                                       onClick={() => setSuggestionView("grid")}
-                                      className={`inline-flex h-12 items-center gap-2 px-5 text-[16px] font-medium ${
+                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] ${
                                         suggestionView === "grid" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
                                       }`}
                                     >
-                                      <LayoutGrid className="size-4" />
-                                      Grid
+                                      <LayoutGrid className="size-4 shrink-0" />
+                                      <span className="whitespace-nowrap">Grid</span>
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setSuggestionView("list")}
-                                      className={`inline-flex h-12 items-center gap-2 px-5 text-[16px] font-medium ${
+                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] ${
                                         suggestionView === "list" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
                                       }`}
                                     >
-                                      <List className="size-4" />
-                                      List
+                                      <List className="size-4 shrink-0" />
+                                      <span className="whitespace-nowrap">List</span>
                                     </button>
                                   </div>
                                 </div>
@@ -3298,7 +3687,7 @@ export default function FindPage() {
                               <>
                               <div
                                 ref={suggestedCollegesListRef}
-                                className={suggestionView === "grid" ? "mt-8 scroll-mt-24 grid gap-6 lg:grid-cols-3" : "mt-8 scroll-mt-24 grid gap-4"}
+                                className={suggestionView === "grid" ? "mt-8 scroll-mt-24 grid auto-rows-fr gap-6 lg:grid-cols-3" : "mt-8 scroll-mt-24 grid gap-4"}
                               >
                                 {visibleJuniorCollegeSuggestions.map((suggestion, suggestionIndex) => {
                                   const absoluteSuggestionIndex = (suggestionPage - 1) * SUGGESTIONS_PER_PAGE + suggestionIndex;
@@ -3335,34 +3724,42 @@ export default function FindPage() {
                                       <a
                                         key={suggestion.id}
                                         href={suggestion.href}
-                                        className="group grid min-h-[108px] grid-cols-[72px_minmax(0,1fr)_86px_86px_32px] items-center gap-5 rounded-[18px] border border-[#E6E6E6] bg-white px-5 py-4 shadow-[0_8px_18px_rgba(15,27,37,0.04)] transition hover:border-[#F4B400] hover:shadow-[0_14px_26px_rgba(15,27,37,0.08)]"
+                                        onClick={saveFindFormStateForCollegeDetails}
+                                        className="group grid min-h-[108px] grid-cols-[56px_minmax(0,1fr)] items-center gap-x-3 gap-y-4 rounded-[18px] border border-[#E6E6E6] bg-white px-3 py-4 shadow-[0_8px_18px_rgba(15,27,37,0.04)] transition hover:border-[#F4B400] hover:shadow-[0_14px_26px_rgba(15,27,37,0.08)] sm:grid-cols-[72px_minmax(0,1fr)_92px_86px_86px_32px] sm:gap-5 sm:px-5"
                                       >
                                         <CollegeLogoBadge
                                           src={suggestion.logo}
                                           alt={suggestion.collegeName}
-                                          className="size-[68px] rounded-full"
+                                          mode="cover"
+                                          className="size-14 rounded-full sm:size-[68px]"
                                           imageClassName="rounded-full"
                                           fallback={<Building2 className="size-7" />}
                                         />
                                         <div className="min-w-0">
-                                          <div className="truncate text-[20px] font-semibold text-[#0F1B25]">
+                                          <div className="line-clamp-2 text-[20px] font-semibold leading-[1.3] text-[#0F1B25] sm:truncate">
                                             {suggestion.collegeName}
                                           </div>
-                                          <div className="mt-2 flex min-w-0 items-center gap-2 text-[16px] text-[#5F6B76]">
-                                            <span className="truncate font-medium">{suggestion.ownershipType}</span>
+                                          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[16px] font-normal text-[#5F6B76] sm:flex-nowrap">
+                                            <span className="truncate">{suggestion.ownershipType}</span>
                                             <span aria-hidden="true">.</span>
                                             <span className="truncate">{suggestion.location || selectedState}</span>
                                           </div>
                                         </div>
-                                        <div className="text-center">
-                                          <div className="text-[14px] font-normal text-[#8A949F]">Est.</div>
-                                          <div className="mt-1 text-[18px] font-semibold text-[#0F1B25]">{suggestion.establishedYear}</div>
+                                        <div className="col-span-2 grid min-w-0 grid-cols-3 gap-2 sm:contents">
+                                          <div className="min-w-0 rounded-[10px] bg-[#F8F9FB] px-1.5 py-2 text-center sm:bg-transparent sm:p-0">
+                                            <div className="text-[14px] font-normal text-[#8A949F]">Cut Off</div>
+                                            <div className={`mt-1 whitespace-nowrap text-[clamp(0.72rem,3vw,1rem)] font-normal sm:text-[16px] ${cardTheme.metric}`}>{suggestion.cutoffLabel}</div>
+                                          </div>
+                                          <div className="min-w-0 rounded-[10px] bg-[#F8F9FB] px-1.5 py-2 text-center sm:bg-transparent sm:p-0">
+                                            <div className="text-[14px] font-normal text-[#8A949F]">Est.</div>
+                                            <div className="mt-1 text-[16px] font-normal text-[#0F1B25]">{suggestion.establishedYear}</div>
+                                          </div>
+                                          <div className="min-w-0 rounded-[10px] bg-[#F8F9FB] px-1.5 py-2 text-center sm:bg-transparent sm:p-0">
+                                            <div className="text-[14px] font-normal text-[#8A949F]">Ranking</div>
+                                            <div className="mt-1 text-[16px] font-normal leading-5 text-[#0F1B25]">{suggestion.ranking}</div>
+                                          </div>
                                         </div>
-                                        <div className="text-center">
-                                          <div className="text-[14px] font-normal text-[#8A949F]">Ranking</div>
-                                          <div className="mt-1 text-[18px] font-semibold text-[#0F1B25]">{suggestion.ranking}</div>
-                                        </div>
-                                        <ArrowRight className="size-5 text-[#B8C0C8] transition group-hover:translate-x-1 group-hover:text-[#D99A00]" />
+                                        <ArrowRight className="hidden size-5 text-[#B8C0C8] transition group-hover:translate-x-1 group-hover:text-[#D99A00] sm:block" />
                                       </a>
                                     );
                                   }
@@ -3371,10 +3768,11 @@ export default function FindPage() {
                                   <a
                                     key={suggestion.id}
                                     href={suggestion.href}
-                                    className="group overflow-hidden rounded-[14px] border border-[#E6E6E6] bg-white shadow-[0_18px_34px_rgba(15,27,37,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,27,37,0.12)]"
+                                    onClick={saveFindFormStateForCollegeDetails}
+                                    className="group flex h-full flex-col overflow-hidden rounded-[14px] border border-[#E6E6E6] bg-white shadow-[0_18px_34px_rgba(15,27,37,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,27,37,0.12)]"
                                   >
                                     <div className={`relative min-h-[205px] overflow-hidden p-5 text-white ${cardTheme.band}`}>
-                                      <span className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium ${cardTheme.pill}`}>
+                                      <span className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[14px] font-normal ${cardTheme.pill}`}>
                                         {cardTheme.labelIcon}
                                         {cardTheme.label}
                                       </span>
@@ -3385,15 +3783,16 @@ export default function FindPage() {
                                         <CollegeLogoBadge
                                           src={suggestion.logo}
                                           alt={suggestion.collegeName}
+                                          mode="cover"
                                           className="size-[74px] shrink-0 rounded-full border-4 border-white/70 shadow-[0_12px_20px_rgba(15,27,37,0.16)]"
                                           imageClassName="rounded-full"
                                           fallback={<Building2 className="size-8" />}
                                         />
                                         <div className="min-w-0">
-                                          <div className="line-clamp-2 text-[22px] font-semibold leading-7 text-white">
+                                          <div className="line-clamp-2 text-[20px] font-semibold leading-[1.3] text-white">
                                             {suggestion.collegeName}
                                           </div>
-                                          <div className="mt-2.5 flex min-w-0 items-center gap-2 text-[17px] font-normal text-white/95">
+                                          <div className="mt-2.5 flex min-w-0 items-center gap-2 text-[16px] font-normal text-white/95">
                                             <MapPin className="size-4.5 shrink-0" />
                                             <span className="truncate">{suggestion.location || selectedState}</span>
                                           </div>
@@ -3401,23 +3800,23 @@ export default function FindPage() {
                                       </div>
                                     </div>
 
-                                    <div className="p-4">
+                                    <div className="flex flex-1 flex-col p-4">
                                       <div className="grid grid-cols-2 overflow-hidden rounded-[10px] bg-[#F8F9FB]">
                                         <div className="border-r border-[#DDE2E7] px-3 py-3 text-center">
-                                          <div className="text-[13px] font-medium uppercase text-[#354150]">Cut Off</div>
+                                          <div className="text-[14px] font-normal uppercase text-[#354150]">Cut Off</div>
                                           <div className={`mt-1.5 text-[20px] font-semibold ${cardTheme.metric}`}>
                                           {suggestion.cutoffLabel}
                                           </div>
                                         </div>
                                         <div className="px-3 py-3 text-center">
-                                          <div className="text-[13px] font-medium uppercase text-[#354150]">Ranking</div>
+                                          <div className="text-[14px] font-normal uppercase text-[#354150]">Ranking</div>
                                           <div className="mt-1.5 text-[20px] font-semibold text-[#0F1B25]">
                                             {suggestion.ranking}
                                           </div>
                                         </div>
                                       </div>
 
-                                      <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[14px] leading-5 text-[#0F1B25]">
+                                      <div className="mt-4 flex min-h-[72px] flex-wrap items-start gap-x-2.5 gap-y-1.5 text-[16px] font-normal leading-6 text-[#0F1B25]">
                                         <span className="inline-flex min-w-0 items-center gap-2">
                                           <GraduationCap className="size-4 shrink-0" />
                                           <span>{suggestion.ownershipType}</span>
@@ -3431,7 +3830,7 @@ export default function FindPage() {
                                         </span>
                                       </div>
 
-                                      <div className={`mt-5 inline-flex h-12 w-full items-center justify-center gap-3 rounded-[10px] text-[17px] font-semibold transition group-hover:brightness-95 ${cardTheme.cta}`}>
+                                      <div className={`mt-auto inline-flex h-12 w-full items-center justify-center gap-3 rounded-[10px] text-[16px] font-medium transition group-hover:brightness-95 ${cardTheme.cta}`}>
                                         View College Details
                                         <ArrowRight className="size-5 transition group-hover:translate-x-0.5" />
                                       </div>
@@ -3441,18 +3840,18 @@ export default function FindPage() {
                                 })}
                               </div>
                               {suggestionPageCount > 1 ? (
-                                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                                <div className="mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                                   {visibleSuggestionPageNumbers[0] > 1 ? (
                                     <>
                                       <button
                                         type="button"
                                         onClick={() => goToSuggestionPage(1)}
-                                        className="inline-flex size-12 items-center justify-center rounded-[12px] border border-[#E6E6E6] bg-white text-[16px] font-semibold text-[#008C46] shadow-[0_6px_14px_rgba(15,27,37,0.08)] transition hover:border-[#F4B400] hover:bg-[#FFF4CC]"
+                                        className="inline-flex size-10 items-center justify-center rounded-[10px] border border-[#E6E6E6] bg-white text-[15px] font-semibold text-[#008C46] shadow-[0_6px_14px_rgba(15,27,37,0.08)] transition hover:border-[#F4B400] hover:bg-[#FFF4CC] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
                                         aria-label="Go to page 1"
                                       >
                                         1
                                       </button>
-                                      <span className="inline-flex size-12 items-center justify-center text-[18px] font-semibold text-[#0F1B25]">
+                                      <span className="inline-flex size-10 items-center justify-center text-[16px] font-semibold text-[#0F1B25] sm:size-12 sm:text-[18px]">
                                         ...
                                       </span>
                                     </>
@@ -3464,7 +3863,7 @@ export default function FindPage() {
                                         key={pageNumber}
                                         type="button"
                                         onClick={() => goToSuggestionPage(pageNumber)}
-                                        className={`inline-flex size-12 items-center justify-center rounded-[12px] text-[16px] font-semibold transition ${
+                                        className={`inline-flex size-10 items-center justify-center rounded-[10px] text-[15px] font-semibold transition sm:size-12 sm:rounded-[12px] sm:text-[16px] ${
                                           isCurrentPage
                                             ? "bg-[#F4B400] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.24)]"
                                             : "bg-white text-[#008C46] hover:bg-[#FFF4CC]"
@@ -3478,13 +3877,13 @@ export default function FindPage() {
                                   })}
                                   {visibleSuggestionPageNumbers[visibleSuggestionPageNumbers.length - 1] < suggestionPageCount ? (
                                     <>
-                                      <span className="inline-flex size-12 items-center justify-center text-[18px] font-semibold text-[#0F1B25]">
+                                      <span className="inline-flex size-10 items-center justify-center text-[16px] font-semibold text-[#0F1B25] sm:size-12 sm:text-[18px]">
                                         ...
                                       </span>
                                       <button
                                         type="button"
                                         onClick={() => goToSuggestionPage(suggestionPageCount)}
-                                        className="inline-flex size-12 items-center justify-center rounded-[12px] bg-white text-[16px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC]"
+                                        className="inline-flex size-10 items-center justify-center rounded-[10px] bg-white text-[15px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
                                         aria-label={`Go to page ${suggestionPageCount}`}
                                       >
                                         {suggestionPageCount}
@@ -3495,7 +3894,7 @@ export default function FindPage() {
                                     type="button"
                                     onClick={() => goToSuggestionPage(suggestionPage + 1)}
                                     disabled={suggestionPage >= suggestionPageCount}
-                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] px-4 text-[17px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] disabled:cursor-not-allowed disabled:text-[#B8C0C8] disabled:hover:bg-transparent"
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-3 text-[15px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] disabled:cursor-not-allowed disabled:text-[#B8C0C8] disabled:hover:bg-transparent sm:h-12 sm:rounded-[12px] sm:px-4 sm:text-[17px]"
                                   >
                                     Next
                                     <ArrowRight className="size-4" />
@@ -3509,7 +3908,7 @@ export default function FindPage() {
                                   No cutoff-matched colleges found yet.
                                 </div>
                                 <div className="mt-1 text-[0.68rem] font-semibold text-[#52618a]">
-                                  Add {selectedDegree || "degree"} courses with cutoff details in admin to show suggestions here.
+                                  {`Add ${selectedDegree || "degree"} courses with cutoff details in admin to show suggestions here.`}
                                 </div>
                               </div>
                             )}
@@ -3606,16 +4005,16 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0F1B25] bg-[#0F1B25] px-6 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
                           >
                             Back
                           </button>
                           <button
                             type="button"
                             onClick={() => setHasStartedJuniorTest(true)}
-                            className="inline-flex h-10 items-center justify-center rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-10 min-w-[180px] items-center justify-center rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
                           >
-                            Start Assessment
+                            <span className="whitespace-nowrap">Start Assessment</span>
                           </button>
                         </div>
                       ) : (
@@ -3624,7 +4023,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:text-[#0F1B25]"
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-5 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
                           >
                             Back
                           </button>
@@ -3680,14 +4079,16 @@ export default function FindPage() {
                   ) : null}
                 </div>
               ) : null}
+                </>
+              ) : null}
 
               {inlineMatchQueryString ? (
-                <div ref={inlineMatchResultsRef} className="mt-6 scroll-mt-6 overflow-hidden rounded-[18px]">
-                  <div className="mb-4 flex justify-start">
+                <div ref={inlineMatchResultsRef} className="mt-3 scroll-mt-6 overflow-hidden rounded-[18px]">
+                  <div className="mb-2 flex justify-start">
                     <button
                       type="button"
                       onClick={goBackFromInlineResults}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[2px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
                     >
                       <ArrowRight className="size-4 rotate-180" />
                       Back
@@ -3725,6 +4126,7 @@ export default function FindPage() {
               {activeStep <= 3 || ((activeStep === 4 || activeStep === 5) && isJuniorLevel) ? null : inlineMatchQueryString ? null : (
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 {activeStep > 1 ? (
+                  <>
                   <button
                     type="button"
                     onClick={goToPreviousStep}
@@ -3732,6 +4134,14 @@ export default function FindPage() {
                   >
                     Back
                   </button>
+                  <button
+                    type="button"
+                    onClick={resetFinalDetailsFields}
+                    className="inline-flex h-11 items-center justify-center rounded-[8px] border border-[#F4B400] bg-white px-6 text-[0.9rem] font-bold text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.10)] transition hover:bg-[#FFF7DF] sm:min-w-[120px]"
+                  >
+                    Reset
+                  </button>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -3744,7 +4154,7 @@ export default function FindPage() {
                 <button
                   type={activeStep < 4 ? "button" : "submit"}
                   onClick={activeStep < 4 ? goToNextStep : undefined}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.9rem] font-bold text-[#0F1B25] shadow-[0_12px_22px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white sm:min-w-[140px]"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.9rem] font-bold !text-[#071A44] shadow-[0_12px_22px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:min-w-[140px]"
                 >
                   {activeStep < 4 ? "Next" : isJuniorLevel ? "View Results" : "Calculate"}
                   <ArrowRight className="size-4" />
@@ -3757,7 +4167,8 @@ export default function FindPage() {
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 
@@ -3781,31 +4192,27 @@ function FieldShell({
   return (
     <div
       data-field-id={fieldId}
-      className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
-        invalid
-          ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
-          : "border-[#d8dff2] bg-white hover:border-[#142a63] hover:shadow-[0_12px_22px_rgba(20,42,99,0.1)]"
-      }`}
+      className="block"
     >
+      <div className={`mb-2.5 text-[16px] font-semibold leading-5 ${invalid ? "text-[#d92d20]" : "text-[#0F1B25]"}`}>{label}</div>
       <div
-        className={`grid min-h-[36px] items-center gap-2 ${
-          invalid ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]"
+        className={`grid min-h-[54px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-[6px] border bg-white px-3.5 shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition ${
+          invalid
+            ? "border-[#ff4d5e] shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
+            : "border-[#DDE2E7] hover:border-[#AEB7C2]"
         }`}
       >
         <div
-          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(20,42,99,0.08)] ${
-            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#d7dff5] bg-[#f3f6ff] text-[#142a63]"
+          className={`flex size-7.5 items-center justify-center rounded-[9px] border shadow-[0_3px_8px_rgba(15,27,37,0.04)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#E6EAF0] bg-[#F8F9FB] text-[#0F1B25]"
           }`}
         >
-          <Icon className="size-4 stroke-[2.4]" />
+          <Icon className="size-4.5 stroke-[2.2]" />
         </div>
-        <div className="min-w-0">
-          <div className={`mb-0.5 text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#142a63]"}`}>{label}</div>
-          {children}
-        </div>
+        <div className="min-w-0">{children}</div>
         {invalid ? (
           <div className="flex items-center justify-center">
-            <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} />
+            <CircleAlert className="size-5 text-[#ff4d5e]" strokeWidth={2.2} />
           </div>
         ) : valid ? (
           <div className="flex items-center justify-center">
@@ -3845,37 +4252,37 @@ function AcademicShell({
   return (
     <div
       data-field-id={fieldId}
-      className={`block rounded-[14px] border px-3 py-2 shadow-[0_8px_18px_rgba(20,42,99,0.06)] transition ${
-        invalid
-          ? "border-[#ff4d5e] bg-white shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
-          : "border-[#d8dff2] bg-white hover:border-[#142a63] hover:shadow-[0_12px_22px_rgba(20,42,99,0.1)]"
-      }`}
+      className="block"
     >
-      <div className="grid min-h-[36px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className={`text-[16px] font-semibold leading-5 ${invalid ? "text-[#d92d20]" : "text-[#0F1B25]"}`}>{label}</div>
+        {hint ? (
+          <div
+            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#F8F9FB] text-[#5F6B76]"
+            }`}
+          >
+            {hint}
+          </div>
+        ) : null}
+      </div>
+      <div
+        className={`grid min-h-[54px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-[6px] border bg-white px-3.5 shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition ${
+          invalid
+            ? "border-[#ff4d5e] shadow-[0_8px_20px_rgba(255,77,94,0.14)]"
+            : "border-[#DDE2E7] hover:border-[#AEB7C2]"
+        }`}
+      >
         <div
-          className={`flex size-6.5 items-center justify-center rounded-[9px] border shadow-[inset_0_0_0_1px_rgba(20,42,99,0.08)] ${
-            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#d7dff5] bg-[#f3f6ff] text-[#142a63]"
+          className={`flex size-7.5 items-center justify-center rounded-[9px] border shadow-[0_3px_8px_rgba(15,27,37,0.04)] ${
+            invalid ? "border-[#ffd0d5] bg-[#fff1f3] text-[#ff4d5e]" : "border-[#E6EAF0] bg-[#F8F9FB] text-[#0F1B25]"
           }`}
         >
-          <Icon className="size-4 stroke-[2.3]" />
+          <Icon className="size-4.5 stroke-[2.2]" />
         </div>
-        <div className="min-w-0">
-          <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-            <div className={`text-[0.82rem] font-semibold ${invalid ? "text-[#d92d20]" : "text-[#142a63]"}`}>{label}</div>
-            {hint ? (
-              <div
-                className={`inline-flex rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold tracking-[0.01em] ${
-                  invalid ? "bg-[#fff1f3] text-[#ff4d5e]" : "bg-[#eef4ff] text-[#142a63]"
-                }`}
-              >
-                {hint}
-              </div>
-            ) : null}
-          </div>
-          {children}
-        </div>
+        <div className="min-w-0">{children}</div>
         <div className="flex items-center justify-center">
-          {invalid ? <CircleAlert className="size-6 text-[#ff4d5e]" strokeWidth={2.2} /> : valid ? <Check className="size-5 text-[#0b7a25]" strokeWidth={3} /> : null}
+          {invalid ? <CircleAlert className="size-5 text-[#ff4d5e]" strokeWidth={2.2} /> : valid ? <Check className="size-5 text-[#0b7a25]" strokeWidth={3} /> : null}
         </div>
       </div>
       {error ? (
@@ -3929,9 +4336,9 @@ function ScoreHighlight({
 }
 
 const inputClassName =
-  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#142a63] outline-none placeholder:text-[#7a87ad]";
+  "h-full min-h-[50px] w-full border-0 bg-transparent p-0 text-[15px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]";
 const academicInputClassName =
-  "w-full h-[30px] sm:h-[32px] border-0 bg-transparent p-0 text-[0.86rem] font-medium text-[#142a63] outline-none transition placeholder:text-[#7a87ad]";
+  "h-full min-h-[50px] w-full border-0 bg-transparent p-0 text-[15px] font-normal text-[#0F1B25] outline-none transition placeholder:text-[#8A949F]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
 

@@ -294,6 +294,12 @@ export function Navbar() {
     router.push("/login");
   };
 
+  const openLogoutConfirm = () => {
+    setIsDrawerOpen(false);
+    setIsAccountMenuOpen(false);
+    setShowLogoutConfirm(true);
+  };
+
   const openCoursesPanel = () => {
     setCourseSearch("");
     setIsCoursesCueDimmed(true);
@@ -365,7 +371,7 @@ export function Navbar() {
   ];
   return (
     <header
-      className="page-container-full relative z-30 max-w-[96rem] pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
+      className="page-container-full relative z-[120] max-w-[1600px] pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
       style={navbarThemeStyles}
     >
       {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
@@ -455,7 +461,7 @@ export function Navbar() {
                     </button>
                     <button
                       type="button"
-                    onClick={() => setShowLogoutConfirm(true)}
+                      onClick={openLogoutConfirm}
                       className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[color:var(--text-dark)] transition hover:bg-[rgba(255,138,61,0.08)]"
                     >
                       <LogIn className="size-4 text-[color:var(--brand-accent-deep)]" />
@@ -530,7 +536,7 @@ export function Navbar() {
           onBlur={() => {
             if (!isCoursesOpen) setIsCoursesCueDimmed(false);
           }}
- className="peer hidden w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2.5 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:inline-flex md:w-auto md:min-w-[130px] md:items-center md:justify-center md:py-2.5"     >
+ className="peer hidden w-full shrink-0 rounded-full border border-[#0f172a] bg-[#0f172a] px-5 py-2 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition hover:bg-[#1e293b] md:inline-flex md:w-auto md:min-w-[130px] md:items-center md:justify-center md:py-2"     >
           All Courses
         </button>
         <div className="breaking-news-shell min-w-0 w-full flex-1">
@@ -661,10 +667,7 @@ className="rounded-full border border-[#dbeafe] bg-white p-2 transition hover:bg
                   </Link>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsDrawerOpen(false);
-                      setShowLogoutConfirm(true);
-                    }}
+                    onClick={openLogoutConfirm}
                     className="flex w-full items-center gap-2 rounded-full border border-[rgba(15,76,129,0.1)] bg-white px-4 py-2 text-left text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
                   >
                     <LogIn className="size-4" />

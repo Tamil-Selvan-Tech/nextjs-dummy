@@ -1025,23 +1025,24 @@ export function HomePage({
           rounded-[1.45rem] sm:rounded-[1.8rem]
           border border-[rgba(10,20,56,0.08)]
           bg-[linear-gradient(160deg,#15285f_0%,#11214f_52%,#0f1a42_100%)]
-          p-4 sm:p-[1.15rem] lg:p-[1.35rem]
+          p-6 sm:p-7 lg:p-8
           text-white
           shadow-[0_26px_52px_rgba(9,18,47,0.26)]
         "
       >
-        <div className="relative flex h-full flex-col md:grid md:min-h-[15.5rem] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:gap-x-0.5 lg:flex lg:min-h-0">
-          <button
+<div className="relative grid h-full grid-cols-[1.3fr_1fr] gap-6">
+            <button
             type="button"
             onClick={() => router.push("/find")}
             className="
-              inline-flex w-fit items-center justify-center gap-2
-              rounded-full
-              border border-[#7db4ff]/55
-              bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(96,165,250,0.16))]
-              px-3.5 py-1.5
-              text-[9px] font-semibold uppercase tracking-[0.14em]
-              text-white
+inline-flex w-fit items-center justify-center gap-2
+rounded-full
+border border-[#7db4ff]/55
+bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(96,165,250,0.16))]
+px-5 py-3
+text-sm font-semibold uppercase tracking-[0.14em]
+text-white
+
               shadow-[0_0_0_1px_rgba(125,180,255,0.16),0_12px_28px_rgba(37,99,235,0.24)]
               transition
               md:col-span-2
@@ -1054,66 +1055,56 @@ export function HomePage({
             <ArrowRight className="size-3" />
           </button>
 
-          <div className="mt-5 w-full max-w-none md:mt-3 md:flex md:h-full md:flex-col md:pr-0 lg:mt-5 lg:h-auto">
-            <div className="w-full max-w-none md:max-w-[17rem] lg:max-w-[17.5rem]">
-              <h3 className="font-montserrat-display text-[1.18rem] font-bold leading-[1.12] tracking-[-0.04em] text-white sm:text-[1.3rem] md:text-[1.42rem] lg:text-[1.62rem]">
-                <span className="block">Unlock Your Future College.</span>
-                <span className="mt-1 block text-[#dbe7ff]">Discover Your Best Fit.</span>
-              </h3>
+<div className="mt-5 w-full max-w-none md:mt-3 md:flex md:h-full md:flex-col">
 
-              <p className="mt-3 w-full max-w-none pr-1 text-[10px] leading-[1.2rem] text-white/72 sm:text-[11px] md:max-w-[15.5rem] md:pr-0 lg:max-w-[15.25rem]">
-                Enter your marks and preferences to find better college matches.
-                Get clearer cutoff guidance in one simple flow.
-              </p>
-            </div>
+  <div className="w-full">
+  <h3 className="font-montserrat-display text-[2.1rem] font-bold leading-[1.2] tracking-[-0.03em] text-white">
+  <span className="block whitespace-nowrap">
+    Unlock Your Future College.
+  </span>
 
-            <div className="mt-5 grid w-full max-w-none grid-cols-3 gap-1.5 pt-5 text-[8px] font-semibold text-white sm:max-w-[12rem] sm:text-[8.5px] md:mt-auto md:max-w-[16.5rem] md:pt-3 lg:hidden">
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
-                <Sparkles className="size-3.5 shrink-0 text-[#ffcf69]" />
-                <span>Instant results</span>
-              </span>
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1 py-2 text-center">
-                <ArrowRight className="size-3.5 shrink-0 text-[#8cc3ff]" />
-                <span>Extra picks</span>
-              </span>
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
-                <Medal className="size-3.5 shrink-0 text-[#ff8f86]" />
-                <span>Accurate</span>
-              </span>
-            </div>
-          </div>
+  <span className="block mt-2 whitespace-nowrap">
+    Discover Your Best Fit.
+  </span>
+</h3>
 
-          <div className="pointer-events-none relative left-1/2 flex w-[calc(100%+2rem)] max-w-none -translate-x-1/2 shrink-0 items-end justify-center self-center sm:left-auto sm:w-full sm:max-w-[10.25rem] sm:translate-x-0 sm:self-auto sm:justify-end md:left-auto md:mt-3 md:flex md:h-full md:w-full md:max-w-none md:translate-x-0 md:items-end md:justify-end lg:hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/cutoff-banner-image.png"
-              alt="Cutoff banner illustration"
-              className="h-auto w-full scale-[1.08] object-contain sm:scale-100 md:h-full md:max-h-[15rem] md:w-full md:object-bottom"
-            />
-          </div>
+    <p className="mt-3 w-full max-w-[32rem] text-[11px] leading-[1.5rem] text-white/72 sm:text-[12px]">
+      Enter your marks and preferences to find better college matches.
+      Get clearer cutoff guidance in one simple flow.
+    </p>
+
+    {/* Cards - paragraph keela */}
+    <div className="mt-6 grid grid-cols-3 gap-4 max-w-[22rem]">
+      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
+        <Sparkles className="size-5 text-[#ffcf69]" />
+        <span>Instant results</span>
+      </span>
+
+      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
+        <ArrowRight className="size-5 text-[#8cc3ff]" />
+        <span>Extra picks</span>
+      </span>
+
+      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
+        <Medal className="size-5 text-[#ff8f86]" />
+        <span>Accurate</span>
+      </span>
+    </div>
+
+  </div>
+
+</div>
+
 
           <div className="mt-auto hidden items-end justify-between gap-3 pt-6 lg:flex">
-            <div className="grid max-w-[11rem] grid-cols-3 gap-1.5 text-[8px] font-semibold text-white sm:max-w-[12rem] sm:text-[8.5px]">
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
-                <Sparkles className="size-3.5 shrink-0 text-[#ffcf69]" />
-                <span>Instant results</span>
-              </span>
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1 py-2 text-center">
-                <ArrowRight className="size-3.5 shrink-0 text-[#8cc3ff]" />
-                <span>Extra picks</span>
-              </span>
-              <span className="inline-flex min-h-[3.1rem] flex-col items-center justify-center gap-1 rounded-[0.95rem] border border-white/10 bg-white/7 px-1.5 py-2 text-center">
-                <Medal className="size-3.5 shrink-0 text-[#ff8f86]" />
-                <span>Accurate</span>
-              </span>
-            </div>
+            
 
-            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[10.75rem]">
+            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[18rem]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/cutoff-banner-image.png"
                 alt="Cutoff banner illustration"
-                className="h-auto w-full object-contain"
+                className="h-auto w-full scale-125 object-contain"
               />
             </div>
           </div>
@@ -1289,7 +1280,7 @@ export function HomePage({
 
           {/* Hero content section */}
 
-          <div className="page-container-full max-w-[86rem] px-0 sm:px-1 lg:px-2 pb-[2.25rem] pt-0 md:pb-[2.75rem] md:pt-1 2xl:max-w-[96rem] 2xl:px-6">
+          <div className="page-container-full !max-w-none px-2 pb-[2.25rem] pt-0 sm:px-4 md:pb-[2.75rem] md:pt-1 lg:px-6 2xl:px-8">
             <div className="space-y-1 py-0.5 sm:space-y-2 sm:py-1.5">
               {/* Hero headline and spotlight content */}
               <div className="reveal-up mx-auto mb-0.5 mt-2 w-full px-0 sm:mt-3">
@@ -1298,7 +1289,7 @@ export function HomePage({
                   <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.09)] blur-3xl" />
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.1)] blur-3xl" />
 
-                  <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.22fr)_minmax(20.75rem,0.68fr)] lg:items-start lg:gap-x-5 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.26fr)_minmax(22rem,0.7fr)] xl:gap-x-6 2xl:grid-cols-[minmax(0,1.34fr)_minmax(26rem,0.78fr)] 2xl:gap-x-8 2xl:gap-y-6">
+                  <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(26rem,0.9fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_minmax(30rem,0.95fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1fr)_minmax(34rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
                         <h1 className="home-hero-title font-montserrat-display mt-2 text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[33rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[35rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[40rem] 2xl:text-[50px] 2xl:leading-[58px]">
@@ -1717,12 +1708,12 @@ export function HomePage({
                       </div>
                     </div>
 
-                    <div className="w-full self-start lg:max-w-[24.5rem] lg:justify-self-end lg:pt-5 xl:max-w-[26rem] 2xl:max-w-[28rem]">
+                    <div className="w-full self-start lg:justify-self-stretch lg:pt-5">
                       {renderHeroCutoffBanner()}
                     </div>
 
                     {/* Top exams overview */}
-                    <div className="mx-auto mt-6 w-full max-w-[72rem] px-1 sm:px-2 md:px-0 scroll-fade-in scroll-delay-1 lg:col-span-2 2xl:max-w-[84rem]" data-scroll-animate>
+                    <div className="mx-auto mt-6 w-full max-w-none px-0 scroll-fade-in scroll-delay-1 lg:col-span-2" data-scroll-animate>
                       <div className="relative overflow-hidden rounded-[2rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,255,0.98))] px-4 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] sm:px-5 sm:py-5">
                         <div className="absolute right-[-5rem] top-[-4rem] h-32 w-32 rounded-full bg-[rgba(37,99,235,0.07)] blur-3xl" />
                         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -1789,7 +1780,7 @@ export function HomePage({
                   </div>
                   {/* Featured institutions section */}
                   <div className="reveal-up delay-3 mt-6 rounded-[2rem] bg-[color:var(--surface-muted)] px-1 py-7 sm:px-4 lg:px-6 2xl:px-8">
-                    <div className="mx-auto grid w-full max-w-[72rem] gap-4 px-0 sm:px-2 md:px-0 lg:grid-cols-2 lg:items-stretch 2xl:max-w-[84rem] 2xl:gap-8">
+                    <div className="mx-auto grid w-full max-w-none gap-4 px-0 sm:px-2 md:px-0 lg:grid-cols-2 lg:items-stretch 2xl:gap-8">
                       {/* Top courses section */}
                       <div className="relative flex h-full flex-col rounded-[1.6rem] border border-[rgba(20,42,99,0.08)] bg-white px-3 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] scroll-fade-in scroll-delay-2 sm:px-4" data-scroll-animate>
                         <div className="flex items-center justify-between gap-3">
@@ -1966,7 +1957,7 @@ export function HomePage({
 
       {/* Explore courses and feature highlights section */}
       <section className="section-shell page-section !pt-8 bg-white text-slate-800 md:!pt-10">
-        <div className="page-container-full relative z-10 max-w-[1120px] px-4 sm:px-6 xl:max-w-[1280px] 2xl:max-w-[1400px] 2xl:px-8">
+        <div className="page-container-full relative z-10 max-w-[1600px] px-3 sm:px-5 2xl:px-8">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="scroll-fade-in" data-scroll-animate>
               <p className="font-[family:var(--font-display)] text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
@@ -2194,7 +2185,7 @@ export function HomePage({
 
       {/* Newsletter section */}
       <section className="section-shell bg-[color:var(--surface-base)] pt-4 pb-12 text-slate-800 md:pt-5 md:pb-14">
-        <div className="page-container-full relative z-10 max-w-[1300px] 2xl:max-w-[1480px] 2xl:px-8">
+        <div className="page-container-full relative z-10 max-w-[1600px] 2xl:px-8">
           <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-[rgba(15,76,129,0.16)] bg-[linear-gradient(135deg,#ffffff,#f2f5ff)] p-6 shadow-[0_18px_44px_rgba(12,31,58,0.18),0_10px_26px_rgba(10,18,34,0.14)] md:p-8 xl:max-w-5xl 2xl:max-w-6xl 2xl:p-10 scroll-scale-in" data-scroll-animate>
             <div className="pointer-events-none absolute -right-10 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.28)] blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-[rgba(14,116,144,0.22)] blur-3xl" />

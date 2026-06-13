@@ -26,6 +26,14 @@ export const API_BASE_URL = (
 ).replace(/\/$/, "");
 
 const shouldTryRemoteFallback = isLocalApiBaseUrl(API_BASE_URL);
+const AUTH_ENDPOINT_PREFIXES = [
+  "/api/users/login",
+  "/api/users/verify-login-otp",
+  "/api/users/resend-login-otp",
+];
+
+const shouldAvoidRemoteFallback = (path: string) =>
+  AUTH_ENDPOINT_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
 const toUrl = (path: string, baseUrl = API_BASE_URL) => `${baseUrl}${path}`;
 
@@ -101,20 +109,26 @@ export const request = async <T = ApiResponseShape>(
 ): Promise<T> => {
   let response: Response;
   let data: unknown;
+  const canUseRemoteFallback = shouldTryRemoteFallback && !shouldAvoidRemoteFallback(path);
 
   try {
     ({ response, data } = await fetchJson(path, options, API_BASE_URL));
   } catch (error) {
-    if (!shouldTryRemoteFallback) throw error;
+    if (!canUseRemoteFallback) throw error;
     ({ response, data } = await fetchJson(path, options, REMOTE_FALLBACK_BASE_URL));
   }
 
-  if (!response.ok && shouldTryRemoteFallback && response.status >= 500) {
+  if (!response.ok && canUseRemoteFallback && response.status >= 500) {
     ({ response, data } = await fetchJson(path, options, REMOTE_FALLBACK_BASE_URL));
   }
 
   if (!response.ok) {
     const message = getErrorMessage(data);
+    if (shouldAvoidRemoteFallback(path) && response.status >= 500) {
+      throw new Error(
+        `Local backend auth service failed (${response.status}${response.statusText ? ` ${response.statusText}` : ""}). Please restart or fix the backend login/OTP service.`,
+      );
+    }
     throw new Error(message === "Request failed" && response.statusText ? response.statusText : message);
   }
 

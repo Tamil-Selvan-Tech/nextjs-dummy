@@ -14,6 +14,7 @@ export type PendingOtpLogin = {
   email: string;
   role: string;
   accountType: string;
+  devOtp?: string;
 };
 
 const isBrowser = () => typeof window !== "undefined";
