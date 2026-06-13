@@ -218,6 +218,27 @@ type HomePageProps = {
 
 type ThemeStyleVars = CSSProperties & Record<`--${string}`, string>;
 
+const formatPlacementRateDisplay = (college?: College) => {
+  if (!college) return "-";
+
+  const rawPlacementRate =
+    college.placements && typeof college.placements === "object"
+      ? college.placements.placementRate
+      : undefined;
+  const rawValue = rawPlacementRate ?? college.placementRate;
+  const normalizedText = String(rawValue ?? "").trim();
+  if (!normalizedText) return "-";
+
+  const numericValue =
+    typeof rawValue === "number"
+      ? rawValue
+      : Number(normalizedText.replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "-";
+
+  const percentageValue = numericValue > 0 && numericValue <= 1 ? numericValue * 100 : numericValue;
+  return `${Number(percentageValue.toFixed(1)).toString()}%`;
+};
+
 export function HomePage({
   collegesData = fallbackColleges,
   coursesData = fallbackCourses,
@@ -1017,35 +1038,35 @@ export function HomePage({
   const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
   // Hero cutoff banner
   const renderHeroCutoffBanner = () => (
-    <div className="space-y-3">
+    <div className="mx-auto w-full max-w-[38rem] space-y-3 lg:mr-0 xl:max-w-[42rem] 2xl:max-w-[46rem]">
       <article
         className="
           relative overflow-hidden
-          min-h-[21rem] sm:min-h-[19rem] md:min-h-[18rem] lg:min-h-[20.25rem]
+          min-h-[unset] sm:min-h-[18rem] md:min-h-[17.5rem] lg:min-h-[18.5rem]
           rounded-[1.45rem] sm:rounded-[1.8rem]
           border border-[rgba(10,20,56,0.08)]
           bg-[linear-gradient(160deg,#15285f_0%,#11214f_52%,#0f1a42_100%)]
-          p-6 sm:p-7 lg:p-8
+          p-4 sm:p-6 lg:p-7
           text-white
           shadow-[0_26px_52px_rgba(9,18,47,0.26)]
         "
       >
-<div className="relative grid h-full grid-cols-[1.3fr_1fr] gap-6">
+<div className="relative grid h-full grid-cols-1 gap-5 md:grid-cols-[1fr_1.05fr] md:gap-6">
             <button
             type="button"
             onClick={() => router.push("/find")}
             className="
-inline-flex w-fit items-center justify-center gap-2
+inline-flex w-full max-w-[18rem] items-center justify-center gap-2 justify-self-center
 rounded-full
 border border-[#7db4ff]/55
 bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(96,165,250,0.16))]
-px-5 py-3
-text-sm font-semibold uppercase tracking-[0.14em]
+px-4 py-3
+text-[12px] font-semibold uppercase tracking-[0.12em] sm:text-sm sm:tracking-[0.14em]
 text-white
 
               shadow-[0_0_0_1px_rgba(125,180,255,0.16),0_12px_28px_rgba(37,99,235,0.24)]
               transition
-              md:col-span-2
+              md:col-span-2 md:w-fit md:justify-self-start
             "
           >
             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/22 shadow-[0_0_16px_rgba(125,180,255,0.32)]">
@@ -1055,39 +1076,39 @@ text-white
             <ArrowRight className="size-3" />
           </button>
 
-<div className="mt-5 w-full max-w-none md:mt-3 md:flex md:h-full md:flex-col">
+<div className="relative z-10 w-full max-w-none text-center md:mt-2 md:flex md:h-full md:flex-col md:text-left">
 
   <div className="w-full">
-  <h3 className="font-montserrat-display text-[2.1rem] font-bold leading-[1.2] tracking-[-0.03em] text-white">
-  <span className="block whitespace-nowrap">
+  <h3 className="font-montserrat-display text-[1.55rem] font-bold leading-[1.18] tracking-[-0.02em] text-white sm:text-[2rem] md:text-[2.1rem] md:tracking-[-0.03em]">
+  <span className="block md:whitespace-nowrap">
     Unlock Your Future College.
   </span>
 
-  <span className="block mt-2 whitespace-nowrap">
+  <span className="mt-1 block sm:mt-2 md:whitespace-nowrap">
     Discover Your Best Fit.
   </span>
 </h3>
 
-    <p className="mt-3 w-full max-w-[32rem] text-[11px] leading-[1.5rem] text-white/72 sm:text-[12px]">
+    <p className="mx-auto mt-3 w-full max-w-[32rem] text-[12px] leading-5 text-white/72 sm:text-[13px] sm:leading-6 md:mx-0">
       Enter your marks and preferences to find better college matches.
       Get clearer cutoff guidance in one simple flow.
     </p>
 
     {/* Cards - paragraph keela */}
-    <div className="mt-6 grid grid-cols-3 gap-4 max-w-[22rem]">
-      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
-        <Sparkles className="size-5 text-[#ffcf69]" />
-        <span>Instant results</span>
+    <div className="mx-auto mt-5 grid w-full max-w-[24rem] grid-cols-3 gap-2 sm:gap-3 md:mx-0 md:mt-5 md:max-w-[20.5rem]">
+      <span className="inline-flex min-h-[4.6rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/10 bg-white/7 px-2 py-2.5 text-center sm:min-h-[5rem] sm:gap-2 sm:rounded-[1rem] sm:px-3 sm:py-3 md:min-h-[4.35rem] md:px-2">
+        <Sparkles className="size-4 text-[#ffcf69] sm:size-5" />
+        <span className="max-w-[4.75rem] text-[11px] font-semibold leading-[1.2] sm:text-[13px]">Instant results</span>
       </span>
 
-      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
-        <ArrowRight className="size-5 text-[#8cc3ff]" />
-        <span>Extra picks</span>
+      <span className="inline-flex min-h-[4.6rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/10 bg-white/7 px-2 py-2.5 text-center sm:min-h-[5rem] sm:gap-2 sm:rounded-[1rem] sm:px-3 sm:py-3 md:min-h-[4.35rem] md:px-2">
+        <ArrowRight className="size-4 text-[#8cc3ff] sm:size-5" />
+        <span className="max-w-[4.75rem] text-[11px] font-semibold leading-[1.2] sm:text-[13px]">Extra picks</span>
       </span>
 
-      <span className="inline-flex min-h-[5rem] min-w-[6rem] flex-col items-center justify-center gap-2 rounded-[1rem] border border-white/10 bg-white/7 px-4 py-3 text-center">
-        <Medal className="size-5 text-[#ff8f86]" />
-        <span>Accurate</span>
+      <span className="inline-flex min-h-[4.6rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/10 bg-white/7 px-2 py-2.5 text-center sm:min-h-[5rem] sm:gap-2 sm:rounded-[1rem] sm:px-3 sm:py-3 md:min-h-[4.35rem] md:px-2">
+        <Medal className="size-4 text-[#ff8f86] sm:size-5" />
+        <span className="whitespace-nowrap text-[11px] font-semibold leading-[1.2] sm:text-[13px]">Accurate</span>
       </span>
     </div>
 
@@ -1095,11 +1116,19 @@ text-white
 
 </div>
 
+          <div className="pointer-events-none absolute -bottom-10 -right-8 hidden h-40 w-40 opacity-30 sm:block lg:hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cutoff-banner-image.png"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
 
-          <div className="mt-auto hidden items-end justify-between gap-3 pt-6 lg:flex">
+          <div className="mt-auto hidden items-end justify-between gap-3 pt-4 lg:flex">
             
 
-            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[18rem]">
+            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[17rem]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/cutoff-banner-image.png"
@@ -1218,10 +1247,10 @@ text-white
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[color:var(--surface-soft)] p-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
-            Success Rate
+            Placement Rate
           </p>
           <p className="mt-1.5 text-[1.55rem] font-bold text-[color:var(--brand-support)]">
-            {activeCollege?.placementRate ? `${activeCollege.placementRate}%` : "-"}
+            {formatPlacementRateDisplay(activeCollege)}
           </p>
           <p className="mt-1 text-[10px] leading-4 text-[color:var(--text-muted)]">
             Campus placement 2026
@@ -1289,10 +1318,10 @@ text-white
                   <div className="pointer-events-none absolute -left-6 top-10 h-32 w-32 rounded-full bg-[rgba(59,130,246,0.09)] blur-3xl" />
                   <div className="pointer-events-none absolute right-0 top-6 h-32 w-32 rounded-full bg-[rgba(29,78,216,0.1)] blur-3xl" />
 
-                  <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(26rem,0.9fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_minmax(30rem,0.95fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1fr)_minmax(34rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
+                  <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.82fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.38fr)_minmax(32rem,0.9fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(36rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <h1 className="home-hero-title font-montserrat-display mt-2 text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[33rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[35rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[40rem] 2xl:text-[50px] 2xl:leading-[58px]">
+                        <h1 className="home-hero-title font-montserrat-display mt-2 text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[46rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[52rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[58rem] 2xl:text-[50px] 2xl:leading-[58px]">
                           <span className="block">
                             Find Your <span className="text-[#2563eb]">Future</span>
                           </span>
@@ -1301,7 +1330,7 @@ text-white
                           </span>
                         </h1>
 
-                        <p className="type-body-large mx-auto mt-3.5 max-w-[31rem] px-2 text-[color:var(--text-muted)] lg:mx-0 lg:px-0">
+                        <p className="type-body-large mx-auto mt-3.5 max-w-[44rem] px-2 text-[color:var(--text-muted)] lg:mx-0 lg:px-0 xl:max-w-[50rem] 2xl:max-w-[56rem]">
                           Discover colleges, courses, exams, and cities from one premium
                           search flow built to help you shortlist faster and decide with
                           more confidence.
@@ -1458,7 +1487,7 @@ text-white
                         </div>
                       </div>
 
-                      <div className="mx-auto hidden w-full max-w-[40rem] md:block lg:mx-0 xl:max-w-[43rem] 2xl:max-w-[47rem]">
+                      <div className="mx-auto hidden w-full max-w-[50rem] md:block lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
                         <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
                           <div
                             className="
@@ -1690,7 +1719,7 @@ text-white
                           ) : null}
                         </div>
 
-                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[41rem] grid-cols-2 gap-2 sm:mt-2 sm:grid-cols-4 sm:gap-2.5 lg:mx-0 xl:max-w-[44rem] 2xl:max-w-[48rem]">
+                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[50rem] grid-cols-2 gap-2 sm:mt-2 sm:grid-cols-4 sm:gap-2.5 lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
                           {heroStatCards.map((item) => (
                             <div key={item.label} className="min-w-0 rounded-[1rem] border border-[rgba(37,99,235,0.12)] bg-white px-2 py-2.5 shadow-[0_10px_20px_rgba(20,42,99,0.05)] sm:rounded-[1rem] sm:px-2.5 sm:py-2.5">
                               <div className="flex flex-col items-center justify-center gap-1.5 text-center sm:flex-row sm:gap-2">
@@ -1708,15 +1737,14 @@ text-white
                       </div>
                     </div>
 
-                    <div className="w-full self-start lg:justify-self-stretch lg:pt-5">
+                    <div className="w-full self-start lg:flex lg:justify-end lg:pt-5">
                       {renderHeroCutoffBanner()}
                     </div>
 
                     {/* Top exams overview */}
                     <div className="mx-auto mt-6 w-full max-w-none px-0 scroll-fade-in scroll-delay-1 lg:col-span-2" data-scroll-animate>
-                      <div className="relative overflow-hidden rounded-[2rem] border border-[rgba(20,42,99,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,255,0.98))] px-4 py-4 shadow-[0_18px_40px_rgba(20,42,99,0.08)] sm:px-5 sm:py-5">
-                        <div className="absolute right-[-5rem] top-[-4rem] h-32 w-32 rounded-full bg-[rgba(37,99,235,0.07)] blur-3xl" />
-                        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div className="relative">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams

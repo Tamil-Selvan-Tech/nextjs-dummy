@@ -26,7 +26,6 @@ import {
   Microscope,
   PenTool,
   Phone,
-  Search,
   ShieldCheck,
   Sparkles,
   Sprout,
@@ -1086,7 +1085,6 @@ export function CutoffClient({
   const [showSuggestedColleges, setShowSuggestedColleges] = useState(
     () => typeof window !== "undefined" && window.sessionStorage.getItem(CUTOFF_RETURN_TO_SUGGESTIONS_KEY) === "1",
   );
-  const [suggestionSearchQuery, setSuggestionSearchQuery] = useState("");
   const [suggestionSort, setSuggestionSort] = useState<SuggestedCollegeSort>("alphabetical");
   const [isSuggestionSortOpen, setIsSuggestionSortOpen] = useState(false);
   const [suggestionView, setSuggestionView] = useState<SuggestedCollegeView>("grid");
@@ -1898,14 +1896,11 @@ export function CutoffClient({
       const parsed = Number.parseInt(college.establishedYear, 10);
       return Number.isFinite(parsed) ? parsed : 0;
     };
-    const normalizedSearchQuery = normalizeText(suggestionSearchQuery);
-    const sourceRows = normalizedSearchQuery.length ? matchingColleges : suggestedCollegeRows;
-
-    return sourceRows
+    return suggestedCollegeRows
       .filter((college) => {
         return suggestionMatchesSearch(
           getCollegeLocationSearchParts(college, findCollegeRecordForSuggestion(college)),
-          suggestionSearchQuery,
+          "",
         );
       })
       .sort((left, right) => {
@@ -1917,7 +1912,7 @@ export function CutoffClient({
         }
         return left.name.localeCompare(right.name);
       });
-  }, [findCollegeRecordForSuggestion, matchingColleges, suggestedCollegeRows, suggestionSearchQuery, suggestionSort]);
+  }, [findCollegeRecordForSuggestion, suggestedCollegeRows, suggestionSort]);
   const suggestionPageCount = Math.max(1, Math.ceil(filteredSuggestedCollegeRows.length / SENIOR_SUGGESTIONS_PER_PAGE));
   const safeSuggestionPage = Math.min(suggestionPage, suggestionPageCount);
   const visibleSuggestedCollegeRows = filteredSuggestedCollegeRows.slice(
@@ -2537,26 +2532,7 @@ export function CutoffClient({
           <span className="font-semibold">{filteredSuggestedCollegeRows.length}</span> colleges
         </p>
 
-        <div className="grid w-full grid-cols-1 gap-3 lg:w-auto lg:grid-cols-[minmax(250px,368px)_220px_216px] lg:items-center">
-          <label className="relative block min-w-0">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#52618A]" />
-            <input
-              type="search"
-              value={suggestionSearchQuery}
-              onChange={(event) => {
-                setSuggestionSearchQuery(event.target.value);
-                setSuggestionPage(1);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                }
-              }}
-              placeholder="Search college or location"
-              className="h-14 w-full rounded-[8px] border border-[#D8DEE8] bg-white pl-12 pr-4 text-[16px] font-light text-[#07133b] outline-none transition placeholder:text-[#8A949F] focus:border-[#F4B400]"
-            />
-          </label>
-
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[220px_216px] lg:items-center">
           <div className="relative min-w-0">
             <button
               type="button"
@@ -2782,9 +2758,7 @@ export function CutoffClient({
         </div>
       ) : (
         <div className="mt-8 rounded-[12px] border border-[#D8DEE8] bg-[#F8F9FB] px-4 py-8 text-center text-[14px] font-light text-[#5F6B76]">
-          {suggestionSearchQuery.trim()
-            ? "No colleges match your search."
-            : "Suggested colleges are not available for this selection yet."}
+          Suggested colleges are not available for this selection yet.
         </div>
       )}
 
