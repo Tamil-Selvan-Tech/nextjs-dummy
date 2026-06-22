@@ -1,5 +1,5 @@
 "use client";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -33,8 +33,9 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
+import { FindAuthModal } from "@/components/find-auth-modal";
 import { CutoffClient } from "@/app/cutoff/cutoff-client";
-import { readAuthToken, readCurrentUser } from "@/lib/auth-storage";
+import { readAuthToken, readCurrentUser, type SafeAuthUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
 import { parseCutoffValue } from "@/lib/cutoff-utils";
 import { fetchPublicPanelData } from "@/lib/public-data";
@@ -162,6 +163,7 @@ const VALIDATION_FIELD_ORDER = [
 
 const FIND_FORM_STORAGE_KEY = "collegeedwiser-find-form-state";
 const FIND_RETURN_TO_SUGGESTIONS_KEY = "collegeedwiser-find-return-to-suggestions";
+const FIND_AUTH_RETURN_STEP_KEY = "collegeedwiser-find-auth-return-step";
 const SUGGESTIONS_PER_PAGE = 6;
 const DETAIL_PARAM_KEYS = [
   "phone",
@@ -527,12 +529,16 @@ type JuniorCollegeSuggestion = {
 // Cutoff form page: collects student details, academic inputs, and sends the computed cutoff to /cutoff.
 export default function FindPage() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const hasHydratedPersistedForm = useRef(false);
   const previousJuniorQuestionSetIdRef = useRef<string | null>(null);
   const [hasRestoredPersistedForm, setHasRestoredPersistedForm] = useState(false);
   const inlineMatchResultsRef = useRef<HTMLDivElement | null>(null);
   const suggestedCollegesListRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollSuggestedCollegesRef = useRef(false);
+  const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(() => readCurrentUser());
+  const isAuthenticated = Boolean(currentUser || readAuthToken());
+  const [showAuthGate, setShowAuthGate] = useState(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [juniorQuestionSets, setJuniorQuestionSets] = useState<JuniorQuestionSet[]>([]);
@@ -598,6 +604,22 @@ export default function FindPage() {
       isMounted = false;
     };
   }, []);
+
+  const currentRoute = useMemo(() => {
+    if (!pathname) return "/find";
+    const query = searchParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nextStep = window.sessionStorage.getItem(FIND_AUTH_RETURN_STEP_KEY);
+    if (nextStep !== "2" || activeStep !== 1 || !isAuthenticated) return;
+
+    window.sessionStorage.removeItem(FIND_AUTH_RETURN_STEP_KEY);
+    setShowAuthGate(false);
+    setActiveStep(2);
+  }, [activeStep, isAuthenticated]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1973,6 +1995,15 @@ export default function FindPage() {
       scrollToFirstInvalidField();
       return;
     }
+
+    if (activeStep === 1 && !isAuthenticated) {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(FIND_AUTH_RETURN_STEP_KEY, "2");
+      }
+      setShowAuthGate(true);
+      return;
+    }
+
     setShowValidationPopup(false);
     setHasSubmitted(false);
     setValidationStep(null);
@@ -2072,6 +2103,15 @@ export default function FindPage() {
   return (
     <>
       <Navbar />
+      <FindAuthModal
+        isOpen={showAuthGate && !isAuthenticated}
+        redirectPath={currentRoute}
+        onClose={() => setShowAuthGate(false)}
+        onAuthenticated={(user) => {
+          setCurrentUser(user);
+          setShowAuthGate(false);
+        }}
+      />
       <main className="find-theme min-h-screen overflow-x-hidden bg-white text-[#0F1B25]">
       {showValidationPopup ? (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-[#071333]/35 px-4 pt-24 backdrop-blur-[2px] sm:pt-28">

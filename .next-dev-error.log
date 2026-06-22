@@ -1,9 +1,9 @@
-⚠ Port 3000 is in use by process 18472, using available port 3001 instead.
+⚠ Port 3000 is in use by process 3032, using available port 3001 instead.
 ⨯ Another next dev server is already running.
 
 - Local:        http://localhost:3000
-- PID:          18472
+- PID:          3032
 - Dir:          D:\college-project\collegeedwiser-nextjs-frontend
 - Log:          .next\dev\logs\next-development.log
 
-Run taskkill /PID 18472 /F to stop it.
+Run taskkill /PID 3032 /F to stop it.

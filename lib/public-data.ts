@@ -59,6 +59,95 @@ const splitMultilineValues = (value: unknown) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const normalizeFieldKey = (value: unknown) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const standardCollegeFieldKeys = new Set(
+  [
+    "_id",
+    "id",
+    "collegeCode",
+    "collegeId",
+    "collegeName",
+    "name",
+    "description",
+    "establishedYear",
+    "ownershipType",
+    "ownership",
+    "ownership_type",
+    "collegeType",
+    "type",
+    "university",
+    "country",
+    "state",
+    "city",
+    "district",
+    "address",
+    "pincode",
+    "googleMapUrl",
+    "locationLink",
+    "mapUrl",
+    "officialEmail",
+    "contactEmail",
+    "ownerEmail",
+    "phoneNumber",
+    "contactPhone",
+    "phone",
+    "alternatePhone",
+    "websiteUrl",
+    "website",
+    "logoImage",
+    "logo",
+    "coverImage",
+    "image",
+    "images",
+    "brochurePdf",
+    "brochurePdfUrl",
+    "brochureUrl",
+    "campusVideo",
+    "campusVideoUrl",
+    "ranking",
+    "rankingMin",
+    "rankingMax",
+    "accreditation",
+    "awards",
+    "awardsRecognitions",
+    "reviews",
+    "facilities",
+    "quotas",
+    "minFee",
+    "maxFee",
+    "feesStructure",
+    "admissionProcess",
+    "applicationMode",
+    "scholarship",
+    "scholarships",
+    "placementPercentage",
+    "placementRate",
+    "averagePackage",
+    "highestPackage",
+    "companiesVisited",
+    "placements",
+    "hostelDetails",
+    "hostelGeneralInfo",
+    "hostelType",
+    "hostelMinFee",
+    "hostelMaxFee",
+    "cctvAvailability",
+    "hostelFacilities",
+    "isBestCollege",
+    "isTopCollege",
+    "courseTags",
+    "customFields",
+    "__v",
+    "createdAt",
+    "updatedAt",
+  ].map(normalizeFieldKey),
+);
+
 const parseStructuredPlacements = (value: unknown) => {
   const base = {
     highestPackage: "",
@@ -514,6 +603,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
     const campusHighlights =
       item.customFields && typeof item.customFields === "object" && !Array.isArray(item.customFields)
         ? Object.entries(item.customFields)
+            .filter(([label]) => !standardCollegeFieldKeys.has(normalizeFieldKey(label)))
             .map(([label, value]) => ({
               label: String(label || "").trim(),
               value: String(value ?? "").trim(),

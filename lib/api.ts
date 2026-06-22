@@ -35,6 +35,11 @@ const AUTH_ENDPOINT_PREFIXES = [
 const shouldAvoidRemoteFallback = (path: string) =>
   AUTH_ENDPOINT_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
+const shouldAvoidRemoteFallbackForRequest = (path: string, options: RequestInit = {}) => {
+  const method = String(options.method || "GET").toUpperCase();
+  return shouldAvoidRemoteFallback(path) || method !== "GET" || path.startsWith("/api/admin/");
+};
+
 const toUrl = (path: string, baseUrl = API_BASE_URL) => `${baseUrl}${path}`;
 
 const readResponseData = async (response: Response) => {
@@ -109,7 +114,7 @@ export const request = async <T = ApiResponseShape>(
 ): Promise<T> => {
   let response: Response;
   let data: unknown;
-  const canUseRemoteFallback = shouldTryRemoteFallback && !shouldAvoidRemoteFallback(path);
+  const canUseRemoteFallback = shouldTryRemoteFallback && !shouldAvoidRemoteFallbackForRequest(path, options);
 
   try {
     ({ response, data } = await fetchJson(path, options, API_BASE_URL));

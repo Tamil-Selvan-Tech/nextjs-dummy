@@ -2317,6 +2317,59 @@ button,
   box-shadow: -14px 20px 34px rgba(20, 42, 99, 0.34);
 }
 
+.find-auth-stage {
+  perspective: 800px;
+}
+
+.find-auth-panel {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.find-auth-panel-from-right {
+  animation: findAuthFlipInFromRight 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.find-auth-panel-from-left {
+  animation: findAuthFlipInFromLeft 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes findAuthFlipInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(8px) rotateY(12deg) scale(0.996);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateX(2px) rotateY(3deg) scale(1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes findAuthFlipInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) rotateY(-12deg) scale(0.996);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateX(-2px) rotateY(-3deg) scale(1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-orb,
   .reveal-up,
@@ -2325,6 +2378,11 @@ button,
   .feature-pop-card,
   .cutoff-calculator-float,
   .suggest-college-cta {
+    animation: none !important;
+  }
+
+  .find-auth-panel-from-right,
+  .find-auth-panel-from-left {
     animation: none !important;
   }
 }

@@ -67,7 +67,7 @@ type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[]
 type CategoryCutoff = { category?: string; cutoff?: string };
 type AdminCollege = { _id: string; collegeCode?: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type AdminCourseExam = { examName?: string; cutoffScoreOrRank?: string; cutoffByCategory?: CategoryCutoff[]; cutoffCategory?: string; weightage?: string; paperOrSyllabus?: string; preparationNotes?: string };
-type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; college?: string; collegeId?: string; collegeCode?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string; collegeCode?: string }; collegeCode?: string; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
+type AdminCourse = { _id: string; course?: string; courseName?: string; courseType?: string; courseCategory?: string; degreeType?: string; stream?: string; specialization?: string; duration?: string; mode?: string; lateralEntryAvailable?: boolean; lateralEntryDetails?: string; minimumQualification?: string; admissionProcess?: string; applicationFee?: string | number; intake?: string | number; hostelFees?: string | number; university?: string; college?: string; collegeId?: string; collegeCode?: string; cutoff?: string | number; cutoffByCategory?: CategoryCutoff[]; description?: string; isTopCourse?: boolean; entranceExams?: AdminCourseExam[]; colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>; collegeDetails?: Array<{ college?: string | { _id?: string; name?: string; collegeCode?: string }; collegeId?: string; collegeCode?: string; semesterFees?: number; totalFees?: number; hostelFees?: number; cutoff?: string; cutoffByCategory?: CategoryCutoff[]; intake?: number; applicationFee?: number }> };
 type PlatformUser = { _id: string; name?: string; email?: string; phone?: string; role?: string; createdAt?: string };
 type Enquiry = { _id: string; name?: string; email?: string; collegeName?: string; courseName?: string; message?: string; createdAt?: string; user?: { name?: string; email?: string } };
 type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
@@ -137,8 +137,8 @@ const getAdminCourseCollegeIdentityValues = (course: AdminCourse) =>
     ...(course.collegeDetails || []).flatMap((detail) => {
       const detailCollege = detail.college;
       return typeof detailCollege === "string"
-        ? [detailCollege, detail.collegeCode || ""]
-        : [detailCollege?._id || "", detailCollege?.collegeCode || "", detailCollege?.name || "", detail.collegeCode || ""];
+        ? [detailCollege, detail.collegeId || "", detail.collegeCode || ""]
+        : [detailCollege?._id || "", detail.collegeId || "", detailCollege?.collegeCode || "", detailCollege?.name || "", detail.collegeCode || ""];
     }),
   ]
     .map(normalizeAdminIdentityValue)
@@ -1360,11 +1360,6 @@ function BulkUploadDashboard({
   const bulkCollegeRowCount = previewRows.filter((row) => row.sheet === "colleges").length;
   const isBulkCollegeLimitExceeded = bulkCollegeRowCount > MAX_BULK_COLLEGE_ROWS;
   const bulkCollegeLimitMessage = isBulkCollegeLimitExceeded ? getBulkCollegeLimitMessage() : "";
-  const bulkImportProgressTotal = bulkImportProgress.total || validationSummary.validRecords || 0;
-  const bulkImportProgressCompleted = Math.min(bulkImportProgress.completed, bulkImportProgressTotal);
-  const bulkImportProgressPercent = bulkImportProgressTotal
-    ? Math.round((bulkImportProgressCompleted / bulkImportProgressTotal) * 100)
-    : 0;
   const uploadCards = [
     {
       step: "1",
@@ -2113,6 +2108,25 @@ function BulkUploadDashboard({
     const normalized = String(value || "").trim().toLowerCase();
     return ["true", "yes", "y", "1", "available", "best", "top", "recommended", "popular", "featured", "main"].includes(normalized);
   };
+  const bulkDegreeTypeValues = new Set(["ug", "pg", "diploma", "iti", "certificate", "doctorate", "phd"]);
+  const looksLikeBulkDegreeType = (value: string) =>
+    bulkDegreeTypeValues.has(String(value || "").trim().toLowerCase().replace(/\./g, ""));
+  const resolveBulkCourseStreamAndDegree = (rowData: Record<string, string>) => {
+    const rawDegreeType = String(rowData.degreeType || "").trim();
+    const rawStream = String(rowData.stream || rowData.courseCategory || "").trim();
+
+    if (rawDegreeType && rawStream && !looksLikeBulkDegreeType(rawDegreeType) && looksLikeBulkDegreeType(rawStream)) {
+      return {
+        degreeType: rawStream.toUpperCase(),
+        stream: normalizeCourseStream(rawDegreeType),
+      };
+    }
+
+    return {
+      degreeType: rawDegreeType,
+      stream: normalizeCourseStream(rawStream),
+    };
+  };
   const getBulkCutoffByCategoryForImport = (rowData: Record<string, string>) =>
     bulkCutoffCategories
       .map((category): CategoryCutoff | null => {
@@ -2129,28 +2143,41 @@ function BulkUploadDashboard({
         return cutoff ? { category, cutoff } : null;
       })
       .filter((item): item is CategoryCutoff => Boolean(item));
+  const cleanBulkNumericImportValue = (value: string) => {
+    const raw = String(value || "").trim();
+    return isBulkEmptyLikeValue(raw) ? "" : raw;
+  };
+  const cleanBulkNumericImportColumns = (rowData: Record<string, string>, columns: string[]) =>
+    Object.fromEntries(columns.map((column) => [column, cleanBulkNumericImportValue(rowData[column] || "")]));
   const enrichBulkImportRowData = (row: BulkPreviewRow) => {
     const data = { ...row.data };
 
     if (row.sheet === "courses") {
       const baseCourseName = String(data.courseName || "").trim();
-      const normalizedStream = normalizeCourseStream(data.stream || data.courseCategory || "");
+      const resolvedCourseIdentity = resolveBulkCourseStreamAndDegree(data);
+      const normalizedStream = resolvedCourseIdentity.stream;
       const specialization = String(data.specialization || baseCourseName || "").trim();
       const cutoffByCategory = getBulkCutoffByCategoryForImport(data);
 
       return {
         ...data,
+        ...cleanBulkNumericImportColumns(data, bulkCutoffColumns),
         course: [baseCourseName, normalizedStream, specialization].filter(Boolean).join(" - "),
         courseType: baseCourseName,
         courseCategory: normalizedStream,
         courseName: specialization,
+        degreeType: resolvedCourseIdentity.degreeType,
         stream: normalizedStream,
         specialization,
         lateralEntryAvailable: isCheckedPreviewBoolean(data.lateralEntry),
         isTopCourse: isCheckedPreviewBoolean(data.bestCourse),
         admissionProcess: data.admissionProcess || "",
         description: data.courseDescription || data.description || "",
-        intake: data.allottedSeats || data.intake || "",
+        allottedSeats: cleanBulkNumericImportValue(data.allottedSeats),
+        applicationFee: cleanBulkNumericImportValue(data.applicationFee),
+        semesterFees: cleanBulkNumericImportValue(data.semesterFees),
+        totalFees: cleanBulkNumericImportValue(data.totalFees),
+        intake: cleanBulkNumericImportValue(data.allottedSeats || data.intake || ""),
         cutoffByCategory,
         cutoff: cutoffByCategory[0]?.cutoff || "",
         college: data.collegeCode || "",
@@ -2163,8 +2190,10 @@ function BulkUploadDashboard({
 
       return {
         ...data,
+        ...cleanBulkNumericImportColumns(data, bulkCutoffColumns),
         weightage: data.examWeightage || "",
         paperOrSyllabus: data.specifiedSubjects || "",
+        examWeightage: cleanBulkNumericImportValue(data.examWeightage),
         cutoffByCategory,
         cutoffScoreOrRank: cutoffByCategory[0]?.cutoff || "",
       };
@@ -2280,18 +2309,32 @@ function BulkUploadDashboard({
   const hasDuplicateCollegeIssue = (row: BulkPreviewRow) =>
     row.errors.some((error) => error === "Duplicate collegeCode" || error.includes("already exists in the system"));
 
-  const isImportableBulkRow = (row: BulkPreviewRow) => row.status === "Valid";
+  const isImportableBulkRow = (row: BulkPreviewRow) => String(row.status || "").trim().toLowerCase() === "valid";
   const isImportableBulkGroup = (group: BulkPreviewRow[]) =>
     group.length > 0 && group.every(isImportableBulkRow);
 
   const buildBulkCollegeGroups = (rows: BulkPreviewRow[]) => {
     const groups = new Map<string, BulkPreviewRow[]>();
-    rows.forEach((row) => {
-      const key = getBulkCollegeGroupKey(row);
-      const group = groups.get(key) || [];
-      group.push(row);
-      groups.set(key, group);
-    });
+
+    rows
+      .filter((row) => row.sheet === "colleges")
+      .forEach((row) => {
+        const key = getBulkCollegeGroupKey(row);
+        const group = groups.get(key) || [];
+        group.push(row);
+        groups.set(key, group);
+      });
+
+    rows
+      .filter((row) => row.sheet !== "colleges")
+      .forEach((row) => {
+        const key = getBulkCollegeGroupKey(row);
+        if (!groups.has(key)) return;
+        const group = groups.get(key) || [];
+        group.push(row);
+        groups.set(key, group);
+      });
+
     return groups;
   };
 
@@ -2317,6 +2360,33 @@ function BulkUploadDashboard({
       pendingReview: groupedRows.filter((group) => !hasInvalidRow(group) && hasReviewRow(group)).length,
     };
   };
+  const validBulkCollegeGroupKeys = getValidBulkCollegeGroupKeys(previewRows);
+  const importableBulkCollegeRows = previewRows.filter(
+    (row) => row.sheet === "colleges" && validBulkCollegeGroupKeys.has(getBulkCollegeGroupKey(row)) && isImportableBulkRow(row),
+  );
+  const importableBulkCollegeCodeSet = new Set(
+    importableBulkCollegeRows
+      .map((row) => String(row.data.collegeCode || "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const importableBulkCourseRowsForExistingColleges = previewRows.filter((row) => {
+    if (row.sheet !== "courses" || !isImportableBulkRow(row)) return false;
+    const rowCollegeCode = String(row.data.collegeCode || "").trim().toLowerCase();
+    return Boolean(rowCollegeCode && existingCollegeCodeSet.has(rowCollegeCode) && !importableBulkCollegeCodeSet.has(rowCollegeCode));
+  });
+  const importableBulkCollegeCount = importableBulkCollegeRows.length;
+  const importableBulkCourseOnlyCollegeCount = new Set(
+    importableBulkCourseRowsForExistingColleges
+      .map((row) => String(row.data.collegeCode || "").trim().toLowerCase())
+      .filter(Boolean),
+  ).size;
+  const hasImportableBulkCollegeRows = importableBulkCollegeCount > 0;
+  const hasImportableBulkRows = hasImportableBulkCollegeRows || importableBulkCourseRowsForExistingColleges.length > 0;
+  const bulkImportProgressTotal = bulkImportProgress.total || importableBulkCollegeCount || 0;
+  const bulkImportProgressCompleted = Math.min(bulkImportProgress.completed, bulkImportProgressTotal);
+  const bulkImportProgressPercent = bulkImportProgressTotal
+    ? Math.round((bulkImportProgressCompleted / bulkImportProgressTotal) * 100)
+    : 0;
 
   const validateBulkPreviewRows = (
     rows: Array<Pick<BulkPreviewRow, "id" | "sheet" | "rowNumber" | "data">>,
@@ -2337,6 +2407,11 @@ function BulkUploadDashboard({
         .trim()
         .toLowerCase()
         .replace(/&/g, " and ")
+        .replace(/\bm\s*\.?\s*b\s*\.?\s*a\b/g, "mba")
+        .replace(/\bm\s*\.?\s*c\s*\.?\s*a\b/g, "mca")
+        .replace(/\bb\s*\.?\s*a\b/g, "ba")
+        .replace(/\bb\s*\.?\s*sc\b/g, "bsc")
+        .replace(/\bb\s*\.?\s*com\b/g, "bcom")
         .replace(/[^a-z0-9]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
@@ -2365,7 +2440,10 @@ function BulkUploadDashboard({
           const courseName = String(row.data.courseName || "").trim();
           const specialization = String(row.data.specialization || "").trim();
           const degreeType = String(row.data.degreeType || "").trim();
-          return getCourseMatchVariants(courseName, specialization, degreeType);
+          const courseType = String(row.data.courseType || "").trim();
+          const courseCategory = String(row.data.courseCategory || row.data.stream || "").trim();
+          return getCourseMatchVariants(courseName || courseType, specialization, degreeType)
+            .concat(getCourseMatchVariants(courseType, specialization, courseCategory));
         })
         .filter(Boolean);
     const courseNameList = (value: string) =>
@@ -2500,9 +2578,6 @@ function BulkUploadDashboard({
         });
         if (isFilledCell("collegeCode") && !collegeCodes.has(cell("collegeCode").toLowerCase())) {
           addFieldIssue(fieldIssues, "collegeCode", "invalid", "collegeCode does not exist in Colleges sheet");
-        }
-        if (cell("collegeCode") && existingCollegeCodeSet.has(cell("collegeCode").toLowerCase())) {
-          addFieldIssue(fieldIssues, "collegeCode", "exists", "collegeCode already exists in the system");
         }
         numeric.forEach((column) => {
           if (!isNumericPreviewCell(column)) addFieldIssue(fieldIssues, column, "invalid", `${column} must be numeric`);
@@ -2647,7 +2722,7 @@ function BulkUploadDashboard({
 
   const summaryRows = [
     { label: "Total Colleges", value: `${validationSummary.totalRecords}`, color: "text-[#143071]", dot: "bg-[#16a34a]", icon: BadgeCheck },
-    { label: "Valid Colleges", value: `${validationSummary.validRecords}`, color: "text-[#16a34a]", dot: "bg-[#16a34a]", icon: BadgeCheck },
+    { label: "Valid Colleges", value: `${importableBulkCollegeCount}`, color: "text-[#16a34a]", dot: "bg-[#16a34a]", icon: BadgeCheck },
     { label: "Failed Colleges", value: `${validationSummary.failedRecords}`, color: "text-[#ef233c]", dot: "bg-[#ef233c]", icon: X },
     { label: "Invalid Colleges", value: `${validationSummary.invalidRecords}`, color: "text-[#ef233c]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
     { label: "Duplicate Colleges", value: `${validationSummary.duplicates}`, color: "text-[#e8790a]", dot: "bg-[#ff9f1c]", icon: TriangleAlert },
@@ -3415,34 +3490,31 @@ function BulkUploadDashboard({
       return;
     }
 
-    if (validationSummary.validRecords === 0) {
+    if (!hasImportableBulkRows) {
       notifyImportStatus("No valid records are ready for import.", "error");
       return;
     }
 
-    const importableCollegeRows = previewRows.filter((row) => row.sheet === "colleges" && isImportableBulkRow(row));
+    const validCollegeGroupKeys = validBulkCollegeGroupKeys;
+    const importableCollegeRows = importableBulkCollegeRows;
     const importableCollegeCodes = new Set(
       importableCollegeRows
         .map((row) => String(row.data.collegeCode || "").trim().toLowerCase())
         .filter(Boolean),
     );
-    const validCollegeGroupKeys = getValidBulkCollegeGroupKeys(previewRows);
     const validPreviewRows = previewRows.filter((row) => {
       if (row.sheet === "colleges") return importableCollegeRows.some((collegeRow) => collegeRow.id === row.id);
+      if (!validCollegeGroupKeys.has(getBulkCollegeGroupKey(row))) return false;
       const rowCollegeCode = String(row.data.collegeCode || "").trim().toLowerCase();
       return rowCollegeCode && importableCollegeCodes.has(rowCollegeCode) && isImportableBulkRow(row);
-    });
+    }).concat(importableBulkCourseRowsForExistingColleges);
     const backendSheetNames: Record<BulkSheetKey, string> = {
       colleges: "College",
       courses: "Courses",
       entranceexams: "EntranceExams",
       collegeimages: "CollegeImages",
     };
-    const validCollegeRows = validPreviewRows.filter((row) => row.sheet === "colleges");
-    if (validCollegeRows.length === 0) {
-      notifyImportStatus("At least one valid college row is required to import.", "error");
-      return;
-    }
+    const validCollegeRows = importableCollegeRows;
     const backendPreviewRows = validPreviewRows.map((row) => ({
       ...row,
       data: enrichBulkImportRowData(row),
@@ -3456,12 +3528,28 @@ function BulkUploadDashboard({
     }));
     const formData = new FormData();
     formData.append("previewRows", JSON.stringify(backendPreviewRows));
+    formData.append(
+      "collegeRows",
+      JSON.stringify(
+        validCollegeRows.map((row) => ({
+          ...row,
+          data: enrichBulkImportRowData(row),
+          sheet: "colleges",
+          sheetKey: "colleges",
+          sheetName: "College",
+          status: "valid",
+          statusKey: "valid",
+          displayStatus: "Valid",
+          isValid: true,
+        })),
+      ),
+    );
     const imageZipFile = selectedUploadFiles["3"];
     if (imageZipFile) {
       formData.append("imageZip", imageZipFile);
     }
 
-    const validCollegeCount = validCollegeRows.length || validCollegeGroupKeys.size || validationSummary.validRecords || 0;
+    const validCollegeCount = validCollegeRows.length + importableBulkCourseOnlyCollegeCount;
     let progressTimer: number | null = null;
     setBulkImportProgress({ completed: 0, total: validCollegeCount });
     setIsImporting(true);
@@ -3507,12 +3595,20 @@ function BulkUploadDashboard({
       });
 
       const summary = data?.summary || {};
+      const backendIssueText = data?.issues?.length
+        ? `${data.issues.length} backend issues: ${data.issues
+            .slice(0, 2)
+            .map((issue) => issue.message)
+            .filter(Boolean)
+            .join(" | ")}`
+        : "";
       const nextStatusText = [
         data?.message || "Bulk import completed.",
         summary.importedColleges ? `${summary.importedColleges} colleges synced` : "",
         summary.coursesCreated || summary.coursesUpdated
           ? `${(summary.coursesCreated || 0) + (summary.coursesUpdated || 0)} courses synced`
           : "",
+        backendIssueText,
       ]
         .filter(Boolean)
         .join(" ");
@@ -4643,20 +4739,21 @@ function BulkUploadDashboard({
               </button>
               <button
                 type="button"
-                disabled={validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded}
+                disabled={!hasImportableBulkRows || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded}
                 onClick={() => {
                   setBulkImportFinished(false);
+                  setValidationStatusText("");
                   setShowFinishPopup(true);
                 }}
                 className={`h-11 rounded-md px-8 text-xs font-extrabold shadow-[0_8px_18px_rgba(79,50,246,0.22)] ${
-                  validationSummary.validRecords === 0 || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded
+                  !hasImportableBulkRows || editingRowId !== null || isImporting || isBulkCollegeLimitExceeded
                     ? "cursor-not-allowed bg-[#c7cbe0] text-white"
                     : "bg-[#4f32f6] text-white"
                 }`}
               >
                 {isImporting
                   ? "Importing..."
-                  : `Import Valid Data (${validationSummary.validRecords || 0})`}
+                  : `Import Valid Data (${importableBulkCollegeCount + importableBulkCourseOnlyCollegeCount})`}
               </button>
             </div>
           
@@ -4690,7 +4787,7 @@ function BulkUploadDashboard({
                 ? "The valid college records have been imported. You can close this popup and review the updated college list."
                 : isImporting
                   ? "Please wait while we import the valid college records. Keep this window open until the process completes."
-                : `Ready to import ${validationSummary.validRecords || 0} valid college record${validationSummary.validRecords === 1 ? "" : "s"}. Click Finish to complete the import.`}
+                : `Ready to import ${importableBulkCollegeCount + importableBulkCourseOnlyCollegeCount} valid college record${importableBulkCollegeCount + importableBulkCourseOnlyCollegeCount === 1 ? "" : "s"}. Click Finish to complete the import.`}
             </p>
             {isImporting ? (
               <div className="mt-6 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-blue-50 p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
@@ -4910,6 +5007,7 @@ function AdminPageContent() {
   const lastSeenNotificationAtRef = useRef(0);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
   const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
+  const [collegeSearchText, setCollegeSearchText] = useState("");
   const examFormRef = useRef<HTMLFormElement | null>(null);
   const examNameInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
@@ -5244,11 +5342,31 @@ function AdminPageContent() {
         : [],
     [collegeForm.state],
   );
+  const filteredCollegeCards = useMemo(() => {
+    const normalizedSearch = collegeSearchText.trim().toLowerCase();
+    if (!normalizedSearch) return adminState.colleges;
+
+    return adminState.colleges.filter((college) =>
+      [
+        college.name,
+        college.collegeCode,
+        college.university,
+        college.city,
+        college.district,
+        college.state,
+        college.address,
+        college.pincode,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value.includes(normalizedSearch)),
+    );
+  }, [adminState.colleges, collegeSearchText]);
+  const hasCollegeSearch = Boolean(collegeSearchText.trim());
   const visibleCollegeCards = useMemo(
-    () => (showAllCollegeCards ? adminState.colleges : adminState.colleges.slice(0, 6)),
-    [adminState.colleges, showAllCollegeCards],
+    () => (hasCollegeSearch || showAllCollegeCards ? filteredCollegeCards : filteredCollegeCards.slice(0, 6)),
+    [filteredCollegeCards, hasCollegeSearch, showAllCollegeCards],
   );
-  const hiddenCollegeCount = Math.max(adminState.colleges.length - visibleCollegeCards.length, 0);
+  const hiddenCollegeCount = Math.max(filteredCollegeCards.length - visibleCollegeCards.length, 0);
   const loadAdminData = useCallback(async (authToken: string, fallbackUser?: AdminUser | null) => {
     try {
       setLoading(true);
@@ -8137,11 +8255,22 @@ function AdminPageContent() {
                     accept=".jpg,.jpeg,.svg,image/jpeg,image/svg+xml"
                     multiple
                     onChange={(event) => {
-                      const nextFiles = Array.from(event.target.files || []);
-                      if (!nextFiles.length) return;
+                      const selectedFiles = Array.from(event.target.files || []);
+                      if (!selectedFiles.length) return;
+                      const remainingSlots = Math.max(0, 7 - collegeForm.images.length - imageFiles.length);
+                      if (remainingSlots === 0) {
+                        setStatusText("Maximum 7 gallery images allowed");
+                        event.currentTarget.value = "";
+                        return;
+                      }
+                      const nextFiles = selectedFiles.slice(0, remainingSlots);
                       clearCollegeFieldError("images");
                       setImageFiles((prev) => [...prev, ...nextFiles]);
-                      setStatusText(`${collegeForm.images.length + imageFiles.length + nextFiles.length} college image(s) selected`);
+                      setStatusText(
+                        selectedFiles.length > remainingSlots
+                          ? `Only ${remainingSlots} more image(s) added. Maximum 7 gallery images allowed.`
+                          : `${collegeForm.images.length + imageFiles.length + nextFiles.length} college image(s) selected`,
+                      );
                       event.currentTarget.value = "";
                     }}
                   />
@@ -8165,10 +8294,10 @@ function AdminPageContent() {
                       <div className="min-w-0 lg:pr-2">
                         <p className="text-lg font-semibold leading-tight tracking-[-0.02em] text-slate-900">Upload college gallery</p>
                         <p className="mt-2 text-sm leading-6 text-slate-500">Only JPG or SVG images are recommended.</p>
-                        <p className="text-sm leading-6 text-slate-500">Minimum 2 images, maximum 7 images. Selected: {totalCollegeImageCount}</p>
+                        <p className="text-sm leading-6 text-slate-500">Select multiple images at once. Minimum 2 images, maximum 7 images. Selected: {totalCollegeImageCount}</p>
                       </div>
                       <div className="lg:justify-self-end">
-                        <span className={mediaUploadButtonClass}>{totalCollegeImageCount > 0 ? "Add more images" : "Upload images"}</span>
+                        <span className={mediaUploadButtonClass}>{totalCollegeImageCount > 0 ? "Add multiple images" : "Upload multiple images"}</span>
                       </div>
                     </div>
                   </label>
@@ -9495,7 +9624,35 @@ function AdminPageContent() {
             </form>
           ) : null}
 
-          {adminState.colleges.length > 6 ? (
+          <div className="mb-4 w-full max-w-[42rem] rounded-2xl border border-[#dbe7fb] bg-white p-3 shadow-[0_12px_28px_rgba(59,91,139,0.08)]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-start">
+              <label className="relative block w-full md:max-w-[34rem]">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#2563eb]" strokeWidth={2} />
+                <input
+                  value={collegeSearchText}
+                  onChange={(event) => setCollegeSearchText(event.target.value)}
+                  placeholder="Search by college name or location"
+                  className="h-12 w-full rounded-xl border border-[#cfe0ff] bg-[#f8fbff] pl-12 pr-4 text-sm font-semibold text-[#061647] outline-none transition placeholder:text-[#6b7fa7] focus:border-[#2563eb] focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                />
+              </label>
+              <div className="flex items-center justify-between gap-3 md:justify-start">
+                <span className="text-xs font-bold text-[#526995]">
+                  {filteredCollegeCards.length} of {adminState.colleges.length} colleges
+                </span>
+                {collegeSearchText ? (
+                  <button
+                    type="button"
+                    onClick={() => setCollegeSearchText("")}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-[#cfe0ff] bg-white px-4 text-xs font-black text-[#2563eb] transition hover:bg-[#eff6ff]"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {filteredCollegeCards.length > 6 && !hasCollegeSearch ? (
             <div className="mb-3 flex justify-end">
               <button
                 type="button"
@@ -9507,6 +9664,7 @@ function AdminPageContent() {
             </div>
           ) : null}
 
+          {visibleCollegeCards.length ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleCollegeCards.map((college) => {
               const range = formatFeeRange(college.feesStructure);
@@ -9624,6 +9782,11 @@ function AdminPageContent() {
               );
             })}
           </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-[#cfe0ff] bg-white px-5 py-10 text-center text-sm font-semibold text-[#526995]">
+              No colleges found for "{collegeSearchText.trim()}".
+            </div>
+          )}
         </div>
       ) : null}
 
