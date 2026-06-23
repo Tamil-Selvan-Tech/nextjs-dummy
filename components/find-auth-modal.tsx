@@ -478,53 +478,51 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
 
   return (
     <div
-      className="fixed inset-0 z-[1200] flex items-start justify-center bg-[rgba(7,20,38,0.48)] px-3 pb-3 pt-4 backdrop-blur-[5px] sm:items-center sm:px-4 sm:py-6"
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-[rgba(7,20,38,0.48)] px-3 py-4 backdrop-blur-[5px] sm:px-4 sm:py-6"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="find-auth-modal-title"
-        className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-[385px] flex-col overflow-x-hidden overflow-y-auto rounded-[1.6rem] border border-[#f3df9a] bg-[linear-gradient(180deg,#fffdf5_0%,#ffffff_38%,#fffaf0_100%)] shadow-[0_30px_90px_rgba(31,24,4,0.22)] sm:max-h-[calc(100dvh-2.25rem)] sm:max-w-[405px]"
+        className="relative flex h-fit max-h-[calc(100dvh-1.5rem)] w-full max-w-[395px] flex-col sm:max-h-[calc(100dvh-2.25rem)] sm:max-w-[420px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,232,160,0.12)_0%,rgba(255,255,255,0)_60%)]" />
-        </div>
-
-        <div className="absolute right-4 top-4 z-20">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex size-10 items-center justify-center rounded-full border border-[rgba(15,76,129,0.08)] bg-white text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.04)] hover:text-[color:var(--text-dark)]"
-            aria-label="Close authentication popup"
-          >
-            <X className="size-4.5" />
-          </button>
-        </div>
-
-        <div className="relative z-10 px-4 pt-5 sm:px-8 sm:pt-5">
-          <div className="text-center">
-            <h2
-              id="find-auth-modal-title"
-              className="text-[22px] font-semibold leading-tight text-[#0F1B25] sm:text-[24px]"
-            >
-              {isLoginMode ? "Access Your Dashboard" : "Create your account"}
-            </h2>
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-2 flex-1 overflow-hidden px-4 pb-5 sm:px-8 sm:pb-6">
-          <div className="find-auth-stage">
-            <div
+        <div className="find-auth-stage relative z-10">
+          <div
               key={authFlipKey}
-              className={`find-auth-panel ${
+              className={`find-auth-panel relative flex flex-col overflow-hidden rounded-[1.6rem] border border-[#f3df9a] bg-[linear-gradient(180deg,#fffdf5_0%,#ffffff_38%,#fffaf0_100%)] px-4 pt-6 shadow-[0_30px_90px_rgba(31,24,4,0.22)] sm:px-8 sm:pt-7 ${
                 authFlipDirection === "right" ? "find-auth-panel-from-right" : "find-auth-panel-from-left"
               }`}
             >
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,232,160,0.12)_0%,rgba(255,255,255,0)_60%)]" />
+            </div>
+
+              <div className="absolute right-4 top-4 z-20">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-[rgba(15,76,129,0.08)] bg-white text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.04)] hover:text-[color:var(--text-dark)]"
+                  aria-label="Close authentication popup"
+                >
+                  <X className="size-4.5" />
+                </button>
+              </div>
+
+              <div className="text-center">
+                <h2
+                  id="find-auth-modal-title"
+                  className="text-[22px] font-semibold leading-tight text-[#0F1B25] sm:text-[24px]"
+                >
+                  {isLoginMode ? "Access Your Dashboard" : "Create your account"}
+                </h2>
+              </div>
+
+              <div className="mt-4 pb-6 sm:pb-7">
               {isLoginMode ? (
-                <div className="mt-[0.1rem]">
-                  <form onSubmit={handleLoginSubmit} className="space-y-2">
+                <div className="mt-0">
+                  <form onSubmit={handleLoginSubmit} className="space-y-3">
                     <div>
                       <label className={cutoffLabelClass}>Email Address</label>
                       <div className={cutoffFieldShellClass}>
@@ -581,8 +579,8 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                     </button>
                   </form>
 
-                  <div className="mt-3">
-                    <div className="relative mb-2">
+                    <div className="mt-4">
+                    <div className="relative mb-3">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t border-[#e6e0cf]" />
                       </div>
@@ -629,7 +627,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                     </div>
                   </div>
 
-                  <p className="mt-3 text-center text-[0.9rem] text-[#536079]">
+                  <p className="mt-4 text-center text-[0.9rem] text-[#536079]">
                     New here?{" "}
                     <button
                       type="button"
@@ -644,8 +642,8 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                   </p>
                 </div>
               ) : (
-                <div className="mt-[0.1rem]">
-                  <form onSubmit={handleRegisterSubmit} className="space-y-1">
+                <div className="mt-0">
+                  <form onSubmit={handleRegisterSubmit} className="space-y-3">
                     <div>
                       <label className={cutoffLabelClass}>Full Name</label>
                       <div className={registerFieldShellClass}>
@@ -730,7 +728,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                     </button>
                   </form>
 
-                  <p className="mt-1.5 text-center text-[0.9rem] text-[#536079]">
+                  <p className="mt-4 text-center text-[0.9rem] text-[#536079]">
                     Already have an account?{" "}
                     <button
                       type="button"
@@ -745,7 +743,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                   </p>
                 </div>
               )}
-            </div>
+              </div>
           </div>
         </div>
       </div>
