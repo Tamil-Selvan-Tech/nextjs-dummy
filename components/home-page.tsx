@@ -21,7 +21,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import {
   colleges as fallbackColleges,
@@ -31,6 +31,7 @@ import {
   type College,
   type Course,
 } from "@/lib/site-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 import { getRankedSearchResults, normalizeSearchText, type SearchCity } from "@/lib/search-utils";
 import { TopExamCard } from "@/components/top-exam-card";
@@ -240,12 +241,20 @@ const formatPlacementRateDisplay = (college?: College) => {
 };
 
 export function HomePage({
-  collegesData = fallbackColleges,
-  coursesData = fallbackCourses,
-  heroImageUrl = "",
-  examSchedules = [],
+  collegesData: initialCollegesData = fallbackColleges,
+  coursesData: initialCoursesData = fallbackCourses,
+  heroImageUrl: initialHeroImageUrl = "",
+  examSchedules: initialExamSchedules = [],
 }: HomePageProps) {
   const router = useRouter();
+  const [collegesData, setCollegesData] = useState(() =>
+    initialCollegesData.length ? initialCollegesData : fallbackColleges,
+  );
+  const [coursesData] = useState(() =>
+    initialCoursesData.length ? initialCoursesData : fallbackCourses,
+  );
+  const [heroImageUrl, setHeroImageUrl] = useState(() => String(initialHeroImageUrl || "").trim());
+  const [examSchedules, setExamSchedules] = useState(() => initialExamSchedules);
 
   // Home page search and interaction state
   const [collegeSearchInput, setCollegeSearchInput] = useState("");
@@ -518,20 +527,38 @@ export function HomePage({
         primaryCourse?.stream || primaryCourse?.courseCategory,
         primaryCourse?.specialization,
       );
-      const fees = rows.map((row) => row.totalFees);
-      const cutoffs = rows.map((row) => row.cutoff);
-      const durations = [...new Set(rows.map((row) => row.duration).filter(Boolean))];
-      const minFees = Math.min(...fees);
-      const maxFees = Math.max(...fees);
-      const minCutoff = Math.min(...cutoffs);
-      const maxCutoff = Math.max(...cutoffs);
+      const fees = rows
+        .flatMap((row) => [
+          Number(row.totalFees),
+          ...(Array.isArray(row.collegeDetails)
+            ? row.collegeDetails.map((detail) => Number(detail.totalFees))
+            : []),
+        ])
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const cutoffs = rows
+        .flatMap((row) => [
+          Number(row.cutoff),
+          ...(Array.isArray(row.collegeDetails)
+            ? row.collegeDetails.map((detail) => Number(detail.cutoff))
+            : []),
+        ])
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const durations = [...new Set(rows.map((row) => String(row.duration || "").trim()).filter(Boolean))];
+      const feesRange = fees.length
+        ? formatCompactIndianCurrencyRange(Math.min(...fees), Math.max(...fees))
+        : "-";
+      const cutoffRange = cutoffs.length
+        ? Math.min(...cutoffs) === Math.max(...cutoffs)
+          ? `${Math.min(...cutoffs)}`
+          : `${Math.min(...cutoffs)} - ${Math.max(...cutoffs)}`
+        : "-";
 
       return {
         id: courseName,
         course: displayCourseName,
-        duration: durations.join(", ") || "-",
-        feesRange: formatCompactIndianCurrencyRange(minFees, maxFees),
-        cutoffRange: minCutoff === maxCutoff ? `${minCutoff}` : `${minCutoff} - ${maxCutoff}`,
+        duration: durations.length ? durations.join(", ") : "-",
+        feesRange,
+        cutoffRange,
         isTopCourse: rows.some((row) => row.isTopCourse),
         icon: iconMap[courseName as keyof typeof iconMap] ?? CourseIcon,
         href: `/explore/course/${encodeURIComponent(displayCourseName)}`,
@@ -844,6 +871,49 @@ export function HomePage({
         window.clearTimeout(searchFieldBlurTimeoutRef.current);
         searchFieldBlurTimeoutRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadLiveData = async () => {
+      try {
+        const panelData = await fetchPublicSummaryData();
+        if (!active || !panelData) return;
+
+        startTransition(() => {
+          setCollegesData(panelData.colleges.length ? panelData.colleges : fallbackColleges);
+          setHeroImageUrl(String(panelData.homeHeroImageUrl || "").trim());
+          setExamSchedules(panelData.examSchedules);
+        });
+      } catch {
+        if (!active) return;
+      }
+    };
+
+    if (typeof window === "undefined") return () => {};
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let cancelIdleLoad: (() => void) | undefined;
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => {
+        void loadLiveData();
+      }, { timeout: 1200 });
+      cancelIdleLoad = () => idleWindow.cancelIdleCallback?.(handle);
+    } else {
+      const timer = window.setTimeout(() => {
+        void loadLiveData();
+      }, 0);
+      cancelIdleLoad = () => window.clearTimeout(timer);
+    }
+
+    return () => {
+      active = false;
+      cancelIdleLoad?.();
     };
   }, []);
 

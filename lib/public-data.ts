@@ -17,6 +17,15 @@ const shouldTryLocalFallback =
   process.env.NODE_ENV !== "production" &&
   !API_BASE_URL.includes("localhost:5000") &&
   !API_BASE_URL.includes("127.0.0.1:5000");
+const PUBLIC_PANEL_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedEntry<T> = {
+  value: T;
+  expiresAt: number;
+};
+
+const inFlightPublicRequests = new Map<string, Promise<unknown>>();
+const memoryPublicCache = new Map<string, CachedEntry<unknown>>();
 
 const toNumber = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -219,9 +228,12 @@ const mapCutoffByCategory = (
         .filter((entry) => entry.category && entry.cutoff)
     : [];
 
-const fetchJson = async <T>(path: string) => {
+const fetchJson = async <T>(path: string, init: RequestInit = {}) => {
   const fetchFrom = async (baseUrl: string) => {
-    const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+    const response = await fetch(`${baseUrl}${path}`, {
+      cache: "no-store",
+      ...init,
+    });
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status}`);
     }
@@ -240,6 +252,92 @@ const fetchJson = async <T>(path: string) => {
     }
     if (!shouldTryRemoteFallback) throw error;
     return fetchFrom(REMOTE_FALLBACK_BASE_URL);
+  }
+};
+
+const getCacheStorage = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
+const readCachedEntry = <T>(cacheKey: string): T | null => {
+  const memoryEntry = memoryPublicCache.get(cacheKey) as CachedEntry<T> | undefined;
+  if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+    return memoryEntry.value;
+  }
+
+  if (memoryEntry) {
+    memoryPublicCache.delete(cacheKey);
+  }
+
+  const storage = getCacheStorage();
+  if (!storage) return null;
+
+  try {
+    const raw = storage.getItem(cacheKey);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedEntry<T>;
+    if (!parsed || typeof parsed.expiresAt !== "number" || parsed.expiresAt <= Date.now()) {
+      storage.removeItem(cacheKey);
+      return null;
+    }
+
+    memoryPublicCache.set(cacheKey, parsed);
+    return parsed.value;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedEntry = <T>(cacheKey: string, value: T, ttlMs: number) => {
+  const entry: CachedEntry<T> = {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  };
+  memoryPublicCache.set(cacheKey, entry);
+
+  const storage = getCacheStorage();
+  if (!storage) return;
+
+  try {
+    storage.setItem(cacheKey, JSON.stringify(entry));
+  } catch {
+    // Ignore storage quota / unavailable storage errors.
+  }
+};
+
+const fetchJsonWithCache = async <T>(path: string, ttlMs = PUBLIC_PANEL_CACHE_TTL_MS) => {
+  const cacheKey = `collegeedwiser:public-data:${path}`;
+  const cached = readCachedEntry<T>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const inFlight = inFlightPublicRequests.get(cacheKey);
+  if (inFlight) {
+    return inFlight as Promise<T>;
+  }
+
+  const promise = (async () => {
+    const data = await fetchJson<T>(
+      path,
+      typeof window === "undefined" ? { cache: "force-cache" } : {},
+    );
+    writeCachedEntry(cacheKey, data, ttlMs);
+    return data;
+  })();
+
+  inFlightPublicRequests.set(cacheKey, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inFlightPublicRequests.delete(cacheKey);
   }
 };
 
@@ -383,6 +481,28 @@ const getCourseCollegeIdentityValues = (course: Course) =>
     .map((value) => String(value || "").trim())
     .filter(Boolean);
 
+const buildCourseCollegeIdentityIndex = (courseRows: Course[]) => {
+  const index = new Map<string, Course[]>();
+
+  courseRows.forEach((course) => {
+    const seenKeys = new Set<string>();
+    getCourseCollegeIdentityValues(course).forEach((value) => {
+      const key = normalizeText(value);
+      if (!key || seenKeys.has(key)) return;
+      seenKeys.add(key);
+
+      const existing = index.get(key);
+      if (existing) {
+        existing.push(course);
+      } else {
+        index.set(key, [course]);
+      }
+    });
+  });
+
+  return index;
+};
+
 type BackendSiteSettings = {
   settings?: {
     homeHeroImageUrl?: string;
@@ -494,7 +614,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
     return {
       id: String(item.id || `course-${index}`),
       course: String(item.course || item.courseName || "Course"),
-      duration: String(item.duration || "Not available"),
+      duration: String(item.duration || "").trim(),
       semesterFees: toNumber(item.semesterFees),
       totalFees: toNumber(item.totalFees),
       cutoff: toNumber(item.cutoff),
@@ -564,19 +684,32 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
 };
 
 const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[] =>
-  records.map((item, index) => {
+  {
+    const courseIdentityIndex = buildCourseCollegeIdentityIndex(courseRows);
+
+    return records.map((item, index) => {
     const collegeIdentityValues = [
       String(item._id || "").trim(),
       String(item.collegeCode || "").trim(),
       String(item.name || "").trim(),
     ].filter(Boolean);
-    const normalizedCollegeIdentityValues = collegeIdentityValues.map((value) => normalizeText(value));
-    const matchingCourseRows = courseRows.filter(
-      (course) =>
-        getCourseCollegeIdentityValues(course).some((value) =>
-          normalizedCollegeIdentityValues.includes(normalizeText(value)),
-        ),
-    );
+    const normalizedCollegeIdentityValues = [...new Set(
+      collegeIdentityValues.map((value) => normalizeText(value)).filter(Boolean),
+    )];
+    const matchingCourseRows = (() => {
+      const matched = new Map<string, Course>();
+
+      normalizedCollegeIdentityValues.forEach((key) => {
+        const linkedCourses = courseIdentityIndex.get(key);
+        if (!linkedCourses) return;
+
+        linkedCourses.forEach((course) => {
+          matched.set(course.id, course);
+        });
+      });
+
+      return [...matched.values()];
+    })();
 
     const streams = [
       ...new Set(
@@ -681,14 +814,30 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       hostelDetails: rawHostelDetails,
       campusHighlights,
     };
-  });
+    });
+  };
 
-export async function fetchPublicPanelData() {
+type PublicPanelData = {
+  colleges: College[];
+  courses: Course[];
+  homeHeroImageUrl: string;
+  examSchedules: PublicExamSchedule[];
+};
+
+const fetchPublicPanelDataImpl = async (
+  options: { forceRefresh?: boolean } = {},
+  querySuffix = "",
+): Promise<PublicPanelData> => {
   try {
+    const coursesQuerySuffix = querySuffix ? querySuffix.replace(/^\?/, "&") : "";
+    const shouldUseCachedFetch =
+      !options.forceRefresh &&
+      !(querySuffix && typeof window === "undefined");
+    const fetcher = shouldUseCachedFetch ? fetchJsonWithCache : fetchJson;
     const [collegeData, courseData, siteSettingsData] = await Promise.all([
-      fetchJson<{ colleges?: BackendCollege[] }>("/api/public/colleges"),
-      fetchJson<{ courses?: BackendCourse[] }>("/api/public/courses"),
-      fetchJson<BackendSiteSettings>("/api/public/site-settings"),
+      fetcher<{ colleges?: BackendCollege[] }>(`/api/public/colleges${querySuffix}`),
+      fetcher<{ courses?: BackendCourse[] }>(`/api/public/courses?raw=1${coursesQuerySuffix}`),
+      fetcher<BackendSiteSettings>("/api/public/site-settings"),
     ]);
 
     const mappedCourses = mapCourses(Array.isArray(courseData.courses) ? courseData.courses : []);
@@ -711,11 +860,19 @@ export async function fetchPublicPanelData() {
       examSchedules: [],
     };
   }
+};
+
+export async function fetchPublicPanelData(options: { forceRefresh?: boolean } = {}) {
+  return fetchPublicPanelDataImpl(options);
+}
+
+export async function fetchPublicSummaryData(options: { forceRefresh?: boolean } = {}) {
+  return fetchPublicPanelDataImpl(options, "?summary=1");
 }
 
 export async function fetchPublicExamSchedules() {
   try {
-    const siteSettingsData = await fetchJson<BackendSiteSettings>("/api/public/site-settings");
+    const siteSettingsData = await fetchJsonWithCache<BackendSiteSettings>("/api/public/site-settings");
     return mapExamSchedules(siteSettingsData);
   } catch {
     return [];

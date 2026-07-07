@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import {
   colleges,
@@ -11,6 +11,7 @@ import {
   type College,
   type Course,
 } from "@/lib/site-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 
 type ExploreClientProps = {
   query: string;
@@ -153,7 +154,59 @@ export function ExploreClient({
   const [homeCollegePage, setHomeCollegePage] = useState(0);
   const [allCollegePage, setAllCollegePage] = useState(0);
 
-  
+  const [liveColleges, setLiveColleges] = useState(() =>
+    collegesData.length ? collegesData : colleges,
+  );
+  const [liveCourses, setLiveCourses] = useState(() =>
+    coursesData.length ? coursesData : courses,
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadData = async () => {
+      try {
+        const panelData = await fetchPublicSummaryData();
+        if (!active) return;
+
+        startTransition(() => {
+          setLiveColleges(panelData.colleges.length ? panelData.colleges : colleges);
+          setLiveCourses(panelData.courses.length ? panelData.courses : courses);
+        });
+      } catch {
+        if (!active) return;
+        startTransition(() => {
+          setLiveColleges(collegesData.length ? collegesData : colleges);
+          setLiveCourses(coursesData.length ? coursesData : courses);
+        });
+      }
+    };
+
+    if (typeof window === "undefined") return () => {};
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let cancelIdleLoad: (() => void) | undefined;
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => {
+        void loadData();
+      }, { timeout: 1200 });
+      cancelIdleLoad = () => idleWindow.cancelIdleCallback?.(handle);
+    } else {
+      const timer = window.setTimeout(() => {
+        void loadData();
+      }, 0);
+      cancelIdleLoad = () => window.clearTimeout(timer);
+    }
+
+    return () => {
+      active = false;
+      cancelIdleLoad?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -168,7 +221,7 @@ export function ExploreClient({
   const collegesMatchingCourseQuery = useMemo(() => {
     if (!searchText && !hasStreamFilter) return new Set<string>();
 
-    const matchedCourseRows = coursesData.filter((course) =>
+    const matchedCourseRows = liveCourses.filter((course) =>
       matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter),
     );
 
@@ -181,7 +234,7 @@ export function ExploreClient({
         matchedCollegeIds.add(course.collegeId);
       }
 
-      collegesData.forEach((college) => {
+      liveColleges.forEach((college) => {
         const tagsText = normalizeText(
           `${college.courseTags?.join(" ") || ""} ${college.streams.join(" ")}`,
         );
@@ -204,16 +257,16 @@ export function ExploreClient({
     });
 
     return matchedCollegeIds;
-  }, [collegesData, coursesData, hasStreamFilter, matchedStreamAliases, searchText]);
+  }, [hasStreamFilter, liveColleges, liveCourses, matchedStreamAliases, searchText]);
 
   const groupedCourses = useMemo(() => {
-    const grouped = new Map<string, typeof coursesData>();
-    coursesData.forEach((course) => {
+    const grouped = new Map<string, typeof liveCourses>();
+    liveCourses.forEach((course) => {
       if (!matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter)) return;
       grouped.set(course.course, [...(grouped.get(course.course) || []), course]);
     });
     return [...grouped.entries()];
-  }, [coursesData, hasStreamFilter, matchedStreamAliases, searchText]);
+  }, [hasStreamFilter, liveCourses, matchedStreamAliases, searchText]);
 
   const coursesPerPage = 10;
 
@@ -233,7 +286,7 @@ const visibleCourses = groupedCourses.slice(
 );
 
   const filteredColleges = useMemo(() => {
-    let data = collegesData;
+    let data = liveColleges;
     if (showBestOnly) data = data.filter((college) => college.isBestCollege);
     if (cityFilter) {
       const normalizedCity = normalizeText(cityFilter);
@@ -265,7 +318,7 @@ const visibleCourses = groupedCourses.slice(
       data = data.filter((college) => normalizeText(college.name) === normalizedCollege);
     }
     return data;
-  }, [cityFilter, collegeFilter, collegesData, collegesMatchingCourseQuery, hasStreamFilter, matchedStreamAliases, searchText, showBestOnly]);
+  }, [cityFilter, collegeFilter, collegesMatchingCourseQuery, hasStreamFilter, liveColleges, matchedStreamAliases, searchText, showBestOnly]);
   const selectedCollege = useMemo(() => {
     if (!collegeFilter) return null;
     const normalizedCollege = normalizeText(collegeFilter);

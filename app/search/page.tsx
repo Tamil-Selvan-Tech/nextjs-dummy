@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, startTransition, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ChevronLeft,
@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
-import { fetchPublicPanelData } from "@/lib/public-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { colleges, courses } from "@/lib/site-data";
 import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
 
@@ -40,7 +40,7 @@ function SearchPageContent() {
     let active = true;
     const loadData = async () => {
       try {
-        const panelData = await fetchPublicPanelData();
+        const panelData = await fetchPublicSummaryData();
         if (!active) return;
         const mappedCities = Array.from(
           new Map(
@@ -54,10 +54,12 @@ function SearchPageContent() {
             ]),
           ).values(),
         );
-        setSearchData({
-          courses: panelData.courses.length ? panelData.courses : courses,
-          colleges: panelData.colleges.length ? panelData.colleges : colleges,
-          cities: mappedCities,
+        startTransition(() => {
+          setSearchData({
+            courses: panelData.courses.length ? panelData.courses : courses,
+            colleges: panelData.colleges.length ? panelData.colleges : colleges,
+            cities: mappedCities,
+          });
         });
       } catch {
         const fallbackCities = Array.from(
@@ -73,18 +75,39 @@ function SearchPageContent() {
           ).values(),
         );
         if (!active) return;
-        setSearchData({
-          courses,
-          colleges,
-          cities: fallbackCities,
+        startTransition(() => {
+          setSearchData({
+            courses,
+            colleges,
+            cities: fallbackCities,
+          });
         });
       }
     };
 
-    void loadData();
+    if (typeof window === "undefined") return () => {};
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let cancelIdleLoad: (() => void) | undefined;
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => {
+        void loadData();
+      }, { timeout: 1200 });
+      cancelIdleLoad = () => idleWindow.cancelIdleCallback?.(handle);
+    } else {
+      const timer = window.setTimeout(() => {
+        void loadData();
+      }, 0);
+      cancelIdleLoad = () => window.clearTimeout(timer);
+    }
 
     return () => {
       active = false;
+      cancelIdleLoad?.();
     };
   }, []);
 

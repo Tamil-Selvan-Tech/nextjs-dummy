@@ -1,0 +1,92 @@
+<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="capTop" x1="210" y1="140" x2="620" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D3568"/>
+      <stop offset="1" stop-color="#0E214A"/>
+    </linearGradient>
+    <linearGradient id="bookBlue" x1="220" y1="430" x2="640" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E3F83"/>
+      <stop offset="1" stop-color="#102A5A"/>
+    </linearGradient>
+    <linearGradient id="bookGold" x1="245" y1="330" x2="635" y2="490" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD043"/>
+      <stop offset="1" stop-color="#F4B400"/>
+    </linearGradient>
+    <linearGradient id="pageEdge" x1="540" y1="405" x2="708" y2="405" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F2F2F2"/>
+    </linearGradient>
+    <linearGradient id="penBlue" x1="190" y1="690" x2="490" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#122B5F"/>
+      <stop offset="1" stop-color="#0D1F45"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="90" y1="520" x2="230" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD84F"/>
+      <stop offset="1" stop-color="#F3B300"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="800" height="800" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#0F1B25" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <ellipse cx="432" cy="378" rx="266" ry="264" fill="#FFF6D9"/>
+    <ellipse cx="330" cy="512" rx="248" ry="176" fill="#FFF7DF" opacity="0.85"/>
+
+    <g transform="translate(112 508)">
+      <rect x="0" y="64" width="150" height="154" rx="66" fill="#F4F4F4"/>
+      <ellipse cx="75" cy="84" rx="20" ry="12" fill="#6E4A2C"/>
+      <path d="M75 18C84 18 90 26 90 35C90 44 84 52 75 52C66 52 60 44 60 35C60 26 66 18 75 18Z" fill="url(#leaf)"/>
+      <path d="M75 52C78 64 80 88 80 128" stroke="#D89B00" stroke-width="6" stroke-linecap="round"/>
+      <path d="M54 62C32 34 18 14 13 2C18 6 33 14 54 24C67 30 76 39 82 52C75 54 67 57 54 62Z" fill="url(#leaf)"/>
+      <path d="M96 62C118 34 132 14 137 2C132 6 117 14 96 24C83 30 74 39 68 52C75 54 83 57 96 62Z" fill="url(#leaf)"/>
+      <path d="M66 58C48 33 36 18 31 11C36 14 47 19 63 27C71 31 76 40 79 49C74 52 70 55 66 58Z" fill="url(#leaf)"/>
+    </g>
+
+    <g transform="translate(228 214)">
+      <rect x="84" y="310" width="340" height="104" rx="28" fill="url(#bookBlue)"/>
+      <rect x="112" y="214" width="356" height="100" rx="28" fill="url(#bookGold)"/>
+      <rect x="96" y="124" width="354" height="104" rx="28" fill="url(#bookBlue)"/>
+      <rect x="84" y="42" width="366" height="100" rx="28" fill="url(#bookGold)"/>
+
+      <path d="M120 120H423C451 120 471 141 471 166V218H120V120Z" fill="url(#pageEdge)"/>
+      <path d="M112 210H426C456 210 474 232 474 258V306H112V210Z" fill="url(#pageEdge)"/>
+      <path d="M123 300H416C446 300 468 321 468 348V404H123V300Z" fill="url(#pageEdge)"/>
+
+      <rect x="182" y="0" width="206" height="96" rx="20" fill="url(#capTop)"/>
+      <rect x="210" y="54" width="150" height="114" rx="16" fill="#132A57"/>
+      <rect x="352" y="38" width="8" height="125" rx="4" fill="#F4B400"/>
+      <circle cx="356" cy="160" r="16" fill="#F4B400"/>
+      <path d="M356 160L356 190" stroke="#F4B400" stroke-width="8" stroke-linecap="round"/>
+      <path d="M356 190C356 205 350 226 342 238" stroke="#F4B400" stroke-width="8" stroke-linecap="round"/>
+      <path d="M330 236C336 252 343 268 346 284" stroke="#F4B400" stroke-width="8" stroke-linecap="round"/>
+      <path d="M343 238L359 238" stroke="#F4B400" stroke-width="8" stroke-linecap="round"/>
+
+      <rect x="18" y="468" width="278" height="26" rx="13" fill="#0C214D" transform="rotate(9 18 468)"/>
+      <rect x="55" y="463" width="220" height="14" rx="7" fill="#F4B400" transform="rotate(9 55 463)"/>
+      <rect x="17" y="467" width="22" height="28" rx="11" fill="#F4B400" transform="rotate(9 17 467)"/>
+      <rect x="237" y="498" width="28" height="18" rx="9" fill="#F4B400" transform="rotate(9 237 498)"/>
+
+      <circle cx="24" cy="406" r="10" fill="#6B4A2B"/>
+      <circle cx="24" cy="316" r="10" fill="#6B4A2B"/>
+      <circle cx="24" cy="226" r="10" fill="#6B4A2B"/>
+
+      <path d="M102 66H256" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="8" stroke-linecap="round"/>
+      <path d="M102 95H218" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="8" stroke-linecap="round"/>
+      <path d="M102 124H246" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="8" stroke-linecap="round"/>
+
+      <path d="M468 340H580C606 340 626 360 626 386V414H468V340Z" fill="#102A5A"/>
+      <path d="M470 435H594C618 435 636 454 636 478V508H470V435Z" fill="#102A5A"/>
+      <path d="M470 266H562C584 266 602 283 602 305V332H470V266Z" fill="#102A5A"/>
+    </g>
+
+    <g transform="translate(50 140)" opacity="0.92">
+      <circle cx="120" cy="74" r="10" fill="#F4B400"/>
+      <circle cx="612" cy="124" r="8" fill="#F4B400"/>
+      <circle cx="666" cy="500" r="9" fill="#F4B400"/>
+      <circle cx="54" cy="502" r="8" fill="#F4B400"/>
+      <circle cx="584" cy="74" r="8" fill="#F4B400"/>
+      <circle cx="166" cy="578" r="7" fill="#F4B400"/>
+    </g>
+  </g>
+</svg>

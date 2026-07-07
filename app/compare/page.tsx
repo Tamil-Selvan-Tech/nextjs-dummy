@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, startTransition, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BadgeIndianRupee,
@@ -29,7 +29,7 @@ import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { Navbar } from "@/components/navbar";
 import { PopularComparisons } from "@/components/popular-comparisons";
 import { readAuthToken } from "@/lib/auth-storage";
-import { fetchPublicPanelData } from "@/lib/public-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   colleges,
@@ -179,7 +179,7 @@ function ComparePageContent() {
 
     const loadCompareColleges = async () => {
       try {
-        const panelData = await fetchPublicPanelData();
+        const panelData = await fetchPublicSummaryData();
         if (!isMounted || !panelData.colleges.length) return;
 
         let resolvedColleges = panelData.colleges;
@@ -211,15 +211,17 @@ function ComparePageContent() {
           }
         }
 
-        setAvailableColleges(resolvedColleges);
-        setAvailableCourses(panelData.courses.length ? panelData.courses : fallbackCourses);
-        setCompareColleges((previous) => {
-          const seed = seededCollege || previous[0] || null;
-          const focus = focusedCollege || previous[1] || null;
-          const base = [seed, focus, previous[2] || null];
-          if (!seed) return base;
-          const withoutSeed = base.filter((item) => item?.id !== seed.id);
-          return [seed, ...withoutSeed].slice(0, 3);
+        startTransition(() => {
+          setAvailableColleges(resolvedColleges);
+          setAvailableCourses(panelData.courses.length ? panelData.courses : fallbackCourses);
+          setCompareColleges((previous) => {
+            const seed = seededCollege || previous[0] || null;
+            const focus = focusedCollege || previous[1] || null;
+            const base = [seed, focus, previous[2] || null];
+            if (!seed) return base;
+            const withoutSeed = base.filter((item) => item?.id !== seed.id);
+            return [seed, ...withoutSeed].slice(0, 3);
+          });
         });
       } catch {
         const seededCollege = getCollegeByIdFromList(colleges, initialCollegeId);
@@ -228,22 +230,43 @@ function ComparePageContent() {
             ? getCollegeByIdFromList(colleges, focusCollegeId)
             : null;
 
-        setAvailableCourses(fallbackCourses);
-        setCompareColleges((previous) => {
-          const seed = seededCollege || previous[0] || null;
-          const focus = focusedCollege || previous[1] || null;
-          const base = [seed, focus, previous[2] || null];
-          if (!seed) return base;
-          const withoutSeed = base.filter((item) => item?.id !== seed.id);
-          return [seed, ...withoutSeed].slice(0, 3);
+        startTransition(() => {
+          setAvailableCourses(fallbackCourses);
+          setCompareColleges((previous) => {
+            const seed = seededCollege || previous[0] || null;
+            const focus = focusedCollege || previous[1] || null;
+            const base = [seed, focus, previous[2] || null];
+            if (!seed) return base;
+            const withoutSeed = base.filter((item) => item?.id !== seed.id);
+            return [seed, ...withoutSeed].slice(0, 3);
+          });
         });
       }
     };
 
-    void loadCompareColleges();
+    if (typeof window === "undefined") return () => {};
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let cancelIdleLoad: (() => void) | undefined;
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => {
+        void loadCompareColleges();
+      }, { timeout: 1200 });
+      cancelIdleLoad = () => idleWindow.cancelIdleCallback?.(handle);
+    } else {
+      const timer = window.setTimeout(() => {
+        void loadCompareColleges();
+      }, 0);
+      cancelIdleLoad = () => window.clearTimeout(timer);
+    }
 
     return () => {
       isMounted = false;
+      cancelIdleLoad?.();
     };
   }, [focusCollegeId, initialCollegeId]);
 

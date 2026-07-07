@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -19,6 +19,7 @@ import {
   type College,
   type Course,
 } from "@/lib/site-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
 
 const buildCityOptions = (colleges: College[]) =>
@@ -64,9 +65,62 @@ export function SearchResultsClient({
   const initialKeyword = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(initialKeyword);
   const [brokenCollegeLogos, setBrokenCollegeLogos] = useState<Record<string, boolean>>({});
+  const [liveColleges, setLiveColleges] = useState(() =>
+    collegesData.length ? collegesData : fallbackColleges,
+  );
+  const [liveCourses, setLiveCourses] = useState(() =>
+    coursesData.length ? coursesData : fallbackCourses,
+  );
 
-  const colleges = collegesData.length ? collegesData : fallbackColleges;
-  const courses = coursesData.length ? coursesData : fallbackCourses;
+  useEffect(() => {
+    let active = true;
+
+    const loadData = async () => {
+      try {
+        const panelData = await fetchPublicSummaryData();
+        if (!active) return;
+
+        startTransition(() => {
+          setLiveColleges(panelData.colleges.length ? panelData.colleges : fallbackColleges);
+          setLiveCourses(panelData.courses.length ? panelData.courses : fallbackCourses);
+        });
+      } catch {
+        if (!active) return;
+        startTransition(() => {
+          setLiveColleges(collegesData.length ? collegesData : fallbackColleges);
+          setLiveCourses(coursesData.length ? coursesData : fallbackCourses);
+        });
+      }
+    };
+
+    if (typeof window === "undefined") return () => {};
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    let cancelIdleLoad: (() => void) | undefined;
+    if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => {
+        void loadData();
+      }, { timeout: 1200 });
+      cancelIdleLoad = () => idleWindow.cancelIdleCallback?.(handle);
+    } else {
+      const timer = window.setTimeout(() => {
+        void loadData();
+      }, 0);
+      cancelIdleLoad = () => window.clearTimeout(timer);
+    }
+
+    return () => {
+      active = false;
+      cancelIdleLoad?.();
+    };
+  }, []);
+
+  const colleges = liveColleges.length ? liveColleges : fallbackColleges;
+  const courses = liveCourses.length ? liveCourses : fallbackCourses;
   const cityOptions = useMemo(() => buildCityOptions(colleges), [colleges]);
 
   const query = initialKeyword.trim();

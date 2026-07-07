@@ -1,29 +1,37 @@
 "use client";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BadgeCheck,
   ArrowRight,
   Brain,
+  BookOpen,
+  Compass,
   Check,
   CalendarDays,
   CircleAlert,
   BarChart3,
-  BookOpen,
   Building2,
   Calculator,
   ChevronDown,
   Clock,
+  Globe,
   FlaskConical,
   GraduationCap,
+  Fingerprint,
   Landmark,
   LayoutGrid,
   List,
+  Laptop,
   MapPin,
   RotateCcw,
   Phone,
+  Sparkles,
   Search,
   School,
   Scale,
+  Award,
   Sprout,
   Stethoscope,
   Trophy,
@@ -38,7 +46,6 @@ import { CutoffClient } from "@/app/cutoff/cutoff-client";
 import { readAuthToken, readCurrentUser, type SafeAuthUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
 import { parseCutoffValue } from "@/lib/cutoff-utils";
-import { fetchPublicPanelData } from "@/lib/public-data";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   degreeOptions,
@@ -72,7 +79,16 @@ const normalizeCategorySelection = (value: string) => {
   return normalized.toUpperCase();
 };
 
-const levelOptions = ["6", "7", "8", "9", "10", "11", "12"];
+const levelOptions = [
+  { value: "6", icon: GraduationCap },
+  { value: "7", icon: BookOpen },
+  { value: "8", icon: Compass },
+  { value: "9", icon: Globe },
+  { value: "10", icon: Laptop },
+  { value: "11", icon: FlaskConical },
+  { value: "12", icon: Award },
+];
+const formatLevelLabel = (level: string) => `Grade ${level}`;
 const assessmentLevelOptions = new Set(["6", "7", "8", "9", "10"]);
 
 const stateOptions = [
@@ -509,6 +525,8 @@ const getAssessmentTone = (percentage: number) => {
 const formatScoreNumber = (value: number) =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
 
+const createProfileId = () => `STU-${Math.floor(10000 + Math.random() * 90000)}`;
+
 type JuniorCollegeSuggestion = {
   id: string;
   collegeId: string;
@@ -558,6 +576,7 @@ export default function FindPage() {
   const [selectedState, setSelectedState] = useState("Tamil Nadu");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [profileUserId, setProfileUserId] = useState("STU-00000");
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [validationStep, setValidationStep] = useState<number | null>(null);
   const [hasCalculatedPreview, setHasCalculatedPreview] = useState(false);
@@ -590,19 +609,63 @@ export default function FindPage() {
   const [agricultureBiologyMarks, setAgricultureBiologyMarks] = useState("");
   const [agriculturePhysicsMarks, setAgriculturePhysicsMarks] = useState("");
   const [agricultureChemistryMarks, setAgricultureChemistryMarks] = useState("");
+  const displayedProfileProgressRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
+    let cancelDeferredLoad: (() => void) | undefined;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
 
-    fetchPublicPanelData().then((panelData) => {
-      if (!isMounted) return;
-      setColleges(panelData.colleges);
-      setCourses(panelData.courses);
-    });
+    void (async () => {
+      try {
+        const collegeData = await request<{ colleges?: College[] }>("/api/public/colleges");
+        if (!isMounted) return;
+        setColleges(Array.isArray(collegeData?.colleges) ? collegeData.colleges : []);
+
+        const loadCourses = async () => {
+          try {
+            const courseData = await request<{ courses?: Course[] }>("/api/public/courses");
+            if (!isMounted) return;
+            startTransition(() => {
+              setCourses(Array.isArray(courseData?.courses) ? courseData.courses : []);
+            });
+          } catch {
+            if (!isMounted) return;
+            startTransition(() => {
+              setCourses([]);
+            });
+          }
+        };
+
+        if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+          const idleHandle = idleWindow.requestIdleCallback(() => {
+            void loadCourses();
+          }, { timeout: 1500 });
+          cancelDeferredLoad = () => idleWindow.cancelIdleCallback?.(idleHandle);
+        } else {
+          const timer = window.setTimeout(() => {
+            void loadCourses();
+          }, 0);
+          cancelDeferredLoad = () => window.clearTimeout(timer);
+        }
+      } catch {
+        if (!isMounted) return;
+        setColleges([]);
+        setCourses([]);
+      }
+    })();
 
     return () => {
       isMounted = false;
+      cancelDeferredLoad?.();
     };
+  }, []);
+
+  useEffect(() => {
+    setProfileUserId(createProfileId());
   }, []);
 
   const currentRoute = useMemo(() => {
@@ -610,6 +673,52 @@ export default function FindPage() {
     const query = searchParams.toString();
     return query ? `${pathname}?${query}` : pathname;
   }, [pathname, searchParams]);
+
+  const normalizedLivePhone = useMemo(() => phone.replace(/\D/g, "").slice(0, 10), [phone]);
+  const liveProfileTarget = useMemo(() => {
+    const hasName = Boolean(name.trim());
+    const phoneDigits = normalizedLivePhone.length;
+    const hasPhone = phoneDigits > 0;
+    const hasCompletePhone = phoneDigits === 10;
+
+    if (!hasName && !hasPhone) return 0;
+    if (hasName && !hasPhone) return 50;
+    if (!hasCompletePhone) return hasName ? 75 : 50;
+    return hasName ? 100 : 75;
+  }, [name, normalizedLivePhone]);
+  const isProfileReady = liveProfileTarget === 100;
+  const hasPhoneVerification = normalizedLivePhone.length === 10;
+  const profileDisplayName = name.trim();
+  const profileDisplayPhone = phone.trim();
+  const [displayedProfileProgress, setDisplayedProfileProgress] = useState(0);
+  const profileCompletionPercent = Math.round(displayedProfileProgress);
+
+  useEffect(() => {
+    let animationFrame = 0;
+    const start = performance.now();
+    const initial = displayedProfileProgressRef.current;
+    const target = liveProfileTarget;
+    const duration = 420;
+
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextValue = initial + (target - initial) * eased;
+      const roundedValue = Number(nextValue.toFixed(1));
+      displayedProfileProgressRef.current = roundedValue;
+      setDisplayedProfileProgress(roundedValue);
+
+      if (progress < 1) {
+        animationFrame = window.requestAnimationFrame(step);
+      } else {
+        displayedProfileProgressRef.current = target;
+        setDisplayedProfileProgress(target);
+      }
+    };
+
+    animationFrame = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [liveProfileTarget]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2222,8 +2331,8 @@ export default function FindPage() {
               </div>
             </nav>
 
-          <section className="w-full rounded-[8px] border border-[#E6E6E6] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(15,27,37,0.06)] sm:px-5 md:px-6 md:py-5">
-            <div className="flex flex-col gap-4">
+          <section className="w-full rounded-[8px] border border-[#E6E6E6] bg-white px-3 py-3 shadow-[0_12px_24px_rgba(15,27,37,0.06)] sm:px-4 md:px-5 md:py-4">
+            <div className="flex flex-col gap-3">
             <form
               noValidate
               onInputCapture={clearSubmittedValidation}
@@ -2241,62 +2350,72 @@ export default function FindPage() {
               {!inlineMatchQueryString ? (
                 <>
                 {activeStep === 1 ? (
-                  <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.95fr)]">
-                    <div className="min-w-0 lg:pl-10 xl:pl-14">
-                      <div className="mb-5">
-                        <h3 className="text-[24px] font-semibold text-[#0F1B25]">Basic Details</h3>
-                        <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
-                          Please enter your basic details to continue
+                  <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)]">
+                    <div className="premium-onboarding-card min-w-0 rounded-[18px] bg-white p-2.5 shadow-none sm:p-3 lg:p-4">
+                      <div className="mb-3 max-w-xl">
+                        <div className="inline-flex items-center gap-2 rounded-[12px] border border-[#ffe08a] bg-white px-3 py-1.5 text-[12px] font-semibold leading-none text-[#8f6a00]">
+                          <Sparkles className="size-4 shrink-0 text-[#FFC107]" />
+                          <span className="translate-y-px">Live onboarding</span>
+                        </div>
+                        <h3 className="mt-2 text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#0F1B25] sm:text-[30px]">
+                          Basic Details
+                        </h3>
+                        <div className="mt-1 max-w-lg text-[15px] font-normal leading-5 text-[#5F6B76]">
+                          Please enter your basic details to continue. Your profile card updates instantly as you type.
                         </div>
                       </div>
 
-                      <div className="grid w-full max-w-[520px] grid-cols-1 gap-4">
-                        <div data-field-id="name">
-                          <label htmlFor="find-name" className="mb-2 block text-[14px] !font-semibold !text-[#0F1B25]">
+                      <div className="grid w-full max-w-[560px] grid-cols-1 gap-3">
+                        <div data-field-id="name" className="space-y-1.5">
+                          <label htmlFor="find-name" className="block text-[13px] font-semibold text-[#0F1B25]">
                             Full Name
                           </label>
                           <div
-                            className={`flex h-12 items-center gap-3 rounded-[6px] border bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] ${
-                              submittedForCurrentStep && validationErrors.name ? "border-[#ff4d5e]" : "border-[#DDE2E7]"
+                            className={`flex h-11 items-center gap-3 rounded-[12px] bg-white px-4 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
+                              submittedForCurrentStep && validationErrors.name
+                                ? "ring-1 ring-[#ff4d5e]"
+                                : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
                             }`}
                           >
-                            <User className="size-4 shrink-0 text-[#5F6B76]" />
+                            <User className="size-4.5 shrink-0 text-[#6b7280]" />
                             <input
                               id="find-name"
                               type="text"
                               value={name}
                               onChange={(event) => setName(event.target.value)}
                               placeholder="Enter your full name"
-                              className="h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[15px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
                               aria-invalid={Boolean(submittedForCurrentStep && validationErrors.name)}
                               required
                             />
                           </div>
                           {submittedForCurrentStep && validationErrors.name ? (
-                            <div className="mt-2 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                            <div className="flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
                               <CircleAlert className="size-4 shrink-0" />
                               <span>{validationErrors.name}</span>
                             </div>
                           ) : null}
                         </div>
 
-                        <div data-field-id="phone">
-                          <label htmlFor="find-phone" className="mb-2 block text-[14px] !font-semibold !text-[#0F1B25]">
+                        <div data-field-id="phone" className="space-y-1.5">
+                          <label htmlFor="find-phone" className="block text-[13px] font-semibold text-[#0F1B25]">
                             Phone Number
                           </label>
                           <div
-                            className={`flex h-12 items-center gap-3 rounded-[6px] border bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] ${
-                              submittedForCurrentStep && validationErrors.phone ? "border-[#ff4d5e]" : "border-[#DDE2E7]"
+                            className={`flex h-11 items-center gap-3 rounded-[12px] bg-white px-4 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
+                              submittedForCurrentStep && validationErrors.phone
+                                ? "ring-1 ring-[#ff4d5e]"
+                                : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
                             }`}
                           >
-                            <Phone className="size-4 shrink-0 text-[#5F6B76]" />
+                            <Phone className="size-4.5 shrink-0 text-[#6b7280]" />
                             <input
                               id="find-phone"
                               type="tel"
                               value={phone}
                               onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
                               placeholder="Enter 10 digit mobile number"
-                              className="h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[15px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
                               aria-invalid={Boolean(submittedForCurrentStep && validationErrors.phone)}
                               inputMode="numeric"
                               pattern="[0-9]{10}"
@@ -2304,27 +2423,32 @@ export default function FindPage() {
                               minLength={10}
                               required
                             />
+                            {hasPhoneVerification ? (
+                              <span className="profile-check-pop inline-flex size-8 items-center justify-center rounded-full bg-[#eaf9ef] text-[#16a34a]">
+                                <BadgeCheck className="size-5" />
+                              </span>
+                            ) : null}
                           </div>
                           {submittedForCurrentStep && validationErrors.phone ? (
-                            <div className="mt-2 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                            <div className="flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
                               <CircleAlert className="size-4 shrink-0" />
                               <span>{validationErrors.phone}</span>
                             </div>
                           ) : null}
                         </div>
 
-                        <div className="mt-1 grid grid-cols-2 gap-3">
+                        <div className="mt-0 flex flex-col gap-2 sm:flex-row">
                           <button
                             type="button"
                             onClick={resetFormFields}
-                            className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
+                            className="inline-flex h-[42px] items-center justify-center rounded-[12px] border border-[#ece7d7] bg-white px-6 text-[15px] font-semibold text-[#0F1B25] shadow-[0_10px_24px_rgba(17,24,39,0.05)] transition hover:-translate-y-0.5 hover:border-[#d9c87a] hover:bg-[#fffdf4]"
                           >
                             Reset
                           </button>
                           <button
                             type="button"
                             onClick={goToNextStep}
-                            className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
+                            className="inline-flex h-[42px] items-center justify-center gap-2 rounded-[12px] bg-[#FFC107] px-6 text-[15px] font-semibold !text-[#0F1B25] shadow-[0_16px_30px_rgba(255,193,7,0.28)] transition hover:-translate-y-0.5 hover:bg-[#0F1B25] hover:!text-white"
                           >
                             Next
                             <ArrowRight className="size-4" />
@@ -2333,24 +2457,185 @@ export default function FindPage() {
                       </div>
                     </div>
 
-                    <div className="relative mx-auto hidden min-h-[360px] w-full max-w-[520px] overflow-hidden lg:block" aria-hidden="true">
-                      <div className="absolute inset-0 bg-[url('/find-step-basic-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                    <div className="relative self-start">
+                      <div className="premium-profile-card profile-card-float relative overflow-hidden rounded-[28px] border border-[#f3df9a] bg-[linear-gradient(180deg,#fffdf5_0%,#fffaf0_54%,#fff8ea_100%)] p-2.5 shadow-[0_26px_60px_rgba(148,111,9,0.12)] sm:p-3">
+                        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                          <div className="absolute left-[-20px] top-[-24px] size-28 rounded-full bg-[#fff1c2]/70 blur-2xl" />
+                          <div className="absolute right-[-28px] top-10 size-36 rounded-full bg-[#fff0bc]/60 blur-3xl" />
+                          <span className="absolute left-4 top-16 text-[#f4b400]/35">
+                            <Sparkles className="size-4" />
+                          </span>
+                          <span className="absolute right-12 top-24 text-[#f4b400]/30">
+                            <Sparkles className="size-4" />
+                          </span>
+                          <span className="absolute bottom-24 left-8 text-[#f4b400]/20">
+                            <Sparkles className="size-3.5" />
+                          </span>
+                          <span className="absolute bottom-28 right-6 text-[#f4b400]/20">
+                            <Sparkles className="size-3.5" />
+                          </span>
+                        </div>
+
+                        <div className="relative z-10">
+                          <div className="mb-2 flex items-start justify-between gap-2.5">
+                            <div>
+                              <div className="text-[15px] font-semibold tracking-[-0.03em] text-[#172554] sm:text-[16px]">
+                                Live Profile Card
+                              </div>
+                              <div className="mt-0.5 h-0.5 w-10 rounded-full bg-[#f4b400]" />
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-[#f3df9a] bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(148,111,9,0.08)]">
+                              <span className="relative flex size-4 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
+                                <span className="size-2.5 rounded-full bg-[#f4b400]" />
+                              </span>
+                              Live
+                            </span>
+                          </div>
+
+                          <div className="grid items-center gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(132px,0.9fr)]">
+                            <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+                              <div className="avatar-glow relative flex size-[84px] items-center justify-center rounded-full border-[7px] border-[#fff7df] bg-[#ffc107] shadow-[0_14px_26px_rgba(244,180,0,0.18)] sm:size-[92px]">
+                                <User className="size-8 text-white sm:size-9" strokeWidth={2} />
+                                <span className="absolute right-0.5 top-1.5 flex size-7 items-center justify-center rounded-full border-2 border-white bg-[#17356f] text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)]">
+                                  <BadgeCheck className="size-4" />
+                                </span>
+                              </div>
+
+                              <div className="min-w-0 text-center sm:text-left">
+                                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                                  <div className="profile-name-fade text-[21px] font-semibold tracking-[-0.05em] text-[#172554] sm:text-[24px]">
+                                    {profileDisplayName || "Student"}
+                                  </div>
+                                  <span className="inline-flex items-center justify-center rounded-full bg-[#fff0bc] px-2.5 py-1 text-[#f4b400]">
+                                    <BadgeCheck className="size-3.5" />
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-[#e8dfc4] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(17,24,39,0.05)]">
+                                  <Fingerprint className="size-3.5 text-[#172554]" />
+                                  {profileUserId}
+                                </div>
+
+                                <div className="mt-1 flex flex-wrap justify-center gap-1 sm:justify-start">
+                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <BadgeCheck className="size-3.5 text-[#f4b400]" />
+                                    Verified Student
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <Sparkles className="size-3.5 text-[#f4b400]" />
+                                    Active Learner
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <Award className="size-3.5 text-[#f4b400]" />
+                                    Top Performer
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="relative mx-auto flex min-h-[104px] w-full max-w-[170px] items-center justify-center lg:justify-end">
+                              <Image
+                                src="/find-profile-books.png"
+                                alt="Books, graduation cap, and stationery illustration"
+                                fill
+                                unoptimized
+                                sizes="170px"
+                                className="object-contain"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2.5 grid gap-2">
+                            <div className="rounded-[18px] border border-[#f0e2b7] bg-white/96 p-2.5 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
+                              <div className="flex items-center gap-3">
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-[14px] bg-[#f4b400] text-[#172554] shadow-[0_10px_18px_rgba(244,180,0,0.22)]">
+                                  <Phone className="size-3.5" />
+                                </span>
+                                <div className="min-w-0 flex-1 text-left">
+                                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6c7a99]">
+                                    Phone Number
+                                  </div>
+                                  <div className="mt-0.5 text-[13px] font-semibold tracking-[-0.04em] text-[#172554]">
+                                    {profileDisplayPhone || "Enter phone number"}
+                                  </div>
+                                </div>
+                                <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#f3df9a] bg-[#fff7db] text-[#172554]">
+                                  <Phone className="size-3 rotate-[20deg]" />
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="rounded-[18px] border border-[#f0e2b7] bg-white/96 p-2.5 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
+                              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_96px] lg:items-center">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 text-[#172554]">
+                                    <div className="flex size-6.5 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
+                                      <Sparkles className="size-3" />
+                                    </div>
+                                    <span className="text-[13px] font-semibold">Profile Completion</span>
+                                  </div>
+
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#e8edf5]">
+                                      <div
+                                        className="profile-progress-fill h-full rounded-full bg-[linear-gradient(90deg,#f4b400,#ffc107,#17356f)] transition-[width] duration-300 ease-out"
+                                        style={{ width: `${displayedProfileProgress}%` }}
+                                      />
+                                    </div>
+                                    <div key={profileCompletionPercent} className="profile-count-up text-[17px] font-semibold tracking-[-0.04em] text-[#f4b400]">
+                                      {profileCompletionPercent}%
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-1.5 text-[11px] text-[#6c7a99]">
+                                    {isProfileReady
+                                      ? "Awesome! Your profile is complete."
+                                      : profileCompletionPercent > 0
+                                        ? "Great start. Add the remaining details to finish your profile."
+                                        : "Start by entering your name and phone number."}
+                                  </div>
+                                </div>
+
+                                <div className="mx-auto flex items-center justify-center">
+                                  <div
+                                    className="flex size-[76px] items-center justify-center rounded-full p-1.5"
+                                    style={{
+                                      background: `conic-gradient(#17356f ${displayedProfileProgress * 3.6}deg, #f4b400 0deg, #f4b400 360deg)`,
+                                    }}
+                                  >
+                                    <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-[#172554] shadow-[inset_0_0_0_1px_rgba(232,223,196,0.9)]">
+                                      <div className="text-[15px] font-semibold tracking-[-0.05em] text-[#172554]">
+                                        {profileCompletionPercent}%
+                                      </div>
+                                      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#6c7a99]">
+                                        Complete
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : null}
 
               {activeStep === 2 ? (
-                <div data-field-id="level" className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(380px,1fr)]">
+                <div data-field-id="level" className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(380px,1fr)]">
                   <div className="min-w-0 lg:pl-10 xl:pl-14">
                     <div className="mb-5">
-                      <h3 className="text-[24px] font-semibold text-[#0F1B25]">Pick Your Level</h3>
+                      <h3 className="text-[24px] font-semibold text-[#0F1B25]">
+                        Pick Your Level
+                      </h3>
                       <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
-                        Select your current class / grade
+                        Select your current grade
                       </div>
                     </div>
 
-                    <div className="grid w-full max-w-[500px] grid-cols-3 gap-4">
-                      {levelOptions.map((level) => (
+                    <div className="grid max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-4">
+                      {levelOptions.map(({ value: level, icon: Icon }) => (
                         <button
                           key={level}
                           type="button"
@@ -2365,15 +2650,15 @@ export default function FindPage() {
                             setTargetCollegeSearch("");
                             resetAcademicFields();
                           }}
-                          className={`h-12 rounded-[6px] border text-[16px] font-medium transition ${
+                          className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center text-[13px] font-semibold leading-4 transition ${
                             selectedLevel === level
-                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
                               : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
                           }`}
-                          style={level === "12" ? { gridColumnStart: 2 } : undefined}
                           aria-pressed={selectedLevel === level}
                         >
-                          {level}
+                          <Icon className="size-6 shrink-0" />
+                          {formatLevelLabel(level)}
                         </button>
                       ))}
                     </div>
@@ -2385,7 +2670,7 @@ export default function FindPage() {
                       </div>
                     ) : null}
 
-                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3">
+                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3 sm:ml-[190px]">
                       <button
                         type="button"
                         onClick={goToPreviousStep}
@@ -2565,8 +2850,8 @@ export default function FindPage() {
                     />
                     </div>
                     <datalist id="target-college-options">
-                      {filteredDreamCollegeOptions.map((college) => (
-                        <option key={college.id} value={college.name}>
+                      {filteredDreamCollegeOptions.map((college, index) => (
+                        <option key={`${college.id}-${index}`} value={college.name}>
                           {college.city || college.district || college.state}
                         </option>
                       ))}
@@ -3498,7 +3783,7 @@ export default function FindPage() {
                                 <div className="min-w-0">
                                   <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Level</div>
                                   <div className="mt-0.5 truncate text-[16px] font-normal text-[#0F1B25]">
-                                    Class {selectedLevel}
+                                    {formatLevelLabel(selectedLevel)}
                                   </div>
                                 </div>
                               </div>

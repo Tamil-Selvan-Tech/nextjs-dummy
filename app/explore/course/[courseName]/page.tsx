@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CourseDetailsView } from "@/components/course-details-view";
-import { fetchPublicPanelData } from "@/lib/public-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import {
   colleges,
   courseMatchesLookup,
@@ -17,7 +17,7 @@ export default async function CourseDetailsPage({
 }) {
   const { courseName } = await params;
   const decodedName = decodeURIComponent(courseName);
-  const panelData = await fetchPublicPanelData();
+  const panelData = await fetchPublicSummaryData();
   const normalizedDecodedName = normalizeText(decodedName);
   const relatedCourses = panelData.courses.filter(
     (course) => {

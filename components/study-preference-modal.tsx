@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Building2, MapPin, Search, Sparkles, X } from "lucide-react";
-import { fetchPublicPanelData } from "@/lib/public-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { colleges } from "@/lib/site-data";
 
 type StudyPreferenceModalProps = {
@@ -81,7 +81,7 @@ export function StudyPreferenceModal({
 
     const loadColleges = async () => {
       try {
-        const panelData = await fetchPublicPanelData();
+        const panelData = await fetchPublicSummaryData();
         if (!active) return;
         setAvailableColleges(panelData.colleges.length ? panelData.colleges : colleges);
       } catch {

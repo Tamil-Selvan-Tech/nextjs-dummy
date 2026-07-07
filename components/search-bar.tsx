@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
-import { fetchPublicPanelData } from "@/lib/public-data";
+import { fetchPublicSummaryData } from "@/lib/public-data";
 import { colleges, courses, findBestCourseLookupMatch } from "@/lib/site-data";
 import { getRankedSearchResults, normalizeSearchText } from "@/lib/search-utils";
 
@@ -95,7 +95,7 @@ export function SearchBar() {
 
     const loadData = async () => {
       try {
-        const panelData = await fetchPublicPanelData();
+        const panelData = await fetchPublicSummaryData();
         if (!active) return;
 
         const mappedCities = Array.from(

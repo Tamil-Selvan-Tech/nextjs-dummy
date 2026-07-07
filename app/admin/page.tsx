@@ -5010,6 +5010,9 @@ function AdminPageContent() {
   const [collegeSearchText, setCollegeSearchText] = useState("");
   const examFormRef = useRef<HTMLFormElement | null>(null);
   const examNameInputRef = useRef<HTMLInputElement | null>(null);
+  const loadedAdminSectionsRef = useRef<Set<string>>(new Set());
+  const loadingAdminSectionsRef = useRef<Set<string>>(new Set());
+  const adminDataRequestKeyRef = useRef("");
   useEffect(() => {
     if (!statusState.text.trim()) return;
     showToast(statusState.text, inferToastTypeFromMessage(statusState.text));
@@ -5367,9 +5370,28 @@ function AdminPageContent() {
     [filteredCollegeCards, hasCollegeSearch, showAllCollegeCards],
   );
   const hiddenCollegeCount = Math.max(filteredCollegeCards.length - visibleCollegeCards.length, 0);
-  const loadAdminData = useCallback(async (authToken: string, fallbackUser?: AdminUser | null) => {
+  const getAdminSectionKeys = useCallback((tabId: string) => {
+    if (tabId === "overview") {
+      return ["colleges", "courses", "users", "enquiries", "collegeRequests", "subAdmins", "siteSettings"];
+    }
+    if (tabId === "bulk-upload") return ["colleges"];
+    if (tabId === "colleges") return ["colleges", "courses"];
+    if (tabId === "courses") return ["colleges", "courses"];
+    if (tabId === "users") return ["users"];
+    if (tabId === "enquiries") return ["enquiries"];
+    if (tabId === "college-notifications") return ["collegeRequests", "colleges"];
+    if (tabId === "exams") return ["siteSettings"];
+    if (tabId === "admin-access") return ["subAdmins"];
+    return [] as string[];
+  }, []);
+
+  const loadAdminData = useCallback(async (
+    authToken: string,
+    fallbackUser?: AdminUser | null,
+    scopeTabId: string = activeTab,
+    forceRefresh = false,
+  ) => {
     try {
-      setLoading(true);
       const me = await request("/api/admin/me", withAuth(authToken));
       const nextUser: AdminUser = {
         id: String(me?.admin?.id || fallbackUser?.id || "admin"),
@@ -5386,32 +5408,88 @@ function AdminPageContent() {
       const canRead = (module: string) =>
         Boolean(nextUser.isSuperAdmin || nextUser.permissions?.includes(module));
 
-      const jobs: Array<Promise<unknown>> = [
-        canRead("colleges") || canRead("courses")
-          ? request("/api/admin/colleges", withAuth(authToken))
-          : Promise.resolve({}),
-        canRead("courses") ? request("/api/admin/courses", withAuth(authToken)) : Promise.resolve({}),
-        canRead("users") ? request("/api/admin/users", withAuth(authToken)) : Promise.resolve({}),
-        canRead("enquiries") ? request("/api/admin/enquiries", withAuth(authToken)) : Promise.resolve({}),
-        canRead("college-notifications") ? request("/api/admin/college-add-requests", withAuth(authToken)) : Promise.resolve({}),
-        nextUser.isSuperAdmin ? request("/api/admin/sub-admins", withAuth(authToken)).catch(() => ({})) : Promise.resolve({}),
-        canRead("exams") || canRead("overview")
-          ? request("/api/admin/site-settings", withAuth(authToken)).catch(() => ({}))
-          : Promise.resolve({}),
-      ];
+      const sectionKeys = getAdminSectionKeys(scopeTabId);
+      const shouldLoad =
+        forceRefresh ||
+        sectionKeys.some(
+          (key) =>
+            !loadedAdminSectionsRef.current.has(key) &&
+            !loadingAdminSectionsRef.current.has(key),
+        );
+      if (!shouldLoad) return;
 
-      const [colleges, courses, users, enquiries, collegeRequests, subAdmins, settings] =
-        await Promise.all(jobs);
+      sectionKeys.forEach((key) => loadingAdminSectionsRef.current.add(key));
+      setLoading(true);
 
-      setAdminState({
-        colleges: (colleges as { colleges?: AdminCollege[] })?.colleges || [],
-        courses: (courses as { courses?: AdminCourse[] })?.courses || [],
-        users: ((users as { users?: PlatformUser[] })?.users || []).filter((item) => item.role !== "admin"),
-        enquiries: (enquiries as { enquiries?: Enquiry[] })?.enquiries || [],
-        collegeRequests: (collegeRequests as { requests?: RequestItem[] })?.requests || [],
-        subAdmins: (subAdmins as { admins?: SubAdmin[] })?.admins || [],
+      const jobs: Array<Promise<unknown>> = [];
+      const jobKeys: string[] = [];
+      const queueJob = (key: string, job: Promise<unknown>) => {
+        jobKeys.push(key);
+        jobs.push(job);
+      };
+
+      if (sectionKeys.includes("colleges") && canRead("colleges")) {
+        queueJob("colleges", request("/api/admin/colleges", withAuth(authToken)));
+      }
+      if (sectionKeys.includes("courses") && canRead("courses")) {
+        queueJob("courses", request("/api/admin/courses", withAuth(authToken)));
+      }
+      if (sectionKeys.includes("users") && canRead("users")) {
+        queueJob("users", request("/api/admin/users", withAuth(authToken)));
+      }
+      if (sectionKeys.includes("enquiries") && canRead("enquiries")) {
+        queueJob("enquiries", request("/api/admin/enquiries", withAuth(authToken)));
+      }
+      if (sectionKeys.includes("collegeRequests") && canRead("college-notifications")) {
+        queueJob("collegeRequests", request("/api/admin/college-add-requests", withAuth(authToken)));
+      }
+      if (sectionKeys.includes("subAdmins") && nextUser.isSuperAdmin) {
+        queueJob("subAdmins", request("/api/admin/sub-admins", withAuth(authToken)).catch(() => ({})));
+      }
+      if (sectionKeys.includes("siteSettings") && (canRead("exams") || canRead("overview"))) {
+        queueJob("siteSettings", request("/api/admin/site-settings", withAuth(authToken)).catch(() => ({})));
+      }
+
+      if (jobs.length === 0) {
+        loadedAdminSectionsRef.current.add(scopeTabId);
+        return;
+      }
+
+      const results = await Promise.all(jobs);
+
+      setAdminState((prev) => {
+        const nextAdminState: AdminState = { ...prev };
+
+        results.forEach((result, index) => {
+          const key = jobKeys[index];
+          if (key === "colleges") {
+            nextAdminState.colleges = ((result as { colleges?: AdminCollege[] })?.colleges || []);
+          }
+          if (key === "courses") {
+          nextAdminState.courses = ((result as { courses?: AdminCourse[] })?.courses || []);
+        }
+        if (key === "users") {
+          nextAdminState.users = (((result as { users?: PlatformUser[] })?.users || [])).filter((item) => item.role !== "admin");
+        }
+        if (key === "enquiries") {
+          nextAdminState.enquiries = ((result as { enquiries?: Enquiry[] })?.enquiries || []);
+        }
+        if (key === "collegeRequests") {
+          nextAdminState.collegeRequests = ((result as { requests?: RequestItem[] })?.requests || []);
+        }
+        if (key === "subAdmins") {
+          nextAdminState.subAdmins = ((result as { admins?: SubAdmin[] })?.admins || []);
+        }
+          if (key === "siteSettings") {
+            setSiteSettings((result as { settings?: SiteSettings })?.settings || {});
+          }
+          loadedAdminSectionsRef.current.add(key);
+        });
+
+        return nextAdminState;
       });
-      setSiteSettings((settings as { settings?: SiteSettings })?.settings || {});
+
+      loadedAdminSectionsRef.current.add(scopeTabId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load admin";
       setStatusText(message);
@@ -5420,13 +5498,16 @@ function AdminPageContent() {
         router.replace("/login?redirect=/admin");
       }
     } finally {
+      getAdminSectionKeys(scopeTabId).forEach((key) => loadingAdminSectionsRef.current.delete(key));
       setLoading(false);
     }
   }, [router, setStatusText]);
 
   const handleBulkImportComplete = useCallback(async () => {
     if (!token) return;
-    await loadAdminData(token, currentUser);
+    loadedAdminSectionsRef.current.delete("colleges");
+    loadedAdminSectionsRef.current.delete("courses");
+    await loadAdminData(token, currentUser, "colleges", true);
     setActiveTab("colleges");
   }, [currentUser, loadAdminData, token]);
 
@@ -5457,12 +5538,19 @@ function AdminPageContent() {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      void loadAdminData(storedToken, storedUser);
-    }, 0);
+    window.localStorage.setItem("collegehub_current_user", JSON.stringify(storedUser));
+    setCurrentUser(storedUser);
 
-    return () => window.clearTimeout(timer);
+    return undefined;
   }, [loadAdminData, router]);
+
+  useEffect(() => {
+    if (!token || !currentUser) return;
+    const requestKey = `${currentUser.id || "unknown"}:${activeTab}`;
+    if (adminDataRequestKeyRef.current === requestKey) return;
+    adminDataRequestKeyRef.current = requestKey;
+    void loadAdminData(token, currentUser, activeTab, false);
+  }, [activeTab, currentUser, loadAdminData, token]);
 
   useEffect(() => {
     if (!navItems.find((item) => item.id === activeTab)) {
@@ -6271,7 +6359,7 @@ function AdminPageContent() {
       );
       setStatusText(data?.message || "College deleted");
       setDeleteCollegeDialog(null);
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete college");
     } finally {
@@ -6302,7 +6390,7 @@ function AdminPageContent() {
       const data = await request(`/api/admin/users/${deleteUserDialog.id}`, withAuth(token, { method: "DELETE" }));
       setStatusText(data?.message || "User deleted");
       setDeleteUserDialog(null);
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete user");
     } finally {
@@ -6333,7 +6421,7 @@ function AdminPageContent() {
       const data = await request(`/api/admin/enquiries/${deleteEnquiryDialog.id}`, withAuth(token, { method: "DELETE" }));
       setStatusText(data?.message || "Enquiry deleted");
       setDeleteEnquiryDialog(null);
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete enquiry");
     } finally {
@@ -6363,7 +6451,7 @@ function AdminPageContent() {
       const data = await request(`/api/admin/sub-admins/${deleteSubAdminDialog.id}`, withAuth(token, { method: "DELETE" }));
       setStatusText(data?.message || "Admin deleted");
       setDeleteSubAdminDialog(null);
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete admin");
     } finally {
@@ -6635,7 +6723,7 @@ function AdminPageContent() {
 
       setStatusText(data?.message || "Course saved");
       resetCourseForm();
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     });
   };
 
@@ -6810,7 +6898,7 @@ function AdminPageContent() {
       setCollegeFieldErrors({});
       setStatusText(data?.message || "College saved");
       resetCollegeForm();
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     });
   };
 
@@ -6839,7 +6927,7 @@ function AdminPageContent() {
 
       setStatusText(data?.message || "Admin saved");
       resetSubAdminForm();
-      await loadAdminData(token, currentUser);
+      await loadAdminData(token, currentUser, activeTab, true);
     });
   };
 
@@ -10748,7 +10836,7 @@ function AdminPageContent() {
                         void runAction(`course-${course._id}`, async () => {
                           const data = await request(`/api/admin/courses/${course._id}`, withAuth(token, { method: "DELETE" }));
                           setStatusText(data?.message || "Course deleted");
-                          await loadAdminData(token, currentUser);
+                          await loadAdminData(token, currentUser, activeTab, true);
                         })
                       }
                       className={dangerButtonClass}
