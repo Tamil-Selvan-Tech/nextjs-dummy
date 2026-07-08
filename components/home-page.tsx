@@ -1112,11 +1112,11 @@ export function HomePage({
       <article
         className="
           relative overflow-hidden
-          min-h-[unset] sm:min-h-[18rem] md:min-h-[17.5rem] lg:min-h-[18.5rem]
+          min-h-[unset] sm:min-h-[16.75rem] md:min-h-[16.25rem] lg:min-h-[17rem]
           rounded-[1.45rem] sm:rounded-[1.8rem]
           border border-[rgba(10,20,56,0.08)]
           bg-[linear-gradient(160deg,#15285f_0%,#11214f_52%,#0f1a42_100%)]
-          p-4 sm:p-6 lg:p-7
+          p-4 sm:p-5.5 lg:p-6
           text-white
           shadow-[0_26px_52px_rgba(9,18,47,0.26)]
         "
@@ -1379,7 +1379,7 @@ text-white
 
           {/* Hero content section */}
 
-          <div className="page-container-full !max-w-none px-2 pb-[2.25rem] pt-0 sm:px-4 md:pb-[2.75rem] md:pt-1 lg:px-6 2xl:px-8">
+          <div className="page-container-full !max-w-none px-2 pb-[1.5rem] pt-0 sm:px-4 md:pb-[2rem] md:pt-1 lg:px-6 2xl:px-8">
             <div className="space-y-1 py-0.5 sm:space-y-2 sm:py-1.5">
               {/* Hero headline and spotlight content */}
               <div className="reveal-up mx-auto mb-0.5 mt-2 w-full px-0 sm:mt-3">

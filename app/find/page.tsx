@@ -19,7 +19,6 @@ import {
   Globe,
   FlaskConical,
   GraduationCap,
-  Fingerprint,
   Landmark,
   LayoutGrid,
   List,
@@ -90,6 +89,80 @@ const levelOptions = [
 ];
 const formatLevelLabel = (level: string) => `Grade ${level}`;
 const assessmentLevelOptions = new Set(["6", "7", "8", "9", "10"]);
+const levelHighlights = [
+  {
+    icon: BadgeCheck,
+    title: "Personalized Recommendations",
+  },
+  {
+    icon: BarChart3,
+    title: "Accurate Assessment",
+  },
+  {
+    icon: Award,
+    title: "Best Course Matching",
+  },
+];
+
+const hiddenMedicalPreviewBranches = new Set([
+  "Medical Laboratory Technology - Clinical Hematology",
+  "Medical Laboratory Technology - Clinical Pathology",
+  "Medical Laboratory Technology - Clinical Microbiology",
+  "Medical Laboratory Technology - Clinical Biochemistry",
+]);
+
+const degreePreviewDetails: Record<
+  string,
+  {
+    duration: string;
+    scoreScale: string;
+    image: string;
+    accentLabel: string;
+  }
+> = {
+  Engineering: {
+    duration: "4 Years",
+    scoreScale: "200 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Engineering",
+  },
+  "B.Arch": {
+    duration: "5 Years",
+    scoreScale: "200 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Architecture",
+  },
+  "Arts & Science": {
+    duration: "3 Years",
+    scoreScale: "100 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Arts & Science",
+  },
+  Medical: {
+    duration: "5.5 Years",
+    scoreScale: "720 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Medical",
+  },
+  Law: {
+    duration: "5 Years",
+    scoreScale: "300 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Law",
+  },
+  Agriculture: {
+    duration: "4 Years",
+    scoreScale: "200 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Agriculture",
+  },
+  Paramedical: {
+    duration: "3 Years",
+    scoreScale: "200 Marks",
+    image: "/find-step-stream-illustration.png",
+    accentLabel: "Paramedical",
+  },
+};
 
 const stateOptions = [
   "Tamil Nadu",
@@ -525,8 +598,6 @@ const getAssessmentTone = (percentage: number) => {
 const formatScoreNumber = (value: number) =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
 
-const createProfileId = () => `STU-${Math.floor(10000 + Math.random() * 90000)}`;
-
 type JuniorCollegeSuggestion = {
   id: string;
   collegeId: string;
@@ -576,7 +647,6 @@ export default function FindPage() {
   const [selectedState, setSelectedState] = useState("Tamil Nadu");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [profileUserId, setProfileUserId] = useState("STU-00000");
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [validationStep, setValidationStep] = useState<number | null>(null);
   const [hasCalculatedPreview, setHasCalculatedPreview] = useState(false);
@@ -664,10 +734,6 @@ export default function FindPage() {
     };
   }, []);
 
-  useEffect(() => {
-    setProfileUserId(createProfileId());
-  }, []);
-
   const currentRoute = useMemo(() => {
     if (!pathname) return "/find";
     const query = searchParams.toString();
@@ -687,6 +753,7 @@ export default function FindPage() {
     return hasName ? 100 : 75;
   }, [name, normalizedLivePhone]);
   const isProfileReady = liveProfileTarget === 100;
+  const hasNameVerification = Boolean(name.trim());
   const hasPhoneVerification = normalizedLivePhone.length === 10;
   const profileDisplayName = name.trim();
   const profileDisplayPhone = phone.trim();
@@ -1159,6 +1226,31 @@ export default function FindPage() {
     return filteredColleges;
   }, [colleges, selectedDegree, selectedDreamCollege]);
 
+  const selectedDegreePreview = useMemo(() => {
+    const previewConfig = degreePreviewDetails[selectedDegree];
+    const relatedCourses = courses.filter((course) => courseMatchesDegree(course, selectedDegree));
+    const relatedColleges = colleges.filter((college) => collegeMatchesDegree(college, selectedDegree));
+    const branchNames = Array.from(
+      new Set(
+        relatedCourses
+          .map((course) => getCleanCourseOptionLabel(course, selectedDegree))
+          .map((label) => label.trim())
+          .filter((label) => Boolean(label) && !hiddenMedicalPreviewBranches.has(label)),
+      ),
+    );
+
+    if (!previewConfig) {
+      return null;
+    }
+
+    return {
+      ...previewConfig,
+      branchCount: branchNames.length,
+      collegeCount: relatedColleges.length,
+      branchNames: branchNames.slice(0, 4),
+    };
+  }, [colleges, courses, selectedDegree]);
+
   // Resets all cutoff form academic inputs when degree/level path changes.
   const resetAcademicFields = () => {
     setTouchedFields({});
@@ -1515,7 +1607,7 @@ export default function FindPage() {
     if (showEngineeringFields) {
       if (showEngineeringPcmFields) {
         if (isBlank(physicsMarks)) errors.physics = "This field is required";
-        if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
+        if (isBlank(chemistryMarks)) errevelors.chemistry = "This field is required";
         if (isBlank(mathsMarks)) errors.maths = "This field is required";
       } else if (isBlank(engineeringEntranceMarks)) {
         errors.engineeringEntranceMarks = "This field is required";
@@ -2350,44 +2442,49 @@ export default function FindPage() {
               {!inlineMatchQueryString ? (
                 <>
                 {activeStep === 1 ? (
-                  <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)]">
-                    <div className="premium-onboarding-card min-w-0 rounded-[18px] bg-white p-2.5 shadow-none sm:p-3 lg:p-4">
-                      <div className="mb-3 max-w-xl">
+                  <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,1fr)] lg:pl-6 xl:pl-10">
+                    <div className="premium-onboarding-card min-w-0 rounded-[18px] bg-white p-2.5 shadow-none sm:p-3 lg:p-3">
+                      <div className="mb-2 max-w-xl">
                         <div className="inline-flex items-center gap-2 rounded-[12px] border border-[#ffe08a] bg-white px-3 py-1.5 text-[12px] font-semibold leading-none text-[#8f6a00]">
                           <Sparkles className="size-4 shrink-0 text-[#FFC107]" />
                           <span className="translate-y-px">Live onboarding</span>
                         </div>
-                        <h3 className="mt-2 text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#0F1B25] sm:text-[30px]">
+                        <h3 className="mt-2 text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#0F1B25] sm:text-[22px]">
                           Basic Details
                         </h3>
-                        <div className="mt-1 max-w-lg text-[15px] font-normal leading-5 text-[#5F6B76]">
-                          Please enter your basic details to continue. Your profile card updates instantly as you type.
+                        <div className="mt-1 max-w-lg text-[13px] font-normal leading-5 text-[#5F6B76] sm:text-[13px]">
+                          Please enter your basic details to continue.
                         </div>
                       </div>
 
-                      <div className="grid w-full max-w-[560px] grid-cols-1 gap-3">
-                        <div data-field-id="name" className="space-y-1.5">
+                      <div className="grid w-full max-w-[560px] grid-cols-1 gap-2">
+                        <div data-field-id="name" className="space-y-1">
                           <label htmlFor="find-name" className="block text-[13px] font-semibold text-[#0F1B25]">
                             Full Name
                           </label>
                           <div
-                            className={`flex h-11 items-center gap-3 rounded-[12px] bg-white px-4 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
+                            className={`flex h-10 items-center gap-2.5 rounded-[12px] bg-white px-3.5 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
                               submittedForCurrentStep && validationErrors.name
                                 ? "ring-1 ring-[#ff4d5e]"
                                 : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
                             }`}
                           >
-                            <User className="size-4.5 shrink-0 text-[#6b7280]" />
+                            <User className="size-4 shrink-0 text-[#6b7280]" />
                             <input
                               id="find-name"
                               type="text"
                               value={name}
                               onChange={(event) => setName(event.target.value)}
                               placeholder="Enter your full name"
-                              className="h-full w-full border-0 bg-transparent p-0 text-[15px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[13px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
                               aria-invalid={Boolean(submittedForCurrentStep && validationErrors.name)}
                               required
                             />
+                            {hasNameVerification && !(submittedForCurrentStep && validationErrors.name) ? (
+                              <span className="profile-check-pop inline-flex size-7 items-center justify-center rounded-full bg-[#eaf9ef] text-[#16a34a]">
+                                <BadgeCheck className="size-4" />
+                              </span>
+                            ) : null}
                           </div>
                           {submittedForCurrentStep && validationErrors.name ? (
                             <div className="flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
@@ -2397,25 +2494,25 @@ export default function FindPage() {
                           ) : null}
                         </div>
 
-                        <div data-field-id="phone" className="space-y-1.5">
+                        <div data-field-id="phone" className="space-y-1">
                           <label htmlFor="find-phone" className="block text-[13px] font-semibold text-[#0F1B25]">
                             Phone Number
                           </label>
                           <div
-                            className={`flex h-11 items-center gap-3 rounded-[12px] bg-white px-4 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
+                            className={`flex h-10 items-center gap-2.5 rounded-[12px] bg-white px-3.5 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
                               submittedForCurrentStep && validationErrors.phone
                                 ? "ring-1 ring-[#ff4d5e]"
                                 : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
                             }`}
                           >
-                            <Phone className="size-4.5 shrink-0 text-[#6b7280]" />
+                            <Phone className="size-4 shrink-0 text-[#6b7280]" />
                             <input
                               id="find-phone"
                               type="tel"
                               value={phone}
                               onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
                               placeholder="Enter 10 digit mobile number"
-                              className="h-full w-full border-0 bg-transparent p-0 text-[15px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
+                              className="h-full w-full border-0 bg-transparent p-0 text-[13px] font-medium text-[#0F1B25] outline-none placeholder:text-[#9aa1ad]"
                               aria-invalid={Boolean(submittedForCurrentStep && validationErrors.phone)}
                               inputMode="numeric"
                               pattern="[0-9]{10}"
@@ -2424,8 +2521,8 @@ export default function FindPage() {
                               required
                             />
                             {hasPhoneVerification ? (
-                              <span className="profile-check-pop inline-flex size-8 items-center justify-center rounded-full bg-[#eaf9ef] text-[#16a34a]">
-                                <BadgeCheck className="size-5" />
+                              <span className="profile-check-pop inline-flex size-7 items-center justify-center rounded-full bg-[#eaf9ef] text-[#16a34a]">
+                                <BadgeCheck className="size-4" />
                               </span>
                             ) : null}
                           </div>
@@ -2437,18 +2534,19 @@ export default function FindPage() {
                           ) : null}
                         </div>
 
-                        <div className="mt-0 flex flex-col gap-2 sm:flex-row">
+                        <div className="mt-1 flex flex-col gap-2.5 sm:flex-row sm:gap-4">
                           <button
                             type="button"
                             onClick={resetFormFields}
-                            className="inline-flex h-[42px] items-center justify-center rounded-[12px] border border-[#ece7d7] bg-white px-6 text-[15px] font-semibold text-[#0F1B25] shadow-[0_10px_24px_rgba(17,24,39,0.05)] transition hover:-translate-y-0.5 hover:border-[#d9c87a] hover:bg-[#fffdf4]"
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB] sm:w-auto sm:min-w-[154px]"
                           >
-                            Reset
+                            <ArrowRight className="size-4 rotate-180" />
+                            Back
                           </button>
                           <button
                             type="button"
                             onClick={goToNextStep}
-                            className="inline-flex h-[42px] items-center justify-center gap-2 rounded-[12px] bg-[#FFC107] px-6 text-[15px] font-semibold !text-[#0F1B25] shadow-[0_16px_30px_rgba(255,193,7,0.28)] transition hover:-translate-y-0.5 hover:bg-[#0F1B25] hover:!text-white"
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#f4b400] px-6 text-[16px] font-medium !text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#e8ab00] sm:w-auto sm:min-w-[154px]"
                           >
                             Next
                             <ArrowRight className="size-4" />
@@ -2457,137 +2555,132 @@ export default function FindPage() {
                       </div>
                     </div>
 
-                    <div className="relative self-start">
-                      <div className="premium-profile-card profile-card-float relative overflow-hidden rounded-[28px] border border-[#f3df9a] bg-[linear-gradient(180deg,#fffdf5_0%,#fffaf0_54%,#fff8ea_100%)] p-2.5 shadow-[0_26px_60px_rgba(148,111,9,0.12)] sm:p-3">
+                    <div className="relative hidden w-full self-stretch lg:block">
+                      <div className="premium-profile-card profile-card-float relative w-full overflow-hidden rounded-[22px] border border-[#e5e7eb] bg-white p-1.5 shadow-[0_18px_38px_rgba(15,27,37,0.08)] sm:p-2">
                         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                          <div className="absolute left-[-20px] top-[-24px] size-28 rounded-full bg-[#fff1c2]/70 blur-2xl" />
-                          <div className="absolute right-[-28px] top-10 size-36 rounded-full bg-[#fff0bc]/60 blur-3xl" />
-                          <span className="absolute left-4 top-16 text-[#f4b400]/35">
+                          <div className="absolute left-[-20px] top-[-24px] size-20 rounded-full bg-white/70 blur-2xl" />
+                          <div className="absolute right-[-28px] top-10 size-28 rounded-full bg-white/60 blur-3xl" />
+                          <span className="absolute left-4 top-16 text-[#f4b400]/18">
                             <Sparkles className="size-4" />
                           </span>
-                          <span className="absolute right-12 top-24 text-[#f4b400]/30">
+                          <span className="absolute right-12 top-24 text-[#f4b400]/18">
                             <Sparkles className="size-4" />
                           </span>
-                          <span className="absolute bottom-24 left-8 text-[#f4b400]/20">
+                          <span className="absolute bottom-24 left-8 text-[#f4b400]/12">
                             <Sparkles className="size-3.5" />
                           </span>
-                          <span className="absolute bottom-28 right-6 text-[#f4b400]/20">
+                          <span className="absolute bottom-28 right-6 text-[#f4b400]/12">
                             <Sparkles className="size-3.5" />
                           </span>
                         </div>
 
                         <div className="relative z-10">
-                          <div className="mb-2 flex items-start justify-between gap-2.5">
+                          <div className="mb-1 flex items-start justify-between gap-2">
                             <div>
-                              <div className="text-[15px] font-semibold tracking-[-0.03em] text-[#172554] sm:text-[16px]">
+                              <div className="text-[14px] font-semibold tracking-[-0.03em] text-[#172554] sm:text-[14px]">
                                 Live Profile Card
                               </div>
-                              <div className="mt-0.5 h-0.5 w-10 rounded-full bg-[#f4b400]" />
+                              <div className="mt-0.5 h-0.5 w-8 rounded-full bg-[#f4b400]" />
                             </div>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-[#f3df9a] bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(148,111,9,0.08)]">
-                              <span className="relative flex size-4 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
-                                <span className="size-2.5 rounded-full bg-[#f4b400]" />
+                            <span className="inline-flex items-center gap-2 rounded-full border border-[#f3df9a] bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(148,111,9,0.08)]">
+                              <span className="relative flex size-3 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
+                                <span className="size-2 rounded-full bg-[#f4b400]" />
                               </span>
                               Live
                             </span>
                           </div>
 
-                          <div className="grid items-center gap-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(132px,0.9fr)]">
+                          <div className="grid items-center gap-2 lg:grid-cols-[minmax(0,1.12fr)_minmax(108px,0.72fr)]">
                             <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
-                              <div className="avatar-glow relative flex size-[84px] items-center justify-center rounded-full border-[7px] border-[#fff7df] bg-[#ffc107] shadow-[0_14px_26px_rgba(244,180,0,0.18)] sm:size-[92px]">
-                                <User className="size-8 text-white sm:size-9" strokeWidth={2} />
-                                <span className="absolute right-0.5 top-1.5 flex size-7 items-center justify-center rounded-full border-2 border-white bg-[#17356f] text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)]">
-                                  <BadgeCheck className="size-4" />
+                              <div className="avatar-glow relative flex size-[64px] items-center justify-center rounded-full border-[6px] border-[#eef2ff] bg-[#ffc107] shadow-[0_14px_22px_rgba(15,27,37,0.08)] sm:size-[72px]">
+                                <User className="size-6.5 text-white sm:size-7" strokeWidth={2} />
+                                <span className="absolute right-0.5 top-1.5 flex size-5.5 items-center justify-center rounded-full border-2 border-white bg-[#17356f] text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)]">
+                                  <BadgeCheck className="size-3" />
                                 </span>
                               </div>
 
                               <div className="min-w-0 text-center sm:text-left">
                                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                                  <div className="profile-name-fade text-[21px] font-semibold tracking-[-0.05em] text-[#172554] sm:text-[24px]">
+                                  <div className="profile-name-fade text-[19px] font-semibold tracking-[-0.05em] text-[#172554] sm:text-[20px]">
                                     {profileDisplayName || "Student"}
                                   </div>
-                                  <span className="inline-flex items-center justify-center rounded-full bg-[#fff0bc] px-2.5 py-1 text-[#f4b400]">
-                                    <BadgeCheck className="size-3.5" />
+                                  <span className="inline-flex items-center justify-center rounded-full bg-[#fff7df] px-1.5 py-0.5 text-[#f4b400]">
+                                    <BadgeCheck className="size-2.5" />
                                   </span>
-                                </div>
-
-                                <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-[#e8dfc4] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(17,24,39,0.05)]">
-                                  <Fingerprint className="size-3.5 text-[#172554]" />
-                                  {profileUserId}
                                 </div>
 
                                 <div className="mt-1 flex flex-wrap justify-center gap-1 sm:justify-start">
-                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <BadgeCheck className="size-3.5 text-[#f4b400]" />
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <BadgeCheck className="size-2.5 text-[#f4b400]" />
                                     Verified Student
                                   </span>
-                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <Sparkles className="size-3.5 text-[#f4b400]" />
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <Sparkles className="size-2.5 text-[#f4b400]" />
                                     Active Learner
                                   </span>
-                                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8dfc4] bg-white px-2 py-1 text-[10px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <Award className="size-3.5 text-[#f4b400]" />
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
+                                    <Award className="size-2.5 text-[#f4b400]" />
                                     Top Performer
                                   </span>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="relative mx-auto flex min-h-[104px] w-full max-w-[170px] items-center justify-center lg:justify-end">
+                            <div className="relative mx-auto hidden min-h-[120px] w-full max-w-[260px] items-center justify-center md:flex lg:justify-end xl:max-w-[300px]">
                               <Image
-                                src="/find-profile-books.png"
-                                alt="Books, graduation cap, and stationery illustration"
+                                src="/find-step-basic-illustration.png"
+                                alt="Clipboard illustration"
                                 fill
                                 unoptimized
-                                sizes="170px"
+                                sizes="(min-width: 1280px) 480px, (min-width: 1024px) 390px, 320px"
                                 className="object-contain"
                               />
                             </div>
                           </div>
 
-                          <div className="mt-2.5 grid gap-2">
-                            <div className="rounded-[18px] border border-[#f0e2b7] bg-white/96 p-2.5 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
-                              <div className="flex items-center gap-3">
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-[14px] bg-[#f4b400] text-[#172554] shadow-[0_10px_18px_rgba(244,180,0,0.22)]">
-                                  <Phone className="size-3.5" />
+                          <div className="mt-1.5 grid gap-2 md:grid-cols-2">
+                            <div className="rounded-[16px] border border-[#e5e7eb] bg-white p-2 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
+                              <div className="flex items-center gap-2">
+                                <span className="flex size-6 shrink-0 items-center justify-center rounded-[11px] bg-[#f4b400] text-[#172554] shadow-[0_10px_18px_rgba(244,180,0,0.22)]">
+                                  <Phone className="size-3" />
                                 </span>
                                 <div className="min-w-0 flex-1 text-left">
                                   <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6c7a99]">
                                     Phone Number
                                   </div>
-                                  <div className="mt-0.5 text-[13px] font-semibold tracking-[-0.04em] text-[#172554]">
+                                  <div className="mt-0.5 text-[11px] font-semibold tracking-[-0.04em] text-[#172554]">
                                     {profileDisplayPhone || "Enter phone number"}
                                   </div>
                                 </div>
-                                <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#f3df9a] bg-[#fff7db] text-[#172554]">
-                                  <Phone className="size-3 rotate-[20deg]" />
+                                <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#172554]">
+                                  <Phone className="size-2.5 rotate-[20deg]" />
                                 </span>
                               </div>
                             </div>
 
-                            <div className="rounded-[18px] border border-[#f0e2b7] bg-white/96 p-2.5 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
-                              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_96px] lg:items-center">
+                            <div className="rounded-[16px] border border-[#e5e7eb] bg-white p-2 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
+                              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_88px] lg:items-center">
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 text-[#172554]">
-                                    <div className="flex size-6.5 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
-                                      <Sparkles className="size-3" />
+                                    <div className="flex size-[22px] items-center justify-center rounded-full bg-[#fff7df] text-[#f4b400]">
+                                      <Sparkles className="size-2.5" />
                                     </div>
-                                    <span className="text-[13px] font-semibold">Profile Completion</span>
+                                    <span className="text-[11px] font-semibold">Profile Completion</span>
                                   </div>
 
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#e8edf5]">
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#e8edf5]">
                                       <div
                                         className="profile-progress-fill h-full rounded-full bg-[linear-gradient(90deg,#f4b400,#ffc107,#17356f)] transition-[width] duration-300 ease-out"
                                         style={{ width: `${displayedProfileProgress}%` }}
                                       />
                                     </div>
-                                    <div key={profileCompletionPercent} className="profile-count-up text-[17px] font-semibold tracking-[-0.04em] text-[#f4b400]">
+                                    <div key={profileCompletionPercent} className="profile-count-up text-[13px] font-semibold tracking-[-0.04em] text-[#f4b400]">
                                       {profileCompletionPercent}%
                                     </div>
                                   </div>
 
-                                  <div className="mt-1.5 text-[11px] text-[#6c7a99]">
+                                  <div className="mt-1 text-[10px] font-normal leading-[1.25rem] text-[#6c7a99]">
                                     {isProfileReady
                                       ? "Awesome! Your profile is complete."
                                       : profileCompletionPercent > 0
@@ -2598,16 +2691,16 @@ export default function FindPage() {
 
                                 <div className="mx-auto flex items-center justify-center">
                                   <div
-                                    className="flex size-[76px] items-center justify-center rounded-full p-1.5"
+                                    className="flex size-[72px] items-center justify-center rounded-full p-[5px]"
                                     style={{
                                       background: `conic-gradient(#17356f ${displayedProfileProgress * 3.6}deg, #f4b400 0deg, #f4b400 360deg)`,
                                     }}
                                   >
                                     <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-[#172554] shadow-[inset_0_0_0_1px_rgba(232,223,196,0.9)]">
-                                      <div className="text-[15px] font-semibold tracking-[-0.05em] text-[#172554]">
+                                      <div className="text-[12px] font-semibold leading-none tracking-[-0.04em] text-[#172554]">
                                         {profileCompletionPercent}%
                                       </div>
-                                      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#6c7a99]">
+                                      <div className="mt-0.5 whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.02em] text-[#6c7a99]">
                                         Complete
                                       </div>
                                     </div>
@@ -2623,74 +2716,124 @@ export default function FindPage() {
                 ) : null}
 
               {activeStep === 2 ? (
-                <div data-field-id="level" className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(380px,1fr)]">
-                  <div className="min-w-0 lg:pl-10 xl:pl-14">
-                    <div className="mb-5">
-                      <h3 className="text-[24px] font-semibold text-[#0F1B25]">
-                        Pick Your Level
-                      </h3>
-                      <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
-                        Select your current grade
+                <div
+                  data-field-id="level"
+                  className="relative -mt-1 bg-white px-4 py-1 sm:mt-0 sm:px-6 sm:py-1.5 lg:-mt-3 lg:px-8 lg:py-1.5"
+                >
+                  <div className="relative grid items-start gap-2 lg:grid-cols-[minmax(0,0.94fr)_minmax(420px,1.06fr)] lg:gap-3 lg:pl-0 xl:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)] xl:pl-1">
+                    <div className="min-w-0 lg:pl-4 xl:pl-6">
+                      <div className="mb-0">
+                        <div className="inline-flex items-center gap-2">
+                          <div className="text-[22px] font-semibold leading-[1.05] text-[#0F1B25] sm:text-[24px]">
+                            Pick Your Level
+                          </div>
+                          <Sparkles className="size-5 shrink-0 text-[#F4B400]" />
+                        </div>
+                        <div className="mt-1.5 text-[13px] font-normal text-[#5F6B76] sm:text-[14px]">
+                          Select your current grade
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="grid max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-4">
-                      {levelOptions.map(({ value: level, icon: Icon }) => (
+                      <div className="grid max-w-[580px] grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+                        {levelOptions.map(({ value: level }) => (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => {
+                              setHasSubmitted(false);
+                              setValidationStep(null);
+                              setShowValidationPopup(false);
+                              setInlineMatchQueryString("");
+                              setSelectedLevel(level);
+                              setSelectedCategory("");
+                              setSelectedDreamCollege("");
+                              setTargetCollegeSearch("");
+                              resetAcademicFields();
+                            }}
+                            className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center !text-[15px] !font-normal leading-4 transition ${
+                              selectedLevel === level
+                                ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                                : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
+                            }`}
+                            aria-pressed={selectedLevel === level}
+                          >
+                            {level === "6" ? <GraduationCap className="size-[24px]" /> : null}
+                            {level === "7" ? <BookOpen className="size-[24px]" /> : null}
+                            {level === "8" ? <Compass className="size-[24px]" /> : null}
+                            {level === "9" ? <Globe className="size-[24px]" /> : null}
+                            {level === "10" ? <Laptop className="size-[24px]" /> : null}
+                            {level === "11" ? <FlaskConical className="size-[24px]" /> : null}
+                            {level === "12" ? <Award className="size-[24px]" /> : null}
+                            {formatLevelLabel(level)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {submittedForCurrentStep && validationErrors.level ? (
+                        <div className="mt-3 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
+                          <CircleAlert className="size-4" />
+                          <span>{validationErrors.level}</span>
+                        </div>
+                      ) : null}
+
+                      {/* <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                        <div className="flex min-w-0 items-start gap-3 lg:max-w-[300px]">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#EEE7C8] bg-white text-[#F4B400] shadow-none">
+                            <Sparkles className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[14px] font-semibold text-[#0F1B25]">
+                              Why choose your level?
+                            </div>
+                            <p className="mt-0.5 text-[11px] leading-4 text-[#5F6B76]">
+                              Your grade helps us recommend the right courses, colleges, and assessments for you.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid flex-[1.2] gap-3 sm:grid-cols-3 sm:items-stretch sm:gap-4 lg:ml-8 lg:min-w-[380px]">
+                          {levelHighlights.map(({ icon: Icon, title }, index) => (
+                            <div
+                              key={title}
+                              className={`flex items-center gap-1.5 px-0.5 py-0 sm:h-full sm:flex-col sm:items-center sm:justify-center sm:px-3 sm:py-2 sm:text-center ${
+                                index < levelHighlights.length - 1 ? "sm:border-r sm:border-[#eddca4]" : ""
+                              }`}
+                            >
+                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#EEF0F4] bg-white text-[#0F1B25] shadow-none">
+                                <Icon className="size-3.5 text-[#F4B400]" />
+                              </div>
+                          <div className="min-w-0 text-[11px] font-bold leading-4 tracking-[-0.01em] text-[#0F1B25] sm:text-[12px]">
+                                {title}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div> */}
+
+                      <div className="mt-2.5 flex flex-col gap-3 sm:flex-row">
                         <button
-                          key={level}
                           type="button"
-                          onClick={() => {
-                            setHasSubmitted(false);
-                            setValidationStep(null);
-                            setShowValidationPopup(false);
-                            setInlineMatchQueryString("");
-                            setSelectedLevel(level);
-                            setSelectedCategory("");
-                            setSelectedDreamCollege("");
-                            setTargetCollegeSearch("");
-                            resetAcademicFields();
-                          }}
-                          className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center text-[13px] font-semibold leading-4 transition ${
-                            selectedLevel === level
-                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
-                              : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
-                          }`}
-                          aria-pressed={selectedLevel === level}
+                          onClick={goToPreviousStep}
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E6E6E6] bg-white px-5 !text-[14px] !font-medium text-[#0F1B25] shadow-none transition hover:bg-[#F8F9FB] sm:w-auto sm:min-w-[154px]"
                         >
-                          <Icon className="size-6 shrink-0" />
-                          {formatLevelLabel(level)}
+                          <ArrowRight className="size-5 rotate-180" />
+                          Back
                         </button>
-                      ))}
-                    </div>
-
-                    {submittedForCurrentStep && validationErrors.level ? (
-                      <div className="mt-3 flex items-center gap-2 text-[14px] font-medium text-[#ff4d5e]">
-                        <CircleAlert className="size-4" />
-                        <span>{validationErrors.level}</span>
+                        <button
+                          type="button"
+                          onClick={goToNextStep}
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-5 !text-[14px] !font-medium !text-[#071A44] shadow-none transition hover:bg-[#e6ac00] sm:w-auto sm:min-w-[154px]"
+                        >
+                          Next
+                          <ArrowRight className="size-5" />
+                        </button>
                       </div>
-                    ) : null}
-
-                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3 sm:ml-[190px]">
-                      <button
-                        type="button"
-                        onClick={goToPreviousStep}
-                        className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={goToNextStep}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
-                      >
-                        Next
-                        <ArrowRight className="size-4" />
-                      </button>
                     </div>
-                  </div>
 
-                  <div className="relative mx-auto hidden min-h-[380px] w-full max-w-[560px] overflow-hidden lg:block" aria-hidden="true">
-                    <div className="absolute inset-0 bg-[url('/find-step-level-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                    <div className="relative hidden min-h-[420px] overflow-hidden rounded-[24px] bg-white lg:block" aria-hidden="true">
+                      <div className="absolute inset-0 rounded-[24px] bg-white" />
+                      <div className="absolute inset-0 bg-[url('/find-step-level-illustration.png')] bg-contain bg-[position:50%_25%] bg-no-repeat" />
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -2752,15 +2895,15 @@ export default function FindPage() {
                 ) : null} */}
 
                 {activeStep === 3 ? (
-                <div data-field-id="degree" className="col-span-full grid items-center gap-7 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,1fr)]">
-                  <div className="min-w-0 lg:pl-10 xl:pl-14">
-                    <div className="mb-5">
+                <div data-field-id="degree" className="col-span-full grid items-start gap-7 lg:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.82fr)] lg:pt-2">
+                  <div className="min-w-0 lg:pl-12 xl:pl-14">
+                    <div className="mb-4">
                       <h3 className="text-[24px] font-semibold text-[#0F1B25]">Pick Your Degree Stream</h3>
                       <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
                         Choose the stream you are interested in
                       </div>
                     </div>
-                    <div className="grid max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="grid max-w-[580px] grid-cols-2 gap-5 sm:grid-cols-4">
                       {degreeOptions.map((degree) => (
                         <button
                           key={degree}
@@ -2799,29 +2942,47 @@ export default function FindPage() {
                         <span>{validationErrors.degree}</span>
                       </div>
                     ) : null}
-                    <div className="mt-6 grid w-full max-w-[300px] grid-cols-2 gap-3 sm:ml-[190px]">
+                    <div className="mt-6 flex w-full flex-col gap-3 sm:max-w-none sm:flex-row">
                       <button
                         type="button"
                         onClick={goToPreviousStep}
-                        className="inline-flex h-12 items-center justify-center rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB]"
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#F8F9FB] sm:w-[128px]"
                       >
+                        <ArrowRight className="size-5 rotate-180" />
                         Back
                       </button>
                       <button
                         type="button"
                         onClick={goToNextStep}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:w-[128px]"
                       >
                         Next
                         <ArrowRight className="size-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="relative mx-auto hidden min-h-[380px] w-full max-w-[560px] overflow-hidden lg:block" aria-hidden="true">
-                    <div className="absolute inset-0 bg-[url('/find-step-stream-illustration.png')] bg-contain bg-center bg-no-repeat" />
+                  <div className="relative hidden min-h-[520px] w-full items-center justify-center lg:flex" aria-hidden="true">
+                    <div className="absolute right-12 top-4 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,rgba(244,180,0,0.20)_0%,rgba(244,180,0,0.10)_42%,rgba(255,255,255,0)_72%)]" />
+                    <div className="absolute left-14 top-24 text-[#F4B400]">
+                      <Sparkles className="size-5" />
+                    </div>
+                    <div className="absolute right-24 top-44 text-[#F4B400]">
+                      <Sparkles className="size-5" />
+                    </div>
+                    <div className="relative flex min-h-[520px] w-full items-start justify-start lg:-translate-x-8">
+                      <Image
+                        src={selectedDegreePreview?.image || "/find-step-stream-illustration.png"}
+                        alt={selectedDegree ? `${selectedDegree} illustration` : "Degree stream illustration"}
+                        width={1642}
+                        height={958}
+                        unoptimized
+                        className="h-auto w-[600px] max-w-full object-contain drop-shadow-[0_24px_48px_rgba(15,27,37,0.12)] lg:w-[580px]"
+                        priority={activeStep === 3}
+                      />
+                    </div>
                   </div>
                 </div>
-                ) : null}
+              ) : null}
 
  {activeStep === 4 && showDreamCollegeField ? (
                   <FieldShell icon={Building2} label="Select Your Target College">
@@ -2852,6 +3013,7 @@ export default function FindPage() {
                     <datalist id="target-college-options">
                       {filteredDreamCollegeOptions.map((college, index) => (
                         <option key={`${college.id}-${index}`} value={college.name}>
+                        <option key={`${college.id || college.name}-${index}`} value={college.name}>
                           {college.city || college.district || college.state}
                         </option>
                       ))}

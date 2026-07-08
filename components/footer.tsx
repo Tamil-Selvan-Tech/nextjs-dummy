@@ -222,17 +222,22 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 px-5 py-5 text-center sm:px-7 md:px-8 lg:flex-row lg:items-center lg:justify-between lg:text-left xl:px-10 2xl:px-12">
+          <div className="flex flex-col gap-4 px-5 py-5 text-center sm:px-7 md:px-8 lg:flex-row lg:items-end lg:justify-between lg:text-left xl:px-10 2xl:px-12">
             <p className="type-caption text-white/[0.58]">
               &copy; {currentYear} College EdwiseR. All Rights Reserved.
             </p>
 
-            <div className="type-caption flex flex-wrap justify-center gap-x-5 gap-y-2 text-white/[0.64] lg:justify-end">
-              {legalLinks.map((item) => (
-                <Link key={item.label} href={item.href} className="transition hover:text-white">
-                  {item.label}
-                </Link>
-              ))}
+            <div className="flex flex-col items-center gap-2 lg:items-end">
+              <div className="type-caption flex flex-wrap justify-center gap-x-5 gap-y-2 text-white/[0.64] lg:justify-end">
+                {legalLinks.map((item) => (
+                  <Link key={item.label} href={item.href} className="transition hover:text-white">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+              <p className="type-caption text-white/[0.58]">
+                Design and Development by <span className="font-semibold text-white/[0.82]">Javix Technologies</span>
+              </p>
             </div>
           </div>
         </div>

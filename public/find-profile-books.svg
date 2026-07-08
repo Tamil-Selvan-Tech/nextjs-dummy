@@ -30,9 +30,6 @@
   </defs>
 
   <g filter="url(#shadow)">
-    <ellipse cx="432" cy="378" rx="266" ry="264" fill="#FFF6D9"/>
-    <ellipse cx="330" cy="512" rx="248" ry="176" fill="#FFF7DF" opacity="0.85"/>
-
     <g transform="translate(112 508)">
       <rect x="0" y="64" width="150" height="154" rx="66" fill="#F4F4F4"/>
       <ellipse cx="75" cy="84" rx="20" ry="12" fill="#6E4A2C"/>
