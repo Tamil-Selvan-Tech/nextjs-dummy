@@ -2984,31 +2984,31 @@ export default function FindPage() {
                 </div>
               ) : null}
 
- {activeStep === 4 && showDreamCollegeField ? (
+                {activeStep === 4 && showDreamCollegeField ? (
                   <FieldShell icon={Building2} label="Select Your Target College">
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-[#7a87ad]" />
                       <input
-                      type="search"
-                      value={targetCollegeSearch}
-                      onChange={(event) => {
-                        clearSubmittedValidation();
-                        selectTargetCollegeByName(event.target.value);
-                      }}
-                      onBlur={() => {
-                        if (!targetCollegeSearch.trim()) {
-                          setSelectedDreamCollege("");
-                          return;
-                        }
-                        const selectedCollege = dreamCollegeOptions.find((college) => college.id === selectedDreamCollege);
-                        if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
-                      }}
-                      list="target-college-options"
-                      placeholder="Search and select college"
-                      className={inputClassName}
-                      style={{ paddingLeft: "1.35rem" }}
-                      autoComplete="off"
-                    />
+                        type="search"
+                        value={targetCollegeSearch}
+                        onChange={(event) => {
+                          clearSubmittedValidation();
+                          selectTargetCollegeByName(event.target.value);
+                        }}
+                        onBlur={() => {
+                          if (!targetCollegeSearch.trim()) {
+                            setSelectedDreamCollege("");
+                            return;
+                          }
+                          const selectedCollege = dreamCollegeOptions.find((college) => college.id === selectedDreamCollege);
+                          if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
+                        }}
+                        list="target-college-options"
+                        placeholder="Search and select college"
+                        className={inputClassName}
+                        style={{ paddingLeft: "1.35rem" }}
+                        autoComplete="off"
+                      />
                     </div>
                     <datalist id="target-college-options">
                       {filteredDreamCollegeOptions.map((college, index) => (
