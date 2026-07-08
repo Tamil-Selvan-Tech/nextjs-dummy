@@ -1607,7 +1607,7 @@ export default function FindPage() {
     if (showEngineeringFields) {
       if (showEngineeringPcmFields) {
         if (isBlank(physicsMarks)) errors.physics = "This field is required";
-        if (isBlank(chemistryMarks)) errevelors.chemistry = "This field is required";
+        if (isBlank(chemistryMarks)) errors.chemistry = "This field is required";
         if (isBlank(mathsMarks)) errors.maths = "This field is required";
       } else if (isBlank(engineeringEntranceMarks)) {
         errors.engineeringEntranceMarks = "This field is required";
@@ -3012,7 +3012,6 @@ export default function FindPage() {
                     </div>
                     <datalist id="target-college-options">
                       {filteredDreamCollegeOptions.map((college, index) => (
-                        <option key={`${college.id}-${index}`} value={college.name}>
                         <option key={`${college.id || college.name}-${index}`} value={college.name}>
                           {college.city || college.district || college.state}
                         </option>
