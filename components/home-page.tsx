@@ -1140,17 +1140,17 @@ text-[#2563eb]
               md:col-span-2 md:w-fit md:justify-self-start
             "
           >
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(37,99,235,0.1)] text-[#2563eb] shadow-[0_0_16px_rgba(37,99,235,0.18)]">
-              <Rocket className="size-3" />
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
+              <Rocket className="size-3.5" />
             </span>
             Check My Cutoff
-            <ArrowRight className="size-3 text-[#2563eb]" />
+            <ArrowRight className="size-4 text-[#2563eb]" />
           </button>
 
 <div className="relative z-10 w-full max-w-none text-center md:mt-0.5 md:flex md:h-full md:flex-col md:text-left">
 
   <div className="w-full">
-  <h3 className="font-montserrat-display text-[1.55rem] font-bold leading-[1.18] tracking-[-0.02em] text-white sm:text-[2rem] md:text-[2.1rem] md:tracking-[-0.03em]">
+  <h3 className="font-montserrat-display text-[1.4rem] font-bold leading-[1.18] tracking-[-0.02em] text-white sm:text-[1.75rem] md:text-[1.85rem] md:tracking-[-0.03em]">
   <span className="block md:whitespace-nowrap">
     Unlock Your Future College.
   </span>
@@ -1372,7 +1372,7 @@ text-[#2563eb]
                   <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.82fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.38fr)_minmax(32rem,0.9fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(36rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <h1 className="home-hero-title font-montserrat-display mx-auto mt-2 max-w-[36rem] text-center text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[40rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[46rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[50rem] 2xl:text-[50px] 2xl:leading-[58px]">
+                        <h1 className="home-hero-title font-montserrat-display mx-auto mt-2 max-w-[36rem] text-center text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:mx-0 lg:max-w-[46rem] lg:text-left lg:text-[50px] lg:leading-[50px] xl:max-w-[52rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[58rem] 2xl:text-[50px] 2xl:leading-[58px]">
                           <span className="block">
                             Find Your <span className="inline-block -skew-x-6 text-[#2563eb]">Future</span>
                           </span>
@@ -1380,6 +1380,12 @@ text-[#2563eb]
                             <span className="inline-block -skew-x-6 text-[#2563eb]">College</span> Smartly.
                           </span>
                         </h1>
+
+                        <p className="type-body-large mx-auto mt-3.5 max-w-[44rem] px-2 text-center text-[color:var(--text-muted)] lg:mx-0 lg:px-0 lg:text-left xl:max-w-[50rem] 2xl:max-w-[56rem]">
+                          Discover colleges, courses, exams, and cities from one premium
+                          search flow built to help you shortlist faster and decide with
+                          more confidence.
+                        </p>
 
                         <div className="mx-auto mt-5 w-full max-w-none px-0 sm:px-1 md:hidden">
                           <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2.5 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
@@ -1562,8 +1568,8 @@ text-[#2563eb]
           md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
                             >
-                              <div className="mb-1.5 flex h-6 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
-                                <Search className="size-[1.05rem]" />
+                              <div className="mb-1.5 flex h-6 items-center gap-2 whitespace-nowrap text-[12px] font-bold uppercase leading-none tracking-[0.12em] text-[#2563eb]">
+                                <Search className="size-[1.15rem] shrink-0 text-[#2563eb]" />
                                 Search Courses
                               </div>
 
@@ -1602,7 +1608,7 @@ text-[#2563eb]
                                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
                                   <Building2 className="size-[1.05rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
+                                <label className="block whitespace-nowrap text-[12px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
                                   College
                                 </label>
                               </div>
@@ -1637,7 +1643,7 @@ text-[#2563eb]
                                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
                                   <MapPin className="size-[1.05rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
+                                <label className="block whitespace-nowrap text-[12px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
                                   Location
                                 </label>
                               </div>
@@ -1786,10 +1792,10 @@ text-[#2563eb]
                       <div className="relative">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
                             </p>
-                            <p className="home-section-title type-headline-small mt-2 text-[color:var(--text-dark)]">
+                            <p className="home-section-title type-headline-small mt-2 text-[1.7rem] leading-[1.12] text-[color:var(--text-dark)] sm:text-[1.85rem] lg:text-[1.95rem]">
                               Master Your Entry Strategy
                             </p>
                           </div>
