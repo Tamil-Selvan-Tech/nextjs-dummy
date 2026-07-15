@@ -63,6 +63,11 @@ export const parseCutoffValue = (
   return { start: parsed, end: parsed };
 };
 
+export const hasMeaningfulCutoffValue = (value: string | number | null | undefined) => {
+  const parsed = parseCutoffValue(value);
+  return Boolean(parsed && Math.max(parsed.start, parsed.end) > 0);
+};
+
 export const isValidCutoffValue = (value: string | number | null | undefined) => {
   const parsed = parseCutoffValue(value);
   if (!parsed) return false;

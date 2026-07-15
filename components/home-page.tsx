@@ -250,7 +250,7 @@ export function HomePage({
   const [collegesData, setCollegesData] = useState(() =>
     initialCollegesData.length ? initialCollegesData : fallbackColleges,
   );
-  const [coursesData] = useState(() =>
+  const [coursesData, setCoursesData] = useState(() =>
     initialCoursesData.length ? initialCoursesData : fallbackCourses,
   );
   const [heroImageUrl, setHeroImageUrl] = useState(() => String(initialHeroImageUrl || "").trim());
@@ -883,6 +883,7 @@ export function HomePage({
 
         startTransition(() => {
           setCollegesData(panelData.colleges.length ? panelData.colleges : fallbackColleges);
+          setCoursesData(panelData.courses.length ? panelData.courses : fallbackCourses);
           setHeroImageUrl(String(panelData.homeHeroImageUrl || "").trim());
           setExamSchedules(panelData.examSchedules);
         });
@@ -961,7 +962,7 @@ export function HomePage({
         iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
       {
-        value: `${exploreCourseCards.length}+`,
+        value: `${coursesData.length}+`,
         label: "Course Paths",
         icon: BookOpen,
         iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
@@ -979,7 +980,7 @@ export function HomePage({
         iconClassName: "bg-[rgba(37,99,235,0.12)] text-[#2563eb]",
       },
     ],
-    [collegesData, exploreCourseCards, topExamCards],
+    [collegesData, coursesData.length, topExamCards],
   );
   const syncScrollIndicators = (
     element: HTMLDivElement | null,
@@ -1108,45 +1109,45 @@ export function HomePage({
   const resolvedHeroImageUrl = String(heroImageUrl || "").trim() || "/college-hero-v2.jpg";
   // Hero cutoff banner
   const renderHeroCutoffBanner = () => (
-    <div className="mx-auto w-full max-w-[38rem] space-y-3 lg:mr-0 xl:max-w-[42rem] 2xl:max-w-[46rem]">
+    <div className="mx-auto w-full max-w-[38rem] space-y-1.5 lg:mr-0 xl:max-w-[42rem] 2xl:max-w-[46rem]">
       <article
         className="
           relative overflow-hidden
-          min-h-[unset] sm:min-h-[16.75rem] md:min-h-[16.25rem] lg:min-h-[17rem]
+          min-h-[unset] sm:min-h-[14.75rem] md:min-h-[14.5rem] lg:min-h-[14.75rem]
           rounded-[1.45rem] sm:rounded-[1.8rem]
           border border-[rgba(10,20,56,0.08)]
           bg-[linear-gradient(160deg,#15285f_0%,#11214f_52%,#0f1a42_100%)]
-          p-4 sm:p-5.5 lg:p-6
+          p-4 sm:p-[18px] lg:p-[18px]
           text-white
           shadow-[0_26px_52px_rgba(9,18,47,0.26)]
         "
       >
-<div className="relative grid h-full grid-cols-1 gap-5 md:grid-cols-[1fr_1.05fr] md:gap-6">
+<div className="relative grid h-full grid-cols-1 gap-3.5 md:grid-cols-[1fr_1.05fr] md:gap-3.5">
             <button
             type="button"
             onClick={() => router.push("/find")}
             className="
 inline-flex w-full max-w-[18rem] items-center justify-center gap-2 justify-self-center
-rounded-full
-border border-[#7db4ff]/55
-bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(96,165,250,0.16))]
+rounded-[0.95rem]
+border border-[rgba(37,99,235,0.22)]
+bg-white
 px-4 py-3
 text-[12px] font-semibold uppercase tracking-[0.12em] sm:text-sm sm:tracking-[0.14em]
-text-white
+text-[#2563eb]
 
-              shadow-[0_0_0_1px_rgba(125,180,255,0.16),0_12px_28px_rgba(37,99,235,0.24)]
+              shadow-[0_10px_24px_rgba(37,99,235,0.16)]
               transition
               md:col-span-2 md:w-fit md:justify-self-start
             "
           >
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/22 shadow-[0_0_16px_rgba(125,180,255,0.32)]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(37,99,235,0.1)] text-[#2563eb] shadow-[0_0_16px_rgba(37,99,235,0.18)]">
               <Rocket className="size-3" />
             </span>
             Check My Cutoff
-            <ArrowRight className="size-3" />
+            <ArrowRight className="size-3 text-[#2563eb]" />
           </button>
 
-<div className="relative z-10 w-full max-w-none text-center md:mt-2 md:flex md:h-full md:flex-col md:text-left">
+<div className="relative z-10 w-full max-w-none text-center md:mt-0.5 md:flex md:h-full md:flex-col md:text-left">
 
   <div className="w-full">
   <h3 className="font-montserrat-display text-[1.55rem] font-bold leading-[1.18] tracking-[-0.02em] text-white sm:text-[2rem] md:text-[2.1rem] md:tracking-[-0.03em]">
@@ -1159,13 +1160,13 @@ text-white
   </span>
 </h3>
 
-    <p className="mx-auto mt-3 w-full max-w-[32rem] text-[12px] leading-5 text-white/72 sm:text-[13px] sm:leading-6 md:mx-0">
+    <p className="mx-auto mt-1.5 w-full max-w-[32rem] text-[12px] leading-5 text-white/72 sm:text-[13px] sm:leading-6 md:mx-0">
       Enter your marks and preferences to find better college matches.
       Get clearer cutoff guidance in one simple flow.
     </p>
 
     {/* Cards - paragraph keela */}
-    <div className="mx-auto mt-5 grid w-full max-w-[24rem] grid-cols-3 gap-2 sm:gap-3 md:mx-0 md:mt-5 md:max-w-[20.5rem]">
+    <div className="mx-auto mt-3 grid w-full max-w-[24rem] grid-cols-3 gap-2 sm:gap-3 md:mx-0 md:mt-3 md:max-w-[20.5rem]">
       <span className="inline-flex min-h-[4.6rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/10 bg-white/7 px-2 py-2.5 text-center sm:min-h-[5rem] sm:gap-2 sm:rounded-[1rem] sm:px-3 sm:py-3 md:min-h-[4.35rem] md:px-2">
         <Sparkles className="size-4 text-[#ffcf69] sm:size-5" />
         <span className="max-w-[4.75rem] text-[11px] font-semibold leading-[1.2] sm:text-[13px]">Instant results</span>
@@ -1186,7 +1187,7 @@ text-white
 
 </div>
 
-          <div className="pointer-events-none absolute -bottom-10 -right-8 hidden h-40 w-40 opacity-30 sm:block lg:hidden">
+          <div className="pointer-events-none absolute -bottom-7 -right-6 hidden h-32 w-32 opacity-30 sm:block lg:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/cutoff-banner-image.png"
@@ -1195,39 +1196,19 @@ text-white
             />
           </div>
 
-          <div className="mt-auto hidden items-end justify-between gap-3 pt-4 lg:flex">
-            
-
-            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[8.75rem] shrink-0 items-end justify-end sm:max-w-[9.5rem] lg:max-w-[17rem]">
+          <div className="mt-auto hidden items-end justify-between gap-3 pt-1 lg:flex">
+            <div className="pointer-events-none mr-[-0.35rem] flex w-full max-w-[7.75rem] shrink-0 items-end justify-end sm:max-w-[8.5rem] lg:max-w-[13rem]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/cutoff-banner-image.png"
                 alt="Cutoff banner illustration"
-                className="h-auto w-full scale-125 object-contain"
+                className="h-auto w-full scale-100 object-contain"
               />
             </div>
           </div>
         </div>
       </article>
 
-      <div className="flex items-center justify-center gap-3 px-2 text-sm text-[color:var(--text-muted)]">
-        <div className="flex -space-x-2">
-          {["A", "S", "M"].map((letter, index) => (
-            <span
-              key={letter}
-              className={`inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-sm ${index === 0
-                ? "bg-[#3b82f6]"
-                : index === 1
-                  ? "bg-[#ef4444]"
-                  : "bg-[#0f766e]"
-                }`}
-            >
-              {letter}
-            </span>
-          ))}
-        </div>
-        <span className="text-[11px] font-medium sm:text-[12px]">Trusted by 1L+ students</span>
-      </div>
     </div>
   );
   // Top college flow
@@ -1391,20 +1372,14 @@ text-white
                   <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.82fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.38fr)_minmax(32rem,0.9fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(36rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <h1 className="home-hero-title font-montserrat-display mt-2 text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[46rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[52rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[58rem] 2xl:text-[50px] 2xl:leading-[58px]">
+                        <h1 className="home-hero-title font-montserrat-display mx-auto mt-2 max-w-[36rem] text-center text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:max-w-[40rem] lg:text-[50px] lg:leading-[50px] xl:max-w-[46rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[50rem] 2xl:text-[50px] 2xl:leading-[58px]">
                           <span className="block">
-                            Find Your <span className="text-[#2563eb]">Future</span>
+                            Find Your <span className="inline-block -skew-x-6 text-[#2563eb]">Future</span>
                           </span>
                           <span className="block">
-                            <span className="text-[#2563eb]">College</span> Smartly.
+                            <span className="inline-block -skew-x-6 text-[#2563eb]">College</span> Smartly.
                           </span>
                         </h1>
-
-                        <p className="type-body-large mx-auto mt-3.5 max-w-[44rem] px-2 text-[color:var(--text-muted)] lg:mx-0 lg:px-0 xl:max-w-[50rem] 2xl:max-w-[56rem]">
-                          Discover colleges, courses, exams, and cities from one premium
-                          search flow built to help you shortlist faster and decide with
-                          more confidence.
-                        </p>
 
                         <div className="mx-auto mt-5 w-full max-w-none px-0 sm:px-1 md:hidden">
                           <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2.5 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
@@ -1558,23 +1533,21 @@ text-white
                       </div>
 
                       <div className="mx-auto hidden w-full max-w-[50rem] md:block lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
-                        <div className="hero-search-shell group relative z-[70] mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
+                        <div className="hero-search-shell group relative z-40 mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
                           <div
                             className="
       hero-search-input
-      relative z-[2] overflow-hidden
-      rounded-[1.05rem] sm:rounded-[1.35rem]
-      border-2
+      relative z-0 overflow-hidden
+      rounded-[0.85rem] sm:rounded-[1.05rem]
+      border-2 border-[#2563eb]
       bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(248,250,255,0.98))]
       p-1 sm:p-1
-      shadow-[0_16px_34px_rgba(20,42,99,0.1)]
-      ring-1
+      shadow-none
+      ring-0
     "
                           style={{
-                            borderColor: activeSearchField ? "rgba(37,99,235,0.82)" : "rgba(37,99,235,0.42)",
-                            boxShadow: activeSearchField
-                              ? "0 24px 48px rgba(20,42,99,0.16), 0 0 0 5px rgba(37,99,235,0.16)"
-                              : "0 18px 36px rgba(20,42,99,0.1), 0 0 0 2px rgba(37,99,235,0.12)",
+                            borderColor: "#2563eb",
+                            boxShadow: "none",
                           }}
                           >
                             <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-[minmax(0,1.14fr)_minmax(0,0.92fr)_minmax(0,0.92fr)_6.8rem] md:items-center md:gap-0 md:pr-1">
@@ -1582,16 +1555,15 @@ text-white
                               className={`
           relative min-w-0
           px-3 py-2.5 md:px-4
-          rounded-[0.9rem] md:rounded-none
+          rounded-[0.75rem] md:rounded-none
           bg-white md:bg-transparent
-          border
+          border border-[#2563eb]
           md:border-0
-          md:border-r md:border-[rgba(37,99,235,0.18)]
-          ${activeSearchField === "course" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
+          md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
                             >
-                              <div className="mb-1.5 flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
-                                <Search className="size-3.5" />
+                              <div className="mb-1.5 flex h-6 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
+                                <Search className="size-[1.05rem]" />
                                 Search Courses
                               </div>
 
@@ -1611,27 +1583,26 @@ text-white
                                   }
                                 }}
                                 placeholder="Search for Course"
-                                className="relative z-[1] min-h-[1.55rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[14px] text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
+                                className="relative z-[1] min-h-[1.55rem] w-full border-0 bg-transparent px-0 pb-0 pt-0 text-[14px] text-[color:var(--text-dark)] outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-[color:var(--text-muted)]"
                               />
                             </div>
 
                             <div
                               className={`
           flex min-h-[2.85rem] flex-col items-start justify-center gap-1.5
-          rounded-[0.9rem] md:rounded-none
+          rounded-[0.75rem] md:rounded-none
           bg-white md:bg-transparent
           px-3 py-2.5 md:px-4 md:py-2
-          border
+          border border-[#2563eb]
           md:border-0
-          md:border-r md:border-[rgba(37,99,235,0.18)]
-          ${activeSearchField === "college" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
+          md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(15,76,129,0.08)] text-[color:var(--brand-primary)]">
-                                  <Building2 className="size-[0.9rem]" />
+                              <div className="flex h-6 items-center gap-1">
+                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
+                                  <Building2 className="size-[1.05rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
+                                <label className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
                                   College
                                 </label>
                               </div>
@@ -1647,27 +1618,26 @@ text-white
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="College"
                                 placeholder="Search for College"
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-normal text-[color:var(--text-dark)] outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-[color:var(--text-muted)]"
                               />
                             </div>
 
                             <div
                               className={`
           flex min-h-[2.85rem] flex-col items-start justify-center gap-1.5
-          rounded-[0.9rem] md:rounded-none
+          rounded-[0.75rem] md:rounded-none
           bg-white md:bg-transparent
           px-3 py-2.5 md:px-4 md:py-2
-          border
+          border border-[#2563eb]
           md:border-0
-          md:border-r md:border-[rgba(37,99,235,0.18)]
-          ${activeSearchField === "location" ? "border-[rgba(37,99,235,0.5)] bg-[linear-gradient(180deg,rgba(244,248,255,0.98),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(37,99,235,0.12)]" : "border-[rgba(37,99,235,0.14)]"}
+          md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(30,78,121,0.08)] text-[color:var(--brand-primary)]">
-                                  <MapPin className="size-[0.9rem]" />
+                              <div className="flex h-6 items-center gap-1">
+                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
+                                  <MapPin className="size-[1.05rem]" />
                                 </span>
-                                <label className="block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
+                                <label className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-[#2563eb]">
                                   Location
                                 </label>
                               </div>
@@ -1683,14 +1653,14 @@ text-white
                                 onBlur={scheduleSearchFieldClose}
                                 aria-label="Location"
                                 placeholder="Search for Location"
-                                className="w-full border-0 bg-transparent px-0 py-0 text-[13px] font-medium text-[color:var(--text-dark)] outline-none placeholder:text-[color:var(--brand-primary-soft)]"
+                                className="w-full border-0 bg-transparent px-0 py-0 text-[14px] font-normal text-[color:var(--text-dark)] outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-[color:var(--text-muted)]"
                               />
                             </div>
 
                               <button
                                 type="button"
                                 onClick={handleHeroSearch}
-                                className="
+                              className="
           inline-flex
           h-12 min-h-[3rem]
           w-full
@@ -1720,7 +1690,7 @@ text-white
                           </div>
 
                           {shouldShowHeroSearchPanel ? (
-                            <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[120] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(20,42,99,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,248,253,0.98))] p-1.5 shadow-[0_24px_48px_rgba(20,42,99,0.12)] backdrop-blur-sm">
+                            <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[140] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(20,42,99,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,248,253,0.98))] p-1.5 shadow-[0_24px_48px_rgba(20,42,99,0.12)] backdrop-blur-sm">
                               {activeSearchField && activeSearchSuggestions.length > 0 ? (
                                 <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
                                   <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
@@ -1789,7 +1759,7 @@ text-white
                           ) : null}
                         </div>
 
-                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[50rem] grid-cols-2 gap-2 sm:mt-2 sm:grid-cols-4 sm:gap-2.5 lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
+                        <div className="relative z-[1] mx-auto mt-2.5 grid w-full max-w-[50rem] grid-cols-2 gap-2 sm:mt-2 sm:grid-cols-4 sm:gap-2.5 lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
                           {heroStatCards.map((item) => (
                             <div key={item.label} className="min-w-0 rounded-[1rem] border border-[rgba(37,99,235,0.12)] bg-white px-2 py-2.5 shadow-[0_10px_20px_rgba(20,42,99,0.05)] sm:rounded-[1rem] sm:px-2.5 sm:py-2.5">
                               <div className="flex flex-col items-center justify-center gap-1.5 text-center sm:flex-row sm:gap-2">
@@ -1807,14 +1777,14 @@ text-white
                       </div>
                     </div>
 
-                    <div className="w-full self-start lg:flex lg:justify-end lg:pt-5">
+                    <div className="w-full self-start lg:flex lg:justify-end lg:pt-2">
                       {renderHeroCutoffBanner()}
                     </div>
 
                     {/* Top exams overview */}
-                    <div className="mx-auto mt-6 w-full max-w-none px-0 scroll-fade-in scroll-delay-1 lg:col-span-2" data-scroll-animate>
+                    <div className="mx-auto mt-4 w-full max-w-none px-0 scroll-fade-in scroll-delay-1 lg:col-span-2" data-scroll-animate>
                       <div className="relative">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
@@ -1834,7 +1804,7 @@ text-white
                           </button>
                         </div>
 
-                        <div className="relative mt-5">
+                        <div className="relative mt-4">
                           <div
                             ref={topExamsScrollRef}
                             onScroll={updateTopExamsScrollState}

@@ -625,8 +625,58 @@ export const findBestCourseLookupMatch = <T extends { course: string }>(
 export const getCollegeById = (id: string) =>
   colleges.find((college) => college.id === id);
 
-export const getCoursesForCollege = (collegeName: string) =>
-  courses.filter((course) => course.college === collegeName);
+const courseMatchesCollegeIdentity = (course: Course, collegeKeys: string[]) => {
+  if (!collegeKeys.length) return false;
+
+  const courseIdentityValues = [
+    course.collegeId || "",
+    course.collegeCode || "",
+    course.college || "",
+  ]
+    .map((value) => normalizeText(value))
+    .filter(Boolean);
+
+  if (courseIdentityValues.some((value) => collegeKeys.includes(value))) {
+    return true;
+  }
+
+  return Array.isArray(course.collegeDetails)
+    ? course.collegeDetails.some((detail) =>
+        [detail.college, detail.collegeId, detail.collegeCode]
+          .map((value) => normalizeText(value || ""))
+          .filter(Boolean)
+          .some((value) => collegeKeys.includes(value)),
+      )
+    : false;
+};
+
+export const getCoursesForCollege = (collegeName: string) => {
+  const collegeKeys = [collegeName].map((value) => normalizeText(value)).filter(Boolean);
+  return courses.filter((course) => courseMatchesCollegeIdentity(course, collegeKeys));
+};
+
+export const getCoursesForCollegeRecord = (college: College) => {
+  const collegeKeys = [college.id, college.name, college.collegeCode || ""]
+    .map((value) => normalizeText(value))
+    .filter(Boolean);
+
+  return courses.filter((course) => courseMatchesCollegeIdentity(course, collegeKeys));
+};
 
 export const getRelatedCourses = (courseName: string) =>
-  courses.filter((course) => courseMatchesLookup(course.course, courseName));
+  courses.filter((course) => {
+    const displayName = formatCourseDisplayName(
+      course.course,
+      course.stream || course.courseCategory,
+      course.specialization,
+    );
+
+    return [
+      course.course,
+      course.courseName || "",
+      course.specialization || "",
+      course.courseCategory || "",
+      course.stream || "",
+      displayName,
+    ].some((value) => courseMatchesLookup(value, courseName));
+  });

@@ -149,7 +149,7 @@ export function ExploreClient({
       ? initialView
       : "home";
   const [viewMode, setViewMode] = useState<"home" | "colleges" | "courses">(safeInitialView);
-  const [showBestOnly, setShowBestOnly] = useState(false);
+  const [showBestOnly] = useState(false);
   const [coursePage, setCoursePage] = useState(0);
   const [homeCollegePage, setHomeCollegePage] = useState(0);
   const [allCollegePage, setAllCollegePage] = useState(0);
@@ -206,7 +206,7 @@ export function ExploreClient({
       active = false;
       cancelIdleLoad?.();
     };
-  }, []);
+  }, [collegesData, coursesData]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -259,20 +259,30 @@ export function ExploreClient({
     return matchedCollegeIds;
   }, [hasStreamFilter, liveColleges, liveCourses, matchedStreamAliases, searchText]);
 
+  const filteredCourseRows = useMemo(
+    () =>
+      liveCourses.filter((course) => matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter)),
+    [hasStreamFilter, liveCourses, matchedStreamAliases, searchText],
+  );
+
   const groupedCourses = useMemo(() => {
-    const grouped = new Map<string, typeof liveCourses>();
-    liveCourses.forEach((course) => {
-      if (!matchesCourseQuery(course, searchText, matchedStreamAliases, hasStreamFilter)) return;
-      grouped.set(course.course, [...(grouped.get(course.course) || []), course]);
+    const grouped = new Map<string, typeof filteredCourseRows>();
+    filteredCourseRows.forEach((course) => {
+      const key = formatCourseDisplayName(
+        String(course.course || "").trim(),
+        course.stream || course.courseCategory,
+        course.specialization,
+      );
+      grouped.set(key, [...(grouped.get(key) || []), course]);
     });
     return [...grouped.entries()];
-  }, [hasStreamFilter, liveCourses, matchedStreamAliases, searchText]);
+  }, [filteredCourseRows]);
 
   const coursesPerPage = 10;
 
 const totalCoursePages = Math.max(
   1,
-  Math.ceil(groupedCourses.length / coursesPerPage)
+  Math.ceil(filteredCourseRows.length / coursesPerPage)
 );
 
 const currentCoursePage = Math.min(
@@ -280,7 +290,7 @@ const currentCoursePage = Math.min(
   totalCoursePages - 1
 );
 
-const visibleCourses = groupedCourses.slice(
+const visibleCourses = filteredCourseRows.slice(
   currentCoursePage * coursesPerPage,
   currentCoursePage * coursesPerPage + coursesPerPage
 );
@@ -646,7 +656,7 @@ const visibleCourses = groupedCourses.slice(
 
   <div className="flex items-center gap-2">
     <span className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--brand-primary)]">
-      Courses: {groupedCourses.length}
+      Courses: {filteredCourseRows.length}
     </span>
 
 <div className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-2 py-1 text-[10px] md:text-xs font-medium text-[color:var(--brand-primary)]">      <span>Page</span>
@@ -660,7 +670,7 @@ const visibleCourses = groupedCourses.slice(
           const start = index * coursesPerPage + 1;
           const end = Math.min(
             (index + 1) * coursesPerPage,
-            groupedCourses.length
+            filteredCourseRows.length
           );
 
           return (
@@ -696,64 +706,67 @@ const visibleCourses = groupedCourses.slice(
     </thead>
 
     <tbody>
-      {visibleCourses.map(
-        ([courseName, rows]) => {
-          const primaryCourse = rows[0];
+      {visibleCourses.map((course) => {
+        const displayCourseName = formatCourseDisplayName(
+          String(course.course || '').trim(),
+          course.stream || course.courseCategory,
+          course.specialization,
+        );
+        const fees = [
+          Number(course.totalFees),
+          ...(Array.isArray(course.collegeDetails)
+            ? course.collegeDetails.map((detail) => Number(detail.totalFees))
+            : []),
+        ].filter((value) => Number.isFinite(value) && value > 0);
+        const cutoffs = [
+          Number(course.cutoff),
+          ...(Array.isArray(course.collegeDetails)
+            ? course.collegeDetails.map((detail) => Number(detail.cutoff))
+            : []),
+        ].filter((value) => Number.isFinite(value) && value > 0);
+        const duration = String(course.duration || '').trim() || '-';
 
-          const displayCourseName = formatCourseDisplayName(
-            courseName,
-            primaryCourse?.stream || primaryCourse?.courseCategory,
-            primaryCourse?.specialization
-          );
+        return (
+          <tr
+            key={course.id}
+            onClick={() => router.push(`/explore/course/${encodeURIComponent(displayCourseName)}`)}
+            className="cursor-pointer border-b border-slate-200 transition hover:bg-slate-50 h-12"
+          >
+            <td className="px-4 py-2 font-semibold text-slate-800 max-w-[220px] md:max-w-none">
+              <div className="line-clamp-2 md:line-clamp-1">{displayCourseName}</div>
+            </td>
 
-          const fees = rows.map((item) => item.totalFees);
-          const cutoffs = rows.map((item) => item.cutoff);
-          const durations = [...new Set(rows.map((item) => item.duration))];
-          const isTop = rows.some((row) => row.isTopCourse);
+            <td className="px-4 py-2 text-slate-700">
+              Rs.{' '}
+              {fees.length
+                ? `${Math.min(...fees).toLocaleString()}${Math.max(...fees) !== Math.min(...fees) ? ` - ${Math.max(...fees).toLocaleString()}` : ''}`
+                : '-'}
+            </td>
 
-          return (
-            <tr
-              key={courseName}
-              onClick={() =>
-                router.push(
-                  `/explore/course/${encodeURIComponent(displayCourseName)}`
-                )
-              }
-className="cursor-pointer border-b border-slate-200 hover:bg-slate-50 transition h-12"            >
-              <td className="px-4 py-2 font-semibold text-slate-800 max-w-[220px] md:max-w-none">
-  <div className="line-clamp-2 md:line-clamp-1">
-    {displayCourseName}
-  </div>
-</td>
+            <td className="px-4 py-2 text-slate-700">
+              {cutoffs.length
+                ? Math.min(...cutoffs) === Math.max(...cutoffs)
+                  ? `${Math.min(...cutoffs)}`
+                  : `${Math.min(...cutoffs)} - ${Math.max(...cutoffs)}`
+                : '-'}
+            </td>
 
-              <td className="px-4 py-2 text-slate-700">
-                ₹ {Math.min(...fees).toLocaleString()} -
-                {Math.max(...fees).toLocaleString()}
-              </td>
+            <td className="px-4 py-2 text-slate-700">{duration}</td>
 
-              <td className="px-4 py-2 text-slate-700">
-                {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
-              </td>
-
-              <td className="px-4 py-2 text-slate-700">
-                {durations.join(", ")}
-              </td>
-
-              <td className="px-4 py-2 text-center">
-                {isTop ? (
-                  <span className="rounded-full border border-green-200 bg-green-50 px-4 py-1 text-xs font-semibold text-green-700">
-                    Top
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1 text-xs font-semibold text-blue-700">
-                    Regular
-                  </span>
-                )}
-              </td>
-            </tr>
-          );
-        }
-      )}
+            <td className="px-4 py-2 text-center">
+              {course.isTopCourse ? (
+                <span className="rounded-full border border-green-200 bg-green-50 px-4 py-1 text-xs font-semibold text-green-700">
+                  Top
+                </span>
+              ) : (
+                <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1 text-xs font-semibold text-blue-700">
+                  Regular
+                </span>
+              )}
+            </td>
+          </tr>
+        );
+      })}
     </tbody>
   </table>
 </div>
@@ -765,3 +778,4 @@ className="cursor-pointer border-b border-slate-200 hover:bg-slate-50 transition
     </section>
   );
 }
+

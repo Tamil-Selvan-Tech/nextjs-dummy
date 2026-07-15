@@ -63,12 +63,12 @@ body {
 .find-theme {
   --find-text: #0f1b25;
   --find-muted: #5f6b76;
-  --find-bg: #ffffff;
-  --find-section: #f8f9fb;
-  --find-border: #e6e6e6;
-  --find-yellow: #f4b400;
-  --find-yellow-soft: #fff4cc;
-  --find-yellow-hover: #d99a00;
+  --find-bg: #f7f9ff;
+  --find-section: #eef4ff;
+  --find-border: #cdd9f4;
+  --find-yellow: #132a60;
+  --find-yellow-soft: #eef4ff;
+  --find-yellow-hover: #102554;
   background: var(--find-bg);
   color: var(--find-text);
   font-family: "General Sans", var(--font-inter), "Segoe UI", sans-serif;
@@ -249,7 +249,7 @@ body {
 .find-theme [class*="text-[#142a63]"],
 .find-theme [class*="text-[#17356f]"],
 .find-theme [class*="text-[#304061]"] {
-  color: var(--find-text) !important;
+  color: var(--find-yellow) !important;
 }
 
 .find-theme [class*="text-[#52618a]"],
@@ -277,8 +277,10 @@ body {
 
 .find-theme [class*="bg-[#0856dc]"],
 .find-theme [class*="bg-[#142a63]"],
-.find-theme [class*="bg-[#052a82]"] {
-  background-color: var(--find-text) !important;
+.find-theme [class*="bg-[#052a82]"],
+.find-theme [class*="bg-[#17356f]"],
+.find-theme [class*="bg-[#0F1B25]"] {
+  background-color: var(--find-yellow) !important;
 }
 
 .find-theme [class*="border-[#0856dc]"],
@@ -288,8 +290,71 @@ body {
 }
 
 .find-theme [class*="hover:bg-[#0647b8]"]:hover,
-.find-theme [class*="hover:bg-[#0f1f4a]"]:hover {
+.find-theme [class*="hover:bg-[#0f1f4a]"]:hover,
+.find-theme [class*="hover:bg-[#0F1B25]"]:hover {
   background-color: var(--find-yellow-hover) !important;
+}
+
+.find-theme button[class*="bg-[#0856dc]"],
+.find-theme button[class*="bg-[#142a63]"],
+.find-theme button[class*="bg-[#052a82]"],
+.find-theme button[class*="bg-[#17356f]"],
+.find-theme button[class*="bg-[#0F1B25]"] {
+  color: #ffffff !important;
+}
+
+.find-theme button[class*="bg-[#0856dc]"] *,
+.find-theme button[class*="bg-[#142a63]"] *,
+.find-theme button[class*="bg-[#052a82]"] *,
+.find-theme button[class*="bg-[#17356f]"] *,
+.find-theme button[class*="bg-[#0F1B25]"] * {
+  color: #ffffff !important;
+}
+
+.find-theme button[class*="bg-[#0856dc]"]:hover,
+.find-theme button[class*="bg-[#142a63]"]:hover,
+.find-theme button[class*="bg-[#052a82]"]:hover,
+.find-theme button[class*="bg-[#17356f]"]:hover,
+.find-theme button[class*="bg-[#0F1B25]"]:hover {
+  background-color: #ffffff !important;
+  border-color: var(--find-yellow) !important;
+  color: var(--find-yellow) !important;
+}
+
+.find-theme button[class*="bg-[#0856dc]"]:hover *,
+.find-theme button[class*="bg-[#142a63]"]:hover *,
+.find-theme button[class*="bg-[#052a82]"]:hover *,
+.find-theme button[class*="bg-[#17356f]"]:hover *,
+.find-theme button[class*="bg-[#0F1B25]"]:hover * {
+  color: var(--find-yellow) !important;
+}
+
+.find-theme button[data-no-theme-hover="true"] {
+  border-color: #dde2e7 !important;
+}
+
+.find-theme button[data-no-theme-hover="true"][data-active="true"] {
+  background-color: #0856dc !important;
+  border-color: #0856dc !important;
+  color: #ffffff !important;
+}
+
+.find-theme button[data-no-theme-hover="true"][data-active="true"]:hover {
+  background-color: #0856dc !important;
+  border-color: #0856dc !important;
+  color: #ffffff !important;
+}
+
+.find-theme button[data-no-theme-hover="true"]:not([data-active="true"]) {
+  background-color: #ffffff !important;
+  border-color: #dde2e7 !important;
+  color: #354150 !important;
+}
+
+.find-theme button[data-no-theme-hover="true"]:not([data-active="true"]):hover {
+  background-color: #eef4ff !important;
+  border-color: #0856dc !important;
+  color: #0856dc !important;
 }
 
 .find-theme [class*="text-white"] {
@@ -352,8 +417,8 @@ body {
   position: absolute;
   z-index: 0;
   pointer-events: none;
-  color: #ffc107;
-  filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.4));
+  color: #17356f;
+  filter: drop-shadow(0 0 10px rgba(23, 53, 111, 0.28));
   animation: sparkleDrift 5.6s ease-in-out infinite;
 }
 
@@ -494,12 +559,12 @@ body {
 .cutoff-result-theme {
   --cutoff-text: #0f1b25;
   --cutoff-muted: #5f6b76;
-  --cutoff-bg: #ffffff;
-  --cutoff-section: #f8f9fb;
-  --cutoff-border: #e6e6e6;
-  --cutoff-yellow: #f4b400;
-  --cutoff-yellow-soft: #fff4cc;
-  --cutoff-yellow-hover: #d99a00;
+  --cutoff-bg: #f7f9ff;
+  --cutoff-section: #eef4ff;
+  --cutoff-border: #cdd9f4;
+  --cutoff-yellow: #132a60;
+  --cutoff-yellow-soft: #eef4ff;
+  --cutoff-yellow-hover: #102554;
   background: var(--cutoff-bg) !important;
   color: var(--cutoff-text) !important;
   font-family: "General Sans", var(--font-inter), "Segoe UI", sans-serif !important;
@@ -727,14 +792,48 @@ body {
   border-color: var(--cutoff-yellow) !important;
   background-color: var(--cutoff-yellow) !important;
   background-image: none !important;
-  color: var(--cutoff-text) !important;
+  color: #ffffff !important;
 }
 
 .cutoff-result-theme button:not(:disabled):hover,
 .cutoff-result-theme .suggest-college-cta:hover {
-  border-color: var(--cutoff-yellow-hover) !important;
-  background-color: var(--cutoff-yellow-hover) !important;
+  border-color: var(--cutoff-yellow) !important;
+  background-color: #ffffff !important;
+  color: var(--cutoff-yellow) !important;
+}
+
+.cutoff-result-theme button[class*="bg-[#1766f2]"],
+.cutoff-result-theme button[class*="bg-[#1264d8]"],
+.cutoff-result-theme button[class*="bg-[#1f6dff]"],
+.cutoff-result-theme button[class*="bg-[#276dff]"],
+.cutoff-result-theme button[class*="bg-[#1551ee]"] {
   color: #ffffff !important;
+}
+
+.cutoff-result-theme button[class*="bg-[#1766f2]"] *,
+.cutoff-result-theme button[class*="bg-[#1264d8]"] *,
+.cutoff-result-theme button[class*="bg-[#1f6dff]"] *,
+.cutoff-result-theme button[class*="bg-[#276dff]"] *,
+.cutoff-result-theme button[class*="bg-[#1551ee]"] * {
+  color: #ffffff !important;
+}
+
+.cutoff-result-theme button[class*="bg-[#1766f2]"]:hover,
+.cutoff-result-theme button[class*="bg-[#1264d8]"]:hover,
+.cutoff-result-theme button[class*="bg-[#1f6dff]"]:hover,
+.cutoff-result-theme button[class*="bg-[#276dff]"]:hover,
+.cutoff-result-theme button[class*="bg-[#1551ee]"]:hover {
+  background-color: #ffffff !important;
+  border-color: var(--cutoff-yellow) !important;
+  color: var(--cutoff-yellow) !important;
+}
+
+.cutoff-result-theme button[class*="bg-[#1766f2]"]:hover *,
+.cutoff-result-theme button[class*="bg-[#1264d8]"]:hover *,
+.cutoff-result-theme button[class*="bg-[#1f6dff]"]:hover *,
+.cutoff-result-theme button[class*="bg-[#276dff]"]:hover *,
+.cutoff-result-theme button[class*="bg-[#1551ee]"]:hover * {
+  color: var(--cutoff-yellow) !important;
 }
 
 .cutoff-result-theme .cutoff-sort-trigger:not(:disabled),
@@ -748,16 +847,16 @@ body {
 .cutoff-result-theme .cutoff-sort-trigger:not(:disabled):hover,
 .cutoff-result-theme .cutoff-sort-option:not(:disabled):hover,
 .cutoff-result-theme .cutoff-view-toggle:not(:disabled):hover {
-  border-color: #f4b400 !important;
-  background-color: #fff8e5 !important;
-  color: #0f1b25 !important;
+  border-color: #0856dc !important;
+  background-color: #eef4ff !important;
+  color: #0856dc !important;
 }
 
 .cutoff-result-theme .cutoff-view-toggle-active:not(:disabled),
 .cutoff-result-theme .cutoff-view-toggle-active:not(:disabled):hover {
-  border-color: #f4b400 !important;
-  background-color: #f4b400 !important;
-  color: #0f1b25 !important;
+  border-color: #0856dc !important;
+  background-color: #0856dc !important;
+  color: #ffffff !important;
 }
 
 .cutoff-result-theme thead tr {
@@ -837,8 +936,8 @@ body {
 .cutoff-result-theme [class*="bg-[#eaf8ef]"],
 .cutoff-result-theme [class*="bg-[#fff0f0]"],
 .cutoff-result-theme [class*="bg-[#ffecec]"],
-.cutoff-result-theme [class*="bg-[#fff7df]"],
-.cutoff-result-theme [class*="bg-[#fff7e6]"],
+.cutoff-result-theme [class*="bg-[#eef4ff]"],
+.cutoff-result-theme [class*="bg-[#f3f6ff]"],
 .cutoff-result-theme [class*="bg-[#fff8f8]"],
 .cutoff-result-theme [class*="bg-[#fff1f1]"],
 .cutoff-result-theme [class*="bg-[#f2fff9]"],
@@ -2018,7 +2117,6 @@ button,
   position: relative;
   overflow: visible;
   border-radius: 9999px;
-  animation: searchShellFloat 6s ease-in-out infinite;
 }
 
 .hero-search-shell::after {
@@ -2036,23 +2134,13 @@ button,
 .hero-search-input {
   position: relative;
   z-index: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 14px 28px rgba(15, 76, 129, 0.09);
-  transition:
-    border-color 0.28s ease,
-    box-shadow 0.28s ease,
-    transform 0.28s ease;
+  box-shadow: none;
+  transition: border-color 0.28s ease, box-shadow 0.28s ease;
 }
 
 .hero-search-shell:focus-within .hero-search-input {
-  transform: translateY(-1px) scale(1.003);
   border-color: rgba(109, 40, 217, 0.98);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 24px 48px rgba(76, 29, 149, 0.24),
-    0 0 0 6px rgba(167, 139, 250, 0.24),
-    0 0 24px rgba(139, 92, 246, 0.24);
+  box-shadow: none;
 }
 
 @keyframes floatCard {

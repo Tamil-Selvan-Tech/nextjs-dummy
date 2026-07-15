@@ -32,7 +32,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <RouteHistoryTracker />
         </Suspense>
-        <main className="flex-1">{children}</main>
+        <main>{children}</main>
         <AppToastProvider />
         <Footer />
       </body>

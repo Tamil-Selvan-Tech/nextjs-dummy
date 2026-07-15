@@ -69,6 +69,8 @@ const hiddenFooterRoutes = [
   "/college/requests",
 ];
 
+
+
 const sectionHeadingClass =
   "type-label-bold uppercase tracking-[0.12em] text-white/[0.9]";
 
@@ -236,7 +238,15 @@ export function Footer() {
                 ))}
               </div>
               <p className="type-caption text-white/[0.58]">
-                Design and Development by <span className="font-semibold text-white/[0.82]">Javix Technologies</span>
+                Design and Development by{" "}
+                <a
+                  href="https://www.javixtechnologies.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-white/[0.82] transition hover:text-white"
+                >
+                  Javix Technologies
+                </a>
               </p>
             </div>
           </div>

@@ -316,19 +316,19 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
 
   const cutoffLabelClass = "mb-2 block text-[14px] font-semibold text-[#0F1B25]";
   const cutoffFieldShellClass =
-    "flex h-12 items-center gap-3 rounded-[6px] border border-[#DDE2E7] bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition focus-within:border-[#F4B400] focus-within:shadow-[0_0_0_4px_rgba(244,180,0,0.12)]";
+    "flex h-12 items-center gap-3 rounded-[6px] border border-[#DDE2E7] bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition focus-within:border-[#0856dc] focus-within:shadow-[0_0_0_4px_rgba(23,53,111,0.12)]";
   const cutoffFieldInputClass =
     "h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]";
   const cutoffPrimaryButtonClass =
-    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] disabled:cursor-not-allowed disabled:opacity-60";
   const cutoffSecondaryButtonClass =
-    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#FFF6D8]";
+    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E6E6E6] bg-white px-6 text-[16px] font-medium text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] transition hover:bg-[#eef4ff]";
   const registerFieldShellClass =
     "flex h-11 items-center gap-3 rounded-[6px] border border-[#DDE2E7] bg-white px-3 shadow-[0_5px_14px_rgba(15,27,37,0.04)]";
   const registerFieldInputClass =
     "h-full w-full border-0 bg-transparent p-0 text-[15px] font-normal text-[#0F1B25] outline-none placeholder:text-[#8A949F]";
   const registerPrimaryButtonClass =
-    "inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-5 text-[15px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-5 text-[15px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] disabled:cursor-not-allowed disabled:opacity-60";
 
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -491,12 +491,12 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
         <div className="find-auth-stage relative z-10">
           <div
               key={authFlipKey}
-              className={`find-auth-panel relative flex flex-col overflow-hidden rounded-[1.6rem] border border-[#f3df9a] bg-[linear-gradient(180deg,#fffdf5_0%,#ffffff_38%,#fffaf0_100%)] px-4 pt-6 shadow-[0_30px_90px_rgba(31,24,4,0.22)] sm:px-8 sm:pt-7 ${
+              className={`find-auth-panel relative flex flex-col overflow-hidden rounded-[1.6rem] border border-[#bfdbfe] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_38%,#eef4ff_100%)] px-4 pt-6 shadow-[0_30px_90px_rgba(31,24,4,0.22)] sm:px-8 sm:pt-7 ${
                 authFlipDirection === "right" ? "find-auth-panel-from-right" : "find-auth-panel-from-left"
               }`}
             >
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,232,160,0.12)_0%,rgba(255,255,255,0)_60%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(23,53,111,0.12)_0%,rgba(255,255,255,0)_60%)]" />
             </div>
 
               <div className="absolute right-4 top-4 z-20">
@@ -582,7 +582,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                     <div className="mt-4">
                     <div className="relative mb-3">
                       <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-[#e6e0cf]" />
+                        <span className="w-full border-t border-[#dbeafe]" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-white px-3 tracking-[0.18em] text-[#6f7b8c]">
@@ -599,8 +599,8 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                             isGoogleLoading ? "opacity-80" : ""
                           }`}
                         >
-                          <div className={`${cutoffSecondaryButtonClass} pointer-events-none text-left group-hover:bg-[#FFF6D8]`}>
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#fff4cc]">
+                          <div className={`${cutoffSecondaryButtonClass} pointer-events-none text-left group-hover:bg-[#eef4ff]`}>
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#eef4ff]">
                               <GoogleMark className="size-4.5" />
                             </span>
                             <span className="min-w-0 flex-1 text-[16px] font-medium text-[#0F1B25]">
@@ -635,7 +635,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                         window.sessionStorage.setItem("collegeedwiser-find-auth-mode", "register");
                         switchAuthMode("register");
                       }}
-                      className="font-semibold text-[#d99a00] transition hover:underline"
+                      className="font-semibold text-[#0856dc] transition hover:underline"
                     >
                       Create Account
                     </button>
@@ -736,7 +736,7 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
                         window.sessionStorage.setItem("collegeedwiser-find-auth-mode", "login");
                         switchAuthMode("login");
                       }}
-                      className="font-semibold text-[#d99a00] transition hover:underline"
+                      className="font-semibold text-[#0856dc] transition hover:underline"
                     >
                       Login Now
                     </button>
@@ -758,3 +758,4 @@ export function FindAuthModal({ isOpen, redirectPath, onClose, onAuthenticated }
     </div>
   );
 }
+

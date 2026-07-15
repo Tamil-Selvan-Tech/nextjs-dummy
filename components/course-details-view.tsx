@@ -16,7 +16,8 @@ import {
   Trophy,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
-import type { College, Course } from "@/lib/site-data";
+import { CollegeLogoBadge } from "@/components/college-logo-badge";
+import { normalizeText, type College, type Course } from "@/lib/site-data";
 import {
   formatCompactIndianCurrency,
   formatCompactIndianCurrencyRange,
@@ -53,6 +54,17 @@ export function CourseDetailsView({
 }: CourseDetailsViewProps) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const uniqueCollegesForCourse = useMemo(() => {
+    const seen = new Set<string>();
+
+    return collegesForCourse.filter((college) => {
+      const key = normalizeText(college.id || college.name || college.collegeCode || "");
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [collegesForCourse]);
 
   const feeValues = relatedCourses.map((course) => course.totalFees);
   const cutoffValues = relatedCourses.map((course) => course.cutoff);
@@ -65,41 +77,68 @@ export function CourseDetailsView({
   const categories = [...new Set(relatedCourses.map((course) => course.courseCategory).filter(Boolean))];
   const locationOptions = [
     ...new Set(
-      collegesForCourse
+      uniqueCollegesForCourse
         .map((college) => [college.district, college.state].filter(Boolean).join(", "))
         .filter(Boolean),
     ),
   ].sort((a, b) => a.localeCompare(b));
-  const collegeLookup = useMemo(
-    () =>
-      new Map(
-        collegesForCourse.map((college) => [college.name.trim().toLowerCase(), college]),
-      ),
-    [collegesForCourse],
-  );
-
   const collegeRows = useMemo(
     () =>
-      relatedCourses.map((course) => {
-        const college = collegeLookup.get(course.college.trim().toLowerCase());
-        return {
-          course,
-          college,
-          location: [college?.district, college?.state].filter(Boolean).join(", "),
-        };
-      }),
-    [collegeLookup, relatedCourses],
+      uniqueCollegesForCourse
+        .map((college) => {
+          const collegeIdentityValues = [
+            college.id,
+            college.name,
+            college.collegeCode || "",
+          ]
+            .map((value) => normalizeText(value))
+            .filter(Boolean);
+
+          const course =
+            relatedCourses.find((item) => {
+              const courseIdentityValues = [
+                item.collegeId || "",
+                item.collegeCode || "",
+                item.college || "",
+                ...(Array.isArray(item.collegeDetails)
+                  ? item.collegeDetails.flatMap((detail) => [
+                      detail.college || "",
+                      detail.collegeId || "",
+                      detail.collegeCode || "",
+                    ])
+                  : []),
+              ]
+                .map((value) => normalizeText(value))
+                .filter(Boolean);
+
+              return courseIdentityValues.some((value) => collegeIdentityValues.includes(value));
+            }) ||
+            relatedCourses.find(
+              (item) =>
+                normalizeText(item.college) === normalizeText(college.name) ||
+                normalizeText(item.college) === normalizeText(college.id),
+            ) ||
+            relatedCourses[0];
+
+          return {
+            course,
+            college,
+            location: [college.district, college.state].filter(Boolean).join(", "),
+          };
+        })
+        .filter(({ college, course }) => Boolean(college) && Boolean(course)),
+    [relatedCourses, uniqueCollegesForCourse],
   );
   const renderCutoffDetails = (course: Course) => {
     if (Array.isArray(course.cutoffByCategory) && course.cutoffByCategory.length > 0) {
       const cutoffItems = course.cutoffByCategory.filter((item) => item.category && item.cutoff);
       if (cutoffItems.length > 0) {
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:[grid-template-columns:minmax(0,0.9fr)_minmax(0,1.1fr)]">
             {cutoffItems.map((item) => (
               <span
                 key={`${course.id}-${item.category}`}
-                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2.5 py-1 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
+                className="inline-flex w-full items-center gap-1.5 whitespace-normal rounded-full border border-[rgba(15,76,129,0.12)] bg-[rgba(15,76,129,0.04)] px-2.5 py-1 text-[11px] font-medium leading-4 text-[color:var(--text-dark)]"
               >
                 <span className="font-semibold text-slate-700">{item.category}</span>
                 <span className="text-slate-500">:</span>
@@ -114,13 +153,23 @@ export function CourseDetailsView({
   };
 
   const filteredRows = useMemo(() => {
-    return collegeRows.filter(({ course, college, location }) => {
+    const dedupedRows = new Map<string, (typeof collegeRows)[number]>();
+
+    collegeRows.forEach((row) => {
+      const collegeKey = normalizeText(row.college?.id || row.college?.name || row.course.college);
+      if (!collegeKey || dedupedRows.has(collegeKey)) return;
+      dedupedRows.set(collegeKey, row);
+    });
+
+    return [...dedupedRows.values()].filter(({ course, college, location }) => {
       const matchesSearch = filters.search.trim()
         ? `${course.college} ${course.university} ${course.specialization}`
             .toLowerCase()
             .includes(filters.search.toLowerCase())
         : true;
-      const matchesLocation = filters.location ? location === filters.location : true;
+      const matchesLocation = filters.location
+        ? normalizeText(location).includes(normalizeText(filters.location))
+        : true;
       const matchesFeeMin = filters.feeMin ? course.totalFees >= Number(filters.feeMin) : true;
       const matchesFeeMax = filters.feeMax ? course.totalFees <= Number(filters.feeMax) : true;
       const matchesCutoffMin = filters.cutoffMin ? course.cutoff >= Number(filters.cutoffMin) : true;
@@ -136,6 +185,15 @@ export function CourseDetailsView({
       );
     });
   }, [collegeRows, filters]);
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePageIndex = Math.min(currentPage, pageCount - 1);
+  const pageStart = filteredRows.length ? safePageIndex * pageSize + 1 : 0;
+  const pageEnd = filteredRows.length ? Math.min((safePageIndex + 1) * pageSize, filteredRows.length) : 0;
+  const visibleRows = useMemo(
+    () => filteredRows.slice(safePageIndex * pageSize, safePageIndex * pageSize + pageSize),
+    [filteredRows, safePageIndex],
+  );
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef4fb_0%,#e7eef8_100%)] text-[color:var(--text-dark)]">
@@ -168,7 +226,7 @@ export function CourseDetailsView({
                       icon: Trophy,
                     },
                     { label: "Cutoff Range", value: `${Math.min(...cutoffValues)} - ${Math.max(...cutoffValues)}`, icon: BadgeCheck },
-                    { label: "College Options", value: String(collegesForCourse.length), icon: Building2 },
+                    { label: "College Options", value: String(uniqueCollegesForCourse.length), icon: Building2 },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -241,7 +299,7 @@ export function CourseDetailsView({
               <div>
                 <h2 className="text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Colleges Offering {courseName}</h2>
                 <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-                  {filteredRows.length} visible result{filteredRows.length === 1 ? "" : "s"} across {collegesForCourse.length} colleges.
+                  {filteredRows.length} visible result{filteredRows.length === 1 ? "" : "s"} across {uniqueCollegesForCourse.length} colleges.
                 </p>
               </div>
               <button
@@ -254,6 +312,35 @@ export function CourseDetailsView({
                 <ChevronDown className={`size-4 transition ${isFiltersOpen ? "rotate-180" : ""}`} />
               </button>
             </div>
+
+            {filteredRows.length > pageSize ? (
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(245,249,255,0.92),rgba(255,255,255,0.96))] px-3 py-2.5">
+                <span className="rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--brand-primary)]">
+                  Colleges: {filteredRows.length}
+                </span>
+                <div className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--brand-primary)]">
+                  <span>Page</span>
+                  <span className="min-w-[3.5rem] text-center font-semibold text-[color:var(--text-dark)]">
+                    {pageStart}-{pageEnd}
+                  </span>
+                  <select
+                    value={safePageIndex}
+                    onChange={(event) => setCurrentPage(Number(event.target.value))}
+                    className="bg-transparent text-sm font-semibold text-[color:var(--text-dark)] outline-none"
+                  >
+                    {Array.from({ length: pageCount }, (_, index) => {
+                      const start = index * pageSize + 1;
+                      const end = Math.min((index + 1) * pageSize, filteredRows.length);
+                      return (
+                        <option key={`college-page-${index}`} value={index}>
+                          {start}-{end}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+            ) : null}
 
             {isFiltersOpen ? (
               <div className="mt-5 grid gap-3 rounded-[1.5rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(245,249,255,0.92),rgba(255,255,255,0.96))] p-4 md:grid-cols-2 xl:grid-cols-3">
@@ -318,13 +405,23 @@ export function CourseDetailsView({
             ) : null}
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredRows.map(({ course, college, location }) =>
+              {visibleRows.map(({ course, college, location }) =>
                 college ? (
                   <article
-                    key={course.id}
+                    key={`${college.id}-${course.id}`}
                     className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.96))] shadow-[0_16px_36px_rgba(22,50,79,0.06)] transition hover:-translate-y-1 hover:shadow-[0_24px_48px_rgba(22,50,79,0.1)]"
                   >
-                    <img src={college.image} alt={college.name} className="h-28 w-full object-cover" />
+                    <CollegeLogoBadge
+                      src={college.image || college.logo || undefined}
+                      alt={college.name}
+                      mode="cover"
+                      className="h-28 w-full rounded-none border-0 shadow-none"
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(15,76,129,0.08),rgba(255,138,61,0.08))] text-[color:var(--brand-primary)]">
+                          <Building2 className="size-7" />
+                        </div>
+                      }
+                    />
                     <div className="p-3.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-[rgba(15,76,129,0.06)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary)]">
@@ -338,14 +435,14 @@ export function CourseDetailsView({
                       <p className="mt-1 line-clamp-1 text-[12px] text-[color:var(--text-muted)]">{college.university}</p>
                       <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-[color:var(--text-muted)]">{course.specialization}</p>
 
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)]">
+                        <div className="min-w-0 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Total Fees</p>
                           <p className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">{formatCompactIndianCurrency(course.totalFees)}</p>
                         </div>
-                        <div className="rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
+                        <div className="min-w-0 rounded-[1rem] border border-[rgba(15,76,129,0.08)] bg-white p-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Cutoff</p>
-                          <div className="mt-1 text-sm font-semibold text-[color:var(--text-dark)]">
+                          <div className="mt-1 text-sm font-semibold text-[color:var(--text-dark)] break-words">
                             {renderCutoffDetails(course)}
                           </div>
                         </div>

@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -41,10 +42,9 @@ import {
 import { Navbar } from "@/components/navbar";
 import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { FindAuthModal } from "@/components/find-auth-modal";
-import { CutoffClient } from "@/app/cutoff/cutoff-client";
 import { readAuthToken, readCurrentUser, type SafeAuthUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
-import { parseCutoffValue } from "@/lib/cutoff-utils";
+import { hasMeaningfulCutoffValue, parseCutoffValue } from "@/lib/cutoff-utils";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   degreeOptions,
@@ -89,21 +89,6 @@ const levelOptions = [
 ];
 const formatLevelLabel = (level: string) => `Grade ${level}`;
 const assessmentLevelOptions = new Set(["6", "7", "8", "9", "10"]);
-const levelHighlights = [
-  {
-    icon: BadgeCheck,
-    title: "Personalized Recommendations",
-  },
-  {
-    icon: BarChart3,
-    title: "Accurate Assessment",
-  },
-  {
-    icon: Award,
-    title: "Best Course Matching",
-  },
-];
-
 const hiddenMedicalPreviewBranches = new Set([
   "Medical Laboratory Technology - Clinical Hematology",
   "Medical Laboratory Technology - Clinical Pathology",
@@ -221,6 +206,11 @@ const artsScienceAdmissionTypeOptions = [
   { value: "CUET", label: "CUET" },
   { value: "12th Marks", label: "12th Marks" },
 ];
+
+const CutoffClient = dynamic(
+  () => import("@/app/cutoff/cutoff-client").then((mod) => mod.CutoffClient),
+  { ssr: false, loading: () => null },
+);
 
 const VALIDATION_FIELD_ORDER = [
   "name",
@@ -423,13 +413,26 @@ const createFallbackJuniorQuestionSets = (): JuniorQuestionSet[] =>
   );
 
 const degreeAliases: Record<string, string[]> = {
-  Engineering: ["engineering", "be", "btech", "b.e", "b.tech", "technology"],
+  Engineering: ["engineering", "be", "btech", "b.e", "b.tech"],
   Medical: ["medical", "mbbs", "bds", "medicine", "clinical"],
   Law: ["law", "llb", "llm", "legal"],
   "Arts & Science": ["arts", "science", "bsc", "b.sc", "ba", "b.a", "bcom", "b.com", "bba", "bca"],
   "B.Arch": ["barch", "b.arch", "architecture", "arch"],
   Agriculture: ["agriculture", "agri", "farming", "crop science"],
   Paramedical: ["paramedical", "allied health", "physiotherapy", "radiology", "nursing"],
+};
+
+const polytechnicAliases = ["polytechnic", "diploma", "iti"];
+const strictEngineeringCollegeAliases = ["engineering", "be", "btech", "b.e", "b.tech"];
+const strictEngineeringCourseAliases = ["engineering", "be", "btech", "b.e", "b.tech", "m.e", "me", "mtech", "m.tech"];
+
+const normalizeTextValues = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => normalizeTextValues(item)).filter(Boolean);
+  }
+
+  const normalized = normalizeText(String(value || "")).trim();
+  return normalized ? [normalized] : [];
 };
 
 const courseMatchesDegree = (course: Course, degree: string) => {
@@ -446,24 +449,25 @@ const courseMatchesDegree = (course: Course, degree: string) => {
     .map((item) => normalizeText(String(item || "")))
     .filter(Boolean)
     .join(" ");
-  const aliases = degreeAliases[degree] || [degree];
+  const aliases = degree === "Engineering" ? strictEngineeringCourseAliases : degreeAliases[degree] || [degree];
   return aliases.some((alias) => haystack.includes(normalizeText(alias)));
 };
 
-const collegeMatchesDegree = (college: College, degree: string) => {
-  if (!degree) return true;
+const courseLooksLikeEngineering = (course: Course) => {
   const haystack = [
-    college.name,
-    college.university,
-    college.description,
-    ...(Array.isArray(college.streams) ? college.streams : []),
-    ...(Array.isArray(college.courseTags) ? college.courseTags : []),
+    course.course,
+    course.courseName,
+    course.degreeType,
+    course.courseType,
+    course.courseCategory,
+    course.stream,
+    course.specialization,
   ]
     .map((item) => normalizeText(String(item || "")))
     .filter(Boolean)
     .join(" ");
-  const aliases = degreeAliases[degree] || [degree];
-  return aliases.some((alias) => haystack.includes(normalizeText(alias)));
+
+  return strictEngineeringCourseAliases.some((alias) => haystack.includes(normalizeText(alias)));
 };
 
 const courseMatchesSelection = (course: Course, selectedCourse: string) => {
@@ -607,6 +611,7 @@ type JuniorCollegeSuggestion = {
   logo: string;
   cutoff: number;
   cutoffLabel: string;
+  hasCutoff: boolean;
   ranking: string;
   ownershipType: string;
   accreditation: string;
@@ -625,6 +630,7 @@ export default function FindPage() {
   const inlineMatchResultsRef = useRef<HTMLDivElement | null>(null);
   const suggestedCollegesListRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollSuggestedCollegesRef = useRef(false);
+  const juniorQuestionSetsRequestedRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(() => readCurrentUser());
   const isAuthenticated = Boolean(currentUser || readAuthToken());
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -658,6 +664,7 @@ export default function FindPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDreamCollege, setSelectedDreamCollege] = useState("");
   const [targetCollegeSearch, setTargetCollegeSearch] = useState("");
+  const [isTargetCollegeDropdownOpen, setIsTargetCollegeDropdownOpen] = useState(false);
   const [selectedDegree, setSelectedDegree] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [physicsMarks, setPhysicsMarks] = useState("");
@@ -679,7 +686,6 @@ export default function FindPage() {
   const [agricultureBiologyMarks, setAgricultureBiologyMarks] = useState("");
   const [agriculturePhysicsMarks, setAgriculturePhysicsMarks] = useState("");
   const [agricultureChemistryMarks, setAgricultureChemistryMarks] = useState("");
-  const displayedProfileProgressRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -757,35 +763,7 @@ export default function FindPage() {
   const hasPhoneVerification = normalizedLivePhone.length === 10;
   const profileDisplayName = name.trim();
   const profileDisplayPhone = phone.trim();
-  const [displayedProfileProgress, setDisplayedProfileProgress] = useState(0);
-  const profileCompletionPercent = Math.round(displayedProfileProgress);
-
-  useEffect(() => {
-    let animationFrame = 0;
-    const start = performance.now();
-    const initial = displayedProfileProgressRef.current;
-    const target = liveProfileTarget;
-    const duration = 420;
-
-    const step = (now: number) => {
-      const progress = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const nextValue = initial + (target - initial) * eased;
-      const roundedValue = Number(nextValue.toFixed(1));
-      displayedProfileProgressRef.current = roundedValue;
-      setDisplayedProfileProgress(roundedValue);
-
-      if (progress < 1) {
-        animationFrame = window.requestAnimationFrame(step);
-      } else {
-        displayedProfileProgressRef.current = target;
-        setDisplayedProfileProgress(target);
-      }
-    };
-
-    animationFrame = window.requestAnimationFrame(step);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [liveProfileTarget]);
+  const profileCompletionPercent = Math.round(liveProfileTarget);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -798,7 +776,10 @@ export default function FindPage() {
   }, [activeStep, isAuthenticated]);
 
   useEffect(() => {
+    if (!assessmentLevelOptions.has(selectedLevel) || activeStep < 4 || juniorQuestionSetsRequestedRef.current) return;
+
     let isMounted = true;
+    juniorQuestionSetsRequestedRef.current = true;
 
     const loadJuniorQuestionSets = async () => {
       setJuniorQuestionsLoading(true);
@@ -873,7 +854,7 @@ export default function FindPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeStep, selectedLevel]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1190,6 +1171,88 @@ export default function FindPage() {
 
   const isBlank = (value: string) => value.trim().length === 0;
 
+  const findCollegeRecord = useCallback((value: string) => {
+    const normalizedValue = normalizeText(value);
+    if (!normalizedValue) return null;
+
+    return (
+      colleges.find(
+        (college) =>
+          normalizeText(college.id) === normalizedValue ||
+          normalizeText(college.name) === normalizedValue ||
+          normalizeText((college as { collegeCode?: string }).collegeCode || "") === normalizedValue,
+      ) || null
+    );
+  }, [colleges]);
+
+  const getCoursesForCollegeState = useCallback(
+    (college: College) => {
+      const collegeKeys = [college.id, college.name, (college as { collegeCode?: string }).collegeCode || ""]
+        .map((value) => normalizeText(value))
+        .filter(Boolean);
+
+      return courses.filter((course) => {
+        const courseIdentityValues = [course.collegeId || "", course.collegeCode || "", course.college || ""]
+          .map((value) => normalizeText(value))
+          .filter(Boolean);
+
+        if (courseIdentityValues.some((value) => collegeKeys.includes(value))) {
+          return true;
+        }
+
+        return Array.isArray(course.collegeDetails)
+          ? course.collegeDetails.some((detail) =>
+              [detail.college, detail.collegeId, detail.collegeCode]
+                .map((value) => normalizeText(value || ""))
+                .filter(Boolean)
+                .some((value) => collegeKeys.includes(value)),
+            )
+          : false;
+      });
+    },
+    [courses],
+  );
+
+  const collegeMatchesSelectedDegree = useCallback(
+    (college: College, degree: string, level: string) => {
+      if (!degree) return true;
+
+      const aliases = degree === "Engineering" ? strictEngineeringCollegeAliases : degreeAliases[degree] || [degree];
+      const levelNumber = Number(level);
+      const allowsPolytechnic = degree === "Engineering" && Number.isFinite(levelNumber) && levelNumber > 0 && levelNumber <= 10;
+      const directCourses = getCoursesForCollegeState(college);
+      const hasDegreeSpecificCourse = degree === "Engineering"
+        ? directCourses.some((course) => courseLooksLikeEngineering(course))
+        : directCourses.some((course) => courseMatchesDegree(course, degree));
+
+      if (hasDegreeSpecificCourse) {
+        return true;
+      }
+
+      const structuredSignals = [
+        ...normalizeTextValues((college as { streams?: string[] }).streams),
+        ...normalizeTextValues((college as { courseTags?: string[] }).courseTags),
+      ];
+
+      if (allowsPolytechnic) {
+        const polytechnicSignals = [
+          ...structuredSignals,
+          normalizeText(college.name),
+          normalizeText(college.university),
+          normalizeText(college.description),
+        ].filter(Boolean);
+        if (polytechnicSignals.some((signal) => polytechnicAliases.some((alias) => signal.includes(alias)))) {
+          return true;
+        }
+      }
+
+      if (!structuredSignals.length) return false;
+
+      return structuredSignals.some((signal) => aliases.some((alias) => signal.includes(normalizeText(alias))));
+    },
+    [getCoursesForCollegeState],
+  );
+
   const eligibleCourses = useMemo(
     () =>
       courses.filter(
@@ -1202,8 +1265,18 @@ export default function FindPage() {
 
   const dreamCollegeOptions = useMemo(() => {
     const filteredColleges = colleges
-      .filter((college) => collegeMatchesDegree(college, selectedDegree))
-      .sort((left, right) => left.name.localeCompare(right.name));
+      .filter((college) => collegeMatchesSelectedDegree(college, selectedDegree, selectedLevel))
+      .sort((left, right) => {
+        const leftPriority = Number(Boolean(left.isBestCollege || left.isTopCollege));
+        const rightPriority = Number(Boolean(right.isBestCollege || right.isTopCollege));
+        if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+
+        const leftPlacement = Number(left.placementRate || 0);
+        const rightPlacement = Number(right.placementRate || 0);
+        if (leftPlacement !== rightPlacement) return rightPlacement - leftPlacement;
+
+        return left.name.localeCompare(right.name);
+      });
 
     if (!selectedDreamCollege) {
       return filteredColleges;
@@ -1217,19 +1290,18 @@ export default function FindPage() {
 
     if (
       selectedCollegeRecord &&
-      !filteredColleges.some(
-        (college) => normalizeText(college.id) === normalizeText(selectedCollegeRecord.id),
-      )
+      collegeMatchesSelectedDegree(selectedCollegeRecord, selectedDegree, selectedLevel) &&
+      !filteredColleges.some((college) => normalizeText(college.id) === normalizeText(selectedCollegeRecord.id))
     ) {
       return [selectedCollegeRecord, ...filteredColleges];
     }
     return filteredColleges;
-  }, [colleges, selectedDegree, selectedDreamCollege]);
+  }, [collegeMatchesSelectedDegree, colleges, selectedDegree, selectedDreamCollege, selectedLevel]);
 
   const selectedDegreePreview = useMemo(() => {
     const previewConfig = degreePreviewDetails[selectedDegree];
     const relatedCourses = courses.filter((course) => courseMatchesDegree(course, selectedDegree));
-    const relatedColleges = colleges.filter((college) => collegeMatchesDegree(college, selectedDegree));
+    const relatedColleges = colleges.filter((college) => collegeMatchesSelectedDegree(college, selectedDegree, selectedLevel));
     const branchNames = Array.from(
       new Set(
         relatedCourses
@@ -1249,7 +1321,8 @@ export default function FindPage() {
       collegeCount: relatedColleges.length,
       branchNames: branchNames.slice(0, 4),
     };
-  }, [colleges, courses, selectedDegree]);
+  }, [colleges, courses, collegeMatchesSelectedDegree, selectedDegree, selectedLevel]);
+  const isParamedicalDegree = selectedDegree === "Paramedical";
 
   // Resets all cutoff form academic inputs when degree/level path changes.
   const resetAcademicFields = () => {
@@ -1473,7 +1546,7 @@ export default function FindPage() {
 
   const filteredDreamCollegeOptions = useMemo(() => {
     const query = normalizeText(targetCollegeSearch);
-    if (!query) return dreamCollegeOptions.slice(0, 80);
+    if (!query) return dreamCollegeOptions;
 
     const queryTokens = query.split(" ").filter(Boolean);
     return dreamCollegeOptions
@@ -1493,35 +1566,60 @@ export default function FindPage() {
         return queryTokens.every((token) => haystack.includes(token));
       })
       .sort((left, right) => {
+        const leftPriority = Number(Boolean(left.isBestCollege || left.isTopCollege));
+        const rightPriority = Number(Boolean(right.isBestCollege || right.isTopCollege));
+        if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+
         const leftName = normalizeText(left.name);
         const rightName = normalizeText(right.name);
         const leftStarts = leftName.startsWith(query) ? 0 : 1;
         const rightStarts = rightName.startsWith(query) ? 0 : 1;
         return leftStarts - rightStarts || left.name.localeCompare(right.name);
       })
-      .slice(0, 80);
+      ;
   }, [dreamCollegeOptions, targetCollegeSearch]);
+
+  const visibleDreamCollegeOptions = filteredDreamCollegeOptions;
 
   const selectTargetCollegeByName = (value: string) => {
     setTargetCollegeSearch(value);
-    const matchedCollege = dreamCollegeOptions.find(
-      (college) => normalizeText(college.name) === normalizeText(value),
-    );
+    const matchedCollege = findCollegeRecord(value) || dreamCollegeOptions.find(
+      (college) =>
+        normalizeText(college.id) === normalizeText(value) ||
+        normalizeText(college.name) === normalizeText(value) ||
+        normalizeText(college.collegeCode || "") === normalizeText(value),
+    ) || null;
     const nextCollegeId = matchedCollege?.id || "";
     setSelectedDreamCollege(nextCollegeId);
     setSelectedCourse("");
+    setIsTargetCollegeDropdownOpen(false);
   };
 
   const selectedTargetCollege = useMemo(
-    () =>
-      colleges.find(
-        (college) =>
-          normalizeText(college.id) === normalizeText(selectedDreamCollege) ||
-          normalizeText(college.name) === normalizeText(selectedDreamCollege) ||
-          normalizeText(college.collegeCode || "") === normalizeText(selectedDreamCollege),
-      ) || null,
-    [colleges, selectedDreamCollege],
+    () => findCollegeRecord(selectedDreamCollege),
+    [findCollegeRecord, selectedDreamCollege],
   );
+
+  const resolvedTargetCollege = useMemo(() => {
+    if (selectedTargetCollege) return selectedTargetCollege;
+
+    const typedCollegeName = normalizeText(targetCollegeSearch);
+    if (!typedCollegeName) return null;
+
+    return (
+      dreamCollegeOptions.find((college) => {
+        const collegeKeys = [college.id, college.name, college.collegeCode || ""]
+          .map((item) => normalizeText(item))
+          .filter(Boolean);
+        return collegeKeys.some(
+          (key) =>
+            key === typedCollegeName ||
+            typedCollegeName.includes(key) ||
+            key.includes(typedCollegeName),
+        );
+      }) || null
+    );
+  }, [dreamCollegeOptions, selectedTargetCollege, targetCollegeSearch]);
 
   const defaultCourseOptions = useMemo(
     () =>
@@ -1548,44 +1646,54 @@ export default function FindPage() {
     ],
   );
 
-  const availableCourseOptions = useMemo(() => {
-    if (!selectedTargetCollege) return defaultCourseOptions;
+  const collegeScopedCourses = useMemo(() => {
+    if (!resolvedTargetCollege) return [];
 
-    const selectedCollegeKeys = [
-      selectedTargetCollege.id,
-      selectedTargetCollege.name,
-      selectedTargetCollege.collegeCode || "",
+    const collegeIdentityValues = [
+      resolvedTargetCollege.id,
+      resolvedTargetCollege.name,
+      (resolvedTargetCollege as { collegeCode?: string }).collegeCode || "",
     ]
-      .map((item) => normalizeText(item))
+      .map((value) => normalizeText(value))
       .filter(Boolean);
 
-    const courseNames = new Map<string, string>();
-    courses.forEach((course) => {
-      if (!courseMatchesDegree(course, selectedDegree)) return;
-
-      const courseCollegeKeys = [course.collegeId || "", course.college || "", course.collegeCode || ""]
-        .map((item) => normalizeText(item))
+  return courses.filter((course) => {
+      const courseIdentityValues = [course.collegeId || "", course.collegeCode || "", course.college || ""]
+        .map((value) => normalizeText(value))
         .filter(Boolean);
-      const courseHasCollege =
-        courseCollegeKeys.some((key) => selectedCollegeKeys.includes(key)) ||
-        (Array.isArray(course.collegeDetails) &&
-          course.collegeDetails.some((detail) => {
-            const detailKeys = [detail.collegeId || "", detail.college || "", detail.collegeCode || ""]
-              .map((item) => normalizeText(item))
-              .filter(Boolean);
-            return detailKeys.some((key) => selectedCollegeKeys.includes(key));
-          }));
 
-      if (!courseHasCollege) return;
+      return (
+        courseIdentityValues.some((value) => collegeIdentityValues.includes(value)) ||
+        (Array.isArray(course.collegeDetails)
+          ? course.collegeDetails.some((detail) =>
+              [detail.college, detail.collegeId, detail.collegeCode]
+                .map((value) => normalizeText(value || ""))
+                .filter(Boolean)
+                .some((value) => collegeIdentityValues.includes(value)),
+            )
+          : false)
+      );
+    });
+  }, [courses, resolvedTargetCollege]);
 
+  const availableCourseOptions = useMemo(() => {
+    if (!resolvedTargetCollege) return defaultCourseOptions;
+
+    const courseNames = new Map<string, string>();
+    const candidateCourses = collegeScopedCourses.filter((course) => courseMatchesDegree(course, selectedDegree));
+
+    candidateCourses.forEach((course) => {
       const displayName = getCleanCourseOptionLabel(course, selectedDegree);
       if (displayName) {
         courseNames.set(normalizeText(displayName), displayName);
       }
     });
 
-    return Array.from(courseNames.values()).sort((left, right) => left.localeCompare(right));
-  }, [courses, defaultCourseOptions, selectedDegree, selectedTargetCollege]);
+    const scopedOptions = Array.from(courseNames.values()).sort((left, right) => left.localeCompare(right));
+    if (scopedOptions.length) return scopedOptions;
+
+    return defaultCourseOptions;
+  }, [collegeScopedCourses, defaultCourseOptions, resolvedTargetCollege, selectedDegree]);
 
   useEffect(() => {
     if (!selectedCourse || availableCourseOptions.includes(selectedCourse)) return;
@@ -1959,14 +2067,12 @@ export default function FindPage() {
             normalizeText(item.collegeCode || "") === rawCollegeKey,
         );
 
-        if (!college || !collegeMatchesDegree(college, selectedDegree)) return;
+        if (!college) return;
 
         const rawCutoff = detail.cutoffText || course.cutoffText || detail.cutoff || course.cutoff;
         const parsedCutoff = parseCutoffValue(rawCutoff);
-        if (!parsedCutoff) return;
-
-        const requiredCutoff = Math.max(parsedCutoff.start, parsedCutoff.end);
-        if (requiredCutoff > juniorOverallScore) return;
+        const requiredCutoff = parsedCutoff ? Math.max(parsedCutoff.start, parsedCutoff.end) : 0;
+        const hasCutoff = hasMeaningfulCutoffValue(rawCutoff);
 
         const suggestionKey = college.id;
         const existing = mappedSuggestions.get(suggestionKey);
@@ -1978,10 +2084,12 @@ export default function FindPage() {
           courseName,
           logo: String(college.logo || college.image || ""),
           cutoff: requiredCutoff,
-          cutoffLabel:
-            parsedCutoff.start === parsedCutoff.end
+          hasCutoff,
+          cutoffLabel: parsedCutoff
+            ? parsedCutoff.start === parsedCutoff.end
               ? formatScoreNumber(requiredCutoff)
-              : `${formatScoreNumber(parsedCutoff.start)} - ${formatScoreNumber(parsedCutoff.end)}`,
+              : `${formatScoreNumber(parsedCutoff.start)} - ${formatScoreNumber(parsedCutoff.end)}`
+            : "Cutoff unavailable",
           ranking: formatRankingRangeForDisplay(college.ranking),
           ownershipType: String(college.ownershipType || "Private"),
           accreditation: String(college.accreditation || "NAAC A"),
@@ -1997,22 +2105,24 @@ export default function FindPage() {
     });
 
     const sortedSuggestions = Array.from(mappedSuggestions.values()).sort((left, right) => {
+      const leftHasCutoff = left.hasCutoff ? 1 : 0;
+      const rightHasCutoff = right.hasCutoff ? 1 : 0;
+      if (rightHasCutoff !== leftHasCutoff) return rightHasCutoff - leftHasCutoff;
+
+      const leftFitsScore = left.cutoff <= juniorOverallScore ? 1 : 0;
+      const rightFitsScore = right.cutoff <= juniorOverallScore ? 1 : 0;
+      if (rightFitsScore !== leftFitsScore) return rightFitsScore - leftFitsScore;
       if (right.cutoff !== left.cutoff) return right.cutoff - left.cutoff;
       if (right.placementRate !== left.placementRate) return right.placementRate - left.placementRate;
       return left.collegeName.localeCompare(right.collegeName);
     });
-    const stateMatchedSuggestions = sortedSuggestions.filter(
-      (suggestion) => normalizeText(suggestion.location).includes(normalizeText(selectedState)),
-    );
-
-    return (stateMatchedSuggestions.length ? stateMatchedSuggestions : sortedSuggestions).slice(0, 12);
+    return sortedSuggestions;
   }, [
     colleges,
     eligibleCourses,
     hasSubmittedJuniorTest,
     juniorOverallScore,
     selectedDegree,
-    selectedState,
   ]);
   const sortedJuniorCollegeSuggestions = useMemo(() => {
     const suggestions = [...juniorCollegeSuggestions];
@@ -2257,7 +2367,8 @@ export default function FindPage() {
     params.set("state", selectedState);
     params.set("degree", selectedDegree);
     if (selectedCategory) params.set("category", normalizeCategorySelection(selectedCategory));
-    if (selectedDreamCollege) params.set("dreamCollege", selectedDreamCollege);
+    const dreamCollegeQuery = selectedDreamCollege || targetCollegeSearch.trim();
+    if (dreamCollegeQuery) params.set("dreamCollege", dreamCollegeQuery);
     if (selectedCourse) params.set("course", selectedCourse);
     if (
       selectedAdmissionType &&
@@ -2313,7 +2424,7 @@ export default function FindPage() {
           setShowAuthGate(false);
         }}
       />
-      <main className="find-theme min-h-screen overflow-x-hidden bg-white text-[#0F1B25]">
+      <main className="find-theme overflow-x-hidden bg-white text-[#0F1B25]">
       {showValidationPopup ? (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-[#071333]/35 px-4 pt-24 backdrop-blur-[2px] sm:pt-28">
           <div
@@ -2363,9 +2474,9 @@ export default function FindPage() {
           </div>
         </div>
       ) : null}
-      <div className="px-2 pb-8 pt-2 sm:px-4 lg:px-6 2xl:px-8">
+      <div className="px-2 pb-3 pt-2 sm:px-4 lg:px-6 2xl:px-8">
         <div className="mx-auto w-full max-w-[1600px]">
-          <div className="space-y-4">
+          <div className="space-y-3">
             <nav
               aria-label="Find college progress"
               className="sticky top-0 z-40 overflow-hidden rounded-[8px] border border-[#E6E6E6] bg-white/95 px-2 py-1.5 shadow-[0_8px_22px_rgba(15,27,37,0.08)] backdrop-blur md:px-4 md:py-1.5"
@@ -2406,12 +2517,12 @@ export default function FindPage() {
                         </span>
                         <StepIcon
                           className={`size-3.5 stroke-[1.9] md:size-4 ${
-                            isCompleted || isCurrent ? "text-[#F4B400]" : "text-[#7C8793]"
+                            isCompleted || isCurrent ? "text-[#0856dc]" : "text-[#7C8793]"
                           }`}
                         />
                         <span className="min-w-0 text-[8.5px] font-semibold leading-[10px] md:text-[11px] md:leading-3.5">{label}</span>
                         {isCurrent ? (
-                          <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-[#F4B400] md:w-[66%]" />
+                          <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-[#0856dc] md:w-[66%]" />
                         ) : null}
                       </div>
                       {index < progressLabels.length - 1 ? (
@@ -2445,9 +2556,9 @@ export default function FindPage() {
                   <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,1fr)] lg:pl-6 xl:pl-10">
                     <div className="premium-onboarding-card min-w-0 rounded-[18px] bg-white p-2.5 shadow-none sm:p-3 lg:p-3">
                       <div className="mb-2 max-w-xl">
-                        <div className="inline-flex items-center gap-2 rounded-[12px] border border-[#ffe08a] bg-white px-3 py-1.5 text-[12px] font-semibold leading-none text-[#8f6a00]">
-                          <Sparkles className="size-4 shrink-0 text-[#FFC107]" />
-                          <span className="translate-y-px">Live onboarding</span>
+                        <div className="inline-flex items-center gap-2 rounded-[12px] border border-[#bfdbfe] bg-white px-3 py-1.5 text-[12px] font-semibold leading-none text-[#17356f]">
+                          <Sparkles className="size-4 shrink-0 text-[#17356f]" />
+                          <span className="translate-y-px">Profile onboarding</span>
                         </div>
                         <h3 className="mt-2 text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#0F1B25] sm:text-[22px]">
                           Basic Details
@@ -2466,7 +2577,7 @@ export default function FindPage() {
                             className={`flex h-10 items-center gap-2.5 rounded-[12px] bg-white px-3.5 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
                               submittedForCurrentStep && validationErrors.name
                                 ? "ring-1 ring-[#ff4d5e]"
-                                : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
+                                : "ring-1 ring-[#dbeafe] focus-within:ring-[#17356f]"
                             }`}
                           >
                             <User className="size-4 shrink-0 text-[#6b7280]" />
@@ -2502,7 +2613,7 @@ export default function FindPage() {
                             className={`flex h-10 items-center gap-2.5 rounded-[12px] bg-white px-3.5 shadow-[0_10px_28px_rgba(17,24,39,0.05)] backdrop-blur-sm transition ${
                               submittedForCurrentStep && validationErrors.phone
                                 ? "ring-1 ring-[#ff4d5e]"
-                                : "ring-1 ring-[#f1e6bf] focus-within:ring-[#FFC107]"
+                                : "ring-1 ring-[#dbeafe] focus-within:ring-[#17356f]"
                             }`}
                           >
                             <Phone className="size-4 shrink-0 text-[#6b7280]" />
@@ -2546,7 +2657,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToNextStep}
-                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#f4b400] px-6 text-[16px] font-medium !text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#e8ab00] sm:w-auto sm:min-w-[154px]"
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] sm:w-auto sm:min-w-[154px]"
                           >
                             Next
                             <ArrowRight className="size-4" />
@@ -2555,46 +2666,40 @@ export default function FindPage() {
                       </div>
                     </div>
 
-                    <div className="relative hidden w-full self-stretch lg:block">
+                    <div className="relative hidden w-full self-stretch lg:block lg:-translate-x-5 xl:-translate-x-8">
                       <div className="premium-profile-card profile-card-float relative w-full overflow-hidden rounded-[22px] border border-[#e5e7eb] bg-white p-1.5 shadow-[0_18px_38px_rgba(15,27,37,0.08)] sm:p-2">
                         <div className="pointer-events-none absolute inset-0 overflow-hidden">
                           <div className="absolute left-[-20px] top-[-24px] size-20 rounded-full bg-white/70 blur-2xl" />
                           <div className="absolute right-[-28px] top-10 size-28 rounded-full bg-white/60 blur-3xl" />
-                          <span className="absolute left-4 top-16 text-[#f4b400]/18">
+                          <span className="absolute left-4 top-16 text-[#0856dc]/18">
                             <Sparkles className="size-4" />
                           </span>
-                          <span className="absolute right-12 top-24 text-[#f4b400]/18">
+                          <span className="absolute right-12 top-24 text-[#0856dc]/18">
                             <Sparkles className="size-4" />
                           </span>
-                          <span className="absolute bottom-24 left-8 text-[#f4b400]/12">
+                          <span className="absolute bottom-24 left-8 text-[#0856dc]/12">
                             <Sparkles className="size-3.5" />
                           </span>
-                          <span className="absolute bottom-28 right-6 text-[#f4b400]/12">
+                          <span className="absolute bottom-28 right-6 text-[#0856dc]/12">
                             <Sparkles className="size-3.5" />
                           </span>
                         </div>
 
                         <div className="relative z-10">
                           <div className="mb-1 flex items-start justify-between gap-2">
-                            <div>
-                              <div className="text-[14px] font-semibold tracking-[-0.03em] text-[#172554] sm:text-[14px]">
-                                Live Profile Card
-                              </div>
-                              <div className="mt-0.5 h-0.5 w-8 rounded-full bg-[#f4b400]" />
+                          <div>
+                            <div className="text-[14px] font-semibold tracking-[-0.03em] text-[#172554] sm:text-[14px]">
+                              Profile Card
                             </div>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-[#f3df9a] bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[#172554] shadow-[0_10px_24px_rgba(148,111,9,0.08)]">
-                              <span className="relative flex size-3 items-center justify-center rounded-full bg-[#fff4cc] text-[#f4b400]">
-                                <span className="size-2 rounded-full bg-[#f4b400]" />
-                              </span>
-                              Live
-                            </span>
+                            <div className="mt-0.5 h-0.5 w-8 rounded-full bg-[#0856dc]" />
+                          </div>
                           </div>
 
                           <div className="grid items-center gap-2 lg:grid-cols-[minmax(0,1.12fr)_minmax(108px,0.72fr)]">
                             <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
-                              <div className="avatar-glow relative flex size-[64px] items-center justify-center rounded-full border-[6px] border-[#eef2ff] bg-[#ffc107] shadow-[0_14px_22px_rgba(15,27,37,0.08)] sm:size-[72px]">
+                              <div className="avatar-glow relative flex size-[64px] items-center justify-center rounded-full border-[6px] border-[#eef2ff] bg-[#132a60] shadow-[0_14px_22px_rgba(18,42,96,0.08)] sm:size-[72px]">
                                 <User className="size-6.5 text-white sm:size-7" strokeWidth={2} />
-                                <span className="absolute right-0.5 top-1.5 flex size-5.5 items-center justify-center rounded-full border-2 border-white bg-[#17356f] text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)]">
+                                <span className="absolute right-0.5 top-1.5 flex size-5.5 items-center justify-center rounded-full border-2 border-white bg-[#132a60] text-white shadow-[0_10px_18px_rgba(18,42,96,0.22)]">
                                   <BadgeCheck className="size-3" />
                                 </span>
                               </div>
@@ -2604,22 +2709,22 @@ export default function FindPage() {
                                   <div className="profile-name-fade text-[19px] font-semibold tracking-[-0.05em] text-[#172554] sm:text-[20px]">
                                     {profileDisplayName || "Student"}
                                   </div>
-                                  <span className="inline-flex items-center justify-center rounded-full bg-[#fff7df] px-1.5 py-0.5 text-[#f4b400]">
+                                  <span className="inline-flex items-center justify-center rounded-full bg-[#eef4ff] px-1.5 py-0.5 text-[#0856dc]">
                                     <BadgeCheck className="size-2.5" />
                                   </span>
                                 </div>
 
                                 <div className="mt-1 flex flex-wrap justify-center gap-1 sm:justify-start">
                                   <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <BadgeCheck className="size-2.5 text-[#f4b400]" />
+                                    <BadgeCheck className="size-2.5 text-[#0856dc]" />
                                     Verified Student
                                   </span>
                                   <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <Sparkles className="size-2.5 text-[#f4b400]" />
+                                    <Sparkles className="size-2.5 text-[#0856dc]" />
                                     Active Learner
                                   </span>
                                   <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[#172554] shadow-[0_8px_18px_rgba(17,24,39,0.04)]">
-                                    <Award className="size-2.5 text-[#f4b400]" />
+                                    <Award className="size-2.5 text-[#0856dc]" />
                                     Top Performer
                                   </span>
                                 </div>
@@ -2641,8 +2746,8 @@ export default function FindPage() {
                           <div className="mt-1.5 grid gap-2 md:grid-cols-2">
                             <div className="rounded-[16px] border border-[#e5e7eb] bg-white p-2 shadow-[0_14px_32px_rgba(17,24,39,0.06)]">
                               <div className="flex items-center gap-2">
-                                <span className="flex size-6 shrink-0 items-center justify-center rounded-[11px] bg-[#f4b400] text-[#172554] shadow-[0_10px_18px_rgba(244,180,0,0.22)]">
-                                  <Phone className="size-3" />
+                            <span className="flex size-6 shrink-0 items-center justify-center rounded-[11px] bg-[#0856dc] text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)]">
+                                  <Phone className="size-3 text-white" />
                                 </span>
                                 <div className="min-w-0 flex-1 text-left">
                                   <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6c7a99]">
@@ -2662,7 +2767,7 @@ export default function FindPage() {
                               <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_88px] lg:items-center">
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 text-[#172554]">
-                                    <div className="flex size-[22px] items-center justify-center rounded-full bg-[#fff7df] text-[#f4b400]">
+                                    <div className="flex size-[22px] items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc]">
                                       <Sparkles className="size-2.5" />
                                     </div>
                                     <span className="text-[11px] font-semibold">Profile Completion</span>
@@ -2671,11 +2776,11 @@ export default function FindPage() {
                                   <div className="mt-1.5 flex items-center gap-2">
                                     <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#e8edf5]">
                                       <div
-                                        className="profile-progress-fill h-full rounded-full bg-[linear-gradient(90deg,#f4b400,#ffc107,#17356f)] transition-[width] duration-300 ease-out"
-                                        style={{ width: `${displayedProfileProgress}%` }}
+                                        className="profile-progress-fill h-full rounded-full bg-[linear-gradient(90deg,#132a60,#102554,#102554)] transition-[width] duration-300 ease-out"
+                                        style={{ width: `${liveProfileTarget}%` }}
                                       />
                                     </div>
-                                    <div key={profileCompletionPercent} className="profile-count-up text-[13px] font-semibold tracking-[-0.04em] text-[#f4b400]">
+                                    <div key={profileCompletionPercent} className="profile-count-up text-[13px] font-semibold tracking-[-0.04em] text-[#0856dc]">
                                       {profileCompletionPercent}%
                                     </div>
                                   </div>
@@ -2693,7 +2798,7 @@ export default function FindPage() {
                                   <div
                                     className="flex size-[72px] items-center justify-center rounded-full p-[5px]"
                                     style={{
-                                      background: `conic-gradient(#17356f ${displayedProfileProgress * 3.6}deg, #f4b400 0deg, #f4b400 360deg)`,
+                                      background: `conic-gradient(#132a60 ${liveProfileTarget * 3.6}deg, #102554 0deg, #102554 360deg)`,
                                     }}
                                   >
                                     <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-[#172554] shadow-[inset_0_0_0_1px_rgba(232,223,196,0.9)]">
@@ -2727,14 +2832,14 @@ export default function FindPage() {
                           <div className="text-[22px] font-semibold leading-[1.05] text-[#0F1B25] sm:text-[24px]">
                             Pick Your Level
                           </div>
-                          <Sparkles className="size-5 shrink-0 text-[#F4B400]" />
+                          <Sparkles className="size-5 shrink-0 text-[#0856dc]" />
                         </div>
                         <div className="mt-1.5 text-[13px] font-normal text-[#5F6B76] sm:text-[14px]">
                           Select your current grade
                         </div>
                       </div>
 
-                      <div className="grid max-w-[580px] grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+                      <div className="mt-4 grid max-w-[580px] grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                         {levelOptions.map(({ value: level }) => (
                           <button
                             key={level}
@@ -2752,10 +2857,10 @@ export default function FindPage() {
                             }}
                             className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center !text-[15px] !font-normal leading-4 transition ${
                               selectedLevel === level
-                                ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
-                                : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
+                                ? "border-[#132a60] bg-[#132a60] text-white shadow-[0_12px_22px_rgba(19,42,96,0.22)] ring-2 ring-[#0856dc]/20"
+                                : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#0856dc] hover:bg-[#eef4ff] hover:text-[#0856dc]"
                             }`}
-                            aria-pressed={selectedLevel === level}
+                          aria-pressed={selectedLevel === level}
                           >
                             {level === "6" ? <GraduationCap className="size-[24px]" /> : null}
                             {level === "7" ? <BookOpen className="size-[24px]" /> : null}
@@ -2776,9 +2881,9 @@ export default function FindPage() {
                         </div>
                       ) : null}
 
-                      {/* <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-                        <div className="flex min-w-0 items-start gap-3 lg:max-w-[300px]">
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#EEE7C8] bg-white text-[#F4B400] shadow-none">
+                      <div className="mt-4 flex flex-col gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#dbeafe] bg-white text-[#0856dc] shadow-none">
                             <Sparkles className="size-5" />
                           </div>
                           <div className="min-w-0">
@@ -2790,27 +2895,9 @@ export default function FindPage() {
                             </p>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="grid flex-[1.2] gap-3 sm:grid-cols-3 sm:items-stretch sm:gap-4 lg:ml-8 lg:min-w-[380px]">
-                          {levelHighlights.map(({ icon: Icon, title }, index) => (
-                            <div
-                              key={title}
-                              className={`flex items-center gap-1.5 px-0.5 py-0 sm:h-full sm:flex-col sm:items-center sm:justify-center sm:px-3 sm:py-2 sm:text-center ${
-                                index < levelHighlights.length - 1 ? "sm:border-r sm:border-[#eddca4]" : ""
-                              }`}
-                            >
-                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#EEF0F4] bg-white text-[#0F1B25] shadow-none">
-                                <Icon className="size-3.5 text-[#F4B400]" />
-                              </div>
-                          <div className="min-w-0 text-[11px] font-bold leading-4 tracking-[-0.01em] text-[#0F1B25] sm:text-[12px]">
-                                {title}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div> */}
-
-                      <div className="mt-2.5 flex flex-col gap-3 sm:flex-row">
+                      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                         <button
                           type="button"
                           onClick={goToPreviousStep}
@@ -2822,7 +2909,7 @@ export default function FindPage() {
                         <button
                           type="button"
                           onClick={goToNextStep}
-                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-5 !text-[14px] !font-medium !text-[#071A44] shadow-none transition hover:bg-[#e6ac00] sm:w-auto sm:min-w-[154px]"
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-5 !text-[14px] !font-medium text-white shadow-none transition hover:bg-white hover:text-[#0856dc] sm:w-auto sm:min-w-[154px]"
                         >
                           Next
                           <ArrowRight className="size-5" />
@@ -2839,7 +2926,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep !== 1 && activeStep !== 2 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 
                 {activeStep === 4 && isSeniorSecondaryLevel ? (
                   <FieldShell icon={MapPin} label="Select your State">
@@ -2896,7 +2983,7 @@ export default function FindPage() {
 
                 {activeStep === 3 ? (
                 <div data-field-id="degree" className="col-span-full grid items-start gap-7 lg:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.82fr)] lg:pt-2">
-                  <div className="min-w-0 lg:pl-12 xl:pl-14">
+                  <div className="min-w-0 lg:pl-8 xl:pl-10">
                     <div className="mb-4">
                       <h3 className="text-[24px] font-semibold text-[#0F1B25]">Pick Your Degree Stream</h3>
                       <div className="mt-2 text-[14px] font-normal text-[#5F6B76]">
@@ -2918,11 +3005,11 @@ export default function FindPage() {
                             setTargetCollegeSearch("");
                             resetAcademicFields();
                           }}
-                          className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center text-[13px] font-semibold leading-4 transition ${
-                            selectedDegree === degree
-                              ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
-                              : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#F4B400] hover:bg-[#FFF4CC] hover:text-[#D99A00]"
-                          }`}
+                            className={`flex h-[86px] flex-col items-center justify-center gap-2 rounded-[6px] border px-2 text-center text-[13px] font-semibold leading-4 transition ${
+                              selectedDegree === degree
+                                ? "border-[#132a60] bg-[#132a60] text-white shadow-[0_12px_22px_rgba(19,42,96,0.22)] ring-2 ring-[#0856dc]/20"
+                                : "border-[#DDE2E7] bg-white text-[#0F1B25] shadow-[0_5px_14px_rgba(15,27,37,0.04)] hover:border-[#0856dc] hover:bg-[#eef4ff] hover:text-[#0856dc]"
+                            }`}
                           aria-pressed={selectedDegree === degree}
                         >
                           {degree === "Engineering" ? <Calculator className="size-6" /> : null}
@@ -2954,29 +3041,108 @@ export default function FindPage() {
                       <button
                         type="button"
                         onClick={goToNextStep}
-                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:w-[128px]"
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] sm:w-[128px]"
                       >
                         Next
                         <ArrowRight className="size-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="relative hidden min-h-[520px] w-full items-center justify-center lg:flex" aria-hidden="true">
-                    <div className="absolute right-12 top-4 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,rgba(244,180,0,0.20)_0%,rgba(244,180,0,0.10)_42%,rgba(255,255,255,0)_72%)]" />
-                    <div className="absolute left-14 top-24 text-[#F4B400]">
+                  <div
+                    className={`relative hidden min-h-[520px] w-full items-center lg:flex ${
+                      isParamedicalDegree ? "justify-center" : "justify-end"
+                    }`}
+                  >
+                    <div className="absolute right-12 top-4 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,rgba(23,53,111,0.18)_0%,rgba(8,86,220,0.08)_42%,rgba(255,255,255,0)_72%)]" />
+                    <div className="absolute left-14 top-24 text-[#0856dc]">
                       <Sparkles className="size-5" />
                     </div>
-                    <div className="absolute right-24 top-44 text-[#F4B400]">
+                    <div className="absolute right-24 top-44 text-[#0856dc]">
                       <Sparkles className="size-5" />
                     </div>
-                    <div className="relative flex min-h-[520px] w-full items-start justify-start lg:-translate-x-8">
+                    <div className="pointer-events-none absolute left-[14%] top-[38%] z-10 w-[min(100%,270px)] -translate-x-1/2 -translate-y-1/2 lg:left-[12%] xl:left-[10%]">
+                      <div className="rounded-[28px] border border-[#cdd9f4] bg-white/95 p-2 shadow-[0_24px_60px_rgba(15,27,37,0.12)] backdrop-blur-sm">
+                        <div className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[#17356f]">
+                          Selected Stream
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] shadow-[0_10px_20px_rgba(23,53,111,0.16)]">
+                            {selectedDegree === "Engineering" ? <Calculator className="size-3.5" /> : null}
+                            {selectedDegree === "Medical" ? <Stethoscope className="size-3.5" /> : null}
+                            {selectedDegree === "Arts & Science" ? <GraduationCap className="size-3.5" /> : null}
+                            {selectedDegree === "Law" ? <Scale className="size-3.5" /> : null}
+                            {selectedDegree === "B.Arch" ? <Landmark className="size-3.5" /> : null}
+                            {selectedDegree === "Agriculture" ? <Sprout className="size-3.5" /> : null}
+                            {selectedDegree === "Paramedical" ? <FlaskConical className="size-3.5" /> : null}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[1.08rem] font-semibold tracking-[-0.05em] text-[#0F1B25]">
+                              {selectedDegreePreview?.accentLabel || selectedDegree || "Choose a stream"}
+                            </div>
+                            <div className="mt-0.5 text-[0.7rem] text-[#5F6B76]">
+                              {selectedDegreePreview
+                                ? `${selectedDegreePreview.duration} | ${selectedDegreePreview.scoreScale}`
+                                : "Your chosen degree will show here"}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedDegreePreview ? (
+                          <div className="mt-2 space-y-1.5 text-left">
+                            <div className="grid grid-cols-[1fr_auto] items-center rounded-[18px] border border-[#EEF0F4] bg-white px-3 py-1.5">
+                              <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#7A7F8E]">
+                                Duration
+                              </div>
+                              <div className="text-[0.8rem] font-semibold text-[#0F1B25]">
+                                {selectedDegreePreview.duration}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] items-center rounded-[18px] border border-[#FFF0C9] bg-[#FFF9E7] px-3 py-1.5">
+                              <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#9C7410]">
+                                Branches
+                              </div>
+                              <div className="text-[0.8rem] font-semibold text-[#0F1B25]">
+                                {selectedDegreePreview.branchCount > 0 ? `${selectedDegreePreview.branchCount}+` : "0"}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] items-center rounded-[18px] border border-[#DDE8FF] bg-[#F5F8FF] px-3 py-1.5">
+                              <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#3254A8]">
+                                Score Scale
+                              </div>
+                              <div className="text-[0.8rem] font-semibold text-[#0F1B25]">
+                                {selectedDegreePreview.scoreScale}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] items-center rounded-[18px] border border-[#EEF0F4] bg-white px-3 py-1.5">
+                              <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#7A7F8E]">
+                                Top Colleges
+                              </div>
+                              <div className="text-[0.8rem] font-semibold text-[#0F1B25]">
+                                {selectedDegreePreview.collegeCount > 0 ? `${selectedDegreePreview.collegeCount}+` : "0"}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                        <div className="mt-2 rounded-[18px] border border-[#F8E7B8] bg-[#FFF7DC] px-3 py-1.5 text-[0.7rem] text-[#6D5200]">
+                          Explore your future in infinite possibilities.
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`relative flex min-h-[420px] w-full items-center ${
+                        isParamedicalDegree
+                          ? "justify-center lg:-translate-y-3 lg:translate-x-2 xl:-translate-y-4 xl:translate-x-4"
+                          : "justify-end lg:-translate-y-3 lg:translate-x-3 xl:-translate-y-4 xl:translate-x-6"
+                      }`}
+                    >
                       <Image
                         src={selectedDegreePreview?.image || "/find-step-stream-illustration.png"}
                         alt={selectedDegree ? `${selectedDegree} illustration` : "Degree stream illustration"}
                         width={1642}
                         height={958}
                         unoptimized
-                        className="h-auto w-[600px] max-w-full object-contain drop-shadow-[0_24px_48px_rgba(15,27,37,0.12)] lg:w-[580px]"
+                        className={`h-auto max-w-full object-contain drop-shadow-[0_24px_48px_rgba(15,27,37,0.12)] ${
+                          isParamedicalDegree ? "w-[640px] lg:w-[620px]" : "w-[600px] lg:w-[580px]"
+                        }`}
                         priority={activeStep === 3}
                       />
                     </div>
@@ -2991,32 +3157,55 @@ export default function FindPage() {
                       <input
                         type="search"
                         value={targetCollegeSearch}
-                        onChange={(event) => {
-                          clearSubmittedValidation();
-                          selectTargetCollegeByName(event.target.value);
-                        }}
-                        onBlur={() => {
-                          if (!targetCollegeSearch.trim()) {
-                            setSelectedDreamCollege("");
-                            return;
-                          }
-                          const selectedCollege = dreamCollegeOptions.find((college) => college.id === selectedDreamCollege);
-                          if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
-                        }}
-                        list="target-college-options"
-                        placeholder="Search and select college"
-                        className={inputClassName}
-                        style={{ paddingLeft: "1.35rem" }}
-                        autoComplete="off"
-                      />
-                    </div>
-                    <datalist id="target-college-options">
-                      {filteredDreamCollegeOptions.map((college, index) => (
-                        <option key={`${college.id || college.name}-${index}`} value={college.name}>
-                          {college.city || college.district || college.state}
-                        </option>
-                      ))}
-                    </datalist>
+                          onChange={(event) => {
+                            clearSubmittedValidation();
+                            selectTargetCollegeByName(event.target.value);
+                            setIsTargetCollegeDropdownOpen(true);
+                          }}
+                          onFocus={() => setIsTargetCollegeDropdownOpen(true)}
+                          onBlur={() => {
+                            window.setTimeout(() => {
+                              setIsTargetCollegeDropdownOpen(false);
+                            }, 120);
+                            if (!targetCollegeSearch.trim()) {
+                              setSelectedDreamCollege("");
+                              return;
+                            }
+    const selectedCollege =
+      findCollegeRecord(targetCollegeSearch) ||
+      dreamCollegeOptions.find((college) => college.id === selectedDreamCollege) ||
+      null;
+                            if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
+                          }}
+                          placeholder="Search and select college"
+                          className={inputClassName}
+                          style={{ paddingLeft: "1.35rem" }}
+                          autoComplete="off"
+                        />
+                        {isTargetCollegeDropdownOpen && visibleDreamCollegeOptions.length ? (
+                          <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-[320px] overflow-auto rounded-[14px] border border-[#E3E8EF] bg-white shadow-[0_20px_44px_rgba(15,27,37,0.12)]">
+                            {visibleDreamCollegeOptions.map((college, index) => (
+                              <button
+                                key={`${college.id || college.name || "college"}-${index}`}
+                                type="button"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  setTargetCollegeSearch(college.name);
+                                  setSelectedDreamCollege(college.id);
+                                  setSelectedCourse("");
+                                  setIsTargetCollegeDropdownOpen(false);
+                                }}
+                                className="flex w-full flex-col items-start gap-0.5 border-b border-[#F2F4F7] px-4 py-3 text-left transition last:border-b-0 hover:bg-[#F8FAFC]"
+                              >
+                                <span className="text-[14px] font-semibold text-[#0F1B25]">{college.name}</span>
+                                <span className="text-[12px] text-[#6B7280]">
+                                  {[college.city, college.district, college.state].filter(Boolean).join(", ")}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                   </FieldShell>
                 ) : null}
 
@@ -3139,7 +3328,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep === 4 && showEngineeringFields ? (
-                <div className="mt-4 space-y-2.5">
+                <div className="mt-3 space-y-2">
                   {showEngineeringPcmFields ? (
                     <>
                       <div className="grid gap-3 md:grid-cols-3">
@@ -3288,7 +3477,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep === 4 && showMedicalFields ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {showCalculatedScorePreview && neetMarksReady ? (
                     <ScoreHighlight
                     title="Medical Cutoff"
@@ -3301,7 +3490,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep === 4 && showBArchFields ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   <div className="grid gap-3 md:grid-cols-2">
                     <AcademicShell fieldId="boardTotal" icon={BookOpen} label="11th / 12th Marks (Out of 600)" invalid={Boolean((submittedForCurrentStep || touchedFields.boardTotal) && validationErrors.boardTotal)} valid={Boolean(touchedFields.boardTotal && !validationErrors.boardTotal && boardMarksTotal.trim())} error={submittedForCurrentStep || touchedFields.boardTotal ? validationErrors.boardTotal : undefined}>
                       <input
@@ -3368,7 +3557,7 @@ export default function FindPage() {
               ) : null}
 
               {activeStep === 4 && showLawFields ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   <div className="grid gap-3 md:grid-cols-2">
                     {showLawClatFields ? (
                       <AcademicShell fieldId="clat" icon={Calculator} label="CLAT Mark" hint="Out of 120" invalid={Boolean((submittedForCurrentStep || touchedFields.clat) && validationErrors.clat)} valid={Boolean(touchedFields.clat && !validationErrors.clat && clatMarks.trim())} error={submittedForCurrentStep || touchedFields.clat ? validationErrors.clat : undefined}>
@@ -3704,7 +3893,7 @@ export default function FindPage() {
                 <div className="mt-4">
                   <div className="mb-5 text-center">
                     <h3 className="text-[28px] font-semibold text-[#0F1B25]">
-                      Assessment Test <span className="font-[family:Outfit] text-[24px] italic text-[#D99A00]">(Preview)</span>
+                      Assessment Test <span className="font-[family:Outfit] text-[24px] italic text-[#0856dc]">(Preview)</span>
                     </h3>
                     <div className="mt-2 text-[16px] font-normal text-[#5F6B76]">This is how your test will look</div>
                   </div>
@@ -3727,7 +3916,7 @@ export default function FindPage() {
                                 {formatTimer(juniorTimerSeconds)}
                               </div>
                             </div>
-                            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#F4B400] bg-[#FFF4CC] px-3 py-1.5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.12)]">
+                            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#0856dc] bg-[#eef4ff] px-3 py-1.5 text-[14px] font-semibold text-[#0F1B25] shadow-[0_8px_16px_rgba(23,53,111,0.12)]">
                               <Calculator className="size-4" />
                               {activeJuniorQuestion.subject || "Mathematics"}
                             </div>
@@ -3746,15 +3935,15 @@ export default function FindPage() {
                                     disabled={!hasStartedJuniorTest || hasSubmittedJuniorTest}
                                     className={`grid min-h-11 grid-cols-[34px_minmax(0,1fr)] items-center gap-3 rounded-[8px] border px-3 py-2 text-left transition ${
                                       isSelected
-                                        ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.16)]"
+                                        ? "border-[#0856dc] bg-[#eef4ff] text-[#0F1B25] shadow-[0_8px_16px_rgba(23,53,111,0.16)]"
                                         : hasStartedJuniorTest && !hasSubmittedJuniorTest
-                                          ? "border-[#F3D98B] bg-[#FFFDF7] text-[#0F1B25] hover:border-[#F4B400] hover:bg-[#FFF4CC]"
-                                          : "cursor-not-allowed border-[#F3D98B] bg-[#FFFDF7] text-[#5F6B76]"
+                                          ? "border-[#bfdbfe] bg-[#f8fbff] text-[#0F1B25] hover:border-[#0856dc] hover:bg-[#eef4ff]"
+                                          : "cursor-not-allowed border-[#bfdbfe] bg-[#f8fbff] text-[#5F6B76]"
                                     }`}
                                   >
                                     <span
                                       className={`flex size-8 items-center justify-center rounded-full text-[15px] font-semibold ${
-                                        isSelected ? "bg-[#F4B400] text-white" : "bg-[#FFF4CC] text-[#D99A00]"
+                                        isSelected ? "bg-[#0856dc] text-white" : "bg-[#eef4ff] text-[#0856dc]"
                                       }`}
                                     >
                                       {optionLetter}
@@ -3791,11 +3980,11 @@ export default function FindPage() {
                                   disabled={!hasStartedJuniorTest || !question}
                                   className={`flex size-8 items-center justify-center rounded-full border text-[14px] font-medium transition ${
                                     isActive
-                                      ? "border-[#F4B400] bg-[#F4B400] text-white"
+                                      ? "border-[#0856dc] bg-[#0856dc] text-white"
                                       : isAnswered
-                                        ? "border-[#F4B400] bg-[#FFF4CC] text-[#0F1B25]"
+                                        ? "border-[#0856dc] bg-[#eef4ff] text-[#0F1B25]"
                                         : hasStartedJuniorTest && question
-                                          ? "border-[#E6E6E6] bg-white text-[#0F1B25] hover:border-[#F4B400] hover:bg-[#FFF4CC]"
+                                          ? "border-[#E6E6E6] bg-white text-[#0F1B25] hover:border-[#0856dc] hover:bg-[#eef4ff]"
                                           : "cursor-not-allowed border-[#E6E6E6] bg-[#F8F9FB] text-[#B8C0C8]"
                                   }`}
                                   aria-label={`Go to question ${index + 1}`}
@@ -3807,7 +3996,7 @@ export default function FindPage() {
                           </div>
                           <div className="mt-5 space-y-2 text-[14px] text-[#5F6B76]">
                             <div className="flex items-center gap-2">
-                              <span className="size-3 rounded-full bg-[#F4B400]" />
+                              <span className="size-3 rounded-full bg-[#0856dc]" />
                               Answered
                             </div>
                             <div className="flex items-center gap-2">
@@ -3824,7 +4013,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-semibold !text-[#071A44] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white sm:flex-1"
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] border border-[#0856dc] bg-[#0856dc] px-6 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc] sm:flex-1"
                           >
                             <ArrowRight className="size-4 rotate-180" />
                             Back
@@ -3832,7 +4021,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={() => setHasStartedJuniorTest(true)}
-                            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-semibold !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:flex-[1.8]"
+                            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-semibold text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] sm:flex-[1.8]"
                           >
                             <span className="whitespace-nowrap">Start Assessment</span>
                             <ArrowRight className="size-5 shrink-0" />
@@ -3843,7 +4032,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[16px] font-semibold !text-[#071A44] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] border border-[#0856dc] bg-[#0856dc] px-5 text-[16px] font-semibold text-white shadow-[0_8px_16px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc]"
                           >
                             <ArrowRight className="size-4 rotate-180" />
                             Back
@@ -3861,7 +4050,7 @@ export default function FindPage() {
                             type="button"
                             onClick={submitJuniorTest}
                             disabled={!selectedJuniorAnswer || hasSubmittedJuniorTest}
-                              className="inline-flex h-11 items-center justify-center rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-semibold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white disabled:cursor-not-allowed disabled:bg-[#B8C0C8] disabled:text-white"
+                              className="inline-flex h-11 items-center justify-center rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-semibold text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] disabled:cursor-not-allowed disabled:bg-[#B8C0C8] disabled:text-white"
                             >
                               {hasSubmittedJuniorTest ? "Submitted" : "Submit"}
                             </button>
@@ -3869,7 +4058,7 @@ export default function FindPage() {
                             <button
                               type="button"
                               onClick={goToNextJuniorQuestion}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white"
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-[#0856dc] px-6 text-[16px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc]"
                             >
                               Next
                               <ArrowRight className="size-4" />
@@ -3894,10 +4083,10 @@ export default function FindPage() {
               {activeStep === 5 && isJuniorLevel ? (
                 <div className="mt-3 rounded-[10px] border border-[#dce5fb] bg-white p-3 shadow-[0_10px_22px_rgba(20,42,99,0.08)]">
                   <div className="mb-3 flex items-center justify-center gap-2.5">
-                    <div className="relative flex size-10 items-center justify-center text-[#F4B400]">
-                      <Trophy className="size-8 fill-[#F4B400]/20" />
-                      <span className="absolute -left-2 top-0 text-[12px] text-[#F4B400]">+</span>
-                      <span className="absolute -right-1 -top-1 text-[12px] text-[#F4B400]">+</span>
+                    <div className="relative flex size-10 items-center justify-center text-[#0856dc]">
+                      <Trophy className="size-8 fill-[#0856dc]/20" />
+                      <span className="absolute -left-2 top-0 text-[12px] text-[#0856dc]">+</span>
+                      <span className="absolute -right-1 -top-1 text-[12px] text-[#0856dc]">+</span>
                     </div>
                     <div>
                       <h3 className="text-[24px] font-semibold leading-[1.25] text-[#0F1B25]">Assessment Result</h3>
@@ -3916,7 +4105,7 @@ export default function FindPage() {
                           <div className="grid gap-3 rounded-[8px] border border-[#E6E6E6] bg-white p-3 shadow-[0_10px_20px_rgba(15,27,37,0.06)] lg:grid-cols-[minmax(0,1fr)_270px]">
                             <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
                               <div className="flex min-h-[58px] items-center gap-2 border-b border-r border-[#E6E6E6] pb-2.5 pr-2 lg:border-b-0 lg:pb-0">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
                                   <User className="size-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -3927,8 +4116,8 @@ export default function FindPage() {
                                 </div>
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 border-b border-[#E6E6E6] pb-2.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
-                                  <Phone className="size-4" />
+                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
+                                  <Phone className="size-4 text-white" />
                                 </div>
                                 <div className="min-w-0">
                                   <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Phone Number</div>
@@ -3938,7 +4127,7 @@ export default function FindPage() {
                                 </div>
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 border-b border-r border-[#E6E6E6] pb-2.5 pr-2 lg:border-b-0 lg:border-r-0 lg:pb-0 lg:pr-0">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
                                   <GraduationCap className="size-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -3949,7 +4138,7 @@ export default function FindPage() {
                                 </div>
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 border-b border-[#E6E6E6] pb-2.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
                                   <School className="size-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -3960,7 +4149,7 @@ export default function FindPage() {
                                 </div>
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 border-r border-[#E6E6E6] pr-2 lg:border-r">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
                                   <CalendarDays className="size-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -3971,7 +4160,7 @@ export default function FindPage() {
                                 </div>
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 lg:border-r-0">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00] sm:size-8">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
                                   <Clock className="size-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -3983,15 +4172,15 @@ export default function FindPage() {
                               </div>
                             </div>
 
-                            <div className="rounded-[8px] border border-[#F4B400] bg-white p-3 text-center shadow-[0_10px_20px_rgba(244,180,0,0.12)]">
+                            <div className="rounded-[8px] border border-[#0856dc] bg-white p-3 text-center shadow-[0_10px_20px_rgba(23,53,111,0.12)]">
                               <div className="text-[14px] font-normal uppercase text-[#0F1B25]">Overall Score</div>
-                              <div className="mt-1.5 text-[35.2px] font-semibold leading-none text-[#F4B400]">
+                              <div className="mt-1.5 text-[35.2px] font-semibold leading-none text-[#0856dc]">
                                 {formatScoreNumber(juniorOverallScore)}
                                 <span className="text-[16px] font-normal text-[#0F1B25]"> / {juniorAssessmentScale}</span>
                               </div>
-                              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#FFF4CC]">
+                              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#eef4ff]">
                                 <div
-                                  className="h-full rounded-full bg-[#F4B400]"
+                                  className="h-full rounded-full bg-[#0856dc]"
                                   style={{ width: `${Math.min(100, juniorPercentage)}%` }}
                                 />
                               </div>
@@ -4020,14 +4209,14 @@ export default function FindPage() {
                                 <button
                                   type="button"
                                   onClick={goToPreviousStep}
-                                  className="inline-flex h-10 items-center justify-center rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[16px] font-medium !text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#F4B400] hover:bg-[#F4B400] hover:!text-[#0F1B25]"
+                                  className="inline-flex h-10 items-center justify-center rounded-[6px] border border-[#0F1B25] bg-[#0F1B25] px-5 text-[16px] font-medium text-white shadow-[0_8px_16px_rgba(15,27,37,0.18)] transition hover:border-[#0856dc] hover:bg-[#0856dc] hover:text-white"
                                 >
                                   Back
                                 </button>
                                 <button
                                   type="button"
                                   onClick={resetJuniorAssessment}
-                                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] border border-[#F4B400] bg-[#F4B400] px-5 text-[16px] font-medium !text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
+                                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] border border-[#0856dc] bg-[#0856dc] px-5 text-[16px] font-medium text-white shadow-[0_8px_16px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc]"
                                 >
                                   <RotateCcw className="size-4" />
                                   Retake
@@ -4050,12 +4239,12 @@ export default function FindPage() {
                                     onClick={() => setActiveJuniorResultSubject(subjectResult.subject)}
                                     className={`rounded-[8px] border bg-white p-4 text-left transition shadow-[0_8px_18px_rgba(15,27,37,0.05)] ${
                                       isActiveSubject
-                                        ? "border-[#F4B400]"
-                                        : "border-[#E6E6E6] hover:border-[#F4B400]"
+                                        ? "border-[#0856dc]"
+                                        : "border-[#E6E6E6] hover:border-[#0856dc]"
                                     }`}
                                   >
                                     <div className="flex items-center gap-3">
-                                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4CC] text-[#D99A00]">
+                                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc]">
                                         <SubjectIcon className="size-5" />
                                       </div>
                                       <div className="min-w-0">
@@ -4132,7 +4321,7 @@ export default function FindPage() {
                                                 setIsSuggestionSortOpen(false);
                                               }}
                                               className={`flex h-12 w-full items-center gap-3 rounded-[10px] px-4 text-left text-[16px] font-normal transition ${
-                                                isSelected ? "bg-[#ECFFF2] text-[#16A34A]" : "text-[#354150] hover:bg-[#F8F9FB]"
+                                                isSelected ? "bg-[#eef4ff] text-[#0856dc]" : "text-[#354150] hover:bg-[#F8F9FB]"
                                               }`}
                                             >
                                               <Check className={`size-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
@@ -4147,8 +4336,12 @@ export default function FindPage() {
                                     <button
                                       type="button"
                                       onClick={() => setSuggestionView("grid")}
-                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] ${
-                                        suggestionView === "grid" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
+                                      data-no-theme-hover="true"
+                                      data-active={suggestionView === "grid"}
+                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] transition ${
+                                        suggestionView === "grid"
+                                          ? "bg-[#0856dc] text-white"
+                                          : "bg-white text-[#354150]"
                                       }`}
                                     >
                                       <LayoutGrid className="size-4 shrink-0" />
@@ -4157,8 +4350,12 @@ export default function FindPage() {
                                     <button
                                       type="button"
                                       onClick={() => setSuggestionView("list")}
-                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] ${
-                                        suggestionView === "list" ? "bg-[#F4B400] text-[#0F1B25]" : "bg-white text-[#354150]"
+                                      data-no-theme-hover="true"
+                                      data-active={suggestionView === "list"}
+                                      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] transition ${
+                                        suggestionView === "list"
+                                          ? "bg-[#0856dc] text-white"
+                                          : "bg-white text-[#354150]"
                                       }`}
                                     >
                                       <List className="size-4 shrink-0" />
@@ -4180,38 +4377,38 @@ export default function FindPage() {
                                   const cardTheme =
                                     absoluteSuggestionIndex % 3 === 0
                                       ? {
-                                          band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_32%),linear-gradient(135deg,#5BBDA7,#168A7C)]",
+                                          band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_32%),linear-gradient(135deg,#0b216d,#1758f4)]",
                                           label: "Best Match",
-                                          labelIcon: <Trophy className="size-4 fill-[#F4B400]/30" />,
-                                          pill: "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00]",
-                                          metric: "text-[#008C46]",
-                                          cta: "bg-[#FFF8E5] text-[#D99A00]",
+                                          labelIcon: <Trophy className="size-4 fill-[#1758f4]/30" />,
+                                          pill: "border-[#1758f4] bg-[#eef4ff] text-[#1758f4]",
+                                          metric: "text-[#1758f4]",
+                                          cta: "bg-[#eef4ff] text-[#1758f4]",
                                         }
                                       : absoluteSuggestionIndex % 3 === 1
                                         ? {
-                                            band: "bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.25),transparent_35%),linear-gradient(135deg,#7182F4,#C4B5FD)]",
+                                            band: "bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.25),transparent_35%),linear-gradient(135deg,#132a60,#0856dc)]",
                                             label: "High Match",
                                             labelIcon: <Check className="size-4" />,
-                                            pill: "border-[#CDEFD8] bg-[#ECFFF2] text-[#008C46]",
-                                            metric: "text-[#008C46]",
-                                            cta: "bg-[#ECFFF2] text-[#008C46]",
+                                            pill: "border-[#cdd9f4] bg-[#eef4ff] text-[#0856dc]",
+                                            metric: "text-[#0856dc]",
+                                            cta: "bg-[#eef4ff] text-[#0856dc]",
                                           }
                                         : {
-                                            band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.34),transparent_32%),linear-gradient(135deg,#FF6F61,#FFD0A3)]",
+                                            band: "bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.34),transparent_32%),linear-gradient(135deg,#102554,#17356f)]",
                                             label: "Top Match",
-                                            labelIcon: <Trophy className="size-4 fill-[#D99A00]/30" />,
-                                            pill: "border-[#F4B400] bg-[#FFF4CC] text-[#D99A00]",
-                                            metric: "text-[#D94E00]",
-                                            cta: "bg-[#FFF8E5] text-[#D99A00]",
+                                            labelIcon: <Trophy className="size-4 fill-[#1758f4]/30" />,
+                                            pill: "border-[#1758f4] bg-[#eef4ff] text-[#1758f4]",
+                                            metric: "text-[#1758f4]",
+                                            cta: "bg-[#eef4ff] text-[#1758f4]",
                                           };
 
                                   if (suggestionView === "list") {
                                     return (
                                       <a
-                                        key={suggestion.id}
+                                        key={`${suggestion.id || suggestion.href || suggestion.collegeName}-${suggestionIndex}`}
                                         href={suggestion.href}
                                         onClick={saveFindFormStateForCollegeDetails}
-                                        className="group grid min-h-[108px] grid-cols-[56px_minmax(0,1fr)] items-center gap-x-3 gap-y-4 rounded-[18px] border border-[#E6E6E6] bg-white px-3 py-4 shadow-[0_8px_18px_rgba(15,27,37,0.04)] transition hover:border-[#F4B400] hover:shadow-[0_14px_26px_rgba(15,27,37,0.08)] sm:grid-cols-[72px_minmax(0,1fr)_92px_86px_86px_32px] sm:gap-5 sm:px-5"
+                                        className="group grid min-h-[108px] grid-cols-[56px_minmax(0,1fr)] items-center gap-x-3 gap-y-4 rounded-[18px] border border-[#E6E6E6] bg-white px-3 py-4 shadow-[0_8px_18px_rgba(15,27,37,0.04)] transition hover:border-[#0856dc] hover:shadow-[0_14px_26px_rgba(15,27,37,0.08)] sm:grid-cols-[72px_minmax(0,1fr)_92px_86px_86px_32px] sm:gap-5 sm:px-5"
                                       >
                                         <CollegeLogoBadge
                                           src={suggestion.logo}
@@ -4230,6 +4427,12 @@ export default function FindPage() {
                                             <span aria-hidden="true">.</span>
                                             <span className="truncate">{suggestion.location || selectedState}</span>
                                           </div>
+                                          <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-[#DDE2E7] bg-[#F8F9FB] px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#354150]">
+                                            <span>Course</span>
+                                            <span className="truncate normal-case tracking-normal text-[#0F1B25]">
+                                              {suggestion.courseName}
+                                            </span>
+                                          </div>
                                         </div>
                                         <div className="col-span-2 grid min-w-0 grid-cols-3 gap-2 sm:contents">
                                           <div className="min-w-0 rounded-[10px] bg-[#F8F9FB] px-1.5 py-2 text-center sm:bg-transparent sm:p-0">
@@ -4245,14 +4448,14 @@ export default function FindPage() {
                                             <div className="mt-1 text-[16px] font-normal leading-5 text-[#0F1B25]">{suggestion.ranking}</div>
                                           </div>
                                         </div>
-                                        <ArrowRight className="hidden size-5 text-[#B8C0C8] transition group-hover:translate-x-1 group-hover:text-[#D99A00] sm:block" />
+                                        <ArrowRight className="hidden size-5 text-[#B8C0C8] transition group-hover:translate-x-1 group-hover:text-[#1758f4] sm:block" />
                                       </a>
                                     );
                                   }
 
                                   return (
                                   <a
-                                    key={suggestion.id}
+                                    key={`${suggestion.id || suggestion.href || suggestion.collegeName}-${suggestionIndex}`}
                                     href={suggestion.href}
                                     onClick={saveFindFormStateForCollegeDetails}
                                     className="group flex h-full flex-col overflow-hidden rounded-[14px] border border-[#E6E6E6] bg-white shadow-[0_18px_34px_rgba(15,27,37,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,27,37,0.12)]"
@@ -4281,6 +4484,12 @@ export default function FindPage() {
                                           <div className="mt-2.5 flex min-w-0 items-center gap-2 text-[16px] font-normal text-white/95">
                                             <MapPin className="size-4.5 shrink-0" />
                                             <span className="truncate">{suggestion.location || selectedState}</span>
+                                          </div>
+                                          <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-white">
+                                            <span>Course</span>
+                                            <span className="truncate normal-case tracking-normal text-white/95">
+                                              {suggestion.courseName}
+                                            </span>
                                           </div>
                                         </div>
                                       </div>
@@ -4316,6 +4525,15 @@ export default function FindPage() {
                                         </span>
                                       </div>
 
+                                      <div className="mt-1 rounded-[10px] border border-[#DDE2E7] bg-[#FBFCFE] px-3 py-2.5">
+                                        <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#8A949F]">
+                                          Course Name
+                                        </div>
+                                        <div className="mt-1 line-clamp-2 text-[15px] font-semibold leading-5 text-[#0F1B25]">
+                                          {suggestion.courseName}
+                                        </div>
+                                      </div>
+
                                       <div className={`mt-auto inline-flex h-12 w-full items-center justify-center gap-3 rounded-[10px] text-[16px] font-medium transition group-hover:brightness-95 ${cardTheme.cta}`}>
                                         View College Details
                                         <ArrowRight className="size-5 transition group-hover:translate-x-0.5" />
@@ -4332,7 +4550,7 @@ export default function FindPage() {
                                       <button
                                         type="button"
                                         onClick={() => goToSuggestionPage(1)}
-                                        className="inline-flex size-10 items-center justify-center rounded-[10px] border border-[#E6E6E6] bg-white text-[15px] font-semibold text-[#008C46] shadow-[0_6px_14px_rgba(15,27,37,0.08)] transition hover:border-[#F4B400] hover:bg-[#FFF4CC] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
+                                        className="inline-flex size-10 items-center justify-center rounded-[10px] border border-[#E6E6E6] bg-white text-[15px] font-semibold text-[#1758f4] shadow-[0_6px_14px_rgba(15,27,37,0.08)] transition hover:border-[#1758f4] hover:bg-[#eef4ff] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
                                         aria-label="Go to page 1"
                                       >
                                         1
@@ -4351,8 +4569,8 @@ export default function FindPage() {
                                         onClick={() => goToSuggestionPage(pageNumber)}
                                         className={`inline-flex size-10 items-center justify-center rounded-[10px] text-[15px] font-semibold transition sm:size-12 sm:rounded-[12px] sm:text-[16px] ${
                                           isCurrentPage
-                                            ? "bg-[#F4B400] text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.24)]"
-                                            : "bg-white text-[#008C46] hover:bg-[#FFF4CC]"
+                                            ? "bg-[#1758f4] text-white shadow-[0_8px_16px_rgba(23,53,111,0.24)]"
+                                            : "bg-white text-[#1758f4] hover:bg-[#eef4ff]"
                                         } ${isCurrentPage ? "" : "border border-transparent"}`}
                                         aria-current={isCurrentPage ? "page" : undefined}
                                         aria-label={`Go to page ${pageNumber}`}
@@ -4369,7 +4587,7 @@ export default function FindPage() {
                                       <button
                                         type="button"
                                         onClick={() => goToSuggestionPage(suggestionPageCount)}
-                                        className="inline-flex size-10 items-center justify-center rounded-[10px] bg-white text-[15px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
+                                        className="inline-flex size-10 items-center justify-center rounded-[10px] bg-white text-[15px] font-semibold text-[#1758f4] transition hover:bg-[#eef4ff] sm:size-12 sm:rounded-[12px] sm:text-[16px]"
                                         aria-label={`Go to page ${suggestionPageCount}`}
                                       >
                                         {suggestionPageCount}
@@ -4380,7 +4598,7 @@ export default function FindPage() {
                                     type="button"
                                     onClick={() => goToSuggestionPage(suggestionPage + 1)}
                                     disabled={suggestionPage >= suggestionPageCount}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-3 text-[15px] font-semibold text-[#008C46] transition hover:bg-[#FFF4CC] disabled:cursor-not-allowed disabled:text-[#B8C0C8] disabled:hover:bg-transparent sm:h-12 sm:rounded-[12px] sm:px-4 sm:text-[17px]"
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-3 text-[15px] font-semibold text-[#1758f4] transition hover:bg-[#eef4ff] disabled:cursor-not-allowed disabled:text-[#B8C0C8] disabled:hover:bg-transparent sm:h-12 sm:rounded-[12px] sm:px-4 sm:text-[17px]"
                                   >
                                     Next
                                     <ArrowRight className="size-4" />
@@ -4491,14 +4709,14 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0856dc] bg-[#0856dc] px-6 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc]"
                           >
                             Back
                           </button>
                           <button
                             type="button"
                             onClick={() => setHasStartedJuniorTest(true)}
-                            className="inline-flex h-10 min-w-[180px] items-center justify-center rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-10 min-w-[180px] items-center justify-center rounded-[8px] bg-[#0856dc] px-6 text-[0.82rem] font-bold text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc]"
                           >
                             <span className="whitespace-nowrap">Start Assessment</span>
                           </button>
@@ -4509,7 +4727,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToPreviousStep}
-                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#F4B400] bg-[#F4B400] px-5 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_8px_16px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[#0856dc] bg-[#0856dc] px-5 text-[0.82rem] font-bold text-white shadow-[0_8px_16px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc]"
                           >
                             Back
                           </button>
@@ -4527,7 +4745,7 @@ export default function FindPage() {
                             type="button"
                             onClick={submitJuniorTest}
                             disabled={!selectedJuniorAnswer || hasSubmittedJuniorTest}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white disabled:cursor-not-allowed disabled:bg-[#9db8ed] disabled:text-white"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#0856dc] px-6 text-[0.82rem] font-bold text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] disabled:cursor-not-allowed disabled:bg-[#9db8ed] disabled:text-white"
                           >
                             {hasSubmittedJuniorTest ? "Submitted" : "Submit"}
                           </button>
@@ -4535,7 +4753,7 @@ export default function FindPage() {
                           <button
                             type="button"
                             onClick={goToNextJuniorQuestion}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.82rem] font-bold text-[#0F1B25] shadow-[0_10px_18px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:text-white"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#0856dc] px-6 text-[0.82rem] font-bold text-white shadow-[0_10px_18px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc]"
                           >
                             Next
                             <ArrowRight className="size-4" />
@@ -4574,7 +4792,7 @@ export default function FindPage() {
                     <button
                       type="button"
                       onClick={goBackFromInlineResults}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[2px] border border-[#F4B400] bg-[#F4B400] px-6 text-[16px] font-medium !text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.18)] transition hover:border-[#0F1B25] hover:bg-[#0F1B25] hover:!text-white"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-[2px] border border-[#0856dc] bg-[#0856dc] px-6 text-[16px] font-medium text-white shadow-[0_10px_18px_rgba(23,53,111,0.18)] transition hover:border-[#0F1B25] hover:bg-white hover:text-[#0856dc]"
                     >
                       <ArrowRight className="size-4 rotate-180" />
                       Back
@@ -4623,7 +4841,7 @@ export default function FindPage() {
                   <button
                     type="button"
                     onClick={resetFinalDetailsFields}
-                    className="inline-flex h-11 items-center justify-center rounded-[8px] border border-[#F4B400] bg-white px-6 text-[0.9rem] font-bold text-[#071A44] shadow-[0_10px_18px_rgba(244,180,0,0.10)] transition hover:bg-[#FFF7DF] sm:min-w-[120px]"
+                    className="inline-flex h-11 items-center justify-center rounded-[8px] border border-[#0856dc] bg-white px-6 text-[0.9rem] font-bold text-[#071A44] shadow-[0_10px_18px_rgba(23,53,111,0.10)] transition hover:bg-[#eef4ff] sm:min-w-[120px]"
                   >
                     Reset
                   </button>
@@ -4640,7 +4858,7 @@ export default function FindPage() {
                 <button
                   type={activeStep < 4 ? "button" : "submit"}
                   onClick={activeStep < 4 ? goToNextStep : undefined}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#F4B400] px-6 text-[0.9rem] font-bold !text-[#071A44] shadow-[0_12px_22px_rgba(244,180,0,0.22)] transition hover:bg-[#0F1B25] hover:!text-white sm:min-w-[140px]"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[#0856dc] px-6 text-[0.9rem] font-bold text-white shadow-[0_12px_22px_rgba(23,53,111,0.22)] transition hover:bg-white hover:text-[#0856dc] sm:min-w-[140px]"
                 >
                   {activeStep < 4 ? "Next" : isJuniorLevel ? "View Results" : "Calculate"}
                   <ArrowRight className="size-4" />
@@ -4827,6 +5045,7 @@ const academicInputClassName =
   "h-full min-h-[50px] w-full border-0 bg-transparent p-0 text-[15px] font-normal text-[#0F1B25] outline-none transition placeholder:text-[#8A949F]";
 const getInputClassName = (baseClassName: string, invalid: boolean) =>
   `${baseClassName}${invalid ? " text-[#d92d20] placeholder:text-[#f97066]" : ""}`;
+
 
 
 
