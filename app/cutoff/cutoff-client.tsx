@@ -36,8 +36,10 @@ type CutoffClientProps = {
   selectedSpecialization: string;
   selectedCategory: string;
   selectedDreamCollege: string;
+  selectedCollegeType: string;
   selectedAdmissionType: string;
   enteredCutoff: string;
+  studentName: string;
   submittedDetails: Record<string, string>;
   colleges: College[];
   courses: Course[];
@@ -483,8 +485,10 @@ export function CutoffClient({
   selectedSpecialization,
   selectedCategory,
   selectedDreamCollege,
+  selectedCollegeType,
   selectedAdmissionType,
   enteredCutoff,
+  studentName,
   submittedDetails,
   colleges,
   courses,

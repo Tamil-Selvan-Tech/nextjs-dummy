@@ -33,8 +33,8 @@ const proxyRequest = async (request: NextRequest, pathSegments: string[]) => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } },
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
-  const { path } = params;
-  return proxyRequest(request, path || []);
+  const { path = [] } = await params;
+  return proxyRequest(request, path);
 }
