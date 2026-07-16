@@ -56,6 +56,7 @@ export function Loading({ fullScreen = true }: LoadingProps) {
 
   return (
     <section
+      data-app-page="loading"
       role="status"
       aria-live="polite"
       aria-busy="true"

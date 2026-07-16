@@ -243,6 +243,15 @@ export function Navbar() {
   }, [isCoursesOpen]);
 
   useEffect(() => {
+    const shouldHideMobileBottomNav = isDrawerOpen || isCoursesOpen;
+    document.body.dataset.mobileTopOverlayOpen = shouldHideMobileBottomNav ? "true" : "false";
+
+    return () => {
+      document.body.dataset.mobileTopOverlayOpen = "false";
+    };
+  }, [isDrawerOpen, isCoursesOpen]);
+
+  useEffect(() => {
     if (!isDrawerOpen) return;
 
     const scrollY = window.scrollY;

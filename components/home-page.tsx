@@ -1379,17 +1379,17 @@ text-[#2563eb]
                   <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.82fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.38fr)_minmax(32rem,0.9fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(36rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <div className="md:hidden">
+                        <div className="md:hidden pt-3">
                           <div className="grid grid-cols-1 items-center gap-1.5">
                             <div className="min-w-0 pr-0 text-center">
-                              <h1 className="home-hero-title font-montserrat-display mx-auto max-w-[13.5rem] text-center text-[clamp(2rem,9.2vw,2.65rem)] font-bold leading-[0.96] tracking-[-0.045em] text-[color:var(--text-dark)]">
-                                <span className="block">
+                              <h1 className="home-hero-title font-montserrat-display mx-auto max-w-[15rem] text-center text-[clamp(1.9rem,8.4vw,2.45rem)] font-bold leading-[0.92] tracking-[-0.045em] text-[color:var(--text-dark)]">
+                                <span className="block whitespace-nowrap">
                                   Find Your{" "}
                                   <span className="inline-block -skew-x-6 text-[#2563eb]">
                                     Future
                                   </span>
                                 </span>
-                                <span className="block">
+                                <span className="block whitespace-nowrap">
                                   <span className="inline-block -skew-x-6 text-[#2563eb]">
                                     College
                                   </span>{" "}
@@ -1450,7 +1450,7 @@ text-[#2563eb]
                             <div className={`relative mt-3 flex items-center gap-2 rounded-full border bg-white px-4 py-3.5 shadow-[0_10px_22px_rgba(7,15,40,0.07)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.45)] ring-2 ring-[rgba(37,99,235,0.12)]" : "border-[rgba(20,42,99,0.14)] hover:border-[rgba(37,99,235,0.24)]"}`}>
                               <div className="min-w-0 flex-1">
                                 {!activeMobileHeroSearchValue ? (
-                                  <div className="pointer-events-none absolute left-4 right-14 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[12px]">
+                                  <div className="pointer-events-none absolute left-4 right-14 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[13px] sm:text-[14px]">
                                     <span className="truncate text-[color:var(--brand-primary-soft)]">{MOBILE_HERO_SEARCH_PROMPTS[mobileHeroSearchTab]}</span>
                                   </div>
                                 ) : null}
@@ -1826,12 +1826,12 @@ text-[#2563eb]
                     {/* Top exams overview */}
                     <div className="mx-auto mt-4 w-full max-w-none px-0 scroll-fade-in scroll-delay-1 lg:col-span-2" data-scroll-animate>
                       <div className="relative">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                          <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                               Top Exams
                             </p>
-                            <p className="home-section-title type-headline-small mt-2 text-[1.7rem] leading-[1.12] text-[color:var(--text-dark)] sm:text-[1.85rem] lg:text-[1.95rem]">
+                            <p className="home-section-title type-headline-small mt-2 whitespace-nowrap text-[0.98rem] leading-[1.02] text-[color:var(--text-dark)] sm:text-[1.55rem] lg:text-[1.95rem]">
                               Master Your Entry Strategy
                             </p>
                           </div>
@@ -1839,7 +1839,7 @@ text-[#2563eb]
                           <button
                             type="button"
                             onClick={() => router.push("/exams")}
-                            className="inline-flex items-center justify-center gap-2 rounded-full px-0 py-0 text-sm font-semibold text-[#1d4ed8] transition hover:opacity-80"
+                            className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-0 py-0 text-[0.78rem] font-semibold text-[#1d4ed8] transition hover:opacity-80 sm:text-sm"
                           >
                             View more
                             <ArrowRight className="size-4" />
