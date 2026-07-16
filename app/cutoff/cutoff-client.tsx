@@ -1526,7 +1526,7 @@ export function CutoffClient({
                         className={`inline-flex h-[52px] flex-1 items-center justify-center gap-2 px-4 text-[0.92rem] font-medium transition sm:h-[56px] sm:min-w-[112px] sm:px-5 sm:text-[0.95rem] ${
                           suggestedCollegeView === "grid"
                             ? "bg-[#1758f4] text-white"
-                            : "bg-white text-[#0f1d3d] hover:bg-[#1758f4] hover:text-white"
+                            : "bg-white text-[#1758f4]"
                         }`}
                         aria-pressed={suggestedCollegeView === "grid"}
                       >
@@ -1539,7 +1539,7 @@ export function CutoffClient({
                         className={`inline-flex h-[52px] flex-1 items-center justify-center gap-2 border-l border-[#d9e4fb] px-4 text-[0.92rem] font-medium transition sm:h-[56px] sm:min-w-[112px] sm:px-5 sm:text-[0.95rem] ${
                           suggestedCollegeView === "list"
                             ? "bg-[#1758f4] text-white"
-                            : "bg-white text-[#0f1d3d] hover:bg-[#1758f4] hover:text-white"
+                            : "bg-white text-[#1758f4]"
                         }`}
                         aria-pressed={suggestedCollegeView === "list"}
                       >
@@ -1581,9 +1581,9 @@ export function CutoffClient({
                         }`}
                       >
                         {isListView ? (
-                          <div className="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-5 lg:py-3.5">
-                            <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-4">
-                              <div className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d9e4fb] bg-white shadow-[0_8px_20px_rgba(15,27,37,0.08)] sm:size-14 lg:size-15">
+                          <div className="flex flex-col gap-4 px-3.5 py-4 sm:px-4 sm:py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-5 lg:py-3.5">
+                            <div className="flex min-w-0 flex-1 items-start gap-3 lg:items-center lg:gap-4">
+                              <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d9e4fb] bg-white shadow-[0_8px_20px_rgba(15,27,37,0.08)] sm:size-14 lg:size-15">
                                 {college.logo || college.image ? (
                                   <Image
                                     src={college.logo || college.image}
@@ -1597,39 +1597,39 @@ export function CutoffClient({
                                 )}
                               </div>
 
-                              <div className="min-w-0">
-                                <h3 className="line-clamp-2 text-[0.95rem] font-semibold leading-5 text-[#07133b] sm:truncate sm:text-[1.04rem] lg:text-[1.12rem]">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <h3 className="line-clamp-2 text-[0.92rem] font-semibold leading-6 text-[#07133b] sm:truncate sm:text-[1.04rem] sm:leading-5 lg:text-[1.12rem]">
                                   {college.name}
                                 </h3>
-                                <p className="mt-1 flex items-center gap-2 truncate text-[0.8rem] text-[#66748f] sm:mt-0.5 sm:text-[0.9rem]">
+                                <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.76rem] leading-5 text-[#66748f] sm:text-[0.9rem]">
                                   {college.ownershipType || "College"}
                                   <span className="text-[#a5afc0]">·</span>
                                   <span className="truncate">{displayLocation}</span>
                                 </p>
-                                <div className="mt-2 inline-flex max-w-full items-center rounded-full border border-[#d9e4fb] bg-white px-3 py-1 text-[0.74rem] font-medium text-[#0f1d3d] sm:text-[0.78rem]">
+                                <div className="inline-flex max-w-full items-center self-start rounded-full border border-[#d9e4fb] bg-white px-3 py-1 text-[0.72rem] font-medium text-[#0f1d3d] sm:text-[0.78rem]">
                                   <span className="mr-2 uppercase tracking-[0.14em] text-[#6f7c97]">Course</span>
                                   <span className="truncate">{card.courseLabel}</span>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-1 lg:justify-end">
-                              <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-6">
-                                <div>
-                                  <p className="text-[0.72rem] text-[#7c879d] sm:text-[0.74rem]">Cut Off</p>
-                                  <p className="mt-1 text-[0.86rem] font-medium text-[#1758f4] sm:mt-1.5 sm:text-[0.96rem]">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex-1 lg:justify-end">
+                              <div className="grid grid-cols-3 gap-3 text-center sm:gap-6">
+                                <div className="rounded-[18px] bg-[#f8fbff] px-2 py-2 sm:bg-transparent sm:px-0 sm:py-0">
+                                  <p className="text-[0.64rem] leading-4 text-[#7c879d] sm:text-[0.74rem]">Cut Off</p>
+                                  <p className="mt-1.5 text-[0.8rem] font-medium leading-5 text-[#1758f4] sm:mt-1.5 sm:text-[0.96rem]">
                                     {formatResultValue(String(card.requiredCutoff))}
                                   </p>
                                 </div>
-                                <div>
-                                  <p className="text-[0.72rem] text-[#7c879d] sm:text-[0.74rem]">Est.</p>
-                                  <p className="mt-1 text-[0.86rem] font-medium text-[#07133b] sm:mt-1.5 sm:text-[0.96rem]">
+                                <div className="rounded-[18px] bg-[#f8fbff] px-2 py-2 sm:bg-transparent sm:px-0 sm:py-0">
+                                  <p className="text-[0.64rem] leading-4 text-[#7c879d] sm:text-[0.74rem]">Est.</p>
+                                  <p className="mt-1.5 text-[0.8rem] font-medium leading-5 text-[#07133b] sm:mt-1.5 sm:text-[0.96rem]">
                                     {college.establishedYear || "-"}
                                   </p>
                                 </div>
-                                <div>
-                                  <p className="text-[0.72rem] text-[#7c879d] sm:text-[0.74rem]">Ranking</p>
-                                  <p className="mt-1 text-[0.86rem] font-medium text-[#07133b] sm:mt-1.5 sm:text-[0.96rem]">
+                                <div className="rounded-[18px] bg-[#f8fbff] px-2 py-2 sm:bg-transparent sm:px-0 sm:py-0">
+                                  <p className="text-[0.64rem] leading-4 text-[#7c879d] sm:text-[0.74rem]">Ranking</p>
+                                  <p className="mt-1.5 text-[0.8rem] font-medium leading-5 text-[#07133b] sm:mt-1.5 sm:text-[0.96rem]">
                                     {formatRankingRangeForDisplay(college.ranking)}
                                   </p>
                                 </div>

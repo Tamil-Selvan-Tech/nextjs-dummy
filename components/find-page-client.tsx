@@ -2102,7 +2102,7 @@ export default function FindPage() {
       ),
     [juniorQuestionSubjectRows],
   );
-  const activeJuniorQuestion =
+  const activeJuniorQuestion = 
     juniorQuestions[Math.min(activeJuniorQuestionIndex, Math.max(juniorQuestions.length - 1, 0))] || null;
   const activeJuniorQuestionKey = activeJuniorQuestion
     ? `${activeJuniorQuestion.subject}-${activeJuniorQuestion.id}-${activeJuniorQuestionIndex}`
@@ -2118,9 +2118,12 @@ export default function FindPage() {
     [],
   );
   const juniorAssessmentScale = getAssessmentScale(selectedDegree);
+  const shouldComputeJuniorAssessmentResults = hasSubmittedJuniorTest;
   const juniorResultRows = useMemo(
-    () =>
-      juniorQuestions.map((question, index) => {
+    () => {
+      if (!shouldComputeJuniorAssessmentResults) return [];
+
+      return juniorQuestions.map((question, index) => {
         const questionKey = `${question.subject}-${question.id}-${index}`;
         const selectedAnswer = juniorAnswers[questionKey] || "";
         const selectedAnswerIndex = selectedAnswer ? selectedAnswer.charCodeAt(0) - 65 : -1;
@@ -2146,16 +2149,23 @@ export default function FindPage() {
           selectedAnswer,
           selectedAnswerText,
         };
-      }),
-    [juniorAnswers, juniorQuestions],
+      });
+    },
+    [shouldComputeJuniorAssessmentResults, juniorAnswers, juniorQuestions],
   );
-  const juniorCorrectCount = juniorResultRows.filter((row) => row.isCorrect).length;
-  const juniorPercentage = juniorQuestionTotal > 0 ? (juniorCorrectCount / juniorQuestionTotal) * 100 : 0;
+  const juniorCorrectCount = shouldComputeJuniorAssessmentResults
+    ? juniorResultRows.filter((row) => row.isCorrect).length
+    : 0;
+  const juniorPercentage = shouldComputeJuniorAssessmentResults && juniorQuestionTotal > 0
+    ? (juniorCorrectCount / juniorQuestionTotal) * 100
+    : 0;
   const juniorOverallScore = (juniorPercentage / 100) * juniorAssessmentScale;
   const juniorResultTone = getAssessmentTone(juniorPercentage);
   const juniorSubjectResults = useMemo(
-    () =>
-      juniorQuestionSubjectRows.map(({ subject }) => {
+    () => {
+      if (!shouldComputeJuniorAssessmentResults) return [];
+
+      return juniorQuestionSubjectRows.map(({ subject }) => {
         const rows = juniorResultRows.filter((row) => row.subject === subject);
         const correct = rows.filter((row) => row.isCorrect).length;
         const total = rows.length;
@@ -2168,23 +2178,27 @@ export default function FindPage() {
           rows,
           tone: getAssessmentTone(percentage),
         };
-      }),
-    [juniorQuestionSubjectRows, juniorResultRows],
+      });
+    },
+    [shouldComputeJuniorAssessmentResults, juniorQuestionSubjectRows, juniorResultRows],
   );
   const activeJuniorSubjectResult =
     juniorSubjectResults.find((row) => row.subject === activeJuniorResultSubject) ||
     juniorSubjectResults[0] ||
     null;
   const juniorCollegeSuggestions = useMemo(
-    () =>
-      buildJuniorCollegeSuggestions(
+    () => {
+      if (!shouldComputeJuniorAssessmentResults) return [];
+
+      return buildJuniorCollegeSuggestions(
         colleges,
         courses,
         selectedDegree,
         selectedLevel,
         juniorOverallScore,
-      ),
-    [colleges, courses, juniorOverallScore, selectedDegree, selectedLevel],
+      );
+    },
+    [shouldComputeJuniorAssessmentResults, colleges, courses, juniorOverallScore, selectedDegree, selectedLevel],
   );
   const sortedJuniorCollegeSuggestions = useMemo(() => {
     const suggestions = [...juniorCollegeSuggestions];
@@ -2309,7 +2323,7 @@ export default function FindPage() {
 
   const submitJuniorTest = () => {
     if (!selectedJuniorAnswer) return;
-    setActiveJuniorResultSubject(juniorSubjectResults[0]?.subject || "");
+    setActiveJuniorResultSubject(juniorQuestionSubjectRows[0]?.subject || activeJuniorQuestion?.subject || "");
     setHasSubmittedJuniorTest(true);
     setActiveStep(5);
   };
@@ -4150,7 +4164,7 @@ export default function FindPage() {
                               </div>
                               <div className="flex min-h-[58px] items-center gap-2 border-b border-[#E6E6E6] pb-2.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2">
                               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ff] text-[#0856dc] sm:size-8">
-                                  <Phone className="size-4 text-white" />
+                                  <Phone className="size-4 text-[#0856dc]" />
                                 </div>
                                 <div className="min-w-0">
                                   <div className="text-[14px] font-normal uppercase text-[#5F6B76]">Phone Number</div>
@@ -4374,7 +4388,7 @@ export default function FindPage() {
                                       className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] transition ${
                                         suggestionView === "grid"
                                           ? "bg-[#0856dc] text-white"
-                                          : "bg-white text-[#354150]"
+                                          : "bg-white text-[#0856dc]"
                                       }`}
                                     >
                                       <LayoutGrid className="size-4 shrink-0" />
@@ -4388,7 +4402,7 @@ export default function FindPage() {
                                       className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 px-3 text-[15px] font-medium sm:px-5 sm:text-[16px] transition ${
                                         suggestionView === "list"
                                           ? "bg-[#0856dc] text-white"
-                                          : "bg-white text-[#354150]"
+                                          : "bg-white text-[#0856dc]"
                                       }`}
                                     >
                                       <List className="size-4 shrink-0" />

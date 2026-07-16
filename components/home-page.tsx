@@ -20,7 +20,7 @@ import {
   Sparkles,
   Stethoscope,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import {
@@ -63,9 +63,9 @@ function useScrollAnimation() {
 }
 
 const MOBILE_HERO_SEARCH_PROMPTS = {
-  college: "Search for College",
-  course: "Search for Course",
-  location: "Search for Location",
+  college: "Search for college or course",
+  course: "Search for course",
+  location: "Search for location",
 } as const;
 const TOP_EXAM_CARDS = [
   {
@@ -247,6 +247,7 @@ export function HomePage({
   examSchedules: initialExamSchedules = [],
 }: HomePageProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [collegesData, setCollegesData] = useState(() =>
     initialCollegesData.length ? initialCollegesData : fallbackColleges,
   );
@@ -982,6 +983,12 @@ export function HomePage({
     ],
     [collegesData, coursesData.length, topExamCards],
   );
+  const mobileHeroStreamLinks = [
+    { label: "Engineering", href: "/explore?stream=Engineering", icon: CourseIcon },
+    { label: "Arts & Science", href: "/explore?stream=Arts%20%26%20Science", icon: BookOpen },
+    { label: "Medical", href: "/explore?stream=Medical", icon: Stethoscope },
+    { label: "Management", href: "/explore?stream=Management", icon: BriefcaseBusiness },
+  ] as const;
   const syncScrollIndicators = (
     element: HTMLDivElement | null,
     setLeft: (value: boolean) => void,
@@ -1122,12 +1129,12 @@ export function HomePage({
           shadow-[0_26px_52px_rgba(9,18,47,0.26)]
         "
       >
-<div className="relative grid h-full grid-cols-1 gap-3.5 md:grid-cols-[1fr_1.05fr] md:gap-3.5">
+<div className="relative grid h-full grid-cols-1 justify-items-start gap-3.5 md:grid-cols-[1fr_1.05fr] md:justify-items-start md:gap-3.5">
             <button
             type="button"
             onClick={() => router.push("/find")}
             className="
-inline-flex w-full max-w-[18rem] items-center justify-center gap-2 justify-self-center
+inline-flex w-full max-w-[18rem] items-center justify-center gap-2 justify-self-start
 rounded-[0.95rem]
 border border-[rgba(37,99,235,0.22)]
 bg-white
@@ -1147,7 +1154,7 @@ text-[#2563eb]
             <ArrowRight className="size-4 text-[#2563eb]" />
           </button>
 
-<div className="relative z-10 w-full max-w-none text-center md:mt-0.5 md:flex md:h-full md:flex-col md:text-left">
+<div className="relative z-10 w-full max-w-none text-left md:mt-0.5 md:flex md:h-full md:flex-col md:text-left">
 
   <div className="w-full">
   <h3 className="font-montserrat-display text-[1.4rem] font-bold leading-[1.18] tracking-[-0.02em] text-white sm:text-[1.75rem] md:text-[1.85rem] md:tracking-[-0.03em]">
@@ -1160,13 +1167,13 @@ text-[#2563eb]
   </span>
 </h3>
 
-    <p className="mx-auto mt-1.5 w-full max-w-[32rem] text-[12px] leading-5 text-white/72 sm:text-[13px] sm:leading-6 md:mx-0">
+    <p className="mt-1.5 w-full max-w-[32rem] text-[12px] leading-5 text-white/72 sm:text-[13px] sm:leading-6 md:mt-0.5 md:text-left">
       Enter your marks and preferences to find better college matches.
       Get clearer cutoff guidance in one simple flow.
     </p>
 
     {/* Cards - paragraph keela */}
-    <div className="mx-auto mt-3 grid w-full max-w-[24rem] grid-cols-3 gap-2 sm:gap-3 md:mx-0 md:mt-3 md:max-w-[20.5rem]">
+    <div className="mt-3 grid w-full max-w-[24rem] grid-cols-3 justify-items-start gap-2 sm:gap-3 md:mt-3 md:max-w-[20.5rem] md:justify-items-start">
       <span className="inline-flex min-h-[4.6rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/10 bg-white/7 px-2 py-2.5 text-center sm:min-h-[5rem] sm:gap-2 sm:rounded-[1rem] sm:px-3 sm:py-3 md:min-h-[4.35rem] md:px-2">
         <Sparkles className="size-4 text-[#ffcf69] sm:size-5" />
         <span className="max-w-[4.75rem] text-[11px] font-semibold leading-[1.2] sm:text-[13px]">Instant results</span>
@@ -1342,7 +1349,7 @@ text-[#2563eb]
   );
 
   return (
-    <div className="home-theme bg-[color:var(--page-bg)]" style={homeThemeStyles}>
+    <div className="home-theme bg-[color:var(--page-bg)] pb-28 md:pb-0" style={homeThemeStyles}>
       {/* Hero section */}
       <section className="relative overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--text-dark)]">
         {/* Hero background artwork */}
@@ -1372,48 +1379,78 @@ text-[#2563eb]
                   <div className="relative space-y-4 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(28rem,0.82fr)] lg:items-start lg:gap-x-3 lg:gap-y-4 lg:space-y-0 xl:grid-cols-[minmax(0,1.38fr)_minmax(32rem,0.9fr)] xl:gap-x-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(36rem,0.98fr)] 2xl:gap-x-5 2xl:gap-y-6">
                     <div className="flex h-full flex-col justify-start space-y-4 lg:pr-2">
                       <div className="max-w-full px-0 py-1.5 text-center lg:px-0 lg:py-1 lg:text-left">
-                        <h1 className="home-hero-title font-montserrat-display mx-auto mt-2 max-w-[36rem] text-center text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:mx-0 lg:max-w-[46rem] lg:text-left lg:text-[50px] lg:leading-[50px] xl:max-w-[52rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[58rem] 2xl:text-[50px] 2xl:leading-[58px]">
-                          <span className="block">
-                            Find Your <span className="inline-block -skew-x-6 text-[#2563eb]">Future</span>
-                          </span>
-                          <span className="block">
-                            <span className="inline-block -skew-x-6 text-[#2563eb]">College</span> Smartly.
-                          </span>
-                        </h1>
+                        <div className="md:hidden">
+                          <div className="grid grid-cols-1 items-center gap-1.5">
+                            <div className="min-w-0 pr-0 text-center">
+                              <h1 className="home-hero-title font-montserrat-display mx-auto max-w-[13.5rem] text-center text-[clamp(2rem,9.2vw,2.65rem)] font-bold leading-[0.96] tracking-[-0.045em] text-[color:var(--text-dark)]">
+                                <span className="block">
+                                  Find Your{" "}
+                                  <span className="inline-block -skew-x-6 text-[#2563eb]">
+                                    Future
+                                  </span>
+                                </span>
+                                <span className="block">
+                                  <span className="inline-block -skew-x-6 text-[#2563eb]">
+                                    College
+                                  </span>{" "}
+                                  Smartly.
+                                </span>
+                              </h1>
+                            </div>
 
-                        <p className="type-body-large mx-auto mt-3.5 max-w-[44rem] px-2 text-center text-[color:var(--text-muted)] lg:mx-0 lg:px-0 lg:text-left xl:max-w-[50rem] 2xl:max-w-[56rem]">
-                          Discover colleges, courses, exams, and cities from one premium
-                          search flow built to help you shortlist faster and decide with
-                          more confidence.
-                        </p>
+                          </div>
+
+                          <p className="type-body-large mt-3 max-w-[44rem] text-left text-[color:var(--text-muted)]">
+                            Discover colleges, courses, exams, and cities from one premium
+                            search flow built to help you shortlist faster and decide with
+                            more confidence.
+                          </p>
+                        </div>
+
+                        <div className="hidden md:block">
+                          <h1 className="home-hero-title font-montserrat-display mx-auto mt-2 max-w-[36rem] text-center text-[clamp(2.2rem,8vw,2.9rem)] font-bold leading-[1.1] tracking-[-0.045em] text-[color:var(--text-dark)] lg:mx-0 lg:max-w-[46rem] lg:text-left lg:text-[50px] lg:leading-[50px] xl:max-w-[52rem] xl:text-[46px] xl:leading-[54px] 2xl:max-w-[58rem] 2xl:text-[50px] 2xl:leading-[58px]">
+                            <span className="block">
+                              Find Your <span className="inline-block -skew-x-6 text-[#2563eb]">Future</span>
+                            </span>
+                            <span className="block">
+                              <span className="inline-block -skew-x-6 text-[#2563eb]">College</span> Smartly.
+                            </span>
+                          </h1>
+
+                          <p className="type-body-large mx-auto mt-3.5 max-w-[44rem] px-2 text-center text-[color:var(--text-muted)] lg:mx-0 lg:px-0 lg:text-left xl:max-w-[50rem] 2xl:max-w-[56rem]">
+                            Discover colleges, courses, exams, and cities from one premium
+                            search flow built to help you shortlist faster and decide with
+                            more confidence.
+                          </p>
+                        </div>
 
                         <div className="mx-auto mt-5 w-full max-w-none px-0 sm:px-1 md:hidden">
-                          <div className="rounded-[1rem] border border-[rgba(37,99,235,0.2)] bg-white/95 p-2.5 shadow-[0_12px_28px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.08)]">
+                          <div className="rounded-[1.45rem] border border-[rgba(37,99,235,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.96))] p-3 shadow-[0_16px_34px_rgba(20,42,99,0.08)] ring-1 ring-[rgba(37,99,235,0.06)]">
                             <div className="grid grid-cols-3 gap-2">
                               {[
-                                { id: "college", label: "Colleges" },
-                                { id: "course", label: "Courses" },
-                                { id: "location", label: "Location" },
+                                { id: "college", label: "Colleges", icon: Building2 },
+                                { id: "course", label: "Courses", icon: BookOpen },
+                                { id: "location", label: "Location", icon: MapPin },
                               ].map((item) => (
                                 <button
                                   key={item.id}
                                   type="button"
                                   onClick={() => setMobileHeroSearchTab(item.id as "college" | "course" | "location")}
-                                  className={`inline-flex items-center justify-center rounded-[0.65rem] px-2 py-2 text-[11px] font-semibold transition ${mobileHeroSearchTab === item.id
-                                    ? "bg-[color:var(--brand-accent-deep)] text-white shadow-[0_8px_18px_rgba(20,42,99,0.18)]"
-                                    : "border border-[rgba(20,42,99,0.08)] bg-[rgba(246,248,252,0.9)] text-[color:var(--text-muted)]"
+                                  className={`inline-flex items-center justify-center gap-1.5 rounded-[0.95rem] border px-2.5 py-2.5 text-[11px] font-semibold transition sm:text-[12px] ${mobileHeroSearchTab === item.id
+                                    ? "border-[rgba(20,42,99,0.05)] bg-[color:var(--brand-accent-deep)] text-white shadow-[0_10px_20px_rgba(20,42,99,0.2)]"
+                                    : "border-[rgba(20,42,99,0.08)] bg-white text-[color:var(--text-muted)] shadow-[0_6px_14px_rgba(20,42,99,0.04)]"
                                     }`}
                                 >
+                                  <item.icon className="size-3.5 shrink-0" />
                                   {item.label}
                                 </button>
                               ))}
                             </div>
 
-                            <div className={`relative mt-2 flex items-center gap-2 rounded-[0.8rem] border bg-white px-3.5 py-3 shadow-[0_8px_20px_rgba(7,15,40,0.08)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.5)] ring-2 ring-[rgba(37,99,235,0.14)]" : "border-[rgba(20,42,99,0.16)] hover:border-[rgba(37,99,235,0.28)]"}`}>
-                              <Search className="size-4 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                            <div className={`relative mt-3 flex items-center gap-2 rounded-full border bg-white px-4 py-3.5 shadow-[0_10px_22px_rgba(7,15,40,0.07)] transition ${activeSearchField === mobileHeroSearchTab ? "border-[rgba(37,99,235,0.45)] ring-2 ring-[rgba(37,99,235,0.12)]" : "border-[rgba(20,42,99,0.14)] hover:border-[rgba(37,99,235,0.24)]"}`}>
                               <div className="min-w-0 flex-1">
                                 {!activeMobileHeroSearchValue ? (
-                                  <div className="pointer-events-none absolute left-10 right-12 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[12px]">
+                                  <div className="pointer-events-none absolute left-4 right-14 top-1/2 flex -translate-y-1/2 items-center overflow-hidden text-[12px]">
                                     <span className="truncate text-[color:var(--brand-primary-soft)]">{MOBILE_HERO_SEARCH_PROMPTS[mobileHeroSearchTab]}</span>
                                   </div>
                                 ) : null}
@@ -1447,15 +1484,29 @@ text-[#2563eb]
                               <button
                                 type="button"
                                 onClick={handleCompactMobileHeroSearch}
-                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(20,42,99,0.1)] text-[color:var(--brand-primary)]"
+                                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--brand-primary)] text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-105"
                                 aria-label="Submit mobile search"
                               >
-                                <ArrowRight className="size-4" />
+                                <Search className="size-[1.05rem]" />
                               </button>
                             </div>
 
+                            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+                              {mobileHeroStreamLinks.map((item) => (
+                                <button
+                                  key={item.label}
+                                  type="button"
+                                  onClick={() => router.push(item.href)}
+                                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgba(20,42,99,0.08)] bg-white px-3.5 py-2 text-[11px] font-medium text-[color:var(--text-dark)] shadow-[0_6px_14px_rgba(20,42,99,0.04)] transition hover:border-[rgba(37,99,235,0.2)] hover:text-[color:var(--brand-primary)]"
+                                >
+                                  <item.icon className="size-3.5 shrink-0 text-[color:var(--brand-primary-soft)]" />
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+
                             {activeSearchField === mobileHeroSearchTab ? (
-                              <div className="mt-2 overflow-hidden rounded-[0.95rem] border border-[rgba(20,42,99,0.08)] bg-white shadow-[0_12px_30px_rgba(20,42,99,0.08)]">
+                              <div className="mt-3 overflow-hidden rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-white shadow-[0_12px_28px_rgba(20,42,99,0.08)]">
                                 {activeSearchSuggestions.length > 0 ? (
                                   <div className="max-h-[16rem] overflow-y-auto px-2 py-2">
                                     <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
@@ -1521,21 +1572,6 @@ text-[#2563eb]
                           </div>
                         </div>
 
-                        <div className="relative z-[1] mx-auto mt-4 grid w-full max-w-[22.5rem] grid-cols-2 justify-items-center gap-2 px-2 md:hidden">
-                          {heroStatCards.map((item) => (
-                            <div key={`${item.label}-mobile`} className="w-full min-w-0 rounded-[0.9rem] border border-[rgba(37,99,235,0.12)] bg-white px-3 py-2.5 shadow-[0_8px_16px_rgba(20,42,99,0.05)]">
-                              <div className="flex flex-col gap-1 text-center">
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.iconClassName}`}>
-                                    <item.icon className="size-[0.85rem]" />
-                                  </span>
-                                  <p className="font-[family:var(--font-display)] text-[0.84rem] font-bold leading-none text-[#2563eb]">{item.value}</p>
-                                </div>
-                                <p className="text-[0.52rem] font-medium uppercase tracking-[0.05em] leading-[0.78rem] text-[#2563eb]">{item.label}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
                       </div>
 
                       <div className="mx-auto hidden w-full max-w-[50rem] md:block lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
@@ -2327,6 +2363,7 @@ text-[#2563eb]
         aria-label="Open cutoff calculator"
         className="
           cutoff-calculator-float
+          hidden md:flex
           fixed bottom-4 right-4 z-50
           flex h-15 w-15 items-center justify-center
           rounded-full
