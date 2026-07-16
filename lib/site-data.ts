@@ -623,7 +623,21 @@ export const findBestCourseLookupMatch = <T extends { course: string }>(
 };
 
 export const getCollegeById = (id: string) =>
-  colleges.find((college) => college.id === id);
+  colleges.find((college) => {
+    const normalizedId = normalizeText(id);
+    const collegeIdentityValues = [
+      college.id,
+      college.collegeCode || "",
+      college.name,
+      (college as { _id?: string })._id || "",
+    ]
+      .map((value) => normalizeText(value))
+      .filter(Boolean);
+
+    return collegeIdentityValues.some(
+      (value) => value === normalizedId || value.includes(normalizedId) || normalizedId.includes(value),
+    );
+  });
 
 const courseMatchesCollegeIdentity = (course: Course, collegeKeys: string[]) => {
   if (!collegeKeys.length) return false;
