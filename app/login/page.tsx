@@ -138,19 +138,14 @@ const leftPanelContent: Record<
     imageSizes: "(min-width: 1024px) 55vw, 100vw",
     features: [
       {
-        icon: GraduationCap,
-        title: "Explore Colleges",
-        description: "Find and compare top colleges across India.",
-      },
-      {
         icon: BookOpen,
         title: "Find the Right Course",
         description: "Discover courses that match your interests and goals.",
       },
       {
         icon: BarChart3,
-        title: "Make Informed Decisions",
-        description: "Access detailed insights, reviews, and rankings.",
+        title: "Explore Colleges",
+        description: "Find and compare top colleges across India.",
       },
     ],
   },
@@ -198,29 +193,7 @@ function GoogleMark({ className = "size-5" }: { className?: string }) {
   );
 }
 
-function FeatureRow({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: typeof GraduationCap;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-4 py-1 sm:gap-5">
-      <span className="inline-flex size-14 shrink-0 items-center justify-center rounded-[1rem] border border-[rgba(31,99,255,0.08)] bg-[rgba(31,99,255,0.05)] text-[#1f63ff] shadow-[0_8px_18px_rgba(4,12,26,0.04)]">
-        <Icon className="size-7" />
-      </span>
-      <div className="min-w-0 max-w-[28rem]">
-        <h3 className="text-[1.02rem] font-semibold leading-6 text-[color:var(--text-dark)]">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-[color:var(--text-muted)]">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function CollegeFeatureCard({
+function FeatureOverlayCard({
   features,
 }: {
   features: Array<{
@@ -231,18 +204,18 @@ function CollegeFeatureCard({
   }>;
 }) {
   return (
-    <div className="absolute right-6 top-10 z-20 w-[min(100%,17rem)] rounded-[1.65rem] border border-white/70 bg-white/92 p-5 shadow-[0_24px_58px_rgba(22,50,79,0.16)] backdrop-blur-xl sm:right-7 sm:top-12 sm:w-[17.25rem] sm:p-5">
-      <div className="space-y-4">
+    <div className="absolute right-4 top-4 z-20 w-[min(100%,19rem)] rounded-[1.45rem] border border-white/70 bg-white/92 p-3.5 shadow-[0_24px_58px_rgba(22,50,79,0.16)] backdrop-blur-xl sm:right-5 sm:top-5 sm:w-[19.5rem] sm:p-4">
+      <div className="space-y-3">
         {features.map((feature) => (
           <div key={feature.title} className="flex items-start gap-3">
             <span
-              className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[0.95rem] ${feature.cardClassName || "bg-[rgba(31,99,255,0.08)] text-[#1f63ff]"}`}
+              className={`inline-flex size-9 shrink-0 items-center justify-center rounded-[0.85rem] ${feature.cardClassName || "bg-[rgba(31,99,255,0.08)] text-[#1f63ff]"}`}
             >
-              <feature.icon className="size-5" />
+              <feature.icon className="size-4" />
             </span>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold leading-5 text-[color:var(--text-dark)]">{feature.title}</h3>
-              <p className="mt-1 text-[0.83rem] leading-5 text-[color:var(--text-muted)]">{feature.description}</p>
+              <h3 className="text-[0.84rem] font-semibold leading-5 text-[color:var(--text-dark)]">{feature.title}</h3>
+              <p className="mt-0.5 text-[0.76rem] leading-[1.35rem] text-[color:var(--text-muted)]">{feature.description}</p>
             </div>
           </div>
         ))}
@@ -535,9 +508,9 @@ function LoginPageContent() {
       <div className="mesh-bg opacity-60" />
       <div className="hero-grid absolute inset-0 opacity-[0.08]" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1550px] flex-col px-0 py-0 sm:px-4 sm:py-4 lg:px-5 lg:py-5">
-        <div className="flex min-h-screen flex-col overflow-hidden rounded-none border-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,252,255,0.95))] shadow-none backdrop-blur-none sm:min-h-[calc(100vh-2rem)] sm:rounded-[1.95rem] sm:border sm:border-[rgba(15,76,129,0.08)] sm:shadow-[0_26px_70px_rgba(4,12,26,0.12)] sm:backdrop-blur-sm">
-          <header className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1550px] flex-col px-0 py-0 sm:px-3 sm:py-3 lg:px-4 lg:py-4">
+        <div className="flex min-h-screen flex-col overflow-hidden rounded-none border-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,252,255,0.95))] shadow-none backdrop-blur-none">
+          <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-6">
             <BrandLogo textColor="dark" className="h-10 sm:h-11" />
 
             <div className="hidden items-center gap-2 sm:flex sm:gap-4">
@@ -550,8 +523,8 @@ function LoginPageContent() {
             </div>
           </header>
 
-          <div className="grid flex-1 gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:gap-5 lg:px-8 lg:pb-8 lg:pt-0">
-            <aside className="relative hidden overflow-hidden px-1 py-6 lg:flex lg:min-h-0 lg:flex-col lg:px-2 lg:py-9">
+          <div className="grid flex-1 min-h-0 gap-0 px-4 pb-3 pt-1 sm:px-5 sm:pb-4 sm:pt-4 lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:gap-4 lg:px-6 lg:pb-5 lg:pt-0">
+            <aside className="relative hidden overflow-hidden px-1 py-4 lg:flex lg:min-h-0 lg:flex-col lg:px-2 lg:py-5">
               <div className="absolute left-[-5rem] top-0 h-44 w-44 rounded-full bg-[rgba(31,99,255,0.12)] blur-3xl" />
               <div className="absolute right-[-4rem] bottom-8 h-40 w-40 rounded-full bg-[rgba(255,177,60,0.12)] blur-3xl" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0))]" />
@@ -565,75 +538,43 @@ function LoginPageContent() {
                   </span>
                 ) : null}
 
-                <div className="mt-6 max-w-3xl">
-                  <h1 className="text-[clamp(2.1rem,4.8vw,4.15rem)] font-extrabold leading-[1.02] tracking-[-0.04em] text-[color:var(--text-dark)]">
+                <div className="mt-4 max-w-3xl">
+                  <h1 className="text-[clamp(1.75rem,3.4vw,3.5rem)] font-extrabold leading-[1.04] tracking-[-0.045em] text-[color:var(--text-dark)] xl:text-[clamp(1.9rem,3vw,3.7rem)]">
                     {leftPanel.heading[0]}
                     <br />
                     {leftPanel.heading[1]}
                   </h1>
-                  <p className={`mt-5 max-w-2xl text-base leading-8 text-[color:var(--text-muted)] sm:text-lg ${accountType === "college" ? "max-w-[32rem]" : ""}`}>
+                  <p className={`mt-4 max-w-2xl text-sm leading-7 text-[color:var(--text-muted)] sm:text-base ${accountType === "college" ? "max-w-[32rem]" : ""}`}>
                     {leftPanel.description}
                   </p>
                 </div>
 
-                {accountType === "college" ? (
-                  <div className="mt-10 flex-1 lg:mt-12">
-                    <div className="relative min-h-[30rem] overflow-hidden lg:min-h-[36rem]">
-                      <Image
-                        src={leftPanel.imageSrc}
-                        alt={leftPanel.imageAlt}
-                        fill
-                        priority
-                        sizes={leftPanel.imageSizes}
-                        className="object-cover object-center"
-                      />
-                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_36%,rgba(8,18,38,0.16)_100%)]" />
-                      <CollegeFeatureCard features={leftPanel.features} />
-                    </div>
+                <div className="mt-3 flex-1 lg:mt-4">
+                  <div className="relative min-h-[28rem] overflow-visible lg:min-h-[34rem]">
+                    <Image
+                      src={leftPanel.imageSrc}
+                      alt={leftPanel.imageAlt}
+                      fill
+                      priority
+                      sizes={leftPanel.imageSizes}
+                      className="object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_36%,rgba(8,18,38,0.16)_100%)]" />
+                    <FeatureOverlayCard features={leftPanel.features} />
                   </div>
-                ) : (
-                  <>
-                    <div className="mt-8 grid gap-5 sm:mt-9">
-                      {leftPanel.features.map((item) => (
-                        <FeatureRow
-                          key={item.title}
-                          icon={item.icon}
-                          title={item.title}
-                          description={item.description}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="mt-7 flex-1 lg:mt-8">
-                      <div className="relative h-[16.5rem] overflow-hidden sm:h-[20rem] lg:h-full lg:min-h-[24rem]">
-                        <Image
-                          src={leftPanel.imageSrc}
-                          alt={leftPanel.imageAlt}
-                          fill
-                          priority
-                          sizes={leftPanel.imageSizes}
-                          className="object-cover object-bottom"
-                        />
-                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_42%,rgba(8,18,38,0.18)_100%)]" />
-                      </div>
-                    </div>
-                  </>
-                )}
+                </div>
               </div>
             </aside>
 
             <main className="flex items-start justify-center">
-              <div className="w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none sm:rounded-[1.8rem] sm:border sm:border-[rgba(15,76,129,0.08)] sm:bg-white/92 sm:px-7 sm:py-7 sm:shadow-[0_18px_44px_rgba(4,12,26,0.08)] sm:backdrop-blur-sm lg:min-h-full lg:px-8 lg:py-8">
+              <div className="mx-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none lg:max-w-[360px] xl:max-w-[390px]">
                 <div className="text-center">
-                  <h2 className="text-[clamp(1.9rem,3vw,2.5rem)] font-extrabold tracking-[-0.04em] text-[color:var(--text-dark)]">
+                  <h2 className="text-[clamp(1.65rem,2.2vw,2.1rem)] font-extrabold tracking-[-0.04em] text-[color:var(--text-dark)] sm:text-[clamp(1.75rem,2.4vw,2.25rem)]">
                     Welcome Back!
                   </h2>
-                  <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)] sm:text-base">
-                    Sign in to continue to College EdwiseR
-                  </p>
                 </div>
 
-                <div className="relative mt-7 border-b border-[rgba(15,76,129,0.14)] pb-5">
+                <div className="relative mt-5 border-b border-[rgba(15,76,129,0.14)] pb-4">
                   <div
                     className={`absolute bottom-0 h-[3px] w-1/2 rounded-full bg-[#1f63ff] transition-transform duration-300 ${
                       accountType === "college" ? "translate-x-full" : "translate-x-0"
@@ -644,7 +585,7 @@ function LoginPageContent() {
                     <button
                       type="button"
                       onClick={() => setAccountType("student")}
-                      className={`inline-flex items-center justify-center gap-2 py-4 text-base font-semibold transition ${
+                      className={`inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold transition sm:text-base ${
                         accountType === "student"
                           ? "text-[#1f63ff]"
                           : "text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"
@@ -657,7 +598,7 @@ function LoginPageContent() {
                     <button
                       type="button"
                       onClick={() => setAccountType("college")}
-                      className={`inline-flex items-center justify-center gap-2 py-4 text-base font-semibold transition ${
+                      className={`inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold transition sm:text-base ${
                         accountType === "college"
                           ? "text-[#1f63ff]"
                           : "text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"
@@ -696,11 +637,11 @@ function LoginPageContent() {
                   </div>
                 ) : null}
 
-                <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+                <form onSubmit={handleSubmit} className="mt-5 space-y-4 ">
                   <div>
                     <label
                       htmlFor="login-email"
-                      className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]"
+                      className="mb-1.5 block text-sm font-semibold text-[color:var(--text-dark)]"
                     >
                       Email Address
                     </label>
@@ -720,7 +661,7 @@ function LoginPageContent() {
                         inputMode="email"
                         aria-invalid={Boolean(fieldErrors.email)}
                         aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
-                        className={`w-full rounded-[1.05rem] border bg-white py-3.5 pl-11 pr-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
+                        className={`w-full rounded-[1.05rem] border bg-white py-3 pl-11 pr-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
                           fieldErrors.email
                             ? "border-rose-300 focus:border-rose-400"
                             : "border-[rgba(15,76,129,0.12)] focus:border-[#1f63ff]"
@@ -738,7 +679,7 @@ function LoginPageContent() {
                   <div>
                     <label
                       htmlFor="login-password"
-                      className="mb-2 block text-sm font-semibold text-[color:var(--text-dark)]"
+                      className="mb-1.5 block text-sm font-semibold text-[color:var(--text-dark)]"
                     >
                       Password
                     </label>
@@ -757,7 +698,7 @@ function LoginPageContent() {
                         autoComplete="current-password"
                         aria-invalid={Boolean(fieldErrors.password)}
                         aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
-                        className={`w-full rounded-[1.05rem] border bg-white py-3.5 pl-11 pr-12 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
+                        className={`w-full rounded-[1.05rem] border bg-white py-3 pl-11 pr-12 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
                           fieldErrors.password
                             ? "border-rose-300 focus:border-rose-400"
                             : "border-[rgba(15,76,129,0.12)] focus:border-[#1f63ff]"
@@ -780,7 +721,7 @@ function LoginPageContent() {
                     ) : null}
                   </div>
 
-                  <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-end">
+                  <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-end">
                     <Link
                       href="/forgot-password"
                       className="font-semibold text-[#1f63ff] transition hover:text-[#1552d6]"
@@ -792,15 +733,15 @@ function LoginPageContent() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`shine-button flex w-full items-center justify-center gap-3 rounded-[1.05rem] bg-gradient-to-r ${mode.accentClass} px-5 py-4 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(31,99,255,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70`}
+                    className={`shine-button flex w-full items-center justify-center gap-3 rounded-[1.05rem] bg-gradient-to-r ${mode.accentClass} px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(31,99,255,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70`}
                   >
                     {isLoading ? "Signing in..." : "Login"}
                     {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-[18px]" />}
                   </button>
                 </form>
 
-                <div className="mt-6">
-                  <div className="relative mb-5">
+                <div className="mt-5">
+                  <div className="relative mb-4">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-[rgba(15,76,129,0.12)]" />
                     </div>
@@ -820,7 +761,7 @@ function LoginPageContent() {
                         <button
                           type="button"
                           disabled
-                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3.5 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(15,76,129,0.18)] hover:bg-[rgba(15,76,129,0.02)]"
+                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(15,76,129,0.18)] hover:bg-[rgba(15,76,129,0.02)]"
                       >
                           <GoogleMark className="size-[18px]" />
                           {isGoogleLoading ? "Checking Google account..." : "Continue with Google"}
@@ -837,7 +778,7 @@ function LoginPageContent() {
                       <button
                         type="button"
                         disabled
-                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3.5 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)]"
+                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)]"
                       >
                         <GoogleMark className="size-[18px]" />
                         Google login not configured
@@ -846,13 +787,13 @@ function LoginPageContent() {
 
                   </div>
 
-                  <p className="mt-5 flex items-center justify-center gap-2 text-sm text-[color:var(--text-muted)]">
+                  <p className="mt-4 flex items-center justify-center gap-2 text-sm text-[color:var(--text-muted)]">
                     <ShieldCheck className="size-4 text-emerald-500" />
                     Your data is safe and secure with us.
                   </p>
                 </div>
 
-                <p className="mt-7 text-center text-sm text-[color:var(--text-muted)]">
+                <p className="mt-5 text-center text-sm text-[color:var(--text-muted)]">
                   Don&apos;t have an account?{" "}
                   <Link href={signupHref} className="font-semibold text-[#1f63ff] transition hover:text-[#1552d6]">
                     Create one
@@ -861,24 +802,6 @@ function LoginPageContent() {
               </div>
             </main>
           </div>
-
-          <footer className="hidden border-t border-[rgba(15,76,129,0.08)] bg-white/72 px-4 py-4 text-sm text-[color:var(--text-muted)] sm:px-6 lg:block lg:px-8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p>&copy; {new Date().getFullYear()} College EdwiseR. All rights reserved.</p>
-
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-medium">
-                <Link href="/privacy-policy" className="transition hover:text-[#1f63ff]">
-                  Privacy Policy
-                </Link>
-                <Link href="/terms" className="transition hover:text-[#1f63ff]">
-                  Terms of Service
-                </Link>
-                <Link href="/contact" className="transition hover:text-[#1f63ff]">
-                  Help & Support
-                </Link>
-              </div>
-            </div>
-          </footer>
         </div>
       </div>
 
