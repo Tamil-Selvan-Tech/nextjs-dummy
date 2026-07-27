@@ -65,8 +65,9 @@ const fetchJson = async (
   baseUrl = API_BASE_URL,
 ) => {
   const response = await fetch(toUrl(path, baseUrl), {
-    ...options,
     cache: "no-store",
+    next: { revalidate: 0 },
+    ...options,
   });
   const data = await readResponseData(response);
   return { response, data };

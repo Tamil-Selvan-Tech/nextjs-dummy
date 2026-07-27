@@ -20,7 +20,7 @@ import {
   Sparkles,
   Stethoscope,
 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition, type CSSProperties } from "react";
 import { Navbar } from "@/components/navbar";
 import {
@@ -247,7 +247,6 @@ export function HomePage({
   examSchedules: initialExamSchedules = [],
 }: HomePageProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [collegesData, setCollegesData] = useState(() =>
     initialCollegesData.length ? initialCollegesData : fallbackColleges,
   );
@@ -1382,7 +1381,7 @@ text-[#2563eb]
                         <div className="md:hidden pt-6">
                           <div className="grid grid-cols-1 items-center gap-1.5">
                             <div className="min-w-0 pr-0 text-center">
-                              <h1 className="home-hero-title font-montserrat-display mx-auto w-fit max-w-[15rem] text-center text-[clamp(1.9rem,8.4vw,2.45rem)] font-bold leading-[0.92] tracking-[-0.045em] text-[color:var(--text-dark)]">
+                              <h1 className="home-hero-title font-montserrat-display mx-auto ml-[-0.45rem] w-fit max-w-[15rem] text-center text-[clamp(1.9rem,8.4vw,2.45rem)] font-bold leading-[0.92] tracking-[-0.045em] text-[color:var(--text-dark)] sm:ml-auto">
                                 <span className="block whitespace-nowrap">
                                   Find Your{" "}
                                   <span className="inline-block -skew-x-6 text-[#2563eb]">
@@ -1549,7 +1548,9 @@ text-[#2563eb]
                                           </span>
                                         )}
                                         <span className="min-w-0 flex-1">
-                                          <span className="block truncate font-medium">{item.label}</span>
+                                          <span className="block truncate font-medium">
+                                            {item.label}
+                                          </span>
                                           <span className="mt-0.5 block text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
                                             {item.meta}
                                           </span>

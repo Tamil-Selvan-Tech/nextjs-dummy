@@ -255,13 +255,48 @@ const fetchJson = async <T>(path: string, init: RequestInit = {}) => {
   }
 };
 
-const getCacheStorage = () => {
-  if (typeof window === "undefined") return null;
+const getServerCacheStorage = () => {
+  if (typeof window !== "undefined") return null;
   try {
-    return window.localStorage;
+    const fs = require("fs");
+    const path = require("path");
+    const cacheDir = path.join(process.cwd(), ".next", "cache", "collegeedwiser");
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    return {
+      getItem: (key: string) => {
+        const filePath = path.join(cacheDir, encodeURIComponent(key) + ".json");
+        if (fs.existsSync(filePath)) {
+          return fs.readFileSync(filePath, "utf8");
+        }
+        return null;
+      },
+      setItem: (key: string, value: string) => {
+        const filePath = path.join(cacheDir, encodeURIComponent(key) + ".json");
+        fs.writeFileSync(filePath, value, "utf8");
+      },
+      removeItem: (key: string) => {
+        const filePath = path.join(cacheDir, encodeURIComponent(key) + ".json");
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      },
+    };
   } catch {
     return null;
   }
+};
+
+const getCacheStorage = () => {
+  if (typeof window !== "undefined") {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+  return getServerCacheStorage();
 };
 
 const readCachedEntry = <T>(cacheKey: string): T | null => {
@@ -326,7 +361,7 @@ const fetchJsonWithCache = async <T>(path: string, ttlMs = PUBLIC_PANEL_CACHE_TT
   const promise = (async () => {
     const data = await fetchJson<T>(
       path,
-      typeof window === "undefined" ? { cache: "force-cache" } : {},
+      typeof window === "undefined" ? { cache: "no-store", next: { revalidate: 0 } } : {},
     );
     writeCachedEntry(cacheKey, data, ttlMs);
     return data;
