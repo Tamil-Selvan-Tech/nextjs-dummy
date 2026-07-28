@@ -21,6 +21,7 @@ import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { PageBackButton } from "@/components/global-back-button";
 import { persistAuth, persistPendingOtpLogin, readCurrentUser, type SafeAuthUser } from "@/lib/auth-storage";
 import { request } from "@/lib/api";
 import { useStatusToast } from "@/lib/toast";
@@ -510,10 +511,15 @@ function LoginPageContent() {
 
       <div className="relative z-10 flex min-h-[100dvh] w-full flex-col px-0 py-0">
         <div className="flex min-h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,252,255,0.95))] shadow-none backdrop-blur-none">
-          <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-6">
-            <BrandLogo textColor="dark" className="h-10 sm:h-11" />
+          <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8 xl:px-10">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <BrandLogo textColor="dark" className="h-11 sm:h-12 lg:h-11" />
+              <div className="hidden lg:block">
+                <PageBackButton variant="inline" className="ml-0" />
+              </div>
+            </div>
 
-            <div className="hidden items-center gap-2 sm:flex sm:gap-4">
+            <div className="hidden items-center gap-2 sm:flex sm:gap-4 lg:pr-1 xl:pr-2">
               <div className="hidden items-center gap-1 text-sm font-medium text-[color:var(--text-muted)] sm:flex">
                 <span>New here?</span>
                 <Link href={signupHref} className="font-semibold text-[#1f63ff] transition hover:text-[#1552d6]">
@@ -523,8 +529,8 @@ function LoginPageContent() {
             </div>
           </header>
 
-          <div className="flex flex-1 min-h-0 flex-col gap-0 px-4 py-1 sm:px-5 sm:py-3 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-stretch lg:gap-3 lg:px-5 lg:pb-2 lg:pt-0">
-            <aside className="relative hidden h-full overflow-hidden px-1 py-3 lg:flex lg:min-h-0 lg:flex-col lg:px-2 lg:py-3.5">
+          <div className="flex flex-1 min-h-0 flex-col gap-0 px-4 py-1 sm:px-5 sm:py-3 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-stretch lg:gap-3 lg:px-8 lg:pb-2 lg:pt-0 xl:px-10">
+            <aside className="relative hidden h-full overflow-hidden px-1 py-3 lg:flex lg:min-h-0 lg:flex-col lg:px-5 lg:py-3.5 xl:px-6">
               <div className="absolute left-[-5rem] top-0 h-44 w-44 rounded-full bg-[rgba(31,99,255,0.12)] blur-3xl" />
               <div className="absolute right-[-4rem] bottom-8 h-40 w-40 rounded-full bg-[rgba(255,177,60,0.12)] blur-3xl" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0))]" />
@@ -538,12 +544,12 @@ function LoginPageContent() {
                   </span>
                 ) : null}
 
-                <div className="mt-2 max-w-3xl">
+                <div className="mt-2 max-w-3xl lg:max-w-[33rem] xl:max-w-[36rem] 2xl:max-w-[40rem]">
                   <h1
-                    className={`text-[clamp(1.55rem,3vw,3.05rem)] font-semibold tracking-[-0.035em] text-[color:var(--text-dark)] xl:text-[clamp(1.7rem,2.6vw,3.25rem)] ${
+                    className={`text-[clamp(1.55rem,3vw,3.05rem)] font-semibold tracking-[-0.035em] text-[color:var(--text-dark)] lg:text-[clamp(1.9rem,2.8vw,3.4rem)] xl:text-[clamp(2.05rem,2.4vw,3.8rem)] 2xl:text-[clamp(2.25rem,2vw,4.25rem)] ${
                       accountType === "college"
-                        ? "text-[clamp(1.42rem,2.7vw,2.8rem)] leading-[1.22] xl:text-[clamp(1.55rem,2.35vw,3rem)] xl:leading-[1.18]"
-                        : "leading-[1.2] xl:leading-[1.16]"
+                        ? "text-[clamp(1.42rem,2.7vw,2.8rem)] leading-[1.22] lg:text-[clamp(1.75rem,2.5vw,3.15rem)] xl:text-[clamp(1.95rem,2.2vw,3.45rem)] 2xl:text-[clamp(2.1rem,1.8vw,3.95rem)] xl:leading-[1.16] 2xl:leading-[1.12]"
+                        : "leading-[1.2] lg:leading-[1.18] xl:leading-[1.14] 2xl:leading-[1.1]"
                     }`}
                   >
                     <span className="block">{leftPanel.heading[0]}</span>
@@ -562,7 +568,7 @@ function LoginPageContent() {
                 </div>
 
                 <div className="mt-2 flex-1 lg:mt-2.5">
-                  <div className="relative min-h-[21rem] overflow-visible lg:min-h-[25rem]">
+                  <div className="relative min-h-[21rem] overflow-visible lg:min-h-[27rem] xl:min-h-[31rem] 2xl:min-h-[35rem]">
                     <Image
                       src={leftPanel.imageSrc}
                       alt={leftPanel.imageAlt}
@@ -578,10 +584,35 @@ function LoginPageContent() {
               </div>
             </aside>
 
-            <main className="flex flex-1 items-center justify-center py-0 lg:py-2.5">
-              <div className="mx-auto w-full max-w-[22rem] rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none sm:max-w-[24rem] lg:max-w-[360px] xl:max-w-[390px]">
-                <div className="text-center">
-                  <h2 className="text-[clamp(1.5rem,2vw,1.95rem)] font-semibold tracking-[-0.02em] text-[color:var(--text-dark)] sm:text-[clamp(1.6rem,2.1vw,2.05rem)]">
+            <main className="flex flex-1 items-start justify-center py-3 lg:items-center lg:py-2.5">
+              <div className="mx-auto w-full max-w-[24rem] rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none sm:max-w-[25rem] lg:max-w-[390px] xl:max-w-[430px] 2xl:max-w-[470px]">
+                <div className="relative mb-4 overflow-hidden rounded-[1.9rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(243,249,255,0.94))] px-5 py-5 shadow-[0_18px_40px_rgba(22,50,79,0.08)] sm:hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(31,99,255,0.16),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(255,177,60,0.12),transparent_34%)]" />
+                  <div className="relative z-10 flex items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-[clamp(1.85rem,7vw,2.25rem)] font-semibold tracking-[-0.04em] text-[color:var(--text-dark)]">
+                        Welcome Back!
+                      </h2>
+                      <p className="mt-2 max-w-[15rem] text-[0.96rem] leading-6 text-[color:var(--text-muted)]">
+                        {mode.subtitle}
+                      </p>
+                    </div>
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-[1.25rem]">
+                      <Image
+                        src={leftPanel.imageSrc}
+                        alt={leftPanel.imageAlt}
+                        fill
+                        priority
+                        sizes="80px"
+                        className="object-cover object-center"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_45%,rgba(8,18,38,0.12)_100%)]" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden text-center sm:block">
+                  <h2 className="text-[clamp(1.7rem,6vw,2.15rem)] font-semibold tracking-[-0.02em] text-[color:var(--text-dark)] sm:text-[clamp(1.6rem,2.1vw,2.05rem)] lg:text-[clamp(2rem,1.75vw,2.35rem)] xl:text-[clamp(2.15rem,1.55vw,2.5rem)] 2xl:text-[clamp(2.3rem,1.35vw,2.7rem)]">
                     Welcome Back!
                   </h2>
                 </div>
@@ -597,26 +628,26 @@ function LoginPageContent() {
                     <button
                       type="button"
                       onClick={() => setAccountType("student")}
-                      className={`inline-flex items-center justify-center gap-2 py-2 text-sm font-semibold transition sm:text-base ${
+                      className={`inline-flex items-center justify-center gap-2 py-2.5 text-[0.95rem] font-semibold transition sm:py-2 sm:text-base lg:py-3 lg:text-[1rem] xl:py-[0.85rem] xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem] ${
                         accountType === "student"
                           ? "text-[#1f63ff]"
                           : "text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"
                       }`}
                     >
-                      <GraduationCap className="size-[18px]" />
+                      <GraduationCap className="size-5" />
                       Student
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setAccountType("college")}
-                      className={`inline-flex items-center justify-center gap-2 py-2 text-sm font-semibold transition sm:text-base ${
+                      className={`inline-flex items-center justify-center gap-2 py-2.5 text-[0.95rem] font-semibold transition sm:py-2 sm:text-base lg:py-3 lg:text-[1rem] xl:py-[0.85rem] xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem] ${
                         accountType === "college"
                           ? "text-[#1f63ff]"
                           : "text-[color:var(--text-muted)] hover:text-[color:var(--text-dark)]"
                       }`}
                     >
-                      <Building2 className="size-[18px]" />
+                      <Building2 className="size-5" />
                       College
                     </button>
                   </div>
@@ -626,7 +657,7 @@ function LoginPageContent() {
                   <div
                     role="alert"
                     aria-live="polite"
-                    className={`mt-4 rounded-[1.2rem] border px-4 py-2.5 text-sm leading-6 ${
+                    className={`mt-4 rounded-[1.2rem] border px-4 py-2.5 text-[0.95rem] leading-6 lg:px-5 lg:py-3 lg:text-[1rem] xl:rounded-[1.25rem] xl:px-5 xl:py-3.5 xl:text-[1.02rem] 2xl:px-6 2xl:py-4 2xl:text-[1.05rem] ${
                       status.type === "success"
                         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                         : status.type === "info"
@@ -653,7 +684,7 @@ function LoginPageContent() {
                   <div>
                     <label
                       htmlFor="login-email"
-                      className="mb-1.5 block text-sm font-semibold text-[color:var(--text-dark)]"
+                      className="mb-1.5 block text-[0.95rem] font-semibold text-[color:var(--text-dark)] sm:text-sm lg:text-[1rem] xl:text-[1.02rem] 2xl:text-[1.05rem]"
                     >
                       Email Address
                     </label>
@@ -673,7 +704,7 @@ function LoginPageContent() {
                         inputMode="email"
                         aria-invalid={Boolean(fieldErrors.email)}
                         aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
-                        className={`w-full rounded-[1.05rem] border bg-white py-2.5 pl-11 pr-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
+                        className={`w-full rounded-[1.05rem] border bg-white py-3 pl-11 pr-4 text-[0.95rem] text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] sm:py-2.5 sm:text-sm lg:py-3 lg:text-[1rem] xl:py-3.5 xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem] ${
                           fieldErrors.email
                             ? "border-rose-300 focus:border-rose-400"
                             : "border-[rgba(15,76,129,0.12)] focus:border-[#1f63ff]"
@@ -691,7 +722,7 @@ function LoginPageContent() {
                   <div>
                     <label
                       htmlFor="login-password"
-                      className="mb-1.5 block text-sm font-semibold text-[color:var(--text-dark)]"
+                      className="mb-1.5 block text-[0.95rem] font-semibold text-[color:var(--text-dark)] sm:text-sm lg:text-[1rem] xl:text-[1.02rem] 2xl:text-[1.05rem]"
                     >
                       Password
                     </label>
@@ -710,7 +741,7 @@ function LoginPageContent() {
                         autoComplete="current-password"
                         aria-invalid={Boolean(fieldErrors.password)}
                         aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
-                        className={`w-full rounded-[1.05rem] border bg-white py-2.5 pl-11 pr-12 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] ${
+                        className={`w-full rounded-[1.05rem] border bg-white py-3 pl-11 pr-12 text-[0.95rem] text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:shadow-[0_0_0_4px_rgba(31,99,255,0.1)] sm:py-2.5 sm:text-sm lg:py-3 lg:text-[1rem] xl:py-3.5 xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem] ${
                           fieldErrors.password
                             ? "border-rose-300 focus:border-rose-400"
                             : "border-[rgba(15,76,129,0.12)] focus:border-[#1f63ff]"
@@ -745,7 +776,7 @@ function LoginPageContent() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                  className={`shine-button flex w-full items-center justify-center gap-3 rounded-[1.05rem] bg-gradient-to-r ${mode.accentClass} px-5 py-[0.625rem] text-sm font-semibold text-white shadow-[0_16px_30px_rgba(31,99,255,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70`}
+                  className={`shine-button flex w-full items-center justify-center gap-3 rounded-[1.05rem] bg-gradient-to-r ${mode.accentClass} px-5 py-3 text-[0.95rem] font-semibold text-white shadow-[0_16px_30px_rgba(31,99,255,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70 sm:py-[0.625rem] sm:text-sm lg:py-3 lg:text-[1rem] xl:py-3.5 xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem]`}
                   >
                     {isLoading ? "Signing in..." : "Login"}
                     {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-[18px]" />}
@@ -755,7 +786,7 @@ function LoginPageContent() {
                 <div className="mt-4">
                   <div className="mb-3 flex items-center gap-3">
                     <span className="h-px flex-1 bg-[rgba(15,76,129,0.12)]" />
-                    <span className="inline-flex translate-y-px whitespace-nowrap px-2 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
+                    <span className="inline-flex translate-y-px whitespace-nowrap px-2 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)] lg:text-[0.78rem] xl:text-[0.8rem] 2xl:text-[0.82rem]">
                       Or continue with
                     </span>
                     <span className="h-px flex-1 bg-[rgba(15,76,129,0.12)]" />
@@ -770,7 +801,7 @@ function LoginPageContent() {
                         <button
                           type="button"
                           disabled
-                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(15,76,129,0.18)] hover:bg-[rgba(15,76,129,0.02)]"
+                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-[0.95rem] font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)] transition hover:border-[rgba(15,76,129,0.18)] hover:bg-[rgba(15,76,129,0.02)] sm:py-2.5 sm:text-sm lg:py-3 lg:text-[1rem] xl:py-3.5 xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem]"
                       >
                           <GoogleMark className="size-[18px]" />
                           {isGoogleLoading ? "Checking Google account..." : "Continue with Google"}
@@ -787,7 +818,7 @@ function LoginPageContent() {
                       <button
                         type="button"
                         disabled
-                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)]"
+                        className="flex w-full items-center justify-center gap-3 rounded-[1rem] border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-[0.95rem] font-semibold text-[color:var(--text-dark)] shadow-[0_12px_24px_rgba(22,50,79,0.08)] sm:py-2.5 sm:text-sm lg:py-3 lg:text-[1rem] xl:py-3.5 xl:text-[1.02rem] 2xl:py-[0.95rem] 2xl:text-[1.05rem]"
                       >
                         <GoogleMark className="size-[18px]" />
                         Google login not configured
@@ -795,7 +826,7 @@ function LoginPageContent() {
                     )}
 
                     <div className="sm:hidden">
-                      <div className="flex items-center justify-center gap-1.5 text-[0.74rem] text-[color:var(--text-muted)]">
+                      <div className="flex items-center justify-center gap-1.5 text-[0.78rem] text-[color:var(--text-muted)]">
                         <span>New here?</span>
                         <Link href={signupHref} className="font-semibold text-[#1f63ff] transition hover:text-[#1552d6]">
                           Create an account

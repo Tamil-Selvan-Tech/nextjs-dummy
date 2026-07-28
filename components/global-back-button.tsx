@@ -7,9 +7,10 @@ import { navigateToSafeBack } from "@/lib/safe-back";
 
 type PageBackButtonProps = {
   className?: string;
+  variant?: "card" | "inline";
 };
 
-export function PageBackButton({ className = "" }: PageBackButtonProps) {
+export function PageBackButton({ className = "", variant = "card" }: PageBackButtonProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,7 +48,11 @@ export function PageBackButton({ className = "" }: PageBackButtonProps) {
     <button
       type="button"
       onClick={handleBack}
-      className={`inline-flex items-center gap-2 overflow-hidden rounded-[14px] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-2 text-[13px] font-semibold text-slate-900 shadow-[0_12px_28px_rgba(22,50,79,0.12)] transition hover:-translate-y-0.5 hover:bg-[#f7f9fc] hover:shadow-[0_16px_34px_rgba(22,50,79,0.16)] ml-2 ${className}`.trim()}
+      className={
+        variant === "inline"
+          ? `inline-flex items-center gap-1.5 bg-transparent px-0 py-0 text-[0.92rem] font-semibold text-[#1f63ff] transition hover:text-[#1552d6] focus:outline-none focus-visible:ring-0 ${className}`.trim()
+          : `inline-flex items-center gap-2 overflow-hidden rounded-[14px] border border-[rgba(15,76,129,0.12)] bg-white px-4 py-2 text-[13px] font-semibold text-slate-900 shadow-[0_12px_28px_rgba(22,50,79,0.12)] transition hover:-translate-y-0.5 hover:bg-[#f7f9fc] hover:shadow-[0_16px_34px_rgba(22,50,79,0.16)] ml-2 ${className}`.trim()
+      }
       aria-label="Go back"
     >
       <ArrowLeft className="size-4" />
