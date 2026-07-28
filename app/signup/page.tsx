@@ -352,7 +352,7 @@ function SignupPageContent() {
             </div>
           </header>
 
-          <div className="flex flex-1 min-h-0 flex-col gap-0 px-4 py-1 sm:px-5 sm:py-3 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-stretch lg:gap-3 lg:px-8 lg:pb-2 lg:pt-0 xl:px-10">
+          <div className="flex flex-1 min-h-0 flex-col gap-0 px-3 py-0 sm:px-5 sm:py-3 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-stretch lg:gap-3 lg:px-8 lg:pb-2 lg:pt-0 xl:px-10">
             <aside className="relative hidden h-full overflow-hidden px-1 py-3 lg:flex lg:min-h-0 lg:flex-col lg:px-5 lg:py-3.5 xl:px-6">
               <div className="absolute left-[-5rem] top-0 h-44 w-44 rounded-full bg-[rgba(31,99,255,0.12)] blur-3xl" />
               <div className="absolute right-[-4rem] bottom-8 h-40 w-40 rounded-full bg-[rgba(255,177,60,0.12)] blur-3xl" />
@@ -399,20 +399,20 @@ function SignupPageContent() {
               </div>
             </aside>
 
-            <main className="flex flex-1 items-start justify-center py-3 lg:items-center lg:py-2.5">
-              <div className="mx-auto w-full max-w-[24rem] rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none sm:max-w-[25rem] lg:max-w-[390px] xl:max-w-[430px] 2xl:max-w-[470px]">
-                <div className="relative mb-4 overflow-hidden rounded-[1.9rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(243,249,255,0.94))] px-5 py-5 shadow-[0_18px_40px_rgba(22,50,79,0.08)] sm:hidden">
+            <main className="flex flex-1 items-stretch justify-stretch py-0 lg:items-center lg:justify-center lg:py-2.5">
+              <div className="mx-auto w-full max-w-none rounded-none border-0 bg-transparent px-0 py-0 shadow-none backdrop-blur-none sm:max-w-[25rem] lg:max-w-[390px] xl:max-w-[430px] 2xl:max-w-[470px]">
+                <div className="relative mb-3 overflow-hidden rounded-none border-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(243,249,255,0.94))] px-4 py-4 shadow-none sm:hidden">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(31,99,255,0.16),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(255,177,60,0.12),transparent_34%)]" />
                   <div className="relative z-10 flex items-start gap-4">
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-[clamp(1.85rem,7vw,2.25rem)] font-semibold tracking-[-0.04em] text-[color:var(--text-dark)]">
+                      <h2 className="text-[clamp(2rem,8.2vw,2.6rem)] font-semibold tracking-[-0.04em] text-[color:var(--text-dark)]">
                         Create Account
                       </h2>
-                      <p className="mt-2 max-w-[15rem] text-[0.96rem] leading-6 text-[color:var(--text-muted)]">
+                      <p className="mt-2 max-w-[16rem] text-[0.98rem] leading-6 text-[color:var(--text-muted)]">
                         {mode.subtitle}
                       </p>
                     </div>
-                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-[1.25rem]">
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-[1.05rem]">
                       <Image
                         src={leftPanel.imageSrc}
                         alt={leftPanel.imageAlt}
