@@ -258,8 +258,9 @@ const fetchJson = async <T>(path: string, init: RequestInit = {}) => {
 const getServerCacheStorage = () => {
   if (typeof window !== "undefined") return null;
   try {
-    const fs = require("fs");
-    const path = require("path");
+    const dynamicRequire = Function("return require")() as NodeRequire;
+    const fs = dynamicRequire("fs") as typeof import("fs");
+    const path = dynamicRequire("path") as typeof import("path");
     const cacheDir = path.join(process.cwd(), ".next", "cache", "collegeedwiser");
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });

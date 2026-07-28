@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import { AppMain } from "@/components/app-main";
 import { AppToastProvider } from "@/components/app-toast-provider";
 import { Footer } from "@/components/footer";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -33,7 +34,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <RouteHistoryTracker />
         </Suspense>
-        <main className="pb-[calc(6.75rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+        <AppMain>{children}</AppMain>
         <MobileBottomNav />
         <AppToastProvider />
         <Footer />
