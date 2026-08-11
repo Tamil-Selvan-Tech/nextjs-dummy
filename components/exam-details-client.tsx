@@ -1282,7 +1282,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
             </div>
           </section>
 
-          <section className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.82fr)]">
+          <section className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.82fr)] xl:items-start">
             <div className="space-y-5">
               <div className="overflow-hidden rounded-none border border-[#d0d8e3] bg-[linear-gradient(90deg,#2f3e93_0%,#4357bf_34%,#7467cc_67%,#f1f4ff_100%)] px-5 py-5 text-white shadow-sm">
                 <div className="flex h-full flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -1330,8 +1330,8 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
               )}
             </div>
 
-            <aside className="space-y-5 xl:self-start">
-              <div className="space-y-5">
+            <aside className="xl:sticky xl:top-5 xl:self-start xl:h-fit">
+              <div className="space-y-4">
                 <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
                   <div className="flex items-start gap-4">
                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#fff4ec] text-[#ef4444]">
@@ -1420,7 +1420,7 @@ export function ExamDetailsClient({ details, allExams }: ExamDetailsClientProps)
                 </section>
               </div>
 
-              <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)] xl:sticky xl:top-6">
+              <section className="mt-2 rounded-[2rem] bg-white p-7 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
                 <div className="flex items-center gap-2">
                   <Info className="size-5 text-[#2f6edb]" />
                   <h3 className="text-[1.2rem] font-bold text-[#2a2f37]">Explore Other Exams</h3>

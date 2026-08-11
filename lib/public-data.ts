@@ -7,6 +7,7 @@ import {
   type College,
   type Course,
 } from "@/lib/site-data";
+import { normalizeScientificIntegerText } from "@/lib/integer-text";
 
 const BROKEN_IMAGE_URLS = new Set([
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
@@ -36,6 +37,21 @@ const toNumber = (value: unknown) => {
   const digits = raw.replace(/[^0-9.]/g, "").trim();
   const parsed = Number(digits);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toPercentage = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value > 0 && value <= 1 ? value * 100 : value;
+  }
+
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+
+  const digits = raw.replace(/[^0-9.]/g, "").trim();
+  const parsed = Number(digits);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+
+  return parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
 };
 
 const stripTrailingZeroDecimal = (value: unknown) => {
@@ -444,6 +460,7 @@ type BackendCourse = {
   isTopCourse?: boolean;
   university?: string;
   college?: string;
+  collegeName?: string;
   collegeId?: string;
   collegeCode?: string;
   colleges?: Array<string | { _id?: string; name?: string; collegeCode?: string }>;
@@ -611,6 +628,11 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       typeof firstLinkedCollege === "string"
         ? ""
         : String(firstLinkedCollege?.name || "").trim();
+    const firstCollegeFromList = getBackendCourseCollegeLinks(item)[0];
+    const fallbackCollegeName =
+      typeof firstCollegeFromList === "string"
+        ? firstCollegeFromList
+        : String(firstCollegeFromList?.name || firstCollegeFromList?._id || "").trim();
 
     const collegeDetails = Array.isArray(item.collegeDetails)
       ? item.collegeDetails
@@ -658,7 +680,20 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
       cutoffByCategory,
       isTopCourse: Boolean(item.isTopCourse),
       university: String(item.university || ""),
-      college: String(item.college || linkedCollegeName || linkedCollegeValues[0] || ""),
+      college: String(
+        item.college ||
+          linkedCollegeName ||
+          linkedCollegeValues[0] ||
+          fallbackCollegeName ||
+          "",
+      ),
+      collegeName: String(
+        linkedCollegeName ||
+          fallbackCollegeName ||
+          item.college ||
+          linkedCollegeValues[0] ||
+          "",
+      ),
       collegeId: String(item.collegeId || linkedCollegeId || ""),
       collegeCode: String(item.collegeCode || linkedCollegeCode || collegeDetails[0]?.collegeCode || ""),
       specialization: String(
@@ -767,6 +802,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
     const placementRate = hasPlacementsSource
       ? parsedPlacements.placementRate
       : String(item.placementRate ?? "").trim();
+    const normalizedPlacementRate = toPercentage(placementRate);
     const rawHostelDetails =
       item.hostelDetails && typeof item.hostelDetails === "object" ? item.hostelDetails : {};
     const campusHighlights =
@@ -805,7 +841,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       state: String(item.state || ""),
       city: String(item.city || ""),
       address: String(item.address || ""),
-      pincode: String(item.pincode || ""),
+      pincode: normalizeScientificIntegerText(item.pincode),
       image:
         resolvedImage && !BROKEN_IMAGE_URLS.has(resolvedImage)
           ? resolvedImage
@@ -816,7 +852,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       isTopCollege: Boolean(item.isTopCollege || item.isBestCollege),
       accreditation: String(item.accreditation || "").trim(),
       ranking: String(item.ranking || "Not ranked"),
-      placementRate: toNumber(placementRate),
+      placementRate: normalizedPlacementRate,
       hasHostel,
       facilities: toList(item.facilities),
       quotas: toList(item.quotas),
@@ -829,8 +865,8 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
       locationLink: String(item.locationLink || ""),
       mapUrl: String(item.mapUrl || ""),
       contactEmail: String(item.contactEmail || ""),
-      contactPhone: String(item.contactPhone || ""),
-      alternatePhone: String(item.alternatePhone || ""),
+      contactPhone: normalizeScientificIntegerText(item.contactPhone),
+      alternatePhone: normalizeScientificIntegerText(item.alternatePhone),
       awardsRecognitions: String(item.awardsRecognitions || ""),
       brochurePdfUrl: String(item.brochurePdfUrl || ""),
       brochureUrl: String(item.brochureUrl || ""),
@@ -843,7 +879,7 @@ const mapColleges = (records: BackendCollege[], courseRows: Course[]): College[]
           ? (item.placements as Record<string, unknown>)
           : {}),
         highestPackage,
-        placementRate,
+        placementRate: normalizedPlacementRate,
         averagePackage,
         companiesVisited,
       },

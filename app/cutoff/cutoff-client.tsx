@@ -541,6 +541,7 @@ export function CutoffClient({
   
   const dreamCollegeName = selectedCollegeRecord?.name || selectedDreamCollege || "-";
   const safeStudentName =
+    studentName ||
     submittedDetails.name ||
     submittedDetails.studentName ||
     submittedDetails.fullName ||

@@ -7,6 +7,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  ChevronDown,
   ChevronRight,
   Download,
   ExternalLink,
@@ -15,6 +16,7 @@ import {
   ImageUp,
   KeyRound,
   LayoutDashboard,
+  Mail,
   MailOpen,
   MapPin,
   PencilLine,
@@ -50,6 +52,7 @@ import {
   normalizeCutoffInput,
   parseCutoffValue,
 } from "@/lib/cutoff-utils";
+import { normalizeScientificIntegerText } from "@/lib/integer-text";
 import {
   formatRankingRangeForDisplay,
   formatRankingRangeForSave,
@@ -62,6 +65,7 @@ import {
   formatCompactIndianCurrencyRange,
 } from "@/lib/currency-format";
 import { showToast } from "@/lib/toast";
+import { Loading } from "@/components/loading";
 
 type AdminUser = SafeAuthUser & { isSuperAdmin?: boolean; permissions?: string[] };
 type CategoryCutoff = { category?: string; cutoff?: string };
@@ -837,6 +841,46 @@ const getQualificationSuggestions = (courseName: string, degreeType: string, str
   return Array.from(new Set(highestRequired ? [highestRequired] : qualificationOptions));
 };
 const normalizeAdminOption = (value?: string) => String(value || "").trim();
+const normalizeAdminSearchText = (value?: string) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const scoreAdminCollegeSearchResult = (college: AdminCollege, query: string) => {
+  const normalizedQuery = normalizeAdminSearchText(query);
+  if (!normalizedQuery) return 0;
+
+  const name = normalizeAdminSearchText(college.name);
+  const university = normalizeAdminSearchText(college.university);
+  const collegeCode = normalizeAdminSearchText(college.collegeCode);
+  const city = normalizeAdminSearchText(college.city);
+  const district = normalizeAdminSearchText(college.district);
+  const state = normalizeAdminSearchText(college.state);
+  const address = normalizeAdminSearchText(college.address);
+  const pincode = normalizeAdminSearchText(college.pincode);
+
+  let score = 0;
+
+  if (name === normalizedQuery) score += 1000;
+  else if (name.startsWith(normalizedQuery)) score += 800;
+  else if (name.includes(normalizedQuery)) score += 600;
+
+  if (university === normalizedQuery) score += 400;
+  else if (university.startsWith(normalizedQuery)) score += 300;
+  else if (university.includes(normalizedQuery)) score += 200;
+
+  if (collegeCode === normalizedQuery) score += 150;
+  else if (collegeCode.includes(normalizedQuery)) score += 100;
+
+  if (city.includes(normalizedQuery) || district.includes(normalizedQuery) || state.includes(normalizedQuery)) {
+    score += 50;
+  }
+
+  if (address.includes(normalizedQuery) || pincode.includes(normalizedQuery)) {
+    score += 25;
+  }
+
+  return score;
+};
 const normalizeArtsScienceCourseType = (stream: string, courseType: string, specialization = "") => {
   if (normalizeCourseStream(stream) !== artsAndScienceStream) return normalizeAdminOption(courseType);
 
@@ -1013,21 +1057,8 @@ const formatFeeRange = (value?: Record<string, unknown>) => {
   };
 };
 
-const expandScientificInteger = (value: string) => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (!/[eE]/.test(raw)) return raw.replace(/\.0+$/, "");
-  const numeric = Number(raw);
-  if (!Number.isFinite(numeric)) return raw;
-  const normalized = numeric.toLocaleString("en-US", {
-    useGrouping: false,
-    maximumFractionDigits: 0,
-  });
-  return normalized;
-};
-
 const normalizeRankingInteger = (value: string) => {
-  const raw = expandScientificInteger(String(value || "").trim());
+  const raw = normalizeScientificIntegerText(value);
   if (!raw) return "";
   const numeric = Number(raw);
   if (!Number.isFinite(numeric)) return raw.replace(/[^\d]/g, "");
@@ -1037,21 +1068,14 @@ const normalizeRankingInteger = (value: string) => {
 const formatPreviewCellValue = (value: unknown, column?: string) => {
   const raw = String(value ?? "").trim();
   if (!raw) return column === "accreditation" ? "Empty" : "-";
-  if (column === "phoneNumber" || column === "alternatePhone" || column === "pincode") return expandScientificInteger(raw);
+  if (column === "phoneNumber" || column === "alternatePhone" || column === "pincode") return normalizeScientificIntegerText(raw);
   if (isCutoffPreviewColumn(column)) return raw;
   if (/^-?\d+\.0+$/.test(raw)) return stripTrailingZeroDecimal(raw);
   if (/^\d+$/.test(raw) && raw.length > 1 && raw.startsWith("0")) return raw;
   return raw;
 };
 
-const normalizeScientificInteger = (value: string) => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (!/[eE]/.test(raw)) return raw.replace(/\.0+$/, "");
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return raw;
-  return parsed.toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 0 });
-};
+const normalizeScientificInteger = (value: string) => normalizeScientificIntegerText(value);
 
 const buildFeeRange = (min: string, max: string) => ({
   tuitionFee: { minAmount: min, maxAmount: max },
@@ -1822,11 +1846,16 @@ function BulkUploadDashboard({
     const headerRow = rows[headerRowIndex] || [];
     const dataRows = rows.slice(headerRowIndex + 1);
     const headers = headerRow.map((item) => getUploadHeaderKey(item, sheet));
+    const integerTextColumns = new Set(["phoneNumber", "alternatePhone", "pincode"]);
     return dataRows
       .map((row) =>
         headers.reduce<Record<string, string>>((record, header, index) => {
           const value = String(row[index] || "").trim();
-          if (header && value) record[header] = value;
+          if (header && value) {
+            record[header] = integerTextColumns.has(header)
+              ? normalizeScientificIntegerText(value)
+              : value;
+          }
           return record;
         }, {}),
       )
@@ -4979,6 +5008,8 @@ function AdminPageContent() {
   const [editExamId, setEditExamId] = useState("");
   const [examSchedulesPage, setExamSchedulesPage] = useState(1);
   const [isSendingPasswordLink, setIsSendingPasswordLink] = useState(false);
+  const [showCollegeEditReminderConfirm, setShowCollegeEditReminderConfirm] = useState(false);
+  const [isSendingCollegeEditReminders, setIsSendingCollegeEditReminders] = useState(false);
   const [deleteCollegeDialog, setDeleteCollegeDialog] = useState<DeleteCollegeDialogState>(null);
   const [isDeletingCollege, setIsDeletingCollege] = useState(false);
   const [deleteUserDialog, setDeleteUserDialog] = useState<DeleteUserDialogState>(null);
@@ -5006,7 +5037,7 @@ function AdminPageContent() {
   const seenNotificationIdsRef = useRef<string[]>([]);
   const lastSeenNotificationAtRef = useRef(0);
   const [expandedCollegeIds, setExpandedCollegeIds] = useState<string[]>([]);
-  const [showAllCollegeCards, setShowAllCollegeCards] = useState(false);
+  const [currentCollegeCardsPage, setCurrentCollegeCardsPage] = useState(1);
   const [collegeSearchText, setCollegeSearchText] = useState("");
   const examFormRef = useRef<HTMLFormElement | null>(null);
   const examNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -5349,27 +5380,40 @@ function AdminPageContent() {
     const normalizedSearch = collegeSearchText.trim().toLowerCase();
     if (!normalizedSearch) return adminState.colleges;
 
-    return adminState.colleges.filter((college) =>
-      [
-        college.name,
-        college.collegeCode,
-        college.university,
-        college.city,
-        college.district,
-        college.state,
-        college.address,
-        college.pincode,
-      ]
-        .map((value) => String(value || "").toLowerCase())
-        .some((value) => value.includes(normalizedSearch)),
-    );
+    return adminState.colleges
+      .map((college, index) => ({
+        college,
+        index,
+        score: scoreAdminCollegeSearchResult(college, normalizedSearch),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score || left.index - right.index)
+      .map((entry) => entry.college);
   }, [adminState.colleges, collegeSearchText]);
-  const hasCollegeSearch = Boolean(collegeSearchText.trim());
+  const collegeCardsPerPage = 10;
+  const collegeCardsTotalPages = Math.max(1, Math.ceil(filteredCollegeCards.length / collegeCardsPerPage));
+  const safeCollegeCardsPage = Math.min(currentCollegeCardsPage, collegeCardsTotalPages);
+  const collegeCardsPageStart = filteredCollegeCards.length === 0 ? 0 : (safeCollegeCardsPage - 1) * collegeCardsPerPage + 1;
+  const collegeCardsPageEnd = filteredCollegeCards.length
+    ? Math.min(safeCollegeCardsPage * collegeCardsPerPage, filteredCollegeCards.length)
+    : 0;
   const visibleCollegeCards = useMemo(
-    () => (hasCollegeSearch || showAllCollegeCards ? filteredCollegeCards : filteredCollegeCards.slice(0, 6)),
-    [filteredCollegeCards, hasCollegeSearch, showAllCollegeCards],
+    () =>
+      filteredCollegeCards.slice(
+        (safeCollegeCardsPage - 1) * collegeCardsPerPage,
+        safeCollegeCardsPage * collegeCardsPerPage,
+      ),
+    [filteredCollegeCards, safeCollegeCardsPage],
   );
-  const hiddenCollegeCount = Math.max(filteredCollegeCards.length - visibleCollegeCards.length, 0);
+  const collegeCardPageOptions = useMemo(() => {
+    const pages: Array<{ value: string; label: string }> = [];
+    for (let page = 1; page <= collegeCardsTotalPages; page += 1) {
+      const start = (page - 1) * collegeCardsPerPage + 1;
+      const end = Math.min(page * collegeCardsPerPage, filteredCollegeCards.length);
+      pages.push({ value: String(page), label: `${start}-${end}` });
+    }
+    return pages;
+  }, [collegeCardsTotalPages, filteredCollegeCards.length]);
   const getAdminSectionKeys = useCallback((tabId: string) => {
     if (tabId === "overview") {
       return ["colleges", "courses", "users", "enquiries", "collegeRequests", "subAdmins", "siteSettings"];
@@ -5610,6 +5654,14 @@ function AdminPageContent() {
   useEffect(() => {
     setUsersPage(1);
   }, [usersSearchText]);
+
+  useEffect(() => {
+    setCurrentCollegeCardsPage((current) => Math.min(Math.max(current, 1), collegeCardsTotalPages));
+  }, [collegeCardsTotalPages]);
+
+  useEffect(() => {
+    setCurrentCollegeCardsPage(1);
+  }, [collegeSearchText]);
 
   useEffect(() => {
     if (collegeForm.state && !availableDistricts.includes(collegeForm.district)) {
@@ -6303,6 +6355,40 @@ function AdminPageContent() {
       setStatusText(message);
     } finally {
       void key;
+    }
+  };
+
+  const openCollegeEditReminderConfirm = () => {
+    if (!token || collegeDashboardEditStatus.notEdited.length === 0 || isSendingCollegeEditReminders) {
+      return;
+    }
+    setShowCollegeEditReminderConfirm(true);
+  };
+
+  const closeCollegeEditReminderConfirm = () => {
+    if (isSendingCollegeEditReminders) {
+      return;
+    }
+    setShowCollegeEditReminderConfirm(false);
+  };
+
+  const confirmCollegeEditReminderSend = async () => {
+    if (!token || isSendingCollegeEditReminders || collegeDashboardEditStatus.notEdited.length === 0) {
+      return;
+    }
+
+    setIsSendingCollegeEditReminders(true);
+    try {
+      await runAction("college-edit-reminders", async () => {
+        const data = await request(
+          "/api/admin/colleges/send-edit-reminders",
+          withAuth(token, { method: "POST" }),
+        );
+        setStatusText(data?.message || "Reminder emails processed for pending college edits");
+      });
+      setShowCollegeEditReminderConfirm(false);
+    } finally {
+      setIsSendingCollegeEditReminders(false);
     }
   };
 
@@ -7697,9 +7783,13 @@ function AdminPageContent() {
                   </div>
                   <div className="relative mt-4 flex items-end justify-between gap-2">
                     <p className="text-3xl font-bold text-slate-900">{item.value}</p>
-                    <div className="rounded-xl border border-white/70 bg-white/75 px-2.5 py-1.5 text-right shadow-[0_8px_16px_rgba(255,255,255,0.22)] backdrop-blur-sm">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400">Live Status</p>
-                      <p className="mt-0.5 text-[10px] font-semibold text-slate-700">Updated from dashboard</p>
+                    <div className="w-fit max-w-[8.75rem] rounded-xl border border-white/70 bg-white/75 px-2 py-1.5 text-right shadow-[0_8px_16px_rgba(255,255,255,0.22)] backdrop-blur-sm">
+                      <p className="text-[9px] font-semibold uppercase leading-none tracking-[0.1em] text-slate-400">
+                        Live Status
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-semibold leading-tight text-slate-700">
+                        Updated from dashboard
+                      </p>
                     </div>
                   </div>
                   <div className="relative mt-3 flex items-center justify-between gap-2 border-t border-white/70 pt-2.5">
@@ -7720,17 +7810,7 @@ function AdminPageContent() {
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  void runAction("college-edit-reminders", async () => {
-                    const data = await request(
-                      "/api/admin/colleges/send-edit-reminders",
-                      withAuth(token, { method: "POST" }),
-                    );
-                    setStatusText(
-                      data?.message || "Reminder emails processed for pending college edits",
-                    );
-                  })
-                }
+                onClick={openCollegeEditReminderConfirm}
                 disabled={!token || collegeDashboardEditStatus.notEdited.length === 0}
                 className="inline-flex h-9 w-full items-center justify-center gap-1 rounded-full border border-[rgba(37,99,235,0.3)] bg-[#3b82f6] px-4 text-sm font-bold text-white shadow-[0_10px_20px_rgba(37,99,235,0.16)] transition duration-200 hover:border-[rgba(37,99,235,0.34)] hover:bg-white hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-60 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5"
               >
@@ -9712,9 +9792,9 @@ function AdminPageContent() {
             </form>
           ) : null}
 
-          <div className="mb-4 w-full max-w-[42rem] rounded-2xl border border-[#dbe7fb] bg-white p-3 shadow-[0_12px_28px_rgba(59,91,139,0.08)]">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-start">
-              <label className="relative block w-full md:max-w-[34rem]">
+          <div className="mb-4 w-full rounded-2xl border border-[#dbe7fb] bg-white p-3 shadow-[0_12px_28px_rgba(59,91,139,0.08)]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <label className="relative block w-full lg:max-w-[34rem]">
                 <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#2563eb]" strokeWidth={2} />
                 <input
                   value={collegeSearchText}
@@ -9723,7 +9803,8 @@ function AdminPageContent() {
                   className="h-12 w-full rounded-xl border border-[#cfe0ff] bg-[#f8fbff] pl-12 pr-4 text-sm font-semibold text-[#061647] outline-none transition placeholder:text-[#6b7fa7] focus:border-[#2563eb] focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
                 />
               </label>
-              <div className="flex items-center justify-between gap-3 md:justify-start">
+
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-bold text-[#526995]">
                   {filteredCollegeCards.length} of {adminState.colleges.length} colleges
                 </span>
@@ -9736,21 +9817,31 @@ function AdminPageContent() {
                     Clear
                   </button>
                 ) : null}
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-[#526995]">Page</span>
+                  <div className="relative inline-flex items-center">
+                    <select
+                      value={String(safeCollegeCardsPage)}
+                      onChange={(event) => setCurrentCollegeCardsPage(Number(event.target.value) || 1)}
+                      className="h-10 appearance-none bg-transparent pl-0 pr-8 text-sm font-semibold text-[#061647] outline-none"
+                    >
+                      {collegeCardPageOptions.map((page) => (
+                        <option key={page.value} value={page.value}>
+                          {page.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-0 top-1/2 size-4 -translate-y-1/2 text-[#526995]" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {filteredCollegeCards.length > 6 && !hasCollegeSearch ? (
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowAllCollegeCards((prev) => !prev)}
-                className={softButtonClass}
-              >
-                {showAllCollegeCards ? "Show less" : `View all colleges${hiddenCollegeCount ? ` (${hiddenCollegeCount}+ more)` : ""}`}
-              </button>
+            <div className="mt-2 text-xs font-semibold text-[#6b7fa7]">
+              Showing {collegeCardsPageStart}-{collegeCardsPageEnd} of {filteredCollegeCards.length}
             </div>
-          ) : null}
+          </div>
 
           {visibleCollegeCards.length ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -9872,7 +9963,7 @@ function AdminPageContent() {
           </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-[#cfe0ff] bg-white px-5 py-10 text-center text-sm font-semibold text-[#526995]">
-              No colleges found for "{collegeSearchText.trim()}".
+              No colleges found for &quot;{collegeSearchText.trim()}&quot;.
             </div>
           )}
         </div>
@@ -11787,6 +11878,56 @@ function AdminPageContent() {
         </div>
       ) : null}
 
+      {showCollegeEditReminderConfirm ? (
+        <div
+          className="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/45 p-4"
+          onClick={closeCollegeEditReminderConfirm}
+        >
+          <div
+            className="w-full max-w-lg rounded-[1.35rem] border border-blue-100 bg-white p-5 shadow-[0_26px_60px_rgba(15,23,42,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-[#2563eb]">
+                <Mail className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#2563eb]">
+                  Send Mail
+                </p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">
+                  Send reminder mail now?
+                </h3>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                  This will send the reminder email for the pending college edit status list.
+                </p>
+                <div className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+                  {collegeDashboardEditStatus.notEdited.length} colleges will receive the mail.
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeCollegeEditReminderConfirm}
+                disabled={isSendingCollegeEditReminders}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmCollegeEditReminderSend()}
+                disabled={isSendingCollegeEditReminders}
+                className="rounded-xl bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSendingCollegeEditReminders ? "Sending..." : "OK"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {showSavedCourseList ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onClick={() => setShowSavedCourseList(false)}>
           <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-[1.5rem] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]" onClick={(event) => event.stopPropagation()}>
@@ -12019,7 +12160,7 @@ function AdminPageContent() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<Loading />}>
       <AdminPageContent />
     </Suspense>
   );

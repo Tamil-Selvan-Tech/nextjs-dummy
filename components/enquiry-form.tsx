@@ -120,29 +120,18 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
 
   return (
     <div
       className="fixed inset-0 z-[1700] overflow-y-auto bg-[rgba(7,20,38,0.48)] p-3 backdrop-blur-[4px] sm:p-4"
-      onClick={onClose}
     >
       <div className="flex min-h-full items-center justify-center">
       <div
         className="my-4 flex w-full max-w-2xl flex-col overflow-hidden rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,248,255,0.98))] text-[color:var(--text-dark)] shadow-[0_30px_80px_rgba(4,12,26,0.22)] max-h-[calc(100vh-2rem)]"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-[rgba(15,76,129,0.08)] px-5 py-4 sm:px-6 sm:py-5">
           <div>
@@ -155,14 +144,6 @@ export function EnquiryForm({ college, relatedCourses = [], onClose }: EnquiryFo
               Share your details and course interest. The college team can follow up with you.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(15,76,129,0.1)] bg-white text-[color:var(--text-muted)] transition hover:bg-[rgba(15,76,129,0.04)]"
-            aria-label="Close enquiry form"
-          >
-            <X className="size-4" />
-          </button>
         </div>
 
         {isSubmitted ? (

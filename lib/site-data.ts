@@ -63,6 +63,7 @@ export type Course = {
   isTopCourse: boolean;
   university: string;
   college: string;
+  collegeName?: string;
   collegeId?: string;
   collegeCode?: string;
   specialization: string;

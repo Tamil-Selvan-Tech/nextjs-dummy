@@ -32,7 +32,8 @@ import {
   type Course,
 } from "@/lib/site-data";
 import { fetchPublicSummaryData } from "@/lib/public-data";
-import { formatCompactIndianCurrencyRange } from "@/lib/currency-format";
+import { parseCutoffValue } from "@/lib/cutoff-utils";
+import { formatCompactIndianCurrency } from "@/lib/currency-format";
 import { getRankedSearchResults, normalizeSearchText, type SearchCity } from "@/lib/search-utils";
 import { TopExamCard } from "@/components/top-exam-card";
 
@@ -240,6 +241,194 @@ const formatPlacementRateDisplay = (college?: College) => {
   return `${Number(percentageValue.toFixed(1)).toString()}%`;
 };
 
+const DISCOVER_DEGREE_ORDER = [
+  "Engineering",
+  "Medical",
+  "Law",
+  "Management",
+  "Arts & Science",
+] as const;
+
+const extractCollegeDisplayName = (value: unknown) => {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const directName = String(
+      record.name ??
+        record.collegeName ??
+        record.title ??
+        record.label ??
+        record.universityName ??
+        "",
+    ).trim();
+    if (directName) return directName;
+
+    const idValue = String(record._id ?? record.id ?? record.collegeId ?? record.collegeCode ?? "").trim();
+    if (idValue) return idValue;
+  }
+
+  return String(value || "").trim();
+};
+
+const resolveCourseCollegeRecord = (
+  course: Course,
+  matchedCollegeDetail: Course["collegeDetails"][number] | undefined,
+  colleges: College[],
+) => {
+  const courseIdentityValues = [
+    course.collegeName,
+    course.collegeId,
+    course.collegeCode,
+    matchedCollegeDetail?.collegeId,
+    matchedCollegeDetail?.collegeCode,
+    matchedCollegeDetail?.college,
+    course.college,
+  ]
+    .map((value) => normalizeSearchText(extractCollegeDisplayName(value)))
+    .filter(Boolean);
+
+  if (courseIdentityValues.length === 0) {
+    return undefined;
+  }
+
+  return colleges.find((college) => {
+    const collegeIdentityValues = [college.id, college.collegeCode, college.name]
+      .map((value) => normalizeSearchText(String(value || "").trim()))
+      .filter(Boolean);
+
+    return collegeIdentityValues.some((value) => courseIdentityValues.includes(value));
+  });
+};
+
+const resolveCourseCollegeDisplayName = (
+  course: Course,
+  matchedCollegeDetail: Course["collegeDetails"][number] | undefined,
+  colleges: College[],
+) => {
+  const directCandidates = [
+    course.collegeName,
+    matchedCollegeDetail?.college,
+    course.college,
+    course.collegeDetails?.[0]?.college,
+  ]
+    .map((value) => extractCollegeDisplayName(value))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const primaryCollegeName = directCandidates[0];
+  if (primaryCollegeName) {
+    return primaryCollegeName;
+  }
+
+  const matchedCollege = resolveCourseCollegeRecord(course, matchedCollegeDetail, colleges);
+
+  return String(matchedCollege?.name || "").trim() || "-";
+};
+
+const resolveCourseUniversityDisplayName = (
+  course: Course,
+  matchedCollegeDetail: Course["collegeDetails"][number] | undefined,
+  colleges: College[],
+) => {
+  const matchedCollege = resolveCourseCollegeRecord(course, matchedCollegeDetail, colleges);
+  const directCandidates = [
+    matchedCollege?.university,
+    course.university,
+    matchedCollegeDetail?.college && typeof matchedCollegeDetail.college === "object"
+      ? (matchedCollegeDetail.college as Record<string, unknown>).university
+      : "",
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const universityName = directCandidates[0] || "-";
+
+  if (/tamil\s+nadu\s+dr\.?\s*m\.?\s*g\.?\s*r\.?\s+medical\s+university/i.test(universityName)) {
+    return "Dr. M.G.R. Medical University";
+  }
+
+  return universityName;
+};
+
+const resolvePrimaryCourseCollegeDetail = (course: Course) => {
+  const courseIdentityValues = [course.collegeId, course.collegeCode, course.college]
+    .map((value) => normalizeSearchText(String(value || "").trim()))
+    .filter(Boolean);
+
+  if (!Array.isArray(course.collegeDetails) || course.collegeDetails.length === 0) {
+    return undefined;
+  }
+
+  const matchedDetail = course.collegeDetails.find((detail) => {
+    const detailIdentityValues = [detail.collegeId, detail.collegeCode, detail.college]
+      .map((value) => normalizeSearchText(String(value || "").trim()))
+      .filter(Boolean);
+
+    if (courseIdentityValues.length === 0 || detailIdentityValues.length === 0) {
+      return false;
+    }
+
+    return detailIdentityValues.some((value) => courseIdentityValues.includes(value));
+  });
+
+  return matchedDetail || course.collegeDetails[0];
+};
+
+const getDiscoverCourseDisplayTitle = (courseName: string) => {
+  const normalizedCourseName = String(courseName || "").trim();
+  if (!normalizedCourseName) return "-";
+
+  const parts = normalizedCourseName
+    .split(" - ")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    const firstPart = parts[0].toLowerCase();
+    const secondPart = parts[1].toLowerCase();
+    if (secondPart.startsWith(firstPart)) {
+      return parts.slice(1).join(" - ");
+    }
+  }
+
+  return normalizedCourseName;
+};
+
+const formatCourseCutoffDisplay = (course: Course) => {
+  const matchedCollegeDetail = resolvePrimaryCourseCollegeDetail(course);
+
+  const exactCandidates = [
+    matchedCollegeDetail?.cutoffText,
+    matchedCollegeDetail?.cutoff,
+    course.cutoffText,
+    course.cutoff,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const exactValue = exactCandidates.find((value) => {
+    const parsed = parseCutoffValue(value);
+    return Boolean(parsed && Math.max(parsed.start, parsed.end) > 0);
+  });
+
+  if (!exactValue) {
+    return { value: "-", kind: "Score" as const };
+  }
+
+  const parsed = parseCutoffValue(exactValue);
+  const isRange = Boolean(parsed && parsed.start !== parsed.end);
+
+  return {
+    value: exactValue,
+    kind: isRange ? ("Range" as const) : ("Score" as const),
+  };
+};
+
 export function HomePage({
   collegesData: initialCollegesData = fallbackColleges,
   coursesData: initialCoursesData = fallbackCourses,
@@ -266,6 +455,10 @@ export function HomePage({
   const [activeSearchField, setActiveSearchField] = useState<"college" | "location" | "course" | null>(null);
   const [brokenCollegeImages, setBrokenCollegeImages] = useState<Record<string, boolean>>({});
   const [brokenHeroSuggestionImages, setBrokenHeroSuggestionImages] = useState<Record<string, boolean>>({});
+  const collegeSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const courseSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const locationSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const heroSearchShellRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const trendingCoursesScrollRef = useRef<HTMLDivElement | null>(null);
   const topExamsScrollRef = useRef<HTMLDivElement | null>(null);
@@ -285,6 +478,60 @@ export function HomePage({
   const openAllCoursesPage = useCallback(() => {
     router.push("/explore?view=courses#all-courses");
   }, [router]);
+
+  const normalizeDiscoverPathwayText = (value: string) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const getDiscoverPathwayDegree = useCallback((course: Course) => {
+    const searchableText = [
+      course.degreeType,
+      course.courseCategory,
+      course.stream,
+      course.course,
+      course.specialization,
+    ]
+      .map((value) => normalizeDiscoverPathwayText(String(value || "")))
+      .filter(Boolean)
+      .join(" ");
+
+    const matches = (patterns: string[]) =>
+      patterns.some((pattern) => searchableText.includes(pattern));
+
+    if (matches(["b arch", "architecture"])) return "B.Arch";
+    if (matches(["law", "llb", "llm"])) return "Law";
+    if (matches(["biomedical engineering", "biomedical", "bio medical"])) {
+      return "Engineering";
+    }
+    if (matches(["medical", "mbbs", "bds", "nursing", "pharmacy", "paramedical", "physiotherapy"])) {
+      return searchableText.includes("paramedical") ? "Paramedical" : "Medical";
+    }
+    if (matches(["engineering", "b tech", "be", "m tech", "electronics", "computer science"])) {
+      return "Engineering";
+    }
+    if (matches(["management", "business", "mba", "bba", "bbm"])) {
+      return "Management";
+    }
+    if (
+      matches([
+        "arts",
+        "science",
+        "commerce",
+        "computer applications",
+        "bcom",
+        "mca",
+        "bca",
+        "bsw",
+        "bfa",
+      ])
+    ) {
+      return "Arts & Science";
+    }
+
+    return null;
+  }, []);
 
   const activeMobileHeroSearchValue =
     mobileHeroSearchTab === "college"
@@ -483,6 +730,32 @@ export function HomePage({
     if (!isMountedRef.current) return;
     setActiveSearchField(field);
   }, []);
+  const focusHeroSearchField = useCallback((field: "college" | "location" | "course") => {
+    activateSearchField(field);
+
+    requestAnimationFrame(() => {
+      if (field === "college") {
+        collegeSearchInputRef.current?.focus();
+      } else if (field === "course") {
+        courseSearchInputRef.current?.focus();
+      } else {
+        locationSearchInputRef.current?.focus();
+      }
+    });
+  }, [activateSearchField]);
+  useEffect(() => {
+    if (!activeSearchField || typeof window === "undefined") return;
+    if (window.innerWidth < 768) return;
+
+    const shell = heroSearchShellRef.current;
+    if (!shell) return;
+
+    const timer = window.setTimeout(() => {
+      shell.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSearchField]);
   const scheduleSearchFieldClose = useCallback(() => {
     if (searchFieldBlurTimeoutRef.current !== null) {
       window.clearTimeout(searchFieldBlurTimeoutRef.current);
@@ -498,73 +771,133 @@ export function HomePage({
     handleHeroSearch();
   }, [handleHeroSearch]);
 
-  const exploreCourseCards = useMemo(() => {
-    const iconMap = {
-      "B.Tech": Cpu,
-      MBA: BriefcaseBusiness,
-      MBBS: Stethoscope,
-      MCA: CourseIcon,
-      "B.Sc": Sparkles,
-      "B.Com": BriefcaseBusiness,
-      BBA: BriefcaseBusiness,
-      BCA: CourseIcon,
-      "M.Tech": Cpu,
-      Law: Gavel,
-    } as const;
+  const discoverCourseCards = useMemo(() => {
+    const discoverCandidates = coursesData
+      .map((item, index) => {
+        const degree = getDiscoverPathwayDegree(item);
+        const matchedCollegeDetail = resolvePrimaryCourseCollegeDetail(item);
+        const matchedCollege = resolveCourseCollegeRecord(item, matchedCollegeDetail, collegesData);
+        const feeValue = Number(matchedCollegeDetail?.totalFees || item.totalFees);
+        const cutoffSource =
+          matchedCollegeDetail?.cutoffText ||
+          matchedCollegeDetail?.cutoff ||
+          item.cutoffText ||
+          item.cutoff;
+        const parsedCutoff = parseCutoffValue(cutoffSource);
+        const cutoffValue = parsedCutoff ? Math.max(parsedCutoff.start, parsedCutoff.end) : Number(cutoffSource);
+        const cutoffDisplay = formatCourseCutoffDisplay(item);
+        const duration = String(item.duration || "").trim();
+        const hasValidFees = Number.isFinite(feeValue) && feeValue > 0;
+        const hasValidCutoff = Number.isFinite(cutoffValue) && cutoffValue > 0;
+        const hasValidDuration = Boolean(duration);
 
-    const grouped = new Map<string, Course[]>();
+        if (!degree || !item.isTopCourse || !hasValidFees || !hasValidCutoff || !hasValidDuration) {
+          return null;
+        }
 
-    coursesData.forEach((item) => {
-      const courseName = item.course.trim();
-      const existing = grouped.get(courseName) || [];
-      grouped.set(courseName, [...existing, item]);
+        const courseName = formatCourseDisplayName(
+          item.course,
+          item.stream || item.courseCategory,
+          item.specialization,
+        );
+        const displayTitle = getDiscoverCourseDisplayTitle(courseName);
+        const collegePlacementRate = Number(matchedCollege?.placementRate || 0);
+        const normalizedCourseTitle = normalizeDiscoverPathwayText(courseName);
+        const normalizedCourseStream = normalizeDiscoverPathwayText(String(item.stream || ""));
+        const isGenericDegreeTitle =
+          (degree === "Medical" &&
+            ["medicine", "medical", "mbbs"].includes(normalizedCourseTitle)) ||
+          (degree === "Management" &&
+            ["business administration", "management", "business"].includes(normalizedCourseTitle)) ||
+          (degree === "Law" && normalizedCourseTitle === "law");
+        const isHumanResourceManagementCourse =
+          degree === "Management" &&
+          (normalizedCourseTitle.includes("human resource management") ||
+            normalizedCourseTitle.includes("labour relations"));
+        const isManagementStreamCourse = degree === "Management" && normalizedCourseStream === "management";
+        const score =
+          (item.isTopCourse ? 1000 : 0) +
+          (collegePlacementRate > 0 ? Math.min(collegePlacementRate, 100) * 5 : 0) +
+          (hasValidFees ? 30 : 0) +
+          (hasValidCutoff ? 20 : 0) +
+          (degree === "Engineering" ? 10 : 0) +
+          (degree === "Medical" ? 10 : 0) +
+          (degree === "Law" ? 10 : 0) +
+          (degree === "Management" ? 10 : 0) +
+          (degree === "Arts & Science" ? 10 : 0) -
+          (isGenericDegreeTitle ? 250 : 0) -
+          (isHumanResourceManagementCourse ? 450 : 0) +
+          (isManagementStreamCourse ? 180 : 0) -
+          index * 0.001;
+
+        return {
+          id: item.id || `${degree}-${index}`,
+          degree,
+          course: displayTitle,
+          routeCourseName: courseName,
+          duration,
+          fees: formatCompactIndianCurrency(feeValue),
+          college: resolveCourseCollegeDisplayName(item, matchedCollegeDetail, collegesData),
+          university: resolveCourseUniversityDisplayName(item, matchedCollegeDetail, collegesData),
+          cutoff: cutoffDisplay.value,
+          cutoffKind: cutoffDisplay.kind,
+          href: `/explore/course/${encodeURIComponent(courseName)}`,
+          isTopCourse: true,
+          score,
+        };
+      })
+      .filter((item): item is {
+        id: string;
+        degree: string;
+        course: string;
+        routeCourseName: string;
+        duration: string;
+        fees: string;
+        college: string;
+        university: string;
+        cutoff: string;
+        cutoffKind: "Range" | "Score";
+        href: string;
+        isTopCourse: true;
+        score: number;
+      } => Boolean(item));
+
+    const selectedCards: Array<(typeof discoverCandidates)[number] & { degreeLabel: string }> = [];
+    const selectedIds = new Set<string>();
+
+    DISCOVER_DEGREE_ORDER.forEach((degree) => {
+      const degreeMatches = discoverCandidates
+        .filter((item) => item.degree === degree)
+        .sort((left, right) => right.score - left.score || left.routeCourseName.localeCompare(right.routeCourseName))
+        .slice(0, 1);
+
+      degreeMatches.forEach((item) => {
+        if (selectedIds.has(item.id)) return;
+        selectedIds.add(item.id);
+        selectedCards.push({
+          ...item,
+          degreeLabel: degree,
+        });
+      });
     });
 
-    return [...grouped.entries()].map(([courseName, rows]) => {
-      const primaryCourse = rows[0];
-      const displayCourseName = formatCourseDisplayName(
-        courseName,
-        primaryCourse?.stream || primaryCourse?.courseCategory,
-        primaryCourse?.specialization,
-      );
-      const fees = rows
-        .flatMap((row) => [
-          Number(row.totalFees),
-          ...(Array.isArray(row.collegeDetails)
-            ? row.collegeDetails.map((detail) => Number(detail.totalFees))
-            : []),
-        ])
-        .filter((value) => Number.isFinite(value) && value > 0);
-      const cutoffs = rows
-        .flatMap((row) => [
-          Number(row.cutoff),
-          ...(Array.isArray(row.collegeDetails)
-            ? row.collegeDetails.map((detail) => Number(detail.cutoff))
-            : []),
-        ])
-        .filter((value) => Number.isFinite(value) && value > 0);
-      const durations = [...new Set(rows.map((row) => String(row.duration || "").trim()).filter(Boolean))];
-      const feesRange = fees.length
-        ? formatCompactIndianCurrencyRange(Math.min(...fees), Math.max(...fees))
-        : "-";
-      const cutoffRange = cutoffs.length
-        ? Math.min(...cutoffs) === Math.max(...cutoffs)
-          ? `${Math.min(...cutoffs)}`
-          : `${Math.min(...cutoffs)} - ${Math.max(...cutoffs)}`
-        : "-";
+    if (selectedCards.length < 5) {
+      discoverCandidates
+        .slice()
+        .sort((left, right) => right.score - left.score || left.routeCourseName.localeCompare(right.routeCourseName))
+        .forEach((item) => {
+          if (selectedCards.length >= 5) return;
+          if (selectedIds.has(item.id)) return;
+          selectedIds.add(item.id);
+          selectedCards.push({
+            ...item,
+            degreeLabel: item.degree,
+          });
+        });
+    }
 
-      return {
-        id: courseName,
-        course: displayCourseName,
-        duration: durations.length ? durations.join(", ") : "-",
-        feesRange,
-        cutoffRange,
-        isTopCourse: rows.some((row) => row.isTopCourse),
-        icon: iconMap[courseName as keyof typeof iconMap] ?? CourseIcon,
-        href: `/explore/course/${encodeURIComponent(displayCourseName)}`,
-      };
-    });
-  }, [coursesData]);
+    return selectedCards.slice(0, 5);
+  }, [collegesData, coursesData, getDiscoverPathwayDegree]);
 
   const topCourseChips = useMemo(
     () =>
@@ -788,7 +1121,7 @@ export function HomePage({
     });
 
     return [...unique.values()]
-      .slice(0, 8);
+      .slice(0, 12);
   }, [courseSearchInput, coursesData]);
   const collegeSuggestions = useMemo(() => {
     const query = collegeSearchInput.trim().toLowerCase();
@@ -797,7 +1130,7 @@ export function HomePage({
         const collegeName = String(college.name || "").toLowerCase();
         return !query || collegeName.includes(query);
       })
-      .slice(0, 8);
+      .slice(0, 12);
   }, [collegeSearchInput, collegesData]);
   const activeSearchSuggestions = useMemo(() => {
     if (activeSearchField === "college") {
@@ -1576,7 +1909,7 @@ text-[#2563eb]
                       </div>
 
                       <div className="mx-auto hidden w-full max-w-[50rem] md:block lg:mx-0 xl:max-w-[58rem] 2xl:max-w-[66rem]">
-                        <div className="hero-search-shell group relative z-40 mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
+                        <div ref={heroSearchShellRef} className="hero-search-shell group relative z-40 mx-auto w-full max-w-none px-0 py-1 lg:mx-0">
                           <div
                             className="
       hero-search-input
@@ -1604,6 +1937,7 @@ text-[#2563eb]
           md:border-0
           md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
+                              onClick={() => focusHeroSearchField("course")}
                             >
                               <div className="mb-1.5 flex h-6 items-center gap-2 whitespace-nowrap text-[12px] font-bold uppercase leading-none tracking-[0.12em] text-[#2563eb]">
                                 <Search className="size-[1.15rem] shrink-0 text-[#2563eb]" />
@@ -1613,6 +1947,7 @@ text-[#2563eb]
                               <input
                                 type="text"
                                 value={courseSearchInput}
+                                ref={courseSearchInputRef}
                                 onChange={(event) => {
                                   setCourseSearchInput(event.target.value);
                                   activateSearchField("course");
@@ -1640,6 +1975,7 @@ text-[#2563eb]
           md:border-0
           md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
+                              onClick={() => focusHeroSearchField("college")}
                             >
                               <div className="flex h-6 items-center gap-1">
                                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
@@ -1653,6 +1989,7 @@ text-[#2563eb]
                               <input
                                 type="text"
                                 value={collegeSearchInput}
+                                ref={collegeSearchInputRef}
                                 onChange={(event) => {
                                   setCollegeSearchInput(event.target.value);
                                   activateSearchField("college");
@@ -1675,6 +2012,7 @@ text-[#2563eb]
           md:border-0
           md:border-r md:border-[rgba(37,99,235,0.28)]
         `}
+                              onClick={() => focusHeroSearchField("location")}
                             >
                               <div className="flex h-6 items-center gap-1">
                                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#2563eb]">
@@ -1688,6 +2026,7 @@ text-[#2563eb]
                               <input
                                 type="text"
                                 value={locationSearchInput}
+                                ref={locationSearchInputRef}
                                 onChange={(event) => {
                                   setLocationSearchInput(event.target.value);
                                   activateSearchField("location");
@@ -1733,9 +2072,9 @@ text-[#2563eb]
                           </div>
 
                           {shouldShowHeroSearchPanel ? (
-                            <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[140] max-h-[24rem] overflow-hidden rounded-[1.2rem] border border-[rgba(20,42,99,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,248,253,0.98))] p-1.5 shadow-[0_24px_48px_rgba(20,42,99,0.12)] backdrop-blur-sm">
+                            <div className="absolute left-0 right-0 top-[calc(100%+0.8rem)] z-[140] max-h-[28rem] overflow-hidden rounded-[1.2rem] border border-[rgba(20,42,99,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,248,253,0.98))] p-1.5 shadow-[0_24px_48px_rgba(20,42,99,0.12)] backdrop-blur-sm">
                               {activeSearchField && activeSearchSuggestions.length > 0 ? (
-                                <div className="max-h-[22.75rem] overflow-y-auto px-2 py-2">
+                                <div className="max-h-[26.75rem] overflow-y-auto px-2 py-2">
                                   <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary-soft)]">
                                     Related {activeSearchField}
                                   </p>
@@ -2096,9 +2435,9 @@ text-[#2563eb]
               onScroll={() =>
                 syncScrollIndicators(scrollContainerRef.current, setShowLeftArrow, setShowRightArrow)
               }
-              className="flex gap-3 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide 2xl:gap-5"
+              className="flex gap-4 overflow-x-auto overflow-y-visible pb-6 pt-2 scroll-smooth scrollbar-hide 2xl:gap-5"
             >
-              {exploreCourseCards.slice(0, 10).map((course) => {
+              {discoverCourseCards.slice(0, 5).map((course) => {
                 return (
                   <article
                     key={course.id}
@@ -2106,7 +2445,7 @@ text-[#2563eb]
                   >
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-[rgba(16,37,78,0.08)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-primary)]">
-                        {course.isTopCourse ? "Top Course" : "Course"}
+                        {course.degreeLabel || (course.isTopCourse ? "Top Course" : "Course")}
                       </span>
                     </div>
                     <h3 className="home-course-card-title type-title-medium mt-4 line-clamp-2 text-[color:var(--text-dark)]">
@@ -2119,11 +2458,18 @@ text-[#2563eb]
                       </div>
                       <div className="flex items-center justify-between gap-4 border-b border-[rgba(20,32,51,0.08)] pb-2.5">
                         <dt className="text-slate-500">Total Fees</dt>
-                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.feesRange}</dd>
+                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.fees}</dd>
                       </div>
                       <div className="flex items-center justify-between gap-4">
-                        <dt className="text-slate-500">Cutoff</dt>
-                        <dd className="type-label-bold text-[color:var(--text-dark)]">{course.cutoffRange}</dd>
+                        <dt className="text-slate-500">University</dt>
+                        <dd className="min-w-0 max-w-[62%] text-right">
+                          <span
+                            title={course.university || "-"}
+                            className="block truncate text-right text-[11px] font-bold leading-4 tracking-tight text-[color:var(--text-dark)]"
+                          >
+                            {course.university || "-"}
+                          </span>
+                        </dd>
                       </div>
                     </dl>
                     <button

@@ -33,6 +33,7 @@ import {
   formatCompactIndianCurrency,
   formatCompactIndianCurrencyRange,
 } from "@/lib/currency-format";
+import { normalizeScientificIntegerText } from "@/lib/integer-text";
 
 type CollegeDetailsViewProps = { college: College; relatedCourses: Course[] };
 const tabs = [
@@ -64,6 +65,19 @@ const getCourseDisplayTitle = (course: Course) => {
   return [normalizedBaseCourse, specialization].filter(Boolean).join(" - ");
 };
 
+const formatPlacementRateDisplay = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Not available";
+
+  const numericValue = typeof value === "number" ? value : Number(raw.replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return "Not available";
+  }
+
+  const percentageValue = numericValue > 0 && numericValue <= 1 ? numericValue * 100 : numericValue;
+  return `${Number(percentageValue.toFixed(1)).toString()}%`;
+};
+
 export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsViewProps) {
   const router = useRouter();
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
@@ -74,7 +88,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   const hasTabInteractionRef = useRef(false);
   const [expandedCourseKey, setExpandedCourseKey] = useState<string | null>(null);
   const [expandedFeeKey, setExpandedFeeKey] = useState<string | null>(null);
-  const [showAllCourses, setShowAllCourses] = useState(false);
+  const [currentCoursePage, setCurrentCoursePage] = useState(0);
 
   const fees = relatedCourses.map((course) => course.totalFees);
   const cutoffs = relatedCourses.map((course) => course.cutoff);
@@ -101,12 +115,14 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
   ]
     .filter(Boolean)
     .join(", ");
-  const contactNumber = college.contactPhone?.trim() || college.alternatePhone?.trim() || "";
+  const contactNumber =
+    normalizeScientificIntegerText(college.contactPhone) ||
+    normalizeScientificIntegerText(college.alternatePhone) ||
+    "";
   const placementDetails = (college.placements as Record<string, unknown> | undefined) || {};
-  const placementRateValue = Number(
+  const placementRateDisplay = formatPlacementRateDisplay(
     placementDetails.placementRate ?? college.placementRate ?? 0,
   );
-  const placementRateDisplay = placementRateValue > 0 ? `${placementRateValue}%` : "Not available";
   const rankingDisplay = String(college.ranking || "")
     .split(/\s*[-–—]+\s*/)
     .map((item) => item.trim())
@@ -231,6 +247,17 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
       return { key, courses, minFees, maxFees };
     });
   }, [relatedCourses]);
+  const coursePageSize = 10;
+  const coursePageCount = Math.max(1, Math.ceil(groupedCourses.length / coursePageSize));
+  const safeCoursePageIndex = Math.min(currentCoursePage, coursePageCount - 1);
+  const coursePageStart = groupedCourses.length ? safeCoursePageIndex * coursePageSize + 1 : 0;
+  const coursePageEnd = groupedCourses.length
+    ? Math.min((safeCoursePageIndex + 1) * coursePageSize, groupedCourses.length)
+    : 0;
+  const visibleCourseGroups = useMemo(
+    () => groupedCourses.slice(safeCoursePageIndex * coursePageSize, safeCoursePageIndex * coursePageSize + coursePageSize),
+    [groupedCourses, safeCoursePageIndex],
+  );
 
   const getCourseTitle = (course: Course) => getCourseDisplayTitle(course);
 
@@ -1012,7 +1039,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                         </div>
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Alternate Phone</p>
-                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{college.alternatePhone?.trim() || "Not available"}</p>
+                          <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-dark)]">{normalizeScientificIntegerText(college.alternatePhone) || "Not available"}</p>
                         </div>
                       </div>
                     </article>
@@ -1140,10 +1167,34 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
               {selectedActiveTab === "courses" ? (
                 <div className="mt-6 space-y-4">
                   <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
+                    <div className="space-y-1">
                       <h2 className="text-xl font-bold text-[color:var(--text-dark)] md:text-2xl">Courses Offered</h2>
                       <p className="mt-1 text-sm text-[color:var(--text-muted)]">{courseCount} course options available across {courseCategories.join(", ") || "different categories"}.</p>
                     </div>
+                    {groupedCourses.length > coursePageSize ? (
+                      <div className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
+                        <span>Page</span>
+                        <span className="min-w-[3.5rem] text-center font-semibold text-[color:var(--text-dark)]">
+                          {coursePageStart}-{coursePageEnd}
+                        </span>
+                        <select
+                          value={safeCoursePageIndex}
+                          onChange={(event) => setCurrentCoursePage(Number(event.target.value))}
+                          className="bg-transparent text-sm font-semibold text-[color:var(--text-dark)] outline-none"
+                          aria-label="Select course page range"
+                        >
+                          {Array.from({ length: coursePageCount }, (_, index) => {
+                            const start = index * coursePageSize + 1;
+                            const end = Math.min((index + 1) * coursePageSize, groupedCourses.length);
+                            return (
+                              <option key={`course-page-${index}`} value={index}>
+                                {start}-{end}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="overflow-hidden rounded-[1.55rem] border border-[rgba(15,76,129,0.08)] bg-white shadow-[0_16px_34px_rgba(22,50,79,0.06)]">
                     <div className="border-b border-[rgba(15,76,129,0.08)] bg-[rgba(15,76,129,0.03)] px-4 py-2 text-[11px] font-medium text-[color:var(--text-muted)] md:hidden ">
@@ -1159,7 +1210,7 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                       <div className="text-right">Details</div>
                     </div>
 
-                    {(showAllCourses ? groupedCourses : groupedCourses.slice(0, 10)).map((group) => {
+                    {visibleCourseGroups.map((group) => {
                       const totalFeesText =
                         group.minFees !== null
                           ? formatCompactIndianCurrencyRange(group.minFees, group.maxFees)
@@ -1193,18 +1244,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     })}
                     </div>
                   </div>
-                  {groupedCourses.length > 10 ? (
-                    <div className="flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllCourses((prev) => !prev)}
-                        className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.18)] bg-[linear-gradient(135deg,rgba(15,76,129,0.12),rgba(56,189,248,0.12))] px-6 py-2.5 text-sm font-semibold text-[color:var(--brand-primary)] shadow-[0_12px_26px_rgba(22,50,79,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(22,50,79,0.18)]"
-                      >
-                        {showAllCourses ? "View Less" : "View More"}
-                        <ChevronRight className={`size-4 transition ${showAllCourses ? "rotate-[-90deg]" : "rotate-90"}`} />
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
 

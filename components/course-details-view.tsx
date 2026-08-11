@@ -47,6 +47,8 @@ const initialFilters: Filters = {
   cutoffMax: "",
 };
 
+const sanitizeNumericFilterInput = (value: string) => String(value || "").replace(/[^\d]/g, "");
+
 export function CourseDetailsView({
   courseName,
   relatedCourses,
@@ -367,31 +369,53 @@ export function CourseDetailsView({
                   ))}
                 </select>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Min fees"
                   value={filters.feeMin}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, feeMin: event.target.value }))}
+                  onChange={(event) =>
+                    setFilters((prev) => ({ ...prev, feeMin: sanitizeNumericFilterInput(event.target.value) }))
+                  }
                   className="h-11 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white px-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:border-[rgba(15,76,129,0.25)]"
                 />
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Max fees"
                   value={filters.feeMax}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, feeMax: event.target.value }))}
+                  onChange={(event) =>
+                    setFilters((prev) => ({ ...prev, feeMax: sanitizeNumericFilterInput(event.target.value) }))
+                  }
                   className="h-11 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white px-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:border-[rgba(15,76,129,0.25)]"
                 />
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Min cutoff"
                   value={filters.cutoffMin}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, cutoffMin: event.target.value }))}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      cutoffMin: sanitizeNumericFilterInput(event.target.value),
+                    }))
+                  }
                   className="h-11 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white px-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:border-[rgba(15,76,129,0.25)]"
                 />
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Max cutoff"
                   value={filters.cutoffMax}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, cutoffMax: event.target.value }))}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      cutoffMax: sanitizeNumericFilterInput(event.target.value),
+                    }))
+                  }
                   className="h-11 rounded-2xl border border-[rgba(15,76,129,0.08)] bg-white px-4 text-sm text-[color:var(--text-dark)] outline-none transition placeholder:text-[color:var(--text-muted)] focus:border-[rgba(15,76,129,0.25)]"
                 />
                 <button

@@ -240,7 +240,7 @@ export function Footer() {
               <p className="type-caption text-white/[0.58]">
                 Design and Development by{" "}
                 <a
-                  href="https://www.javixtechnologies.com/"
+                  href="https://javixtechnologies.com/"
                   target="_blank"
                   rel="noreferrer"
                   className="font-semibold text-white/[0.82] transition hover:text-white"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, startTransition, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BadgeIndianRupee,
@@ -29,7 +29,8 @@ import { CollegeLogoBadge } from "@/components/college-logo-badge";
 import { Navbar } from "@/components/navbar";
 import { PopularComparisons } from "@/components/popular-comparisons";
 import { readAuthToken } from "@/lib/auth-storage";
-import { fetchPublicSummaryData } from "@/lib/public-data";
+import { fetchPublicPanelData } from "@/lib/public-data";
+import { formatCompactIndianCurrency, formatCompactIndianCurrencyRange } from "@/lib/currency-format";
 import { formatRankingRangeForDisplay } from "@/lib/ranking-utils";
 import {
   colleges,
@@ -41,6 +42,11 @@ import {
 } from "@/lib/site-data";
 
 type CompareCollege = College | null;
+
+const PDF_PAGE_WIDTH = 595.28;
+const PDF_PAGE_HEIGHT = 841.89;
+const PDF_MARGIN = 40;
+const PDF_BOTTOM_GAP = 40;
 
 const sectionCards = [
   { key: "overview", title: "Institute Information", icon: GraduationCap },
@@ -87,12 +93,142 @@ const getFacilityIcon = (facility: string) => {
   return ShieldCheck;
 };
 
+const sanitizePdfText = (value: unknown) =>
+  String(value ?? "")
+    .replace(/\r?\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+
+const escapePdfText = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+
+const slugifyFilenamePart = (value: string) =>
+  sanitizePdfText(value)
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const buildComparePdfFilename = (collegesToExport: College[]) => {
+  const names = collegesToExport.map((college) => slugifyFilenamePart(college.name)).filter(Boolean);
+  if (!names.length) return "compare.pdf";
+  if (names.length === 1) return `${names[0]}-compare.pdf`;
+  return `${names.join("-vs-")}.pdf`;
+};
+
+const wrapPdfText = (text: string, maxChars: number) => {
+  const normalized = sanitizePdfText(text);
+  if (!normalized) return [""];
+
+  const words = normalized.split(" ");
+  const lines: string[] = [];
+  let current = "";
+
+  words.forEach((word) => {
+    if (!current) {
+      current = word;
+      return;
+    }
+
+    if ((current + " " + word).length <= maxChars) {
+      current += ` ${word}`;
+      return;
+    }
+
+    lines.push(current);
+    current = word;
+  });
+
+  if (current) lines.push(current);
+  return lines.length ? lines : [normalized];
+};
+
+const approxMaxChars = (usableWidth: number, fontSize: number) =>
+  Math.max(20, Math.floor(usableWidth / (fontSize * 0.52)));
+
+type PdfPageItem = {
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  bold?: boolean;
+};
+
+const generatePdfBlob = (pages: PdfPageItem[][]) => {
+  const totalPages = pages.length;
+  const fontRegularObject = 3;
+  const fontBoldObject = 4;
+  const contentStartObject = 5;
+  const pageStartObject = contentStartObject + totalPages;
+  const objects: string[] = new Array(pageStartObject + totalPages);
+
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[2] = `<< /Type /Pages /Kids [${Array.from({ length: totalPages }, (_, index) => `${pageStartObject + index} 0 R`).join(" ")}] /Count ${totalPages} >>`;
+  objects[fontRegularObject] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  objects[fontBoldObject] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+
+  pages.forEach((pageItems, index) => {
+    const contentObjectNumber = contentStartObject + index;
+    const pageObjectNumber = pageStartObject + index;
+    const contentStream = pageItems
+      .map((item) => `BT /${item.bold ? "F2" : "F1"} ${item.size} Tf ${item.x.toFixed(2)} ${item.y.toFixed(2)} Td (${escapePdfText(item.text)}) Tj ET`)
+      .join("\n");
+    objects[contentObjectNumber] = `<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`;
+    objects[pageObjectNumber] =
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE_WIDTH.toFixed(2)} ${PDF_PAGE_HEIGHT.toFixed(2)}] ` +
+      `/Resources << /Font << /F1 ${fontRegularObject} 0 R /F2 ${fontBoldObject} 0 R >> >> ` +
+      `/Contents ${contentObjectNumber} 0 R >>`;
+  });
+
+  let pdf = "%PDF-1.4\n%\xFF\xFF\xFF\xFF\n";
+  const offsets: number[] = [0];
+
+  for (let objectNumber = 1; objectNumber < objects.length; objectNumber += 1) {
+    const objectBody = objects[objectNumber];
+    if (!objectBody) continue;
+    offsets[objectNumber] = pdf.length;
+    pdf += `${objectNumber} 0 obj\n${objectBody}\nendobj\n`;
+  }
+
+  const xrefStart = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let objectNumber = 1; objectNumber < objects.length; objectNumber += 1) {
+    const offset = offsets[objectNumber] || 0;
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+  return new Blob([pdf], { type: "application/pdf" });
+};
+
+function formatPlacementRateDisplay(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Not available";
+
+  const numericValue = typeof value === "number" ? value : Number(raw.replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return "Not available";
+  }
+
+  const percentageValue = numericValue > 0 && numericValue <= 1 ? numericValue * 100 : numericValue;
+  return `${Number(percentageValue.toFixed(1)).toString()}%`;
+}
+
 const comparisonPairs = [
   { label: "University", value: (college: College) => college.university || "-" },
   { label: "Location", value: (college: College) => `${college.district}, ${college.state}` },
   { label: "Established Year", value: (college: College) => college.establishedYear || "-" },
   { label: "Ownership Type", value: (college: College) => college.ownershipType || "-" },
-  { label: "Placement Rate", value: (college: College) => (college.placementRate > 0 ? `${college.placementRate}%` : "N/A") },
+  {
+    label: "Placement Rate",
+    value: (college: College) =>
+      formatPlacementRateDisplay(
+        (college.placements as Record<string, unknown> | undefined)?.placementRate ?? college.placementRate ?? 0,
+      ),
+  },
   { label: "Hostel", value: (college: College) => (college.hasHostel ? "Available" : "Not Available") },
 ];
 
@@ -106,16 +242,6 @@ const toList = (value: unknown) => {
     .filter(Boolean);
 };
 
-const formatMoney = (value?: unknown) => {
-  if (typeof value !== "string" && typeof value !== "number") return "Not available";
-  const raw = String(value ?? "").replace(/[₹,\s]/g, "").trim();
-  const numeric = Number(raw);
-  if (raw && Number.isFinite(numeric)) {
-    return `₹${numeric.toLocaleString()}`;
-  }
-  return raw || "Not available";
-};
-
 const getFeeRangeFromStructure = (college: College) => {
   const structure = college.feesStructure as Record<string, unknown> | undefined;
   if (!structure || typeof structure !== "object") return "";
@@ -127,31 +253,338 @@ const getFeeRangeFromStructure = (college: College) => {
     | string
     | number;
   if (!min && !max) return "";
-  return `${formatMoney(min)} - ${formatMoney(max)}`;
+  return formatCompactIndianCurrencyRange(min, max);
 };
 
-const getRelatedCoursesForCollege = (college: College, courseData: Course[]) =>
-  courseData.filter(
-    (course) =>
-      course.collegeId === college.id ||
-      normalizeText(course.college) === normalizeText(college.name) ||
-      normalizeText(course.university) === normalizeText(college.university),
-  );
+const getRelatedCoursesForCollege = (college: College, courseData: Course[]) => {
+  const collegeIdentityValues = getCollegeIdentityValues(college);
+
+  return courseData.filter((course) => {
+    const courseIdentityValues = [course.collegeId || "", course.collegeCode || "", course.college || ""]
+      .map((value) => normalizeText(value))
+      .filter(Boolean);
+
+    if (courseIdentityValues.some((value) => collegeIdentityValues.includes(value))) {
+      return true;
+    }
+
+    return course.collegeDetails.some((detail) =>
+      [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
+        collegeIdentityValues.includes(normalizeText(value || "")),
+      ),
+    );
+  });
+};
 
 const getCourseSummary = (college: College, courseData: Course[] = fallbackCourses) => {
-  const matchedCourses = courseData.length ? getRelatedCoursesForCollege(college, courseData) : [];
-  const collegeCourses = matchedCourses.length ? matchedCourses : getCoursesForCollege(college.name);
-  const topCourse = collegeCourses[0];
+  const scopedCourses = resolveCollegeScopedCourses(college, courseData);
+  const fees = scopedCourses.map((course) => course.totalFees);
+  const validFees = fees.filter((value) => Number.isFinite(value));
+  const adminFeeRange = getFeeRangeFromStructure(college);
+  const feesRange = validFees.length
+    ? formatCompactIndianCurrencyRange(Math.min(...validFees), Math.max(...validFees))
+    : "Not available";
   return {
-    totalCourses: collegeCourses.length,
-    topCourse,
-    fees:
-      getFeeRangeFromStructure(college) ||
-      (typeof topCourse?.totalFees === "number"
-        ? `Rs. ${topCourse.totalFees.toLocaleString()}`
-        : "-"),
-    cutoff: topCourse?.cutoff ? `${topCourse.cutoff}` : "-",
+    totalCourses: scopedCourses.length,
+    fees: adminFeeRange || feesRange,
   };
+};
+
+const getCollegeIdentityValues = (college: College) =>
+  [college.id, (college as { collegeCode?: string }).collegeCode || "", college.name]
+    .map((value) => normalizeText(value))
+    .filter(Boolean);
+
+const resolveCollegeScopedCourses = (college: College, courseData: Course[]) => {
+  const collegeIdentityValues = getCollegeIdentityValues(college);
+  const relatedCourses = getRelatedCoursesForCollege(college, courseData);
+  const matchingRelatedCourses = relatedCourses.length ? relatedCourses : getCoursesForCollege(college.name);
+
+  const pickLatestRepeatedEntranceExam = (
+    exams: (typeof matchingRelatedCourses)[number]["entranceExams"],
+  ) => {
+    if (!Array.isArray(exams) || exams.length <= 1) return exams || [];
+
+    const counts = new Map<string, number>();
+    exams.forEach((exam) => {
+      const key = normalizeText(exam.examName);
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const repeatedExamName = [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .sort((first, second) => second[1] - first[1])[0]?.[0];
+
+    if (!repeatedExamName) return exams;
+
+    const repeatedExams = exams.filter((exam) => normalizeText(exam.examName) === repeatedExamName);
+    const latestRepeatedExamWithoutCutoff = [...repeatedExams]
+      .reverse()
+      .find(
+        (exam) =>
+          !normalizeText(exam.cutoffScoreOrRank) &&
+          (normalizeText(exam.paperOrSyllabus) || normalizeText(exam.preparationNotes)),
+      );
+    const latestRepeatedExam =
+      latestRepeatedExamWithoutCutoff || [...repeatedExams].reverse().find(Boolean);
+
+    return latestRepeatedExam ? [latestRepeatedExam] : exams;
+  };
+
+  return matchingRelatedCourses.map((course) => {
+    const matchingCollegeDetail = course.collegeDetails.find((detail) =>
+      [detail.college, detail.collegeId, detail.collegeCode].some((value) =>
+        collegeIdentityValues.includes(normalizeText(value || "")),
+      ),
+    );
+    const hasExamCollegeScope = course.entranceExams?.some(
+      (exam) => normalizeText(exam.collegeId) || normalizeText(exam.college) || normalizeText(exam.collegeCode),
+    );
+    const scopedEntranceExams = hasExamCollegeScope
+      ? course.entranceExams?.filter(
+          (exam) =>
+            normalizeText(exam.collegeId) === normalizeText(college.id) ||
+            normalizeText(exam.college) === normalizeText(college.name) ||
+            normalizeText(exam.collegeCode) === normalizeText((college as { collegeCode?: string }).collegeCode),
+        )
+      : pickLatestRepeatedEntranceExam(course.entranceExams);
+
+    return {
+      ...course,
+      college: course.college || college.name,
+      collegeId: course.collegeId || college.id,
+      semesterFees: matchingCollegeDetail?.semesterFees ?? course.semesterFees,
+      totalFees: matchingCollegeDetail?.totalFees ?? course.totalFees,
+      hostelFees: matchingCollegeDetail?.hostelFees ?? course.hostelFees,
+      cutoff: matchingCollegeDetail?.cutoff ?? course.cutoff,
+      cutoffText: matchingCollegeDetail?.cutoffText ?? course.cutoffText,
+      cutoffByCategory: matchingCollegeDetail?.cutoffByCategory ?? course.cutoffByCategory,
+      intake: matchingCollegeDetail?.intake ?? course.intake,
+      applicationFee: matchingCollegeDetail?.applicationFee ?? course.applicationFee,
+      entranceExams: scopedEntranceExams || [],
+    };
+  });
+};
+
+const getCourseDisplayTitle = (course: Course) =>
+  sanitizePdfText(course.courseName || course.course || course.specialization || course.courseType || "Course");
+
+const buildComparePdfPages = (selectedColleges: College[], courseData: Course[]) => {
+  const pages: PdfPageItem[][] = [[]];
+  let cursorY = PDF_PAGE_HEIGHT - PDF_MARGIN;
+
+  const currentPage = () => pages[pages.length - 1];
+  const newPage = () => {
+    pages.push([]);
+    cursorY = PDF_PAGE_HEIGHT - PDF_MARGIN;
+  };
+
+  const addBlank = (amount: number) => {
+    cursorY -= amount;
+    if (cursorY < PDF_BOTTOM_GAP) {
+      newPage();
+    }
+  };
+
+  const addText = (text: string, size: number, options: { bold?: boolean; indent?: number } = {}) => {
+    const indent = options.indent || 0;
+    const maxChars = approxMaxChars(PDF_PAGE_WIDTH - PDF_MARGIN * 2 - indent, size);
+    const lines = wrapPdfText(text, maxChars);
+    lines.forEach((line) => {
+      const lineHeight = size * 1.35;
+      if (cursorY - lineHeight < PDF_BOTTOM_GAP) {
+        newPage();
+      }
+      currentPage().push({
+        text: line,
+        x: PDF_MARGIN + indent,
+        y: cursorY,
+        size,
+        bold: options.bold,
+      });
+      cursorY -= lineHeight;
+    });
+  };
+
+  const addSectionTitle = (text: string) => {
+    addBlank(6);
+    addText(text, 15, { bold: true });
+    addText("-----------------------------------------------------------------------", 8);
+    addBlank(3);
+  };
+
+  const addLabelValue = (label: string, value: string, indent = 0) => {
+    const labelX = PDF_MARGIN + indent;
+    const valueX = labelX + 105;
+    const lineHeight = 10.5 * 1.28;
+    const labelText = sanitizePdfText(label);
+    const valueText = sanitizePdfText(value) || "-";
+    const maxChars = approxMaxChars(PDF_PAGE_WIDTH - PDF_MARGIN - valueX, 10.5);
+    const valueLines = wrapPdfText(valueText, maxChars);
+
+    if (cursorY - lineHeight < PDF_BOTTOM_GAP) {
+      newPage();
+    }
+
+    currentPage().push({
+      text: labelText,
+      x: labelX,
+      y: cursorY,
+      size: 10.5,
+      bold: true,
+    });
+
+    valueLines.forEach((line, index) => {
+      const lineY = cursorY - index * lineHeight;
+      if (lineY - lineHeight < PDF_BOTTOM_GAP) {
+        newPage();
+      }
+      currentPage().push({
+        text: line,
+        x: valueX,
+        y: lineY,
+        size: 10.5,
+      });
+    });
+
+    cursorY -= Math.max(valueLines.length, 1) * lineHeight + 1.5;
+  };
+
+  const addCollegeSummary = (college: College, index: number) => {
+    const summary = getCourseSummary(college, courseData);
+    const placement = formatPlacementRateDisplay(
+      (college.placements as Record<string, unknown> | undefined)?.placementRate ?? college.placementRate ?? 0,
+    );
+    addText(`${index + 1}. ${college.name}`, 13, { bold: true });
+    addText("-----------------------------------------------------------------------", 8);
+    addLabelValue("University", college.university || "-");
+    addLabelValue("Location", `${college.district}, ${college.state}`);
+    addLabelValue("Ranking", formatRankingRangeForDisplay(college.ranking));
+    addLabelValue("Fees", summary.fees || "Not available");
+    addLabelValue("Placement", placement);
+    addBlank(4);
+  };
+
+  const addCollegeSection = (title: string, college: College) => {
+    addText(college.name, 12.5, { bold: true, indent: 6 });
+    addText("------------------------------------------------", 8, { indent: 6 });
+
+    if (title === "Institute Information") {
+      comparisonPairs.forEach((item) => addLabelValue(item.label, item.value(college), 12));
+    } else if (title === "Ranking & Recognition") {
+      addLabelValue("Recognition", college.accreditation || "Not available", 12);
+      addLabelValue("Current Rank", formatRankingRangeForDisplay(college.ranking), 12);
+      addLabelValue("Placement Rate", formatPlacementRateDisplay((college.placements as Record<string, unknown> | undefined)?.placementRate ?? college.placementRate ?? 0), 12);
+    } else if (title === "Course Details") {
+      const summary = getCourseSummary(college, courseData);
+      addLabelValue("Course Count", String(summary.totalCourses), 12);
+      addLabelValue("Estimated Fees", summary.fees || "Not available", 12);
+
+      const scopedCourses = resolveCollegeScopedCourses(college, courseData).slice(0, 5);
+      if (scopedCourses.length) {
+        scopedCourses.forEach((course, courseIndex) => {
+          addText(`${courseIndex + 1}. ${getCourseDisplayTitle(course)}`, 11, { indent: 14 });
+          addLabelValue("Fees", formatCompactIndianCurrencyRange(course.totalFees, course.totalFees), 18);
+          addLabelValue("Cutoff", String(course.cutoff || "-"), 18);
+        });
+      } else {
+        addLabelValue("Courses", "No course data available", 12);
+      }
+    } else if (title === "Admission Quotas") {
+      const quotas = toList(college.quotas);
+      if (quotas.length) {
+        quotas.slice(0, 6).forEach((quota) => addLabelValue("Quota", quota, 12));
+      } else {
+        addLabelValue("Quota", "Admission quota details not available", 12);
+      }
+      addLabelValue("Admission Process", college.admissionProcess?.trim() || "Not available", 12);
+      addLabelValue("Application Mode", college.applicationMode?.trim() || "Not available", 12);
+    } else if (title === "Infrastructure & Facilities") {
+      const facilities = college.facilities.slice(0, 5);
+      if (facilities.length) {
+        facilities.forEach((facility, facilityIndex) => addLabelValue(`Facility ${facilityIndex + 1}`, facility, 12));
+      } else {
+        addLabelValue("Facilities", "Not available", 12);
+      }
+      addLabelValue("Hostel", college.hasHostel ? "Available" : "Not Available", 12);
+      addLabelValue("Streams", college.streams.join(", ") || "Not available", 12);
+    }
+
+    addBlank(6);
+  };
+
+  const addCollegeOperationsSection = (college: College) => {
+    addText(`${college.name} - Placements & Admission Details`, 12, { bold: true, indent: 6 });
+    addText("------------------------------------------------", 8, { indent: 6 });
+    const placements = (college.placements as Record<string, unknown> | undefined) || {};
+    addLabelValue("Placement Rate", formatPlacementRateDisplay(placements.placementRate ?? college.placementRate ?? 0), 12);
+    addLabelValue("Highest Package", formatCompactIndianCurrency(placements.highestPackage ?? ""), 12);
+    addLabelValue("Average Package", formatCompactIndianCurrency(placements.averagePackage ?? ""), 12);
+    addLabelValue("Companies Visited", sanitizePdfText(placements.companiesVisited ?? ""), 12);
+    addLabelValue("Website", college.website?.trim() || "Not available", 12);
+    addLabelValue("Contact", college.contactPhone?.trim() || college.alternatePhone?.trim() || "Not available", 12);
+    addBlank(4);
+  };
+
+  const selectedTitles = selectedColleges.map((college) => college.name).join(" vs ");
+  addText("Compare Colleges", 20, { bold: true });
+  if (selectedTitles) {
+    addText(selectedTitles, 14, { bold: true });
+  }
+  addText("Comparison report generated from the current Compare page selection.", 10.5);
+  addBlank(8);
+
+  selectedColleges.forEach((college, index) => addCollegeSummary(college, index));
+
+  sectionCards.forEach((section) => {
+    addSectionTitle(section.title);
+    selectedColleges.forEach((college) => addCollegeSection(section.title, college));
+  });
+
+  addSectionTitle("Courses & Entrance Exams");
+  selectedColleges.forEach((college) => {
+    addText(college.name, 12.5, { bold: true, indent: 6 });
+    const scopedCourses = resolveCollegeScopedCourses(college, courseData).slice(0, 5);
+    if (!scopedCourses.length) {
+      addLabelValue("Course", "No course data available", 12);
+      addBlank(4);
+      return;
+    }
+
+    scopedCourses.forEach((course, courseIndex) => {
+      addText(`${courseIndex + 1}. ${getCourseDisplayTitle(course)}`, 11, { indent: 12 });
+      addLabelValue("Fees", formatCompactIndianCurrencyRange(course.totalFees, course.totalFees), 18);
+      addLabelValue("Cutoff", course.cutoff ? String(course.cutoff) : "-", 18);
+      const exams = Array.isArray(course.entranceExams) ? course.entranceExams : [];
+      if (exams.length) {
+        const examSummary = exams
+          .slice(0, 3)
+          .map((exam) => `${sanitizePdfText(exam.examName || "Exam")} ${sanitizePdfText(exam.cutoffScoreOrRank || "")}`.trim())
+          .filter(Boolean)
+          .join(" | ");
+        addLabelValue("Entrance Exams", examSummary || "Not available", 18);
+      } else {
+        addLabelValue("Entrance Exams", "Not available", 18);
+      }
+    });
+    addBlank(4);
+  });
+
+  addSectionTitle("Placements & Admission Details");
+  selectedColleges.forEach((college) => {
+    addCollegeOperationsSection(college);
+  });
+
+  pages.forEach((page, index) => {
+    page.push({
+      text: `Page ${index + 1} of ${pages.length}`,
+      x: PDF_PAGE_WIDTH - PDF_MARGIN - 70,
+      y: 24,
+      size: 9,
+    });
+  });
+
+  return pages;
 };
 
 const getCollegeByIdFromList = (list: College[], id: string | null) => {
@@ -170,19 +603,40 @@ function ComparePageContent() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [likedCollegeId, setLikedCollegeId] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [availableColleges, setAvailableColleges] = useState<College[]>(colleges);
   const [availableCourses, setAvailableCourses] = useState<Course[]>(fallbackCourses);
   const [compareColleges, setCompareColleges] = useState<CompareCollege[]>([null, null, null]);
 
   useEffect(() => {
-    let isMounted = true;
+    let isActive = true;
+
+    const commitLoadedData = (
+      resolvedColleges: College[],
+      resolvedCourses: Course[],
+      seededCollege: College | null,
+      focusedCollege: College | null,
+    ) => {
+      if (!isActive) return;
+
+      setAvailableColleges(resolvedColleges);
+      setAvailableCourses(resolvedCourses);
+      setCompareColleges((previous) => {
+        const seed = seededCollege || previous[0] || null;
+        const focus = focusedCollege || previous[1] || null;
+        const base = [seed, focus, previous[2] || null];
+        if (!seed) return base;
+        const withoutSeed = base.filter((item) => item?.id !== seed.id);
+        return [seed, ...withoutSeed].slice(0, 3);
+      });
+    };
 
     const loadCompareColleges = async () => {
       try {
-        const panelData = await fetchPublicSummaryData();
-        if (!isMounted || !panelData.colleges.length) return;
+        const panelData = await fetchPublicPanelData();
+        if (!isActive) return;
 
-        let resolvedColleges = panelData.colleges;
+        let resolvedColleges = panelData.colleges.length ? panelData.colleges : colleges;
         let seededCollege = getCollegeByIdFromList(resolvedColleges, initialCollegeId);
         let focusedCollege =
           focusCollegeId && focusCollegeId !== initialCollegeId
@@ -211,36 +665,22 @@ function ComparePageContent() {
           }
         }
 
-        startTransition(() => {
-          setAvailableColleges(resolvedColleges);
-          setAvailableCourses(panelData.courses.length ? panelData.courses : fallbackCourses);
-          setCompareColleges((previous) => {
-            const seed = seededCollege || previous[0] || null;
-            const focus = focusedCollege || previous[1] || null;
-            const base = [seed, focus, previous[2] || null];
-            if (!seed) return base;
-            const withoutSeed = base.filter((item) => item?.id !== seed.id);
-            return [seed, ...withoutSeed].slice(0, 3);
-          });
-        });
+        commitLoadedData(
+          resolvedColleges,
+          panelData.courses.length ? panelData.courses : fallbackCourses,
+          seededCollege,
+          focusedCollege,
+        );
       } catch {
+        if (!isActive) return;
+
         const seededCollege = getCollegeByIdFromList(colleges, initialCollegeId);
         const focusedCollege =
           focusCollegeId && focusCollegeId !== initialCollegeId
             ? getCollegeByIdFromList(colleges, focusCollegeId)
             : null;
 
-        startTransition(() => {
-          setAvailableCourses(fallbackCourses);
-          setCompareColleges((previous) => {
-            const seed = seededCollege || previous[0] || null;
-            const focus = focusedCollege || previous[1] || null;
-            const base = [seed, focus, previous[2] || null];
-            if (!seed) return base;
-            const withoutSeed = base.filter((item) => item?.id !== seed.id);
-            return [seed, ...withoutSeed].slice(0, 3);
-          });
-        });
+        commitLoadedData(colleges, fallbackCourses, seededCollege, focusedCollege);
       }
     };
 
@@ -265,7 +705,7 @@ function ComparePageContent() {
     }
 
     return () => {
-      isMounted = false;
+      isActive = false;
       cancelIdleLoad?.();
     };
   }, [focusCollegeId, initialCollegeId]);
@@ -327,8 +767,27 @@ function ComparePageContent() {
     });
   };
 
-  const handleDownload = () => {
-    window.print();
+  const handleDownload = async () => {
+    const selectedColleges = compareColleges.filter(Boolean) as College[];
+    if (!selectedColleges.length || isGeneratingPdf) return;
+
+    try {
+      setIsGeneratingPdf(true);
+      const pdfPages = buildComparePdfPages(selectedColleges, availableCourses.length ? availableCourses : fallbackCourses);
+      const pdfBlob = generatePdfBlob(pdfPages);
+      const filename = buildComparePdfFilename(selectedColleges);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const renderMobileSlot = (college: CompareCollege, slot: number) => {
@@ -436,10 +895,12 @@ function ComparePageContent() {
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(22,50,79,0.18)] transition hover:bg-[color:var(--brand-primary-soft)]"
+                  disabled={isGeneratingPdf}
+                  aria-busy={isGeneratingPdf}
+                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(22,50,79,0.18)] transition hover:bg-[color:var(--brand-primary-soft)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Download className="size-4" />
-                  Download / Print
+                  {isGeneratingPdf ? "Generating PDF..." : "Download "}
                 </button>
                 <Link
                   href="/explore"
@@ -516,7 +977,11 @@ function ComparePageContent() {
                           Placement
                         </p>
                         <p className="mt-2 font-bold text-[color:var(--text-dark)]">
-                          {college.placementRate > 0 ? `${college.placementRate}%` : "N/A"}
+                          {formatPlacementRateDisplay(
+                            (college.placements as Record<string, unknown> | undefined)?.placementRate ??
+                              college.placementRate ??
+                              0,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -611,7 +1076,7 @@ function ComparePageContent() {
                       }
 
                       const summary = getCourseSummary(college, availableCourses);
-                      const topFacilities = college.facilities.slice(0, 3);
+                      const topFacilities = college.facilities.slice(0, 5);
                       const facilityHighlightsMobile = topFacilities;
 
                       return (
@@ -884,3 +1349,4 @@ export default function ComparePage() {
     </Suspense>
   );
 }
+

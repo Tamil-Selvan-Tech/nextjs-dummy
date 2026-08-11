@@ -8,7 +8,7 @@ import { readCurrentUser, type SafeAuthUser } from "@/lib/auth-storage";
 export function MobileBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(() => readCurrentUser());
+  const [currentUser, setCurrentUser] = useState<SafeAuthUser | null>(null);
   const [isFooterVisible, setIsFooterVisible] = useState(false);
   const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(false);
   const [isNotFoundScreenVisible, setIsNotFoundScreenVisible] = useState(false);

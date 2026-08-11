@@ -879,10 +879,10 @@ export const examContent: Record<string, ExamDetails> = {
       practiceSummary: "JEE Advanced resources menu and official practice test links direct-a connect pannirukkom.",
       practiceLinks: [
         {
-          label: "Paper 1 official practice test",
-          href: "https://cdn3.digialm.com//OnlineAssessment/index.html?32044%40%40M217=",
-          note: "Official JEE Advanced Paper 1 practice test link.",
-          meta: "Paper 1 simulation",
+          label: "JEE Advanced official archive",
+          href: "https://jeeadv.ac.in/archive.html",
+          note: "Official JEE Advanced archive and previous paper source.",
+          meta: "Official archive",
         },
         {
           label: "Paper 2 official practice test",
@@ -1321,6 +1321,12 @@ export const examContent: Record<string, ExamDetails> = {
       practiceSummary: "Subject-wise preparation and practice official portals-ku direct shortcuts.",
       practiceLinks: [
         {
+          label: "CUET official documents",
+          href: "https://cuet.nta.nic.in/documents/",
+          note: "Official CUET documents and sample paper references.",
+          meta: "Official documents",
+        },
+        {
           label: "National Testing Abhyas",
           href: "https://www.nta.ac.in/Abhyas",
           note: "CUET site-lendhu linked official NTA practice platform.",
@@ -1331,12 +1337,6 @@ export const examContent: Record<string, ExamDetails> = {
           href: "https://cuet.nta.nic.in/test/",
           note: "Official CUET site practice / test route reference.",
           meta: "Official test route",
-        },
-        {
-          label: "CUET subject-wise syllabus",
-          href: "https://cuet.nta.nic.in/syllabus/",
-          note: "Domain, language, and general test preparation structure official-a verify panna use pannunga.",
-          meta: "Subject planning",
         },
       ],
     },
