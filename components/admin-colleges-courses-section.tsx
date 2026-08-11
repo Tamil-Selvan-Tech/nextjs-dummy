@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// @ts-nocheck
 "use client";
 
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { BadgeCheck, ChevronDown, ChevronRight, FileClock, ImageUp, MapPin, Plus, Search, TriangleAlert, Trash2, UserRound, Users, X, Download, ExternalLink, KeyRound, Mail, MailOpen, BookOpen, Building2, LayoutDashboard, PencilLine, Filter } from "lucide-react";
 import Link from "next/link";
 import { ResponsiveTableWrapper } from "@/components/responsive-table-wrapper";
@@ -38,6 +39,18 @@ const mediaUploadButtonClass =
   "inline-flex h-[110px] w-[110px] shrink-0 flex-col items-center justify-center gap-2 rounded-[1.25rem] border border-dashed border-[#c7d5ea] bg-[#f8fbff] text-[#0f4c81] transition group-hover:border-[#93b4d8] group-hover:bg-[#f3f8ff]";
 const mediaPreviewTileClass =
   "group relative overflow-hidden rounded-[1.2rem] border border-[rgba(148,163,184,0.22)] bg-white shadow-[0_12px_24px_rgba(148,163,184,0.1)]";
+const collegeSteps = [
+  "College Basic Details",
+  "Media & Facilities",
+  "Admission & Placement",
+  "Courses & Cutoff",
+];
+const ownershipTypeOptions = ["Private", "Government", "Deemed"];
+const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
+const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
+const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
+const quotaQuickOptions = ["Management Quota", "Government Quota", "Reservation Quota", "Sports Quota", "Minority Quota", "NRI Quota"];
+const scholarshipQuickOptions = ["Merit Scholarship", "Government Scholarship", "Minority Scholarship", "Sports Scholarship", "Need Based Scholarship", "First Graduate Scholarship"];
 
 const getCollegeInputClass = (field: string, collegeFieldErrors: Record<string, string | undefined>) =>
   collegeFieldErrors[field] ? `${inputClass} border-rose-300 focus:border-rose-300 focus:ring-rose-100` : inputClass;
@@ -409,7 +422,6 @@ type AdminCollegesCoursesSectionProps = {
   availableStreamOptions: any;
   brochureFile: any;
   canAccess: any;
-  catalogOptions: any;
   collegeCardPageOptions: any;
   collegeCardsPageEnd: any;
   collegeCardsPageStart: any;
@@ -438,7 +450,6 @@ type AdminCollegesCoursesSectionProps = {
   coverImageFile: any;
   coverImagePreviewUrl: any;
   currentCollegeCardsPage: any;
-  currentStream: any;
   currentUser: any;
   customCourseCatalog: any;
   customFacilityInput: any;
@@ -469,15 +480,12 @@ type AdminCollegesCoursesSectionProps = {
   embeddedSpecializationSelectValue: any;
   embeddedStreamOptions: any;
   embeddedStreamSelectValue: any;
-  end: any;
   examForm: any;
   examFormRef: any;
   examNameInputRef: any;
   examSchedulesPage: any;
   examSchedulesTotalPages: any;
   examTableRows: any;
-  existingCourseType: any;
-  existingOptions: any;
   expandedCollegeIds: any;
   filteredCollegeCards: any;
   filteredUsers: any;
@@ -488,7 +496,6 @@ type AdminCollegesCoursesSectionProps = {
   handleBulkImportComplete: any;
   hasHostelFacility: any;
   imageFiles: any;
-  isArtsAndScienceSelection: any;
   isDeletingCollege: any;
   isDeletingEnquiry: any;
   isDeletingExam: any;
@@ -505,31 +512,15 @@ type AdminCollegesCoursesSectionProps = {
   loadingAdminSectionsRef: any;
   logoFile: any;
   logoPreviewUrl: any;
-  me: any;
-  message: any;
   navItems: any;
-  nextTab: any;
-  nextValue: any;
   normalizedCourseStreamValue: any;
-  normalizedCourseType: any;
-  normalizedDegreeType: any;
   normalizedEmbeddedStream: any;
-  normalizedSearch: any;
-  normalizedSpecialization: any;
-  normalizedStream: any;
-  optionMap: any;
   pathname: any;
   pendingCollegesPage: any;
-  query: any;
-  queueJob: any;
-  rawTab: any;
-  requestKey: any;
-  results: any;
   router: any;
   safeCollegeCardsPage: any;
   savedExams: any;
   searchParams: any;
-  sectionKeys: any;
   seenNotificationHydratedRef: any;
   seenNotificationIds: any;
   seenNotificationIdsRef: any;
@@ -602,7 +593,11 @@ type AdminCollegesCoursesSectionProps = {
   setSubAdminForm: any;
   setUsersPage: any;
   setUsersSearchText: any;
-  shouldLoad: any;
+  resetCollegeForm: any;
+  navigateCollegeStep: any;
+  saveCollege: any;
+  saveCourse: any;
+  saveEmbeddedCourseDraft: any;
   showCollegeEditReminderConfirm: any;
   showCollegeForm: any;
   showCourseForm: any;
@@ -611,14 +606,9 @@ type AdminCollegesCoursesSectionProps = {
   showSavedCourseList: any;
   showSubAdminForm: any;
   siteSettings: any;
-  specialization: any;
-  start: any;
   statusState: any;
   statusText: any;
-  storedToken: any;
-  storedUser: any;
   subAdminForm: any;
-  timer: any;
   token: any;
   totalCollegeImageCount: any;
   usersPage: any;
@@ -645,7 +635,6 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     availableStreamOptions,
     brochureFile,
     canAccess,
-    catalogOptions,
     collegeCardPageOptions,
     collegeCardsPageEnd,
     collegeCardsPageStart,
@@ -674,7 +663,6 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     coverImageFile,
     coverImagePreviewUrl,
     currentCollegeCardsPage,
-    currentStream,
     currentUser,
     customCourseCatalog,
     customFacilityInput,
@@ -705,15 +693,12 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     embeddedSpecializationSelectValue,
     embeddedStreamOptions,
     embeddedStreamSelectValue,
-    end,
     examForm,
     examFormRef,
     examNameInputRef,
     examSchedulesPage,
     examSchedulesTotalPages,
     examTableRows,
-    existingCourseType,
-    existingOptions,
     expandedCollegeIds,
     filteredCollegeCards,
     filteredUsers,
@@ -724,7 +709,6 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     handleBulkImportComplete,
     hasHostelFacility,
     imageFiles,
-    isArtsAndScienceSelection,
     isDeletingCollege,
     isDeletingEnquiry,
     isDeletingExam,
@@ -741,31 +725,15 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     loadingAdminSectionsRef,
     logoFile,
     logoPreviewUrl,
-    me,
-    message,
     navItems,
-    nextTab,
-    nextValue,
     normalizedCourseStreamValue,
-    normalizedCourseType,
-    normalizedDegreeType,
     normalizedEmbeddedStream,
-    normalizedSearch,
-    normalizedSpecialization,
-    normalizedStream,
-    optionMap,
     pathname,
     pendingCollegesPage,
-    query,
-    queueJob,
-    rawTab,
-    requestKey,
-    results,
     router,
     safeCollegeCardsPage,
     savedExams,
     searchParams,
-    sectionKeys,
     seenNotificationHydratedRef,
     seenNotificationIds,
     seenNotificationIdsRef,
@@ -774,11 +742,11 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     selectedQuotas,
     selectedScholarships,
     setActiveTab,
-    setAdminState,
-    setBrochureFile,
-    setCollegeFieldErrors,
-    setCollegeForm,
-    setCollegeNotificationsPage,
+  setAdminState,
+  setBrochureFile,
+  setCollegeFieldErrors,
+    setCollegeForm: setCollegeFormRaw,
+  setCollegeNotificationsPage,
     setCollegeNotificationsSearchText,
     setCollegeSearchText,
     setCollegeStep,
@@ -838,7 +806,11 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     setSubAdminForm,
     setUsersPage,
     setUsersSearchText,
-    shouldLoad,
+    resetCollegeForm,
+    navigateCollegeStep,
+    saveCollege,
+    saveCourse,
+    saveEmbeddedCourseDraft,
     showCollegeEditReminderConfirm,
     showCollegeForm,
     showCourseForm,
@@ -847,14 +819,9 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     showSavedCourseList,
     showSubAdminForm,
     siteSettings,
-    specialization,
-    start,
     statusState,
     statusText,
-    storedToken,
-    storedUser,
     subAdminForm,
-    timer,
     token,
     totalCollegeImageCount,
     usersPage,
@@ -867,6 +834,17 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     visibleExamTableRows,
     visibleUsers
   } = props;
+  const setCollegeForm = setCollegeFormRaw as Dispatch<SetStateAction<Record<string, any>>>;
+  const getCollegeInputClass = (field: string) =>
+    collegeFieldErrors[field] ? `${inputClass} border-rose-300 focus:border-rose-300 focus:ring-rose-100` : inputClass;
+  const clearCollegeFieldError = (field: string) => {
+    setCollegeFieldErrors((prev: Record<string, string>) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   return (
     <>

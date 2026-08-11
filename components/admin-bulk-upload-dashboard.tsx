@@ -67,6 +67,25 @@ import { showToast } from "@/lib/toast";
 
 type AdminCollege = { _id: string; collegeCode?: string; name?: string; establishedYear?: string | number; ownershipType?: string; university?: string; country?: string; state?: string; city?: string; district?: string; address?: string; pincode?: string; description?: string; reviews?: string; admissionProcess?: string; applicationMode?: string; locationLink?: string; mapUrl?: string; website?: string; contactEmail?: string; ownerEmail?: string; alternatePhone?: string; contactPhone?: string; phone?: string; accreditation?: string; awardsRecognitions?: string; quotas?: string[] | string; brochurePdfUrl?: string; brochureUrl?: string; campusVideoUrl?: string; isBestCollege?: boolean; isTopCollege?: boolean; logo?: string; images?: string[]; image?: string; ranking?: string | number; placementRate?: string | number; lastDashboardEditAt?: string; feesStructure?: Record<string, unknown>; courseTags?: string; facilities?: string[] | string; scholarships?: string; placements?: { highestPackage?: string | number; averagePackage?: string | number; companiesVisited?: string | number; placementRate?: string | number }; hostelDetails?: { availability?: string; hostelType?: string; cctvAvailable?: string; boysRoomsCount?: string | number; girlsRoomsCount?: string | number; facilityOptions?: string[]; waterAvailability?: string; powerBackup?: string; internet?: { wifiAvailable?: string; speed?: string; pricing?: string }; foodAvailability?: string; foodTimings?: string; laundryService?: string; roomCleaningFrequency?: string; rules?: string; hostelFees?: { minAmount?: string | number; maxAmount?: string | number } } };
 type CategoryCutoff = { category?: string; cutoff?: string };
+type ChangeSummaryItem = { field?: string; label?: string; before?: unknown; after?: unknown };
+type RequestItem = {
+  _id: string;
+  requesterName?: string;
+  requesterEmail?: string;
+  email?: string;
+  phone?: string;
+  message?: string;
+  status?: string;
+  updatedAt?: string;
+  createdAt?: string;
+  actionType?: string;
+  payload?: { name?: string; course?: string; courseName?: string; duration?: string; logo?: string; image?: string; coverImage?: string; logoImage?: string };
+  submittedPayload?: Record<string, unknown> | null;
+  changeSummary?: ChangeSummaryItem[];
+  formAccessUsedAt?: string;
+  grantedCollegeIds?: string[];
+  allowOwnCollegeCreate?: boolean;
+};
 
 const MAX_BULK_COLLEGE_ROWS = 100;
 const MAX_BULK_IMAGE_ZIP_SIZE_BYTES = 100 * 1024 * 1024;
@@ -74,6 +93,16 @@ const getBulkCollegeLimitMessage = () =>
   `You can upload up to ${MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.`;
 const getBulkZipLimitMessage = () =>
   "ZIP file must be 100MB or less. Please upload a smaller ZIP file.";
+const normalizeAdminOption = (value?: string) => String(value || "").trim();
+const streamAliasMap: Record<string, string> = {
+  "Computer Applications": "Arts and Science",
+  Medical: "Medical / Health",
+  Arts: "Arts and Science",
+  Science: "Arts and Science",
+  Commerce: "Arts and Science",
+  Management: "Arts and Science",
+  "Computer / IT": "Arts and Science",
+};
 const normalizeCourseStream = (value?: string) => streamAliasMap[normalizeAdminOption(value)] || normalizeAdminOption(value);
 const getDurationMultiplier = (duration: string) => {
   const match = String(duration || "").match(/(\d+(?:\.\d+)?)/);
@@ -212,6 +241,17 @@ const formatPreviewCellValue = (value: unknown, column?: string) => {
   if (/^-?\d+\.0+$/.test(raw)) return stripTrailingZeroDecimal(raw);
   if (/^\d+$/.test(raw) && raw.length > 1 && raw.startsWith("0")) return raw;
   return raw;
+};
+const inferToastTypeFromMessage = (message: string): "success" | "error" | "info" => {
+  const normalized = String(message || "").trim().toLowerCase();
+  if (!normalized) return "info";
+  if (/(unable|invalid|error|failed|expired|required|select |should be|must be|not authorized|not found|session|different email|reserved|already exists)/.test(normalized)) {
+    return "error";
+  }
+  if (/(saved|updated|deleted|processed|completed|added|sent|successful|created|validated|synced|ready)/.test(normalized)) {
+    return "success";
+  }
+  return "info";
 };
 
 const normalizeScientificInteger = (value: string) => normalizeScientificIntegerText(value);
