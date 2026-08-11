@@ -382,6 +382,7 @@ export function Navbar() {
     <header
       className="page-container-full relative z-[120] max-w-[1600px] pt-3 pb-0 text-[color:var(--text-dark)] md:pt-4 md:pb-0"
       style={navbarThemeStyles}
+      suppressHydrationWarning
     >
       {!hideBackButton ? <div className="mb-3"><Suspense fallback={null}><PageBackButton /></Suspense></div> : null}
       <div className="rounded-[1.75rem] border border-[#dbeafe] bg-white px-2 py-3 shadow-[0_8px_30px_rgba(37,99,235,0.08)] md:px-4 lg:px-5">
