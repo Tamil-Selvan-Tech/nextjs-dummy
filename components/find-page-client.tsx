@@ -1852,7 +1852,7 @@ export default function FindPage() {
     }
     if (isBlank(selectedLevel)) errors.level = "Please pick your level";
     if (isBlank(selectedCategory)) errors.category = "This field is required";
-    if (!findCollegeRecord(selectedDreamCollege) && !findCollegeRecord(targetCollegeSearch)) {
+    if (!resolvedTargetCollege) {
       errors.dreamCollege = "This field is required";
     }
     if (isBlank(selectedDegree)) errors.degree = "This field is required";
@@ -1947,6 +1947,8 @@ export default function FindPage() {
     paramedicalPhysicsMarks,
     phone,
     physicsMarks,
+    resolvedTargetCollege,
+    selectedCategory,
     selectedDegree,
     selectedLevel,
     showAgricultureFields,
@@ -2435,7 +2437,7 @@ export default function FindPage() {
     params.set("state", selectedState);
     params.set("degree", selectedDegree);
     if (selectedCategory) params.set("category", normalizeCategorySelection(selectedCategory));
-    const dreamCollegeQuery = selectedDreamCollege || targetCollegeSearch.trim();
+    const dreamCollegeQuery = resolvedTargetCollege?.id || selectedDreamCollege || targetCollegeSearch.trim();
     if (dreamCollegeQuery) params.set("dreamCollege", dreamCollegeQuery);
     if (selectedCourse) params.set("course", selectedCourse);
     if (
@@ -3235,11 +3237,14 @@ export default function FindPage() {
                               setSelectedDreamCollege("");
                               return;
                             }
-    const selectedCollege =
-      findCollegeRecord(targetCollegeSearch) ||
-      dreamCollegeOptions.find((college) => college.id === selectedDreamCollege) ||
-      null;
-                            if (selectedCollege) setTargetCollegeSearch(selectedCollege.name);
+                            const selectedCollege =
+                              findCollegeRecord(targetCollegeSearch) ||
+                              dreamCollegeOptions.find((college) => college.id === selectedDreamCollege) ||
+                              null;
+                            if (selectedCollege) {
+                              setSelectedDreamCollege(selectedCollege.id);
+                              setTargetCollegeSearch(selectedCollege.name);
+                            }
                           }}
                           placeholder="Search and select college"
                           className={inputClassName}
@@ -3250,15 +3255,16 @@ export default function FindPage() {
                           <div className="absolute left-0 right-0 top-[calc(100%-1px)] z-40 max-h-[320px] overflow-auto rounded-[14px] border border-[#E3E8EF] bg-white shadow-[0_20px_44px_rgba(15,27,37,0.12)]">
                             {visibleDreamCollegeOptions.map((college, index) => (
                               <button
-                                key={`${college.id || college.name || "college"}-${index}`}
-                                type="button"
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  setTargetCollegeSearch(college.name);
-                                  setSelectedDreamCollege(college.id);
-                                  setSelectedCourse("");
-                                  setIsTargetCollegeDropdownOpen(false);
-                                }}
+                              key={`${college.id || college.name || "college"}-${index}`}
+                              type="button"
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                clearSubmittedValidation();
+                                setTargetCollegeSearch(college.name);
+                                setSelectedDreamCollege(college.id);
+                                setSelectedCourse("");
+                                setIsTargetCollegeDropdownOpen(false);
+                              }}
                                 className="flex w-full flex-col items-start gap-0.5 border-b border-[#F2F4F7] px-4 py-3 text-left transition last:border-b-0 hover:bg-[#F8FAFC]"
                               >
                                 <span className="text-[14px] font-semibold text-[#0F1B25]">{college.name}</span>

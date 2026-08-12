@@ -1701,7 +1701,20 @@ function AdminPageContent() {
       getAdminSectionKeys(scopeTabId).forEach((key) => loadingAdminSectionsRef.current.delete(key));
       setLoading(false);
     }
-  }, [router, setStatusText]);
+  }, [activeTab, getAdminSectionKeys, router, setStatusText]);
+
+  const refreshSubAdmins = useCallback(async (authToken: string) => {
+    try {
+      const data = await request("/api/admin/sub-admins", withAuth(authToken));
+      setAdminState((prev) => ({
+        ...prev,
+        subAdmins: ((data as { admins?: SubAdmin[] })?.admins || []),
+      }));
+      loadedAdminSectionsRef.current.add("subAdmins");
+    } catch {
+      // Keep the existing list if the refresh is rejected.
+    }
+  }, []);
 
   const handleBulkImportComplete = useCallback(async () => {
     if (!token) return;
@@ -2428,6 +2441,7 @@ function AdminPageContent() {
     setCustomQuotaInput("");
   };
 
+
   const clearCollegeFieldError = (field: string) => {
     setCollegeFieldErrors((prev) => {
       if (!prev[field]) return prev;
@@ -2693,7 +2707,7 @@ function AdminPageContent() {
       const data = await request(`/api/admin/sub-admins/${deleteSubAdminDialog.id}`, withAuth(token, { method: "DELETE" }));
       setStatusText(data?.message || "Admin deleted");
       setDeleteSubAdminDialog(null);
-      await loadAdminData(token, currentUser, activeTab, true);
+      await refreshSubAdmins(token);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Unable to delete admin");
     } finally {
@@ -3169,7 +3183,7 @@ function AdminPageContent() {
 
       setStatusText(data?.message || "Admin saved");
       resetSubAdminForm();
-      await loadAdminData(token, currentUser, activeTab, true);
+      await refreshSubAdmins(token);
     });
   };
 
