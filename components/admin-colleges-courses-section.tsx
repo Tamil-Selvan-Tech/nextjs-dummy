@@ -734,11 +734,6 @@ type AdminCollegesCoursesSectionProps = {
   setSubAdminForm: any;
   setUsersPage: any;
   setUsersSearchText: any;
-  resetCollegeForm: any;
-  navigateCollegeStep: any;
-  saveCollege: any;
-  saveCourse: any;
-  saveEmbeddedCourseDraft: any;
   showCollegeEditReminderConfirm: any;
   showCollegeForm: any;
   showCourseForm: any;
@@ -752,7 +747,6 @@ type AdminCollegesCoursesSectionProps = {
   subAdminForm: any;
   token: any;
   totalCollegeImageCount: any;
-  navigateCollegeStep: any;
   usersPage: any;
   usersPageEnd: any;
   usersPageStart: any;
@@ -782,6 +776,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     collegeCardsPageStart,
     collegeCardsPerPage,
     collegeCardsTotalPages,
+    clearCollegeFieldError: clearCollegeFieldErrorRaw,
     collegeFieldErrors,
     collegeForm,
     collegeFormRef,
@@ -983,14 +978,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
   const setCollegeForm = setCollegeFormRaw as Dispatch<SetStateAction<Record<string, any>>>;
   const getCollegeInputClass = (field: string) =>
     collegeFieldErrors[field] ? `${inputClass} border-rose-300 focus:border-rose-300 focus:ring-rose-100` : inputClass;
-  const clearCollegeFieldError = (field: string) => {
-    setCollegeFieldErrors((prev: Record<string, string>) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  const clearCollegeFieldError = typeof clearCollegeFieldErrorRaw === "function" ? clearCollegeFieldErrorRaw : () => {};
 
   const collegeFieldErrorsSafe = collegeFieldErrors ?? {};
   const resolvedCollegeSteps = Array.isArray(collegeSteps) && collegeSteps.length > 0
