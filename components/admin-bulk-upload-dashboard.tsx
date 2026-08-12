@@ -99,16 +99,6 @@ const getBulkCollegeLimitMessage = () =>
   `You can upload up to ${MAX_BULK_COLLEGE_ROWS} colleges at a time. Please split larger files and try again.`;
 const getBulkZipLimitMessage = () =>
   "ZIP file must be 100MB or less. Please upload a smaller ZIP file.";
-const normalizeAdminOption = (value?: string) => String(value || "").trim();
-const streamAliasMap: Record<string, string> = {
-  "Computer Applications": "Arts and Science",
-  Medical: "Medical / Health",
-  Arts: "Arts and Science",
-  Science: "Arts and Science",
-  Commerce: "Arts and Science",
-  Management: "Arts and Science",
-  "Computer / IT": "Arts and Science",
-};
 const normalizeCourseStream = (value?: string) => streamAliasMap[normalizeAdminOption(value)] || normalizeAdminOption(value);
 const getDurationMultiplier = (duration: string) => {
   const match = String(duration || "").match(/(\d+(?:\.\d+)?)/);
@@ -248,18 +238,6 @@ const formatPreviewCellValue = (value: unknown, column?: string) => {
   if (/^\d+$/.test(raw) && raw.length > 1 && raw.startsWith("0")) return raw;
   return raw;
 };
-const inferToastTypeFromMessage = (message: string): "success" | "error" | "info" => {
-  const normalized = String(message || "").trim().toLowerCase();
-  if (!normalized) return "info";
-  if (/(unable|invalid|error|failed|expired|required|select |should be|must be|not authorized|not found|session|different email|reserved|already exists)/.test(normalized)) {
-    return "error";
-  }
-  if (/(saved|updated|deleted|processed|completed|added|sent|successful|created|validated|synced|ready)/.test(normalized)) {
-    return "success";
-  }
-  return "info";
-};
-
 const normalizeScientificInteger = (value: string) => normalizeScientificIntegerText(value);
 
 const buildFeeRange = (min: string, max: string) => ({
