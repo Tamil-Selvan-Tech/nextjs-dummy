@@ -217,6 +217,7 @@ const VALIDATION_FIELD_ORDER = [
   "phone",
   "level",
   "category",
+  "dreamCollege",
   "degree",
   "course",
   "admissionType",
@@ -1850,6 +1851,10 @@ export default function FindPage() {
       errors.phone = "Enter a valid 10 digit mobile number";
     }
     if (isBlank(selectedLevel)) errors.level = "Please pick your level";
+    if (isBlank(selectedCategory)) errors.category = "This field is required";
+    if (!findCollegeRecord(selectedDreamCollege) && !findCollegeRecord(targetCollegeSearch)) {
+      errors.dreamCollege = "This field is required";
+    }
     if (isBlank(selectedDegree)) errors.degree = "This field is required";
 
     if (showEngineeringFields) {
@@ -2992,7 +2997,13 @@ export default function FindPage() {
                 ) : null}
 
                 {activeStep === 4 && showCategoryField ? (
-                  <FieldShell fieldId="category" icon={Users} label="Category">
+                  <FieldShell
+                    fieldId="category"
+                    icon={Users}
+                    label="Category"
+                    invalid={Boolean(submittedForCurrentStep && validationErrors.category)}
+                    error={submittedForCurrentStep ? validationErrors.category : undefined}
+                  >
                     <select
                       value={selectedCategory}
                       onChange={(event) => {
@@ -3198,7 +3209,13 @@ export default function FindPage() {
               ) : null}
 
                 {activeStep === 4 && showDreamCollegeField ? (
-                  <FieldShell icon={Building2} label="Select Your Target College">
+                  <FieldShell
+                    fieldId="dreamCollege"
+                    icon={Building2}
+                    label="Select Your Target College"
+                    invalid={Boolean(submittedForCurrentStep && validationErrors.dreamCollege)}
+                    error={submittedForCurrentStep ? validationErrors.dreamCollege : undefined}
+                  >
                     <div className="relative z-30">
                       <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-[#7a87ad]" />
                       <input

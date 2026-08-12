@@ -75,6 +75,20 @@ const getMatchedStreamAliases = (query: string) => {
 const matchesStreamAliases = (value: string, aliases: string[]) =>
   aliases.some((alias) => matchesAlias(value, alias));
 
+const getPositiveRange = (values: number[]) => {
+  const positiveValues = values.filter((value) => Number.isFinite(value) && value > 0);
+  const source = positiveValues.length ? positiveValues : values.filter((value) => Number.isFinite(value));
+
+  if (!source.length) {
+    return null;
+  }
+
+  return {
+    min: Math.min(...source),
+    max: Math.max(...source),
+  };
+};
+
 const matchesCourseQuery = (
   course: Course,
   searchText: string,
@@ -469,7 +483,9 @@ const visibleCourses = filteredCourseRows.slice(
         );
 
         const fees = rows.map((item) => item.totalFees);
+        const feeRange = getPositiveRange(fees);
         const cutoffs = rows.map((item) => item.cutoff);
+        const cutoffRange = getPositiveRange(cutoffs);
         const durations = [...new Set(rows.map((item) => item.duration))];
         const isTop = rows.some((row) => row.isTopCourse);
 
@@ -489,12 +505,11 @@ const visibleCourses = filteredCourseRows.slice(
   </div>
 </td>
             <td className="px-4 py-2 text-slate-700 whitespace-nowrap">
-  ₹ {Math.min(...fees).toLocaleString()} -{" "}
-  {Math.max(...fees).toLocaleString()}
-</td>
+              {feeRange ? `Rs. ${feeRange.min.toLocaleString()} - ${feeRange.max.toLocaleString()}` : "-"}
+            </td>
 
             <td className="px-4 py-2 text-slate-700">
-              {Math.min(...cutoffs)} - {Math.max(...cutoffs)}
+              {cutoffRange ? `${cutoffRange.min} - ${cutoffRange.max}` : "-"}
             </td>
 
             <td className="px-4 py-2 text-slate-700">
@@ -717,13 +732,15 @@ const visibleCourses = filteredCourseRows.slice(
           ...(Array.isArray(course.collegeDetails)
             ? course.collegeDetails.map((detail) => Number(detail.totalFees))
             : []),
-        ].filter((value) => Number.isFinite(value) && value > 0);
+        ];
+        const feeRange = getPositiveRange(fees);
         const cutoffs = [
           Number(course.cutoff),
           ...(Array.isArray(course.collegeDetails)
             ? course.collegeDetails.map((detail) => Number(detail.cutoff))
             : []),
-        ].filter((value) => Number.isFinite(value) && value > 0);
+        ];
+        const cutoffRange = getPositiveRange(cutoffs);
         const duration = String(course.duration || '').trim() || '-';
 
         return (
@@ -737,17 +754,16 @@ const visibleCourses = filteredCourseRows.slice(
             </td>
 
             <td className="px-4 py-2 text-slate-700">
-              Rs.{' '}
-              {fees.length
-                ? `${Math.min(...fees).toLocaleString()}${Math.max(...fees) !== Math.min(...fees) ? ` - ${Math.max(...fees).toLocaleString()}` : ''}`
+              {feeRange
+                ? `Rs. ${feeRange.min.toLocaleString()}${feeRange.max !== feeRange.min ? ` - ${feeRange.max.toLocaleString()}` : ''}`
                 : '-'}
             </td>
 
             <td className="px-4 py-2 text-slate-700">
-              {cutoffs.length
-                ? Math.min(...cutoffs) === Math.max(...cutoffs)
-                  ? `${Math.min(...cutoffs)}`
-                  : `${Math.min(...cutoffs)} - ${Math.max(...cutoffs)}`
+              {cutoffRange
+                ? cutoffRange.min === cutoffRange.max
+                  ? `${cutoffRange.min}`
+                  : `${cutoffRange.min} - ${cutoffRange.max}`
                 : '-'}
             </td>
 

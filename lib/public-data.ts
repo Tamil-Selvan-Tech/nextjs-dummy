@@ -244,6 +244,63 @@ const mapCutoffByCategory = (
         .filter((entry) => entry.category && entry.cutoff)
     : [];
 
+const BIT_COLLEGE_CODE = "2702";
+const BIT_CIVIL_CUTOFF = "132.5";
+
+const applyKnownCutoffCorrections = (course: Course): Course => {
+  const identityValues = [
+    course.collegeId,
+    course.collegeCode,
+    course.college,
+    course.collegeName,
+  ]
+    .map((value) => normalizeText(String(value || "")))
+    .filter(Boolean);
+
+  const isBITCivilEngineering =
+    identityValues.includes(BIT_COLLEGE_CODE) &&
+    normalizeText(course.specialization).includes("civil engineering");
+
+  if (!isBITCivilEngineering) return course;
+
+  const patchCutoffs = (entries: Array<{ category: string; cutoff: string }> | undefined) => {
+    const normalizedEntries = Array.isArray(entries) ? entries.map((entry) => ({ ...entry })) : [];
+    const ocIndex = normalizedEntries.findIndex((entry) => normalizeCutoffCategory(entry.category) === "OC");
+
+    if (ocIndex >= 0) {
+      normalizedEntries[ocIndex] = {
+        ...normalizedEntries[ocIndex],
+        category: "OC",
+        cutoff: BIT_CIVIL_CUTOFF,
+      };
+      return normalizedEntries;
+    }
+
+    return [{ category: "OC", cutoff: BIT_CIVIL_CUTOFF }, ...normalizedEntries];
+  };
+
+  return {
+    ...course,
+    cutoff: Number(BIT_CIVIL_CUTOFF),
+    cutoffText: BIT_CIVIL_CUTOFF,
+    cutoffByCategory: patchCutoffs(course.cutoffByCategory),
+    collegeDetails: course.collegeDetails.map((detail) => {
+      const detailIdentity = [detail.college, detail.collegeId, detail.collegeCode]
+        .map((value) => normalizeText(String(value || "")))
+        .filter(Boolean);
+
+      if (!detailIdentity.includes(BIT_COLLEGE_CODE)) return detail;
+
+      return {
+        ...detail,
+        cutoff: Number(BIT_CIVIL_CUTOFF),
+        cutoffText: BIT_CIVIL_CUTOFF,
+        cutoffByCategory: patchCutoffs(detail.cutoffByCategory),
+      };
+    }),
+  };
+};
+
 const fetchJson = async <T>(path: string, init: RequestInit = {}) => {
   const fetchFrom = async (baseUrl: string) => {
     const response = await fetch(`${baseUrl}${path}`, {
@@ -724,7 +781,7 @@ const mapCourses = (records: BackendCourse[]): Course[] => {
         : [],
       collegeDetails,
     };
-  });
+  }).map(applyKnownCutoffCorrections);
 
   const seenCourseSignatures = new Set<string>();
 

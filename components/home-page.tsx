@@ -1639,7 +1639,7 @@ text-[#2563eb]
           <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
             Placement Rate
           </p>
-          <p className="mt-1.5 text-[1.55rem] font-bold text-[color:var(--brand-support)]">
+          <p className="mt-1.5 text-[1.55rem] font-bold text-[#2563eb]">
             {formatPlacementRateDisplay(activeCollege)}
           </p>
           <p className="mt-1 text-[10px] leading-4 text-[color:var(--text-muted)]">
@@ -1648,13 +1648,13 @@ text-[#2563eb]
           </div>
           <div className="min-w-0 rounded-[1rem] border border-[rgba(20,42,99,0.08)] bg-[#fbfbfe] p-2.5 sm:p-3">
             <p className="type-caption uppercase tracking-[0.12em] text-[color:var(--brand-primary-soft)]">
-              Student Reviews
+              College Ranking
             </p>
-            <p className="type-title-medium mt-1.5 text-[color:var(--text-dark)]">
-              {activeCollege?.isBestCollege || activeCollege?.isTopCollege ? "1.2k+" : "860+"}
+            <p className="type-title-medium mt-1.5 text-[#2563eb]">
+              {activeCollege?.ranking ? String(activeCollege.ranking) : "N/A"}
             </p>
             <p className="type-caption mt-1 text-[color:var(--text-muted)]">
-              Verified campus feedback
+              NIRF / State rank
             </p>
           </div>
         </div>

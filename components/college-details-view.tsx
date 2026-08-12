@@ -1174,9 +1174,6 @@ export function CollegeDetailsView({ college, relatedCourses }: CollegeDetailsVi
                     {groupedCourses.length > coursePageSize ? (
                       <div className="flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--brand-primary)] shadow-[0_10px_24px_rgba(22,50,79,0.05)]">
                         <span>Page</span>
-                        <span className="min-w-[3.5rem] text-center font-semibold text-[color:var(--text-dark)]">
-                          {coursePageStart}-{coursePageEnd}
-                        </span>
                         <select
                           value={safeCoursePageIndex}
                           onChange={(event) => setCurrentCoursePage(Number(event.target.value))}

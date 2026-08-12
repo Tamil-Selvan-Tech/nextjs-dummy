@@ -3,8 +3,9 @@ import { CourseDetailsView } from "@/components/course-details-view";
 import { fetchPublicPanelData } from "@/lib/public-data";
 import {
   colleges,
-  courseMatchesLookup,
   formatCourseDisplayName,
+  getCourseFamilyLabel,
+  getRelatedCoursesFromList,
   getRelatedCourses,
   getCollegeById,
   normalizeText,
@@ -87,30 +88,7 @@ export default async function CourseDetailsPage({
   const { courseName } = await params;
   const decodedName = decodeURIComponent(courseName);
   const panelData = await fetchPublicPanelData();
-  const normalizedDecodedName = normalizeText(decodedName);
-  const relatedCourses = panelData.courses.filter(
-    (course) => {
-      const displayLabel = formatCourseDisplayName(
-        course.course,
-        course.stream || course.courseCategory,
-        course.specialization,
-      );
-      const searchableCourseValues = [
-        course.course,
-        course.courseName || "",
-        course.specialization || "",
-        course.courseCategory || "",
-        course.stream || "",
-        displayLabel,
-      ];
-
-      return searchableCourseValues.some(
-        (value) =>
-          normalizeText(value) === normalizedDecodedName || courseMatchesLookup(value, decodedName),
-      );
-    },
-  );
-
+  const relatedCourses = getRelatedCoursesFromList(panelData.courses, decodedName);
   const safeRelatedCourses = relatedCourses.length ? relatedCourses : getRelatedCourses(decodedName);
 
   if (safeRelatedCourses.length === 0) notFound();
@@ -157,11 +135,13 @@ export default async function CourseDetailsPage({
     ? Array.from(new Map(collegesResolvedFromCourses.map((college) => [college.id, college])).values())
     : collegesForCourse;
   const primaryCourse = safeRelatedCourses[0];
-  const displayCourseName = formatCourseDisplayName(
-    primaryCourse?.course || decodedName,
-    primaryCourse?.stream || primaryCourse?.courseCategory,
-    primaryCourse?.specialization,
-  );
+  const resolvedFamilyLabel = getCourseFamilyLabel(decodedName);
+  const displayCourseName = resolvedFamilyLabel
+    || formatCourseDisplayName(
+      primaryCourse?.course || decodedName,
+      primaryCourse?.stream || primaryCourse?.courseCategory,
+      primaryCourse?.specialization,
+    );
 
   return (
     <CourseDetailsView

@@ -69,10 +69,11 @@ export function CourseDetailsView({
   }, [collegesForCourse]);
 
   const feeValues = relatedCourses.map((course) => course.totalFees);
+  const positiveFeeValues = feeValues.filter((value) => Number.isFinite(value) && value > 0);
   const cutoffValues = relatedCourses.map((course) => course.cutoff);
   const validCutoffValues = cutoffValues.filter((value) => Number.isFinite(value) && value > 0);
-  const feeMin = Math.min(...feeValues);
-  const feeMax = Math.max(...feeValues);
+  const feeMin = positiveFeeValues.length ? Math.min(...positiveFeeValues) : Math.min(...feeValues);
+  const feeMax = positiveFeeValues.length ? Math.max(...positiveFeeValues) : Math.max(...feeValues);
   const cutoffMin = validCutoffValues.length ? Math.min(...validCutoffValues) : Math.min(...cutoffValues);
   const cutoffMax = validCutoffValues.length ? Math.max(...validCutoffValues) : Math.max(...cutoffValues);
   const durations = [...new Set(relatedCourses.map((course) => course.duration).filter(Boolean))];
@@ -224,10 +225,16 @@ export function CourseDetailsView({
                     { label: "Course Duration", value: durations.join(" / ") || "Not available", icon: GraduationCap },
                     {
                       label: "Fees Range",
-                      value: formatCompactIndianCurrencyRange(Math.min(...feeValues), Math.max(...feeValues)),
+                      value: formatCompactIndianCurrencyRange(feeMin, feeMax),
                       icon: Trophy,
                     },
-                    { label: "Cutoff Range", value: `${Math.min(...cutoffValues)} - ${Math.max(...cutoffValues)}`, icon: BadgeCheck },
+                    {
+                      label: "Cutoff Range",
+                      value: validCutoffValues.length
+                        ? `${Math.min(...validCutoffValues)} - ${Math.max(...validCutoffValues)}`
+                        : `${Math.min(...cutoffValues)} - ${Math.max(...cutoffValues)}`,
+                      icon: BadgeCheck,
+                    },
                     { label: "College Options", value: String(uniqueCollegesForCourse.length), icon: Building2 },
                   ].map((item) => {
                     const Icon = item.icon;

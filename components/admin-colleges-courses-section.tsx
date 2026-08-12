@@ -17,6 +17,16 @@ import {
 } from "@/lib/ranking-utils";
 import { formatCutoffForSave, normalizeCutoffInput, parseCutoffValue } from "@/lib/cutoff-utils";
 import { normalizeScientificIntegerText } from "@/lib/integer-text";
+import {
+  buildCourseExamCutoffState,
+  cutoffValidationMessage,
+  createCourseExamDraft,
+  emptyCourseDetail,
+  shouldSkipEmbeddedCutoffAutoAdvance,
+  removeCourseExamCutoffState,
+  type CourseForm,
+  type RequestItem,
+} from "@/components/admin-course-shared";
 
 const inputClass =
   "w-full rounded-[1rem] border border-[rgba(148,163,184,0.24)] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-3 py-2.5 text-xs text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_6px_16px_rgba(148,163,184,0.06)] outline-none transition placeholder:text-slate-400 focus:border-[rgba(56,189,248,0.38)] focus:ring-4 focus:ring-sky-100 sm:px-3.5 sm:text-sm md:text-sm";
@@ -48,12 +58,33 @@ const collegeSteps = [
 const ownershipTypeOptions = ["Private", "Government", "Deemed"];
 const applicationModeOptions = ["Online", "Offline", "Online & Offline"];
 const degreeTypeOptions = ["UG", "PG", "Diploma", "Certificate", "Doctorate"];
+const streamOptions = ["Engineering", "Architecture", "Arts and Science", "Medical / Health", "Paramedical", "Law", "Design", "Agriculture", "Aviation", "Hotel Management", "Education", "Social Work", "Physical Education & Sports", "Vocational Courses", "Diploma / ITI"];
+const modeOptions = ["Full-time", "Part-time", "Distance", "Online", "Hybrid"];
+const cutoffCategoryOptions = [
+  { value: "OC", label: "OC / General" },
+  { value: "BC", label: "BC" },
+  { value: "BCM", label: "BCM" },
+  { value: "MBC", label: "MBC / DNC" },
+  { value: "SC", label: "SC" },
+  { value: "SCA", label: "SCA" },
+  { value: "ST", label: "ST" },
+];
+const COLLEGE_ACCREDITATION_OPTIONS = ["NAAC", "NBA", "AICTE", "UGC", "NIRF", "A++", "A+", "A"];
 const facilityQuickOptions = ["Library", "Sports", "WiFi", "Labs", "Transport", "Cafeteria"];
 const quotaQuickOptions = ["Management Quota", "Government Quota", "Reservation Quota", "Sports Quota", "Minority Quota", "NRI Quota"];
 const scholarshipQuickOptions = ["Merit Scholarship", "Government Scholarship", "Minority Scholarship", "Sports Scholarship", "Need Based Scholarship", "First Graduate Scholarship"];
+const CUSTOM_STREAM_OPTION = "__custom_stream__";
+const CUSTOM_SPECIALIZATION_OPTION = "__custom_specialization__";
+const CUSTOM_COURSE_NAME_OPTION = "__custom_course_name__";
 
-const getCollegeInputClass = (field: string, collegeFieldErrors: Record<string, string | undefined>) =>
+const getCollegeInputClass = (field: string, collegeFieldErrors: Record<string, string | undefined> = {}) =>
   collegeFieldErrors[field] ? `${inputClass} border-rose-300 focus:border-rose-300 focus:ring-rose-100` : inputClass;
+
+const normalizeIndianPhoneInput = (value: string) =>
+  String(value || "")
+    .replace(/[^\d+\-()\s]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .slice(0, 24);
 
 const stripTrailingZeroDecimal = (value: unknown) => {
   const raw = String(value ?? "").trim();
@@ -269,7 +300,104 @@ const calculateTotalFeesFromSemesterFees = (semesterFees: string, duration: stri
   if (!feeValue || !multiplier) return "";
   return String(feeValue * multiplier);
 };
-const shouldAutoShowEntranceExams = (courseName: string, degreeType: string, stream: string) => {
+const emptyCourseExam = () => ({
+  examName: "",
+  cutoffScoreOrRank: "",
+  cutoffByCategory: [],
+  cutoffCategory: "OC",
+  cutoffValue: "",
+  weightage: "",
+  paperOrSyllabus: "",
+  preparationNotes: "",
+});
+const createEmptyEmbeddedCourseDraft = (university = "") => ({
+  id: "",
+  courseType: "",
+  degreeType: "",
+  stream: "",
+  specialization: "",
+  duration: "",
+  mode: "Full-time",
+  lateralEntryAvailable: false,
+  lateralEntryDetails: "",
+  minimumQualification: "",
+  university,
+  admissionProcess: "",
+  description: "",
+  isTopCourse: false,
+  entranceExamsEnabled: false,
+  semesterFees: "",
+  totalFees: "",
+  cutoff: "",
+  cutoffByCategory: [],
+  cutoffCategory: "OC",
+  cutoffValue: "",
+  intake: "",
+  applicationFee: "",
+  entranceExams: [emptyCourseExam()],
+});
+const defaultCutoffCategory = "OC";
+const embeddedCutoffCategoryOrder = ["OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"];
+const normalizeCategoryCutoffs = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value
+    .map((item) => ({
+      category: String((item as any)?.category || "").trim().toUpperCase(),
+      cutoff: String((item as any)?.cutoff || "").trim(),
+    }))
+    .filter((item) => {
+      if (!item.category || !item.cutoff || seen.has(item.category)) return false;
+      seen.add(item.category);
+      return true;
+    })
+    .sort((left, right) => {
+      const leftIndex = embeddedCutoffCategoryOrder.indexOf(left.category);
+      const rightIndex = embeddedCutoffCategoryOrder.indexOf(right.category);
+      return (leftIndex === -1 ? embeddedCutoffCategoryOrder.length : leftIndex) -
+        (rightIndex === -1 ? embeddedCutoffCategoryOrder.length : rightIndex);
+    });
+};
+const normalizeCategoryCutoffsWithFallback = (value: unknown, fallbackCutoff = "") => {
+  const normalized = normalizeCategoryCutoffs(value);
+  if (normalized.length > 0) return normalized;
+  const fallback = formatCutoffForSave(fallbackCutoff);
+  return fallback ? [{ category: defaultCutoffCategory, cutoff: fallback }] : [];
+};
+const resolvePrimaryCategoryCutoff = (cutoffs: unknown, fallbackCutoff = "") =>
+  normalizeCategoryCutoffs(cutoffs)[0]?.cutoff || formatCutoffForSave(fallbackCutoff) || "";
+const dedupeEmbeddedCourses = (courses: any[]) => {
+  const seen = new Set<string>();
+  return courses.filter((course) => {
+    const key = [
+      course?.courseType || "",
+      course?.degreeType || "",
+      course?.stream || "",
+      course?.specialization || "",
+      course?.university || "",
+    ]
+      .join("|")
+      .toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+const getCutoffValueForCategory = (cutoffs: any[], category: string) => {
+  const found = Array.isArray(cutoffs)
+    ? cutoffs.find((item) => String(item?.category || "").trim().toUpperCase() === String(category || "").trim().toUpperCase())
+    : null;
+  return String(found?.cutoff || "");
+};
+const resolveExamCutoffRangeConfig = (stream: string, examName: string) => resolveCutoffRangeConfig(examName, "", stream, "");
+const getExamScheduleNameOptions = (stream: string) => {
+  const normalizedStream = normalizeCourseStream(stream);
+  if (normalizedStream === "Engineering") return ["JEE Main", "JEE Advanced", "CUET"];
+  if (normalizedStream === "Medical / Health") return ["NEET", "CUET"];
+  if (normalizedStream === "Law") return ["CLAT", "AILET", "CUET"];
+  return ["CUET", "JEE Main", "NEET"];
+};
+  const shouldAutoShowEntranceExams = (courseName: string, degreeType: string, stream: string) => {
   const normalizedCourse = courseName.trim().toUpperCase();
   const normalizedStream = normalizeCourseStream(stream);
 
@@ -378,29 +506,31 @@ const resolveCutoffRangeConfig = (
   }
   return { max: 600, scaleLabel: "out of 600", contextLabel: normalizedStream || "this course" };
 };
-const getCutoffRangeHelperText = (config: CutoffRangeConfig) =>
-  `Allowed cutoff range: 0-${config.max} (${config.scaleLabel}).`;
-const getCutoffLimitWarning = (
+function getCutoffRangeHelperText(config: CutoffRangeConfig) {
+  return `Allowed cutoff range: 0-${config.max} (${config.scaleLabel}).`;
+}
+function getCutoffLimitWarning(
   value: string | number | null | undefined,
   config: CutoffRangeConfig,
-) => {
+) {
   const parsed = parseCutoffValue(value);
   if (!parsed) return "";
   if (parsed.start > config.max || parsed.end > config.max) {
     return `Cutoff cannot be more than ${config.max} for ${config.contextLabel}.`;
   }
   return "";
-};
-const getCutoffValidationMessageForConfig = (config: CutoffRangeConfig) =>
-  `Enter cutoff like 190, 190.5, or a range like 190-195. ${config.contextLabel} cutoff must stay within 0-${config.max} (${config.scaleLabel}).`;
-const isCutoffWithinRangeConfig = (
+}
+function getCutoffValidationMessageForConfig(config: CutoffRangeConfig) {
+  return `Enter cutoff like 190, 190.5, or a range like 190-195. ${config.contextLabel} cutoff must stay within 0-${config.max} (${config.scaleLabel}).`;
+}
+function isCutoffWithinRangeConfig(
   value: string | number | null | undefined,
   config: CutoffRangeConfig,
-) => {
+) {
   const parsed = parseCutoffValue(value);
   if (!parsed) return false;
   return parsed.start >= 0 && parsed.end >= 0 && parsed.start <= config.max && parsed.end <= config.max;
-};
+}
 const formatPreviewCellValue = (value: unknown, column?: string) => {
   const raw = String(value ?? "").trim();
   if (!raw) return column === "accreditation" ? "Empty" : "-";
@@ -427,6 +557,7 @@ type AdminCollegesCoursesSectionProps = {
   collegeCardsPageStart: any;
   collegeCardsPerPage: any;
   collegeCardsTotalPages: any;
+  clearCollegeFieldError: any;
   collegeFieldErrors: any;
   collegeForm: any;
   collegeFormRef: any;
@@ -435,6 +566,7 @@ type AdminCollegesCoursesSectionProps = {
   collegeNotificationsSearchText: any;
   collegeSearchText: any;
   collegeStep: any;
+  collegeSteps: any;
   courseCustomFieldMode: any;
   courseCutoffRangeConfig: any;
   courseForm: any;
@@ -520,6 +652,15 @@ type AdminCollegesCoursesSectionProps = {
   router: any;
   safeCollegeCardsPage: any;
   savedExams: any;
+  saveCollege: any;
+  saveCourse: any;
+  saveEmbeddedCourseDraft: any;
+  handleTabChange: any;
+  openCollegeEditor: any;
+  openDeleteCollegeDialog: any;
+  resetCollegeForm: any;
+  resetCourseForm: any;
+  runAction: any;
   searchParams: any;
   seenNotificationHydratedRef: any;
   seenNotificationIds: any;
@@ -611,6 +752,7 @@ type AdminCollegesCoursesSectionProps = {
   subAdminForm: any;
   token: any;
   totalCollegeImageCount: any;
+  navigateCollegeStep: any;
   usersPage: any;
   usersPageEnd: any;
   usersPageStart: any;
@@ -640,6 +782,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     collegeCardsPageStart,
     collegeCardsPerPage,
     collegeCardsTotalPages,
+    clearCollegeFieldError,
     collegeFieldErrors,
     collegeForm,
     collegeFormRef,
@@ -648,6 +791,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     collegeNotificationsSearchText,
     collegeSearchText,
     collegeStep,
+    collegeSteps,
     courseCustomFieldMode,
     courseCutoffRangeConfig,
     courseForm,
@@ -733,6 +877,15 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     router,
     safeCollegeCardsPage,
     savedExams,
+    saveCollege,
+    saveCourse,
+    saveEmbeddedCourseDraft,
+    handleTabChange,
+    openCollegeEditor,
+    openDeleteCollegeDialog,
+    resetCollegeForm,
+    resetCourseForm,
+    runAction,
     searchParams,
     seenNotificationHydratedRef,
     seenNotificationIds,
@@ -824,6 +977,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     subAdminForm,
     token,
     totalCollegeImageCount,
+    navigateCollegeStep,
     usersPage,
     usersPageEnd,
     usersPageStart,
@@ -846,6 +1000,212 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
     });
   };
 
+  const collegeFieldErrorsSafe = collegeFieldErrors ?? {};
+  const resolvedCollegeSteps = Array.isArray(collegeSteps) && collegeSteps.length > 0
+    ? collegeSteps
+    : ["College Basic Details", "Media & Facilities", "Admission & Placement", "Courses & Cutoff"];
+  const handleNavigateCollegeStep = typeof navigateCollegeStep === "function" ? navigateCollegeStep : () => {};
+  const handleResetCollegeForm = typeof resetCollegeForm === "function" ? resetCollegeForm : () => {};
+  const removeCollegeImageAt = (index: number) => {
+    if (index < collegeForm.images.length) {
+      setCollegeForm((prev) => ({
+        ...prev,
+        images: prev.images.filter((_, imageIndex) => imageIndex !== index),
+      }));
+      return;
+    }
+
+    const fileIndex = index - collegeForm.images.length;
+    setImageFiles((prev) => prev.filter((_, imageIndex) => imageIndex !== fileIndex));
+  };
+  const handleEmbeddedCutoffBlur = (_segment: "start" | "end") => () => {
+    setEmbeddedCourseForm((prev) => {
+      const normalized = normalizeCutoffInput(prev.cutoffValue);
+      return normalized ? { ...prev, cutoffValue: normalized } : prev;
+    });
+  };
+  const embeddedCutoffWarning = getCutoffLimitWarning(
+    embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff,
+    embeddedCutoffRangeConfig,
+  );
+  const upsertEmbeddedCourseCutoff = () => {
+    const category = String(embeddedCourseForm.cutoffCategory || "").trim().toUpperCase();
+    const cutoffValue = formatCutoffForSave(embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff);
+    if (!category) {
+      setStatusText("Select a cutoff category");
+      return;
+    }
+    if (!cutoffValue) {
+      setStatusText(cutoffValidationMessage);
+      return;
+    }
+    if (!isCutoffWithinRangeConfig(cutoffValue, embeddedCutoffRangeConfig)) {
+      setStatusText(getCutoffValidationMessageForConfig(embeddedCutoffRangeConfig));
+      return;
+    }
+
+    setEmbeddedCourseForm((prev) => {
+      const nextCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory).filter((item) => item.category !== category);
+      nextCutoffs.push({ category, cutoff: cutoffValue });
+      const sortedCutoffs = normalizeCategoryCutoffs(nextCutoffs);
+      return {
+        ...prev,
+        cutoffByCategory: sortedCutoffs,
+        cutoff: resolvePrimaryCategoryCutoff(sortedCutoffs, cutoffValue),
+        cutoffCategory: category,
+        cutoffValue,
+      };
+    });
+    setStatusText("");
+  };
+  const removeEmbeddedCourseCutoff = (category: string) => {
+    setEmbeddedCourseForm((prev) => {
+      const nextCutoffs = normalizeCategoryCutoffs(prev.cutoffByCategory).filter((item) => item.category !== category);
+      const activeCategory = nextCutoffs.some((item) => item.category === prev.cutoffCategory)
+        ? prev.cutoffCategory
+        : nextCutoffs[0]?.category || defaultCutoffCategory;
+      return {
+        ...prev,
+        cutoffByCategory: nextCutoffs,
+        cutoff: resolvePrimaryCategoryCutoff(nextCutoffs, prev.cutoff || prev.cutoffValue),
+        cutoffCategory: activeCategory,
+        cutoffValue: getCutoffValueForCategory(nextCutoffs, activeCategory),
+      };
+    });
+  };
+  const resetEmbeddedCourseEditor = () => {
+    setEmbeddedCourseForm(createEmptyEmbeddedCourseDraft(String(collegeForm?.university || "").trim()));
+    setEditingEmbeddedCourseIndex(null);
+    setShowEmbeddedCourseEditor(false);
+  };
+  const normalizedRankingInput = normalizeRankingRangeInput(collegeForm?.ranking || "");
+  const [rankingStartInput = "", rankingEndInput = ""] = normalizedRankingInput.split("-");
+  const updateCollegeRankingPart = (part: "start" | "end", value: string) => {
+    const nextValue = value.replace(/\D/g, "").slice(0, 4);
+    setCollegeForm((prev) => {
+      const currentInput = normalizeRankingRangeInput(prev.ranking);
+      const [currentStart = "", currentEnd = ""] = currentInput.split("-");
+
+      return {
+        ...prev,
+        ranking:
+          part === "start"
+            ? nextValue
+              ? `${nextValue}${currentEnd ? `-${currentEnd}` : ""}`
+              : currentEnd
+                ? `-${currentEnd}`
+                : ""
+            : currentStart
+              ? `${currentStart}${nextValue ? `-${nextValue}` : ""}`
+              : nextValue
+                ? nextValue
+                : "",
+      };
+    });
+  };
+  const removeFacility = (value: string) => {
+    setCollegeForm((prev) => ({
+      ...prev,
+      facilities: prev.facilities
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== value.toLowerCase())
+        .join(", "),
+    }));
+  };
+  const toggleFacility = (value: string) => {
+    if (selectedFacilities.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      removeFacility(value);
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      facilities: [...selectedFacilities, value].join(", "),
+    }));
+  };
+  const addCustomFacility = () => {
+    const nextValue = String(customFacilityInput || "").trim();
+    if (!nextValue) return;
+    if (selectedFacilities.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomFacilityInput("");
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      facilities: [...selectedFacilities, nextValue].join(", "),
+    }));
+    setCustomFacilityInput("");
+  };
+  const removeQuota = (value: string) => {
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: prev.quotas
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== value.toLowerCase())
+        .join(", "),
+    }));
+  };
+  const toggleQuota = (value: string) => {
+    if (selectedQuotas.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      removeQuota(value);
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: [...selectedQuotas, value].join(", "),
+    }));
+  };
+  const addCustomQuota = () => {
+    const nextValue = String(customQuotaInput || "").trim();
+    if (!nextValue) return;
+    if (selectedQuotas.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomQuotaInput("");
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      quotas: [...selectedQuotas, nextValue].join(", "),
+    }));
+    setCustomQuotaInput("");
+  };
+  const removeScholarship = (value: string) => {
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: prev.scholarships
+        .split(/[\n,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== value.toLowerCase())
+        .join(", "),
+    }));
+  };
+  const toggleScholarship = (value: string) => {
+    if (selectedScholarships.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      removeScholarship(value);
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: [...selectedScholarships, value].join(", "),
+    }));
+  };
+  const addCustomScholarship = () => {
+    const nextValue = String(customScholarshipInput || "").trim();
+    if (!nextValue) return;
+    if (selectedScholarships.some((item) => item.toLowerCase() === nextValue.toLowerCase())) {
+      setCustomScholarshipInput("");
+      return;
+    }
+    setCollegeForm((prev) => ({
+      ...prev,
+      scholarships: [...selectedScholarships, nextValue].join(", "),
+    }));
+    setCustomScholarshipInput("");
+  };
+
   return (
     <>
       {!loading && activeTab === "colleges" ? (
@@ -853,7 +1213,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => (showCollegeForm ? resetCollegeForm() : setShowCollegeForm(true))}
+              onClick={() => (showCollegeForm ? handleResetCollegeForm() : setShowCollegeForm(true))}
               className={primaryButtonClass}
             >
               <Plus className="size-4" />
@@ -868,13 +1228,13 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                   <div className="absolute left-[3%] right-[3%] top-[1.15rem] h-1 rounded-full bg-[#dbeafe]" />
                   <div
                     className="absolute left-[3%] top-[1.15rem] h-1 rounded-full bg-[linear-gradient(90deg,#f59e0b_0%,#38bdf8_100%)] transition-all"
-                    style={{ width: `${Math.max(0, (collegeStep / Math.max(collegeSteps.length - 1, 1)) * 94)}%` }}
+                    style={{ width: `${Math.max(0, (collegeStep / Math.max(resolvedCollegeSteps.length - 1, 1)) * 94)}%` }}
                   />
                   <div
                     className="relative grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${collegeSteps.length}, minmax(0, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${resolvedCollegeSteps.length}, minmax(0, 1fr))` }}
                   >
-                    {collegeSteps.map((stepLabel, index) => {
+                    {resolvedCollegeSteps.map((stepLabel, index) => {
                       const isActive = collegeStep === index;
                       const isCompleted = index < collegeStep;
 
@@ -882,7 +1242,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                         <button
                           key={stepLabel}
                           type="button"
-                          onClick={() => navigateCollegeStep(index)}
+                          onClick={() => handleNavigateCollegeStep(index)}
                           className="flex flex-col items-center text-center"
                         >
                           <span
@@ -905,7 +1265,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:hidden">
-                  {collegeSteps.map((stepLabel, index) => {
+                  {resolvedCollegeSteps.map((stepLabel, index) => {
                     const isActive = collegeStep === index;
                     const isCompleted = index < collegeStep;
 
@@ -913,7 +1273,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                       <button
                         key={stepLabel}
                         type="button"
-                        onClick={() => navigateCollegeStep(index)}
+                        onClick={() => handleNavigateCollegeStep(index)}
                         className="flex flex-col items-center gap-2 text-center"
                       >
                         <span
@@ -947,17 +1307,17 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                 <label>
                   <span className={labelClass}>College Name<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("name")} placeholder="Enter college name" value={collegeForm.name} onChange={(event) => { clearCollegeFieldError("name"); setCollegeForm((prev) => ({ ...prev, name: event.target.value })); }} required />
-                  {collegeFieldErrors.name ? <span className={errorTextClass}>{collegeFieldErrors.name}</span> : null}
+                  {collegeFieldErrorsSafe.name ? <span className={errorTextClass}>{collegeFieldErrorsSafe.name}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Description<span className={requiredMarkClass}>*</span></span>
                   <textarea className={getCollegeInputClass("description")} rows={2} placeholder="College overview" value={collegeForm.description} onChange={(event) => { clearCollegeFieldError("description"); setCollegeForm((prev) => ({ ...prev, description: event.target.value })); }} required />
-                  {collegeFieldErrors.description ? <span className={errorTextClass}>{collegeFieldErrors.description}</span> : null}
+                  {collegeFieldErrorsSafe.description ? <span className={errorTextClass}>{collegeFieldErrorsSafe.description}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Established Year<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("establishedYear")} type="number" placeholder="1998" value={collegeForm.establishedYear} onChange={(event) => { clearCollegeFieldError("establishedYear"); setCollegeForm((prev) => ({ ...prev, establishedYear: event.target.value })); }} required />
-                  {collegeFieldErrors.establishedYear ? <span className={errorTextClass}>{collegeFieldErrors.establishedYear}</span> : null}
+                  {collegeFieldErrorsSafe.establishedYear ? <span className={errorTextClass}>{collegeFieldErrorsSafe.establishedYear}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Ownership Type</span>
@@ -971,7 +1331,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                 <label>
                   <span className={labelClass}>University / Affiliation<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("university")} placeholder="Enter university / affiliation" value={collegeForm.university} onChange={(event) => { clearCollegeFieldError("university"); setCollegeForm((prev) => ({ ...prev, university: event.target.value })); }} required />
-                  {collegeFieldErrors.university ? <span className={errorTextClass}>{collegeFieldErrors.university}</span> : null}
+                  {collegeFieldErrorsSafe.university ? <span className={errorTextClass}>{collegeFieldErrorsSafe.university}</span> : null}
                 </label>
               </div>
 
@@ -992,7 +1352,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                       <option key={country} value={country}>{country}</option>
                     ))}
                   </select>
-                  {collegeFieldErrors.country ? <span className={errorTextClass}>{collegeFieldErrors.country}</span> : null}
+                  {collegeFieldErrorsSafe.country ? <span className={errorTextClass}>{collegeFieldErrorsSafe.country}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>State<span className={requiredMarkClass}>*</span></span>
@@ -1002,12 +1362,12 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                       <option key={state} value={state}>{state}</option>
                     ))}
                   </select>
-                  {collegeFieldErrors.state ? <span className={errorTextClass}>{collegeFieldErrors.state}</span> : null}
+                  {collegeFieldErrorsSafe.state ? <span className={errorTextClass}>{collegeFieldErrorsSafe.state}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>City<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("city")} placeholder="Enter city" value={collegeForm.city} onChange={(event) => { clearCollegeFieldError("city"); setCollegeForm((prev) => ({ ...prev, city: event.target.value })); }} required />
-                  {collegeFieldErrors.city ? <span className={errorTextClass}>{collegeFieldErrors.city}</span> : null}
+                  {collegeFieldErrorsSafe.city ? <span className={errorTextClass}>{collegeFieldErrorsSafe.city}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>District</span>
@@ -1021,12 +1381,12 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Address<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("address")} placeholder="Enter full address" value={collegeForm.address} onChange={(event) => { clearCollegeFieldError("address"); setCollegeForm((prev) => ({ ...prev, address: event.target.value })); }} required />
-                  {collegeFieldErrors.address ? <span className={errorTextClass}>{collegeFieldErrors.address}</span> : null}
+                  {collegeFieldErrorsSafe.address ? <span className={errorTextClass}>{collegeFieldErrorsSafe.address}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Pincode<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("pincode")} placeholder="Enter pincode" value={collegeForm.pincode} onChange={(event) => { clearCollegeFieldError("pincode"); setCollegeForm((prev) => ({ ...prev, pincode: event.target.value })); }} required />
-                  {collegeFieldErrors.pincode ? <span className={errorTextClass}>{collegeFieldErrors.pincode}</span> : null}
+                  {collegeFieldErrorsSafe.pincode ? <span className={errorTextClass}>{collegeFieldErrorsSafe.pincode}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Google Map URL</span>
@@ -1051,17 +1411,17 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                 <label className="md:col-span-2 xl:col-span-2">
                   <span className={`${labelClass} text-sky-700`}>Official Email<span className={requiredMarkClass}>*</span></span>
                   <input className={`${getCollegeInputClass("contactEmail")} border-sky-200 bg-sky-50/40`} type="email" placeholder="Official email" value={collegeForm.contactEmail} onChange={(event) => { clearCollegeFieldError("contactEmail"); setCollegeForm((prev) => ({ ...prev, contactEmail: event.target.value })); }} required />
-                  {collegeFieldErrors.contactEmail ? <span className={errorTextClass}>{collegeFieldErrors.contactEmail}</span> : null}
+                  {collegeFieldErrorsSafe.contactEmail ? <span className={errorTextClass}>{collegeFieldErrorsSafe.contactEmail}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Phone Number<span className={requiredMarkClass}>*</span></span>
                   <input className={getCollegeInputClass("contactPhone")} type="tel" inputMode="tel" maxLength={24} placeholder="Phone number or landline" value={collegeForm.contactPhone} onChange={(event) => { clearCollegeFieldError("contactPhone"); setCollegeForm((prev) => ({ ...prev, contactPhone: normalizeIndianPhoneInput(event.target.value) })); }} required />
-                  {collegeFieldErrors.contactPhone ? <span className={errorTextClass}>{collegeFieldErrors.contactPhone}</span> : null}
+                  {collegeFieldErrorsSafe.contactPhone ? <span className={errorTextClass}>{collegeFieldErrorsSafe.contactPhone}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Alternate Phone</span>
                   <input className={getCollegeInputClass("alternatePhone")} type="tel" inputMode="tel" maxLength={24} placeholder="Alternate phone or landline" value={collegeForm.alternatePhone} onChange={(event) => { clearCollegeFieldError("alternatePhone"); setCollegeForm((prev) => ({ ...prev, alternatePhone: normalizeIndianPhoneInput(event.target.value) })); }} />
-                  {collegeFieldErrors.alternatePhone ? <span className={errorTextClass}>{collegeFieldErrors.alternatePhone}</span> : null}
+                  {collegeFieldErrorsSafe.alternatePhone ? <span className={errorTextClass}>{collegeFieldErrorsSafe.alternatePhone}</span> : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Website URL</span>
@@ -1140,7 +1500,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                         </button>
                       ) : null}
                     </div>
-                    {collegeFieldErrors.logo ? <span className={errorTextClass}>{collegeFieldErrors.logo}</span> : null}
+                    {collegeFieldErrorsSafe.logo ? <span className={errorTextClass}>{collegeFieldErrorsSafe.logo}</span> : null}
                   </div>
 
                   <div className="space-y-1.5">
@@ -1204,7 +1564,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                         </button>
                       ) : null}
                     </div>
-                    {collegeFieldErrors.coverImage ? <span className={errorTextClass}>{collegeFieldErrors.coverImage}</span> : null}
+                    {collegeFieldErrorsSafe.coverImage ? <span className={errorTextClass}>{collegeFieldErrorsSafe.coverImage}</span> : null}
                   </div>
                 </div>
 
@@ -1263,7 +1623,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                       </div>
                     </div>
                   </label>
-                  {collegeFieldErrors.images ? <span className={errorTextClass}>{collegeFieldErrors.images}</span> : null}
+                  {collegeFieldErrorsSafe.images ? <span className={errorTextClass}>{collegeFieldErrorsSafe.images}</span> : null}
                   <span className="block text-[11px] text-slate-500">Upload high-quality images in 16:9 ratio, preferably 1600x900 or 1920x1080.</span>
                   <span className="block text-[11px] text-slate-500">Low quality or portrait images may appear cropped or blurry.</span>
                 </div>
@@ -1403,8 +1763,8 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                   <span className="mt-1.5 block text-center text-[11px] text-slate-400">
                     Enter a ranking range like `25 - 50`
                   </span>
-                  {collegeFieldErrors.ranking ? (
-                    <span className={errorTextClass}>{collegeFieldErrors.ranking}</span>
+                  {collegeFieldErrorsSafe.ranking ? (
+                    <span className={errorTextClass}>{collegeFieldErrorsSafe.ranking}</span>
                   ) : null}
                   {collegeForm.ranking ? (
                     <span className="mt-1 block text-center text-[11px] font-medium text-slate-500">
@@ -1564,16 +1924,16 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                     <span>Min Fee</span>
                     <span>Max Fee</span>
                   </div>
-                  {collegeFieldErrors.feeMin || collegeFieldErrors.feeMax ? (
+                  {collegeFieldErrorsSafe.feeMin || collegeFieldErrorsSafe.feeMax ? (
                     <span className={errorTextClass}>
-                      {collegeFieldErrors.feeMin || collegeFieldErrors.feeMax}
+                      {collegeFieldErrorsSafe.feeMin || collegeFieldErrorsSafe.feeMax}
                     </span>
                   ) : null}
                 </label>
                 <label className="xl:col-span-2">
                   <span className={labelClass}>Admission Process<span className={requiredMarkClass}>*</span></span>
                   <textarea className={getCollegeInputClass("admissionProcess")} rows={2} placeholder="Admission process" value={collegeForm.admissionProcess} onChange={(event) => { clearCollegeFieldError("admissionProcess"); setCollegeForm((prev) => ({ ...prev, admissionProcess: event.target.value })); }} required />
-                  {collegeFieldErrors.admissionProcess ? <span className={errorTextClass}>{collegeFieldErrors.admissionProcess}</span> : null}
+                  {collegeFieldErrorsSafe.admissionProcess ? <span className={errorTextClass}>{collegeFieldErrorsSafe.admissionProcess}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Application Mode<span className={requiredMarkClass}>*</span></span>
@@ -1583,7 +1943,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
-                  {collegeFieldErrors.applicationMode ? <span className={errorTextClass}>{collegeFieldErrors.applicationMode}</span> : null}
+                  {collegeFieldErrorsSafe.applicationMode ? <span className={errorTextClass}>{collegeFieldErrorsSafe.applicationMode}</span> : null}
                 </label>
                 <div className="xl:col-span-3">
                   <span className={labelClass}>Scholarships</span>
@@ -1704,7 +2064,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                     <option value="inside_campus">Inside Campus Hostel</option>
                     <option value="outside_campus">Outside Campus Hostel</option>
                   </select>
-                  {collegeFieldErrors.hostelType ? <span className={errorTextClass}>{collegeFieldErrors.hostelType}</span> : null}
+                  {collegeFieldErrorsSafe.hostelType ? <span className={errorTextClass}>{collegeFieldErrorsSafe.hostelType}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>Hostel Fees Structure<span className={requiredMarkClass}>*</span></span>
@@ -1716,7 +2076,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                     <span>Min Fee</span>
                     <span>Max Fee</span>
                   </div>
-                  {collegeFieldErrors.hostelFeeMin ? <span className={errorTextClass}>{collegeFieldErrors.hostelFeeMin}</span> : null}
+                  {collegeFieldErrorsSafe.hostelFeeMin ? <span className={errorTextClass}>{collegeFieldErrorsSafe.hostelFeeMin}</span> : null}
                 </label>
                 <label>
                   <span className={labelClass}>CCTV Availability<span className={requiredMarkClass}>*</span></span>
@@ -1725,7 +2085,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                   </select>
-                  {collegeFieldErrors.cctvAvailable ? <span className={errorTextClass}>{collegeFieldErrors.cctvAvailable}</span> : null}
+                  {collegeFieldErrorsSafe.cctvAvailable ? <span className={errorTextClass}>{collegeFieldErrorsSafe.cctvAvailable}</span> : null}
                 </label>
                 <label className="xl:col-span-3">
                   <span className={labelClass}>Facilities</span>
@@ -2106,7 +2466,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                           <input
                             className={`${inputClass} text-center`}
                             placeholder=""
-                            value={embeddedCutoffRangeParts.start}
+                            value={getCutoffRangeParts(embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff || "").start}
                             data-cutoff-input-segment="start"
                             onChange={(event) =>
                               setEmbeddedCourseForm((prev) => ({
@@ -2122,7 +2482,7 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                           <input
                             className={`${inputClass} text-center`}
                             placeholder=""
-                            value={embeddedCutoffRangeParts.end}
+                            value={getCutoffRangeParts(embeddedCourseForm.cutoffValue || embeddedCourseForm.cutoff || "").end}
                             data-cutoff-input-segment="end"
                             onChange={(event) =>
                               setEmbeddedCourseForm((prev) => ({
@@ -2566,17 +2926,17 @@ export default function AdminCollegesCoursesSection(props: AdminCollegesCoursesS
                 <button type="button" onClick={() => setCollegeStep((prev) => Math.max(prev - 1, 0))} className={softButtonClass}>
                   Prev
                 </button>
-                {collegeStep < collegeSteps.length - 1 ? (
-                  <button type="button" onClick={() => navigateCollegeStep(Math.min(collegeStep + 1, collegeSteps.length - 1))} className={softButtonClass}>
+                {collegeStep < resolvedCollegeSteps.length - 1 ? (
+                  <button type="button" onClick={() => handleNavigateCollegeStep(Math.min(collegeStep + 1, resolvedCollegeSteps.length - 1))} className={softButtonClass}>
                     Next
                   </button>
                 ) : null}
-                <button type={collegeStep === collegeSteps.length - 1 ? "submit" : "button"} className={primaryButtonClass} onClick={() => {
-                  if (collegeStep < collegeSteps.length - 1) {
-                    navigateCollegeStep(Math.min(collegeStep + 1, collegeSteps.length - 1));
+                <button type={collegeStep === resolvedCollegeSteps.length - 1 ? "submit" : "button"} className={primaryButtonClass} onClick={() => {
+                  if (collegeStep < resolvedCollegeSteps.length - 1) {
+                    handleNavigateCollegeStep(Math.min(collegeStep + 1, resolvedCollegeSteps.length - 1));
                   }
                 }}>
-                  {collegeStep === collegeSteps.length - 1
+                  {collegeStep === resolvedCollegeSteps.length - 1
                     ? editCollegeId
                       ? "Update College"
                       : "Save College"

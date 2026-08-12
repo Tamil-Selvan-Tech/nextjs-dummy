@@ -537,6 +537,76 @@ const normalizeCourseAliasText = (value: string | null | undefined) =>
     .replace(/^masterofengineering/, "me")
     .replace(/^me/, "me");
 
+const COURSE_FAMILY_DEFINITIONS = [
+  {
+    family: "B.Tech",
+    aliases: ["b.tech", "btech", "be", "b.e", "bacheloroftechnology", "bachelorofengineering"],
+  },
+  {
+    family: "MBA",
+    aliases: ["mba", "masterofbusinessadministration"],
+  },
+  {
+    family: "MBBS",
+    aliases: ["mbbs", "bachelorofmedicinebachelorofsurgery"],
+  },
+  {
+    family: "MCA",
+    aliases: ["mca", "masterofcomputerapplications"],
+  },
+  {
+    family: "B.Sc",
+    aliases: ["b.sc", "bsc", "bachelorofscience"],
+  },
+  {
+    family: "B.Com",
+    aliases: ["b.com", "bcom", "bachelorofcommerce"],
+  },
+  {
+    family: "BBA",
+    aliases: ["bba", "bachelorofbusinessadministration"],
+  },
+  {
+    family: "BCA",
+    aliases: ["bca", "bachelorofcomputerapplications"],
+  },
+  {
+    family: "M.Tech",
+    aliases: ["m.tech", "mtech", "me", "m.e", "masteroftechnology", "masterofengineering"],
+  },
+  {
+    family: "Law",
+    aliases: ["law", "llb", "llm", "bballb", "ballb", "ba_llb", "bba_llb"],
+  },
+] as const;
+
+export const getCourseFamilyLabel = (value: string | null | undefined) => {
+  const normalizedQuery = normalizeCourseLookupText(value);
+  if (!normalizedQuery) return "";
+
+  const matchedFamily = COURSE_FAMILY_DEFINITIONS.find(({ aliases }) =>
+    aliases.some((alias) => normalizedQuery.startsWith(normalizeCourseLookupText(alias))),
+  );
+
+  return matchedFamily?.family || "";
+};
+
+const courseMatchesFamilyLabel = (course: Pick<Course, "course" | "courseName" | "courseCategory" | "stream" | "specialization">, familyLabel: string) => {
+  const normalizedFamily = normalizeCourseLookupText(familyLabel);
+  if (!normalizedFamily) return false;
+
+  const searchableValues = [
+    course.course,
+    course.courseName || "",
+    course.courseCategory || "",
+    course.stream || "",
+    course.specialization || "",
+    formatCourseDisplayName(course.course, course.stream || course.courseCategory, course.specialization),
+  ];
+
+  return searchableValues.some((value) => courseMatchesLookup(value, familyLabel) || normalizeCourseLookupText(value) === normalizedFamily);
+};
+
 const getCourseLookupTokens = (value: string | null | undefined) =>
   normalizeText(value)
     .split(/[^a-z0-9]+/g)
@@ -679,7 +749,20 @@ export const getCoursesForCollegeRecord = (college: College) => {
 };
 
 export const getRelatedCourses = (courseName: string) =>
-  courses.filter((course) => {
+  getRelatedCoursesFromList(courses, courseName);
+
+export const getRelatedCoursesFromList = (courseRows: Course[], courseName: string) => {
+  const familyLabel = getCourseFamilyLabel(courseName);
+
+  const familyMatchedCourses = familyLabel
+    ? courseRows.filter((course) => courseMatchesFamilyLabel(course, familyLabel))
+    : [];
+
+  if (familyMatchedCourses.length > 0) {
+    return familyMatchedCourses;
+  }
+
+  return courseRows.filter((course) => {
     const displayName = formatCourseDisplayName(
       course.course,
       course.stream || course.courseCategory,
@@ -695,3 +778,4 @@ export const getRelatedCourses = (courseName: string) =>
       displayName,
     ].some((value) => courseMatchesLookup(value, courseName));
   });
+};

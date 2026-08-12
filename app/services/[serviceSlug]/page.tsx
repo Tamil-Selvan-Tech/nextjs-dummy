@@ -51,57 +51,51 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
   const accentClassName = accentMap[service.slug];
 
   return (
-    <>
-      <section className="relative overflow-hidden text-slate-800">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)]" />
-        <div className="mesh-bg" />
-        <div className="hero-orb one" />
-        <div className="hero-orb three" />
-        <div className="relative z-10">
-          <Navbar />
-          <div className="page-container-full px-4 pb-16 pt-8 sm:px-6 md:pb-20 md:pt-10">
-            <div className="max-w-5xl">
-              <div className="editorial-kicker">
-                <Sparkles className="size-3.5" />
-                Service Program
+    <div className="min-h-screen bg-white">
+      <section className="overflow-hidden bg-white text-slate-800">
+        <Navbar />
+        <div className="page-container-full px-4 pb-16 pt-8 sm:px-6 md:pb-20 md:pt-10">
+          <div className="max-w-5xl">
+            <div className="editorial-kicker">
+              <Sparkles className="size-3.5" />
+              Service Program
+            </div>
+            <div className="mt-6 flex items-start gap-4">
+              <div className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ${accentClassName}`}>
+                <Icon className="size-7" />
               </div>
-              <div className="mt-6 flex items-start gap-4">
-                <div className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ${accentClassName}`}>
-                  <Icon className="size-7" />
-                </div>
-                <div>
-                  <h1 className="max-w-4xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.4rem] md:text-[2.9rem]">
-                    {service.title}
-                  </h1>
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
-                    {service.description}
-                  </p>
-                </div>
+              <div>
+                <h1 className="max-w-4xl font-[family:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--text-dark)] sm:text-[2.4rem] md:text-[2.9rem]">
+                  {service.title}
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)] md:text-[15px]">
+                  {service.description}
+                </p>
               </div>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/services"
-                  className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
-                >
-                  Back to Services
-                </Link>
-                <Link
-                  href="/contact"
-                  className="shine-button inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-accent)] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[color:var(--brand-accent-deep)]"
-                >
-                  Talk to Our Team
-                  <ArrowRight className="size-4" />
-                </Link>
-              </div>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/services"
+                className="inline-flex items-center gap-2 rounded-full border border-[rgba(15,76,129,0.12)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--text-dark)] transition hover:bg-[rgba(15,76,129,0.04)]"
+              >
+                Back to Services
+              </Link>
+              <Link
+                href="/contact"
+                className="shine-button inline-flex items-center gap-2 rounded-full bg-[color:var(--brand-accent)] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[color:var(--brand-accent-deep)]"
+              >
+                Talk to Our Team
+                <ArrowRight className="size-4" />
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="page-section bg-[color:var(--surface-base)] text-slate-800">
+      <section className="page-section bg-white text-slate-800">
         <div className="page-container-full px-4 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white/90 p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
+            <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Objective
               </p>
@@ -116,7 +110,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
               </p>
             </div>
 
-            <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(239,246,255,0.98))] p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
+            <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Outcome Focus
               </p>
@@ -124,7 +118,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                 {service.deliverables.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white/85 px-4 py-3 text-sm font-semibold text-[color:var(--text-dark)]"
+                    className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3 text-sm font-semibold text-[color:var(--text-dark)]"
                   >
                     {item}
                   </div>
@@ -135,10 +129,10 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         </div>
       </section>
 
-      <section className="page-section bg-[linear-gradient(180deg,#f9fbff_0%,#f2f7ff_100%)] text-slate-800">
+      <section className="page-section bg-white text-slate-800">
         <div className="page-container-full px-4 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white/92 p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
+            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Ideal For
               </p>
@@ -146,7 +140,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                 {service.idealFor.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.92)] px-4 py-3 text-sm leading-6 text-[color:var(--text-dark)]"
+                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3 text-sm leading-6 text-[color:var(--text-dark)]"
                   >
                     {item}
                   </div>
@@ -154,7 +148,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
               </div>
             </div>
 
-            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white/92 p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
+            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Program Highlights
               </p>
@@ -162,7 +156,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                 {service.highlights.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white/90 px-4 py-4 text-sm font-medium leading-6 text-[color:var(--text-dark)]"
+                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-4 text-sm font-medium leading-6 text-[color:var(--text-dark)]"
                   >
                     {item}
                   </div>
@@ -173,10 +167,10 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         </div>
       </section>
 
-      <section className="section-shell page-section bg-[color:var(--surface-muted)] text-slate-800">
+      <section className="page-section bg-white text-slate-800">
         <div className="page-container-full px-4 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
+            <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                 Services Offered
               </p>
@@ -184,7 +178,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                 {service.servicesOffered.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(248,251,255,0.94)] px-4 py-3 text-sm leading-6 text-[color:var(--text-dark)]"
+                    className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3 text-sm leading-6 text-[color:var(--text-dark)]"
                   >
                     {item}
                   </div>
@@ -193,7 +187,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white/90 p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
+              <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                   Deliverables
                 </p>
@@ -201,7 +195,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                   {service.deliverables.map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-[rgba(255,255,255,0.92)] px-4 py-4 text-sm font-semibold text-[color:var(--text-dark)]"
+                      className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-4 text-sm font-semibold text-[color:var(--text-dark)]"
                     >
                       {item}
                     </div>
@@ -209,7 +203,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                 </div>
               </div>
 
-              <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(135deg,#ffffff,#f7faff)] p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
+              <div className="rounded-[1.8rem] border border-[rgba(15,76,129,0.08)] bg-white p-6 shadow-[0_16px_34px_rgba(22,50,79,0.08)] md:p-8">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
                   Revenue Model
                 </p>
@@ -217,7 +211,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
                   {service.revenueModel.map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white/90 px-4 py-3 text-sm font-medium text-[color:var(--text-dark)]"
+                      className="rounded-[1.15rem] border border-[rgba(15,76,129,0.08)] bg-white px-4 py-3 text-sm font-medium text-[color:var(--text-dark)]"
                     >
                       {item}
                     </div>
@@ -229,9 +223,9 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         </div>
       </section>
 
-      <section className="page-section bg-[color:var(--surface-base)] text-slate-800">
+      <section className="page-section bg-white text-slate-800">
         <div className="page-container-full px-4 sm:px-6">
-          <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white/92 p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
+          <div className="rounded-[2rem] border border-[rgba(15,76,129,0.1)] bg-white p-6 shadow-[0_18px_40px_rgba(22,50,79,0.08)] md:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-primary-soft)]">
               How It Works
             </p>
@@ -242,7 +236,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
               {service.process.map((step, index) => (
                 <div
                   key={step}
-                  className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-[linear-gradient(180deg,rgba(248,251,255,0.95),rgba(255,255,255,0.96))] p-4"
+                  className="rounded-[1.2rem] border border-[rgba(15,76,129,0.08)] bg-white p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand-primary-soft)]">
                     Step {index + 1}
@@ -256,6 +250,6 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
